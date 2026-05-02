@@ -1,0 +1,147 @@
+import { useTranslation } from "react-i18next";
+import { Card, Button } from "@heroui/react";
+import { ThemeSwitch } from "@/components/theme-switch";
+import { useState, useEffect, useRef } from "react";
+
+export default function SettingsPage() {
+  const { t, i18n } = useTranslation();
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const langDropdownRef = useRef<HTMLDivElement>(null);
+
+  const languages = [
+    { key: "en", label: "English" },
+    { key: "zh", label: "简体中文" },
+  ];
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        langDropdownRef.current &&
+        !langDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsLangDropdownOpen(false);
+      }
+    };
+
+    if (isLangDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isLangDropdownOpen]);
+
+  const handleLanguageChange = (langKey: string) => {
+    i18n.changeLanguage(langKey);
+    setIsLangDropdownOpen(false);
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+          {t("settings.title")}
+        </h1>
+        <p className="text-muted mt-1">{t("common.managePreferences")}</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6">
+        {/* General Settings */}
+        <Card id="settings-general" className="p-6 bg-content1 shadow-sm">
+          <h2 className="text-lg font-semibold mb-6">
+            {t("settings.general.title")}
+          </h2>
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div id="settings-language">
+                <p className="font-medium text-foreground">
+                  {t("settings.general.language")}
+                </p>
+                <p className="text-sm text-muted mt-0.5">
+                  {i18n.language === "zh"
+                    ? "选择您偏好的界面语言"
+                    : "Choose your preferred language"}
+                </p>
+              </div>
+              <div className="w-full sm:w-48" ref={langDropdownRef}>
+                <div className="relative">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between"
+                    onPress={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
+                  >
+                    <span>
+                      {languages.find((lang) => lang.key === i18n.language)
+                        ?.label || "简体中文"}
+                    </span>
+                    <svg
+                      className={`w-4 h-4 transition-transform ${isLangDropdownOpen ? "rotate-180" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </Button>
+
+                  {isLangDropdownOpen && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-content1 border border-separator rounded-lg shadow-lg z-50 min-w-[200px]">
+                      <div className="py-1">
+                        {languages.map((lang) => (
+                          <button
+                            key={lang.key}
+                            className="w-full px-4 py-2.5 text-left hover:bg-default-100 transition-colors flex items-center justify-between"
+                            onClick={() => handleLanguageChange(lang.key)}
+                          >
+                            <span className="text-sm">{lang.label}</span>
+                            {i18n.language === lang.key && (
+                              <svg
+                                className="w-4 h-4 text-success"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="h-px bg-separator w-full" />
+
+            <div
+              id="settings-theme"
+              className="flex items-center justify-between"
+            >
+              <div>
+                <p className="font-medium text-foreground">
+                  {t("settings.general.theme")}
+                </p>
+                <p className="text-sm text-muted mt-0.5">
+                  {i18n.language === "zh"
+                    ? "切换深色或浅色模式"
+                    : "Toggle light or dark mode"}
+                </p>
+              </div>
+              <ThemeSwitch />
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
