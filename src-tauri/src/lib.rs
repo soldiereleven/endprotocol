@@ -34,8 +34,11 @@ pub fn run() {
             app.manage(config_service.clone());
 
             // 初始化账户服务（使用 tokio::sync::Mutex，因为它包含异步方法）
-            let account_service = AccountService::new(config_service);
+            let account_service = AccountService::new(config_service.clone());
             app.manage(Arc::new(Mutex::new(account_service)));
+
+            // 启动自动刷新定时器（此时 tokio runtime 已启动）
+            AccountService::start_auto_refresh(config_service);
 
             Ok(())
         })

@@ -15,8 +15,13 @@ pub struct AccountService {
 impl AccountService {
     /// 创建新的账户服务实例
     pub fn new(config_service: Arc<Mutex<ConfigService>>) -> Self {
-        // 启动自动刷新定时器（仅记录日志，实际刷新由前端触发）
-        let _config_clone = config_service.clone();
+        Self {
+            config_service,
+        }
+    }
+
+    /// 启动自动刷新定时器（应在 tokio runtime 启动后调用）
+    pub fn start_auto_refresh(_config_service: Arc<Mutex<ConfigService>>) {
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(300)); // 5分钟
             loop {
@@ -25,10 +30,6 @@ impl AccountService {
                 // 注意：实际的刷新操作由前端调用 refresh_accounts 命令触发
             }
         });
-
-        Self {
-            config_service,
-        }
     }
 
     /// 获取所有账户
