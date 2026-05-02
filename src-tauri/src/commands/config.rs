@@ -1,0 +1,46 @@
+use serde_json::Value;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use tauri::State;
+
+use crate::services::config_service::ConfigService;
+
+/// 获取配置值
+#[tauri::command]
+pub fn get_config(
+    state: State<Arc<Mutex<ConfigService>>>,
+    key: String,
+) -> Option<Value> {
+    let service = state.lock().unwrap();
+    service.get(&key)
+}
+
+/// 设置配置值
+#[tauri::command]
+pub fn set_config(
+    state: State<Arc<Mutex<ConfigService>>>,
+    key: String,
+    value: Value,
+) -> Result<(), String> {
+    let mut service = state.lock().map_err(|e| e.to_string())?;
+    service.set(key, value).map_err(|e| e.to_string())
+}
+
+/// 删除配置项
+#[tauri::command]
+pub fn remove_config(
+    state: State<Arc<Mutex<ConfigService>>>,
+    key: String,
+) -> bool {
+    let mut service = state.lock().unwrap();
+    service.remove(&key)
+}
+
+/// 获取所有配置
+#[tauri::command]
+pub fn get_all_configs(
+    state: State<Arc<Mutex<ConfigService>>>,
+) -> HashMap<String, Value> {
+    let service = state.lock().unwrap();
+    service.get_all()
+}
