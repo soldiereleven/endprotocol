@@ -1,0 +1,93 @@
+use serde::de::DeserializeOwned;
+use serde_json::Value;
+use std::collections::HashMap;
+use std::fs;
+use std::path::PathBuf;
+use std::sync::Mutex;
+
+use crate::utils::AppError;
+
+/// 配置存储服务
+pub struct ConfigService {
+    config_path: PathBuf,
+    cache: Mutex<HashMap<String, Value>>,
+}
+
+impl ConfigService {
+    /// 创建新的配置服务实例
+    pub fn new() -> Result<Self, AppError> {
+        // 获取平台特定的本地应用数据目录
+        let app_data_dir = dirs::data_local_dir()
+            .ok_or_else(|| AppError::ConfigError {
+                message: "Failed to get local app data directory".to_string(),
+            })?
+            .join("cn.msk-network.endprotocol");
+
+        // 确保目录存在
+        fs::create_dir_all(&app_data_dir)?;
+
+        let config_path = app_data_dir.join("app_config.json");
+
+        // 加载现有配置
+        let cache = if config_path.exists() {
+            let content = fs::read_to_string(&config_path)?;
+            serde_json::from_str(&content).unwrap_or_default()
+        } else {
+            HashMap::new()
+        };
+
+        Ok(Self {
+            config_path,
+            cache: Mutex::new(cache),
+        })
+    }
+
+    /// 获取配置值（泛型）
+    pub fn get<T>(&self, key: &str) -> Option<T>
+    where
+        T: DeserializeOwned,
+    {
+        let cache = self.cache.lock().ok()?;
+        cache.get(key).and_then(|v| serde_json::from_value(v.clone()).ok())
+    }
+
+    /// 设置配置值并持久化
+    pub fn set(&mut self, key: String, value: Value) -> Result<(), AppError> {
+        {
+            let mut cache = self.cache.lock().map_err(|e| AppError::ConfigError {
+                message: format!("Lock failed: {}", e),
+            })?;
+            cache.insert(key, value);
+        }
+        self.save()?;
+        Ok(())
+    }
+
+    /// 删除配置项
+    pub fn remove(&mut self, key: &str) -> bool {
+        let removed = {
+            let mut cache = self.cache.lock().unwrap();
+            cache.remove(key).is_some()
+        };
+        if removed {
+            let _ = self.save();
+        }
+        removed
+    }
+
+    /// 获取所有配置
+    pub fn get_all(&self) -> HashMap<String, Value> {
+        let cache = self.cache.lock().unwrap();
+        cache.clone()
+    }
+
+    /// 保存配置到文件
+    fn save(&self) -> Result<(), AppError> {
+        let cache = self.cache.lock().map_err(|e| AppError::ConfigError {
+            message: format!("Lock failed: {}", e),
+        })?;
+        let content = serde_json::to_string_pretty(&*cache)?;
+        fs::write(&self.config_path, content)?;
+        Ok(())
+    }
+}
