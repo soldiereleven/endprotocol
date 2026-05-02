@@ -1,6 +1,7 @@
 use serde_json::json;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use tauri::async_runtime;
 
 use crate::models::account::{AccountInfo, AccountLoginResult, AccountRefreshResult};
 use crate::models::login::LoginRequest;
@@ -20,9 +21,9 @@ impl AccountService {
         }
     }
 
-    /// 启动自动刷新定时器（应在 tokio runtime 启动后调用）
+    /// 启动自动刷新定时器（应在 Tauri runtime 启动后调用）
     pub fn start_auto_refresh(_config_service: Arc<Mutex<ConfigService>>) {
-        tokio::spawn(async move {
+        async_runtime::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(300)); // 5分钟
             loop {
                 interval.tick().await;
