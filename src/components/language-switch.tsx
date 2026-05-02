@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Input } from "@heroui/react";
-import { configService } from "@/utils/configService";
+import { setConfig } from "@/utils/configService";
 
 // SVG flag components
 const USFlag = () => (
@@ -89,7 +89,7 @@ export const LanguageSwitch = () => {
 
   const handleLanguageChange = async (langKey: string) => {
     i18n.changeLanguage(langKey);
-    await configService.set("app.language", langKey);
+    await setConfig("app.language", langKey);
     setIsOpen(false);
     setSearchQuery("");
   };
