@@ -10,32 +10,24 @@ use crate::utils::{http_client, AppError};
 /// 账户服务
 pub struct AccountService {
     config_service: Arc<Mutex<ConfigService>>,
-    http_client: reqwest::Client,
 }
 
 impl AccountService {
     /// 创建新的账户服务实例
     pub fn new(config_service: Arc<Mutex<ConfigService>>) -> Self {
-        let http_client = http_client::create_client();
-
-        // 启动自动刷新定时器
-        let service_clone = Arc::new(Mutex::new(Self {
-            config_service: config_service.clone(),
-            http_client: http_client.clone(),
-        }));
-
+        // 启动自动刷新定时器（仅记录日志，实际刷新由前端触发）
+        let _config_clone = config_service.clone();
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(300)); // 5分钟
             loop {
                 interval.tick().await;
-                // 这里可以调用刷新逻辑
-                tracing::debug!("Auto-refresh triggered");
+                tracing::debug!("Auto-refresh timer triggered");
+                // 注意：实际的刷新操作由前端调用 refresh_accounts 命令触发
             }
         });
 
         Self {
             config_service,
-            http_client,
         }
     }
 
@@ -182,7 +174,8 @@ impl AccountService {
 
     /// Step 1: 手机号密码 → Hypergryph Token
     async fn get_hypergryph_token(&self, phone: &str, password: &str) -> Result<String, AppError> {
-        let response = self.http_client
+        let client = http_client::create_client();
+        let response = client
             .post("https://as.hypergryph.com/user/auth/v1/token_by_phone_password")
             .json(&json!({
                 "phone": phone,
@@ -211,7 +204,8 @@ impl AccountService {
 
     /// Step 2: Hypergryph Token → Skland Code
     async fn get_skland_code(&self, hy_token: &str) -> Result<String, AppError> {
-        let response = self.http_client
+        let client = http_client::create_client();
+        let response = client
             .post("https://as.hypergryph.com/user/oauth2/v2/grant")
             .json(&json!({
                 "token": hy_token,
@@ -241,7 +235,8 @@ impl AccountService {
 
     /// Step 3: Skland Code → Cred + Token + UserId
     async fn get_skland_cred(&self, sk_code: &str) -> Result<(String, String, String), AppError> {
-        let response = self.http_client
+        let client = http_client::create_client();
+        let response = client
             .post("https://zonai.skland.com/api/v1/user/auth/generate_cred_by_code")
             .json(&json!({
                 "kind": 1,

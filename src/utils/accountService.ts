@@ -117,3 +117,7 @@ export async function refreshAccounts(): Promise<RefreshResult> {
     };
   }
 }
+
+// 别名导出，兼容前端代码的旧命名
+export const refreshAccountData = refreshAccounts;
+export const batchLogoutAccounts = batchLogout;

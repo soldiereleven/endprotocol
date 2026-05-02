@@ -1,4 +1,6 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use tauri::Manager;
 
 mod commands;
 mod models;
@@ -27,11 +29,11 @@ pub fn run() {
             commands::account::refresh_accounts,
         ])
         .setup(|app| {
-            // 初始化配置服务并存储到 state
-            let config_service = Arc::new(Mutex::new(ConfigService::new().map_err(|e| e.to_string())?));
+            // 初始化配置服务（使用 std::sync::Mutex，因为它是同步的）
+            let config_service = Arc::new(std::sync::Mutex::new(ConfigService::new().map_err(|e| e.to_string())?));
             app.manage(config_service.clone());
 
-            // 初始化账户服务
+            // 初始化账户服务（使用 tokio::sync::Mutex，因为它包含异步方法）
             let account_service = AccountService::new(config_service);
             app.manage(Arc::new(Mutex::new(account_service)));
 
