@@ -1,9 +1,9 @@
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use tauri::State;
+use tokio::sync::Mutex;
 
 use crate::models::account::{AccountInfo, AccountLoginResult, AccountRefreshResult};
-use crate::models::login::LoginRequest;
+use crate::models::login::{CodeLoginRequest, LoginRequest, SendCodeRequest};
 use crate::services::account_service::AccountService;
 
 /// 获取所有账户
@@ -22,7 +22,10 @@ pub async fn add_account(
     login_request: LoginRequest,
 ) -> Result<AccountLoginResult, String> {
     let service = state.lock().await;
-    service.add_account(login_request).await.map_err(|e| e.to_string())
+    service
+        .add_account(login_request)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// 登出单个账户
@@ -52,4 +55,30 @@ pub async fn refresh_accounts(
 ) -> Result<AccountRefreshResult, String> {
     let service = state.lock().await;
     Ok(service.refresh_accounts().await)
+}
+
+/// 发送验证码
+#[tauri::command]
+pub async fn send_verification_code(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+    request: SendCodeRequest,
+) -> Result<bool, String> {
+    let service = state.lock().await;
+    service
+        .send_verification_code(request)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// 通过验证码添加账户
+#[tauri::command]
+pub async fn add_account_by_code(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+    login_request: CodeLoginRequest,
+) -> Result<AccountLoginResult, String> {
+    let service = state.lock().await;
+    service
+        .add_account_by_code(login_request)
+        .await
+        .map_err(|e| e.to_string())
 }

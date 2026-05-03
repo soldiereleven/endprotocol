@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Card, Button, Skeleton } from "@heroui/react";
+import { Card, Button, Skeleton, Alert } from "@heroui/react";
 import { useState, useEffect } from "react";
 import {
   CustomModal,
@@ -13,6 +13,8 @@ import {
   refreshAccountData,
   logoutAccount as apiLogoutAccount,
   addAccount,
+  sendVerificationCode,
+  addAccountByCode,
   Account,
   LoginResult,
 } from "@/utils/accountService";
@@ -37,9 +39,18 @@ export default function AccountPage() {
   const [loginMethod, setLoginMethod] = useState<LoginMethod>(null);
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string>("");
-  const [loginSuccess, setLoginSuccess] = useState<Account | null>(null);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [codeSentSuccess, setCodeSentSuccess] = useState(false);
+
+  // 全局 Alert 状态（在主页面显示）
+  const [globalAlert, setGlobalAlert] = useState<{
+    type: "success" | "danger";
+    message: string;
+  } | null>(null);
 
   // 从 C# 端获取账户数据
   useEffect(() => {
@@ -115,7 +126,10 @@ export default function AccountPage() {
     setLoginMethod(null);
     setPhone("");
     setPassword("");
+    setVerificationCode("");
     setLoginError("");
+    setCodeSentSuccess(false);
+    setCountdown(0);
     setIsAddModalOpen(true);
   };
 
@@ -124,41 +138,156 @@ export default function AccountPage() {
     setLoginMethod(null);
     setPhone("");
     setPassword("");
+    setVerificationCode("");
     setLoginError("");
-    setLoginSuccess(null);
+    setCodeSentSuccess(false);
+    setCountdown(0);
     setIsAddModalOpen(false);
   };
 
-  // 处理登录
-  const handleLogin = async () => {
-    if (!phone || !password) {
+  // 发送验证码
+  const handleSendCode = async () => {
+    if (!phone) {
       setLoginError(
-        i18n.language === "zh"
-          ? "请输入手机号和密码"
-          : "Please enter phone and password",
+        i18n.language === "zh" ? "请输入手机号" : "Please enter phone number",
       );
       return;
     }
 
-    setIsLoggingIn(true);
+    // 校验手机号格式（11位数字）
+    const phoneRegex = /^1[3-9]\d{9}$/;
+    if (!phoneRegex.test(phone)) {
+      setLoginError(
+        i18n.language === "zh"
+          ? "请输入有效的11位手机号"
+          : "Please enter a valid 11-digit phone number",
+      );
+      return;
+    }
+
+    setIsSendingCode(true);
     setLoginError("");
-    setLoginSuccess(null);
+    setCodeSentSuccess(false);
 
     try {
-      const result: LoginResult = await addAccount({ phone, password });
+      const success = await sendVerificationCode({ phone, type: 2 });
+
+      if (success) {
+        // 开始倒计时
+        setCountdown(60);
+        const timer = setInterval(() => {
+          setCountdown((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+
+        // 显示成功提示
+        console.log("验证码发送成功，设置 codeSentSuccess 为 true");
+        setCodeSentSuccess(true);
+      } else {
+        setLoginError(
+          i18n.language === "zh"
+            ? "发送验证码失败，请重试"
+            : "Failed to send verification code",
+        );
+      }
+    } catch (error) {
+      console.error("Send code error:", error);
+      setLoginError(
+        i18n.language === "zh" ? "发送验证码出错" : "Error sending code",
+      );
+    } finally {
+      setIsSendingCode(false);
+    }
+  };
+
+  // 处理登录
+  const handleLogin = async () => {
+    if (loginMethod === "phone") {
+      // 密码登录
+      if (!phone || !password) {
+        setLoginError(
+          i18n.language === "zh"
+            ? "请输入手机号和密码"
+            : "Please enter phone and password",
+        );
+        return;
+      }
+
+      // 校验手机号格式（11位数字）
+      const phoneRegex = /^1[3-9]\d{9}$/;
+      if (!phoneRegex.test(phone)) {
+        setLoginError(
+          i18n.language === "zh"
+            ? "请输入有效的11位手机号"
+            : "Please enter a valid 11-digit phone number",
+        );
+        return;
+      }
+    } else if (loginMethod === "qrcode") {
+      // 验证码登录
+      if (!phone || !verificationCode) {
+        setLoginError(
+          i18n.language === "zh"
+            ? "请输入手机号和验证码"
+            : "Please enter phone and verification code",
+        );
+        return;
+      }
+
+      // 校验手机号格式（11位数字）
+      const phoneRegex = /^1[3-9]\d{9}$/;
+      if (!phoneRegex.test(phone)) {
+        setLoginError(
+          i18n.language === "zh"
+            ? "请输入有效的11位手机号"
+            : "Please enter a valid 11-digit phone number",
+        );
+        return;
+      }
+    }
+
+    setIsLoggingIn(true);
+    setLoginError("");
+
+    try {
+      let result: LoginResult;
+
+      if (loginMethod === "phone") {
+        // 密码登录
+        result = await addAccount({ phone, password });
+      } else {
+        // 验证码登录
+        result = await addAccountByCode({ phone, code: verificationCode });
+      }
 
       if (result.success && result.account) {
-        // 登录成功，显示账户信息
-        setLoginSuccess(result.account);
+        // 登录成功
 
         // 刷新账户列表
         const accounts = await getAccounts();
         setAccounts(accounts || []);
 
-        // 2秒后自动关闭 Modal
+        // 关闭 Modal
+        handleCloseAddModal();
+
+        // 显示全局成功提示
+        setGlobalAlert({
+          type: "success",
+          message:
+            i18n.language === "zh"
+              ? `登录成功！欢迎，${result.account.nickname}`
+              : `Login successful! Welcome, ${result.account.nickname}`,
+        });
+
+        // 5秒后自动清除 Alert
         setTimeout(() => {
-          handleCloseAddModal();
-        }, 2000);
+          setGlobalAlert(null);
+        }, 5000);
       } else {
         setLoginError(
           result.errorMessage ||
@@ -205,7 +334,22 @@ export default function AccountPage() {
   );
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-12">
+    <div className="max-w-6xl mx-auto space-y-6 pb-12 relative">
+      {/* 全局 Alert - 浮动覆盖 */}
+      {globalAlert && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-slide-down">
+          <Alert
+            status={globalAlert.type}
+            className="shadow-lg min-w-[300px] max-w-[500px]"
+          >
+            <Alert.Indicator />
+            <Alert.Content>
+              <Alert.Description>{globalAlert.message}</Alert.Description>
+            </Alert.Content>
+          </Alert>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -427,7 +571,7 @@ export default function AccountPage() {
       <CustomModal
         isOpen={isAddModalOpen}
         onClose={handleCloseAddModal}
-        size="md"
+        size="lg"
       >
         <CustomModalHeader onClose={handleCloseAddModal}>
           {t("settings.account.add_account")}
@@ -441,7 +585,7 @@ export default function AccountPage() {
               </p>
 
               <div className="grid grid-cols-2 gap-4">
-                {/* 手机号登录 */}
+                {/* 密码登录 */}
                 <button
                   onClick={() => setLoginMethod("phone")}
                   className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-separator hover:border-primary hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all cursor-pointer group"
@@ -457,7 +601,7 @@ export default function AccountPage() {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                       />
                     </svg>
                   </div>
@@ -466,7 +610,7 @@ export default function AccountPage() {
                   </span>
                 </button>
 
-                {/* 扫码登录 */}
+                {/* 验证码登录 */}
                 <button
                   onClick={() => setLoginMethod("qrcode")}
                   className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-separator hover:border-primary hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all cursor-pointer group"
@@ -482,7 +626,7 @@ export default function AccountPage() {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
+                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
                       />
                     </svg>
                   </div>
@@ -518,98 +662,75 @@ export default function AccountPage() {
 
               {/* 错误提示 */}
               {loginError && (
-                <div className="p-3 bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800 rounded-lg">
-                  <p className="text-sm text-danger">{loginError}</p>
-                </div>
+                <Alert status="danger">
+                  <Alert.Indicator />
+                  <Alert.Content>
+                    <Alert.Description>{loginError}</Alert.Description>
+                  </Alert.Content>
+                </Alert>
               )}
 
-              {/* 成功提示 */}
-              {loginSuccess && (
-                <div className="p-4 bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800 rounded-lg">
-                  <div className="flex items-center gap-3 mb-2">
-                    <svg
-                      className="w-6 h-6 text-success"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <p className="text-base font-semibold text-success">
+              {/* 发送验证码成功提示 */}
+              {codeSentSuccess && (
+                <Alert status="success">
+                  <Alert.Indicator />
+                  <Alert.Content>
+                    <Alert.Description>
                       {i18n.language === "zh"
-                        ? "登录成功！"
-                        : "Login Successful!"}
-                    </p>
-                  </div>
-                  <div className="space-y-1 text-sm text-success-700 dark:text-success-300">
-                    <p>
-                      <strong>
-                        {i18n.language === "zh" ? "账户 ID:" : "Account ID:"}
-                      </strong>{" "}
-                      {loginSuccess.id}
-                    </p>
-                    <p>
-                      <strong>
-                        {i18n.language === "zh" ? "昵称:" : "Nickname:"}
-                      </strong>{" "}
-                      {loginSuccess.nickname}
-                    </p>
-                    <p>
-                      <strong>Cred:</strong>{" "}
-                      {loginSuccess.cred
-                        ? `${loginSuccess.cred.substring(0, 20)}...`
-                        : "N/A"}
-                    </p>
-                    <p>
-                      <strong>Token:</strong>{" "}
-                      {loginSuccess.token
-                        ? `${loginSuccess.token.substring(0, 20)}...`
-                        : "N/A"}
-                    </p>
-                  </div>
-                </div>
+                        ? "验证码已发送，请注意查收"
+                        : "Verification code sent"}
+                    </Alert.Description>
+                  </Alert.Content>
+                </Alert>
               )}
 
-              {/* 手机号输入 */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  {t("settings.account.phone_number")}
-                </label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder={t("settings.account.enter_phone")}
-                  className="w-full px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                />
-              </div>
+              {/* 手机号和密码输入 */}
+              <div className="space-y-4">
+                {/* 手机号输入行 */}
+                <div className="flex items-center gap-3">
+                  <label className="text-sm font-medium text-foreground whitespace-nowrap min-w-[80px]">
+                    {t("settings.account.phone_number")}
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      setCodeSentSuccess(false);
+                    }}
+                    placeholder={t("settings.account.enter_phone")}
+                    maxLength={11}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !isLoggingIn) {
+                        handleLogin();
+                      }
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                  />
+                </div>
 
-              {/* 密码输入 */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  {t("settings.account.password")}
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t("settings.account.enter_password")}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !isLoggingIn) {
-                      handleLogin();
-                    }
-                  }}
-                  className="w-full px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                />
+                {/* 密码输入行 */}
+                <div className="flex items-center gap-3">
+                  <label className="text-sm font-medium text-foreground whitespace-nowrap min-w-[80px]">
+                    {t("settings.account.password")}
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={t("settings.account.enter_password")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !isLoggingIn) {
+                        handleLogin();
+                      }
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                  />
+                </div>
               </div>
             </div>
           ) : (
-            // 扫码登录（后续实现）
+            // 验证码登录表单
             <div className="space-y-4">
               <button
                 onClick={() => setLoginMethod(null)}
@@ -631,31 +752,114 @@ export default function AccountPage() {
                 {t("settings.account.back")}
               </button>
 
-              <div className="text-center py-8">
-                <svg
-                  className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
+              {/* 错误提示 */}
+              {loginError && (
+                <Alert status="danger">
+                  <Alert.Indicator />
+                  <Alert.Content>
+                    <Alert.Description>{loginError}</Alert.Description>
+                  </Alert.Content>
+                </Alert>
+              )}
+
+              {/* 发送验证码成功提示 */}
+              {codeSentSuccess && (
+                <Alert status="success">
+                  <Alert.Indicator />
+                  <Alert.Content>
+                    <Alert.Description>
+                      {i18n.language === "zh"
+                        ? "验证码已发送，请注意查收"
+                        : "Verification code sent"}
+                    </Alert.Description>
+                  </Alert.Content>
+                </Alert>
+              )}
+
+              {/* 手机号和验证码输入 */}
+              <div className="space-y-4">
+                {/* 手机号输入行 */}
+                <div className="flex items-center gap-3">
+                  <label className="text-sm font-medium text-foreground whitespace-nowrap min-w-[80px]">
+                    {t("settings.account.phone_number")}
+                  </label>
+                  <div className="flex gap-2 flex-1 items-stretch">
+                    <input
+                      type="tel"
+                      placeholder={
+                        i18n.language === "zh"
+                          ? "请输入手机号"
+                          : "Enter phone number"
+                      }
+                      value={phone}
+                      onChange={(e) => {
+                        setPhone(e.target.value);
+                        setCodeSentSuccess(false);
+                      }}
+                      disabled={isLoggingIn || isSendingCode}
+                      maxLength={11}
+                      onKeyDown={(e) => {
+                        if (
+                          e.key === "Enter" &&
+                          !isLoggingIn &&
+                          !isSendingCode
+                        ) {
+                          handleSendCode();
+                        }
+                      }}
+                      className="flex-1 px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                    />
+                    <Button
+                      variant="outline"
+                      onPress={handleSendCode}
+                      isDisabled={isSendingCode || countdown > 0 || !phone}
+                      className="min-w-[120px] whitespace-nowrap border border-separator rounded-lg bg-default-100 hover:bg-default-200 transition-all !h-[44px] !px-4"
+                    >
+                      {countdown > 0
+                        ? `${countdown}s`
+                        : isSendingCode
+                          ? t("settings.account.sending")
+                          : t("settings.account.send_code")}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* 验证码输入行 */}
+                <div className="flex items-center gap-3">
+                  <label className="text-sm font-medium text-foreground whitespace-nowrap min-w-[80px]">
+                    {t("settings.account.verification_code")}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={
+                      i18n.language === "zh"
+                        ? t("settings.account.enter_verification_code")
+                        : t("settings.account.enter_verification_code")
+                    }
+                    value={verificationCode}
+                    onChange={(e) => {
+                      setVerificationCode(e.target.value);
+                      // 当用户输入验证码时，清除发送成功的提示
+                      if (codeSentSuccess) {
+                        setCodeSentSuccess(false);
+                      }
+                    }}
+                    disabled={isLoggingIn}
+                    maxLength={6}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !isLoggingIn) {
+                        handleLogin();
+                      }
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   />
-                </svg>
-                <p className="text-sm text-muted">
-                  {i18n.language === "zh"
-                    ? "扫码登录功能将在后续实现"
-                    : "QR code login will be implemented later"}
-                </p>
+                </div>
               </div>
             </div>
           )}
         </CustomModalBody>
         <CustomModalFooter>
-          {loginMethod === "phone" && (
+          {(loginMethod === "phone" || loginMethod === "qrcode") && (
             <>
               <Button variant="outline" onPress={() => setLoginMethod(null)}>
                 {t("settings.account.back")}
@@ -663,7 +867,11 @@ export default function AccountPage() {
               <Button
                 variant="primary"
                 onPress={handleLogin}
-                isDisabled={isLoggingIn || !phone || !password}
+                isDisabled={
+                  isLoggingIn ||
+                  !phone ||
+                  (loginMethod === "phone" ? !password : !verificationCode)
+                }
               >
                 {isLoggingIn
                   ? t("settings.account.loading")

@@ -4,7 +4,7 @@ use std::time::Duration;
 use tauri::async_runtime;
 
 use crate::models::account::{AccountInfo, AccountLoginResult, AccountRefreshResult};
-use crate::models::login::LoginRequest;
+use crate::models::login::{CodeLoginRequest, LoginRequest, SendCodeRequest};
 use crate::services::config_service::ConfigService;
 use crate::utils::{http_client, AppError};
 
@@ -16,9 +16,7 @@ pub struct AccountService {
 impl AccountService {
     /// 创建新的账户服务实例
     pub fn new(config_service: Arc<Mutex<ConfigService>>) -> Self {
-        Self {
-            config_service,
-        }
+        Self { config_service }
     }
 
     /// 启动自动刷新定时器（应在 Tauri runtime 启动后调用）
@@ -40,7 +38,9 @@ impl AccountService {
 
         let mut accounts = Vec::new();
         for user_id in account_list {
-            if let Some(token_data) = config.get::<serde_json::Value>(&format!("account_token_{}", user_id)) {
+            if let Some(token_data) =
+                config.get::<serde_json::Value>(&format!("account_token_{}", user_id))
+            {
                 let account = AccountInfo {
                     id: user_id.clone(),
                     avatar: "".to_string(),
@@ -48,8 +48,14 @@ impl AccountService {
                     level: 0,
                     server: "Unknown".to_string(),
                     status: "offline".to_string(),
-                    cred: token_data.get("cred").and_then(|v| v.as_str()).map(|s| s.to_string()),
-                    token: token_data.get("token").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                    cred: token_data
+                        .get("cred")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    token: token_data
+                        .get("token")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
                 };
                 accounts.push(account);
             }
@@ -59,9 +65,15 @@ impl AccountService {
     }
 
     /// 添加账户（执行三步认证）
-    pub async fn add_account(&self, login_request: LoginRequest) -> Result<AccountLoginResult, AppError> {
+    pub async fn add_account(
+        &self,
+        login_request: LoginRequest,
+    ) -> Result<AccountLoginResult, AppError> {
         // Step 1: 获取 Hypergryph Token
-        let hy_token = match self.get_hypergryph_token(&login_request.phone, &login_request.password).await {
+        let hy_token = match self
+            .get_hypergryph_token(&login_request.phone, &login_request.password)
+            .await
+        {
             Ok(token) => token,
             Err(e) => {
                 return Ok(AccountLoginResult {
@@ -174,6 +186,151 @@ impl AccountService {
         }
     }
 
+    /// 发送手机验证码
+    pub async fn send_verification_code(&self, request: SendCodeRequest) -> Result<bool, AppError> {
+        let client = http_client::create_client();
+        let response = client
+            .post("https://as.hypergryph.com/general/v1/send_phone_code")
+            .json(&json!({
+                "phone": request.phone,
+                "type": request.code_type
+            }))
+            .send()
+            .await?;
+
+        let json: serde_json::Value = response.json().await?;
+
+        if json.get("status").and_then(|v| v.as_i64()) == Some(0) {
+            Ok(true)
+        } else {
+            let msg = json
+                .get("msg")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown error");
+            Err(AppError::AuthError {
+                message: format!("Failed to send verification code: {}", msg),
+            })
+        }
+    }
+
+    /// 通过验证码登录（获取 Hypergryph Token）
+    async fn get_hypergryph_token_by_code(
+        &self,
+        phone: &str,
+        code: &str,
+    ) -> Result<String, AppError> {
+        let client = http_client::create_client();
+        let response = client
+            .post("https://as.hypergryph.com/user/auth/v2/token_by_phone_code")
+            .json(&json!({
+                "phone": phone,
+                "code": code
+            }))
+            .send()
+            .await?;
+
+        let json: serde_json::Value = response.json().await?;
+
+        if json.get("status").and_then(|v| v.as_i64()) == Some(0) {
+            json.get("data")
+                .and_then(|d| d.get("token"))
+                .and_then(|t| t.as_str())
+                .map(|s| s.to_string())
+                .ok_or_else(|| AppError::AuthError {
+                    message: "Token not found in response".to_string(),
+                })
+        } else {
+            let msg = json
+                .get("msg")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown error");
+            Err(AppError::AuthError {
+                message: format!("Hypergryph API error: {}", msg),
+            })
+        }
+    }
+
+    /// 通过验证码添加账户
+    pub async fn add_account_by_code(
+        &self,
+        login_request: CodeLoginRequest,
+    ) -> Result<AccountLoginResult, AppError> {
+        // Step 1: 通过验证码获取 Hypergryph Token
+        let hy_token = match self
+            .get_hypergryph_token_by_code(&login_request.phone, &login_request.code)
+            .await
+        {
+            Ok(token) => token,
+            Err(e) => {
+                return Ok(AccountLoginResult {
+                    success: false,
+                    error_message: Some(format!("Step 1 failed: {}", e)),
+                    account: None,
+                });
+            }
+        };
+
+        // Step 2: 获取 Skland Code
+        let sk_code = match self.get_skland_code(&hy_token).await {
+            Ok(code) => code,
+            Err(e) => {
+                return Ok(AccountLoginResult {
+                    success: false,
+                    error_message: Some(format!("Step 2 failed: {}", e)),
+                    account: None,
+                });
+            }
+        };
+
+        // Step 3: 获取 Skland Cred 和 Token
+        let (cred, token, user_id) = match self.get_skland_cred(&sk_code).await {
+            Ok(data) => data,
+            Err(e) => {
+                return Ok(AccountLoginResult {
+                    success: false,
+                    error_message: Some(format!("Step 3 failed: {}", e)),
+                    account: None,
+                });
+            }
+        };
+
+        // 保存账户信息到配置
+        {
+            let mut config = self.config_service.lock().unwrap();
+
+            // 更新账户列表
+            let mut account_list: Vec<String> = config.get("account_list").unwrap_or_default();
+            if !account_list.contains(&user_id) {
+                account_list.push(user_id.clone());
+            }
+            config.set("account_list".to_string(), json!(account_list))?;
+
+            // 保存账户凭证
+            let token_data = json!({
+                "cred": cred,
+                "token": token
+            });
+            config.set(format!("account_token_{}", user_id), token_data)?;
+        }
+
+        let account = AccountInfo {
+            id: user_id.clone(),
+            avatar: "".to_string(),
+            nickname: format!("User {}", &user_id[..8.min(user_id.len())]),
+            level: 0,
+            server: "Unknown".to_string(),
+            status: "online".to_string(),
+            cred: Some(cred),
+            token: Some(token),
+        };
+
+        Ok(AccountLoginResult {
+            success: true,
+            error_message: None,
+            account: Some(account),
+        })
+    }
+
     /// Step 1: 手机号密码 → Hypergryph Token
     async fn get_hypergryph_token(&self, phone: &str, password: &str) -> Result<String, AppError> {
         let client = http_client::create_client();
@@ -197,7 +354,10 @@ impl AccountService {
                     message: "Token not found in response".to_string(),
                 })
         } else {
-            let msg = json.get("msg").and_then(|v| v.as_str()).unwrap_or("Unknown error");
+            let msg = json
+                .get("msg")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown error");
             Err(AppError::AuthError {
                 message: format!("Hypergryph API error: {}", msg),
             })
@@ -228,7 +388,10 @@ impl AccountService {
                     message: "Code not found in response".to_string(),
                 })
         } else {
-            let msg = json.get("msg").and_then(|v| v.as_str()).unwrap_or("Unknown error");
+            let msg = json
+                .get("msg")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown error");
             Err(AppError::AuthError {
                 message: format!("Hypergryph OAuth error: {}", msg),
             })
@@ -254,21 +417,33 @@ impl AccountService {
                 message: "Data not found in response".to_string(),
             })?;
 
-            let cred = data.get("cred").and_then(|v| v.as_str()).ok_or_else(|| AppError::AuthError {
-                message: "Cred not found".to_string(),
-            })?;
+            let cred =
+                data.get("cred")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::AuthError {
+                        message: "Cred not found".to_string(),
+                    })?;
 
-            let token = data.get("token").and_then(|v| v.as_str()).ok_or_else(|| AppError::AuthError {
-                message: "Token not found".to_string(),
-            })?;
+            let token =
+                data.get("token")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::AuthError {
+                        message: "Token not found".to_string(),
+                    })?;
 
-            let user_id = data.get("userId").and_then(|v| v.as_str()).ok_or_else(|| AppError::AuthError {
-                message: "UserId not found".to_string(),
-            })?;
+            let user_id =
+                data.get("userId")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| AppError::AuthError {
+                        message: "UserId not found".to_string(),
+                    })?;
 
             Ok((cred.to_string(), token.to_string(), user_id.to_string()))
         } else {
-            let msg = json.get("message").and_then(|v| v.as_str()).unwrap_or("Unknown error");
+            let msg = json
+                .get("message")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown error");
             Err(AppError::AuthError {
                 message: format!("Skland API error: {}", msg),
             })
