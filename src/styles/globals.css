@@ -22,3 +22,84 @@
 .animate-slide-down {
   animation: slide-down 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
+/* 账户切换脉冲动画 */
+@keyframes pulse-once {
+  0% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(74, 222, 128, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+  }
+}
+
+.animate-pulse-once {
+  animation: pulse-once 0.6s ease-out;
+}
+
+/* 账户切换上浮动画 */
+@keyframes slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+/* 账户切换下沉动画 */
+@keyframes slide-down-account {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down-account {
+  animation: slide-down-account 0.3s ease-out;
+}
+
+/* 翻页浮入动画 */
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* 翻页浮出动画 */
+@keyframes fade-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.animate-fade-out {
+  animation: fade-out 0.3s ease-in;
+}

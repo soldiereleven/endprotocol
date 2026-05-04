@@ -5,7 +5,6 @@ use std::time::Duration;
 pub fn create_client() -> Client {
     Client::builder()
         .timeout(Duration::from_secs(30))
-        .user_agent("EndProtocol/1.0")
         .build()
         .expect("Failed to create HTTP client")
 }

@@ -22,14 +22,19 @@ import {
   CustomModalBody,
   CustomModalFooter,
 } from "@/components/custom-modal";
+import RoleSelectModal from "@/components/role-select-modal";
 import { useState, useEffect } from "react";
 import {
   getAccounts,
   refreshAccountData,
   logoutAccount as apiLogoutAccount,
   batchLogoutAccounts as apiBatchLogoutAccounts,
-  addAccount as apiAddAccount,
+  addAccountByCode as apiAddAccountByCode,
+  saveSelectedRoles,
+  getSelectedAccount,
+  setSelectedAccount as apiSetSelectedAccount,
   Account,
+  RoleDisplayInfo,
 } from "@/utils/accountService";
 
 export default function AccountPage() {
@@ -44,6 +49,16 @@ export default function AccountPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
+    null,
+  );
+
+  // 角色选择 Modal 状态
+  const [isRoleSelectModalOpen, setIsRoleSelectModalOpen] = useState(false);
+  const [availableRoles, setAvailableRoles] = useState<RoleDisplayInfo[]>([]);
+  const [loginCred, setLoginCred] = useState("");
+  const [loginToken, setLoginToken] = useState("");
+  const [loginUserId, setLoginUserId] = useState("");
 
   // 登录表单状态
   const [loginPhone, setLoginPhone] = useState("");
@@ -112,6 +127,15 @@ export default function AccountPage() {
 
     return () => clearInterval(interval);
   }, []);
+
+  // 加载选中的账户
+  useEffect(() => {
+    const loadSelectedAccount = async () => {
+      const selectedId = await getSelectedAccount();
+      setSelectedAccountId(selectedId);
+    };
+    loadSelectedAccount();
+  }, [accounts]);
 
   // 刷新数据函数
   const refreshData = async () => {
@@ -184,21 +208,37 @@ export default function AccountPage() {
 
     setIsLoggingIn(true);
     try {
-      const success = await apiAddAccount({
+      // 使用验证码登录（这里暂时用密码登录模拟，实际需要改为验证码流程）
+      // TODO: 实现发送验证码和验证码输入UI
+      const result = await apiAddAccountByCode({
         phone: loginPhone,
-        password: loginPassword,
+        code: loginPassword, // 临时用密码字段作为验证码
       });
 
-      if (success) {
-        // 登录成功，刷新账户列表
-        await refreshData();
-        // 关闭模态框并清空表单
-        setIsAddModalOpen(false);
-        setLoginPhone("");
-        setLoginPassword("");
-        alert(i18n.language === "zh" ? "登录成功" : "Login successful");
+      if (
+        result.success &&
+        result.availableRoles &&
+        result.availableRoles.length > 0
+      ) {
+        // 保存 cred、token、userId 供后续使用
+        setAvailableRoles(result.availableRoles);
+        setLoginCred(result.cred || "");
+        setLoginToken(result.token || "");
+        setLoginUserId(result.userId || "");
+        // 打开角色选择 Modal
+        setIsRoleSelectModalOpen(true);
+      } else if (result.success) {
+        // 没有可用角色
+        alert(
+          i18n.language === "zh"
+            ? "未找到可用角色"
+            : "No available roles found",
+        );
       } else {
-        alert(i18n.language === "zh" ? "登录失败" : "Login failed");
+        alert(
+          result.errorMessage ||
+            (i18n.language === "zh" ? "登录失败" : "Login failed"),
+        );
       }
     } catch (error) {
       console.error("Login error:", error);
@@ -206,6 +246,23 @@ export default function AccountPage() {
     } finally {
       setIsLoggingIn(false);
     }
+  };
+
+  // 处理角色选择成功
+  const handleRoleSelectSuccess = async () => {
+    // 刷新账户列表
+    await refreshData();
+    // 关闭登录模态框并清空表单
+    setIsAddModalOpen(false);
+    setLoginPhone("");
+    setLoginPassword("");
+    alert(i18n.language === "zh" ? "角色绑定成功" : "Roles bound successfully");
+  };
+
+  // 处理账户选择
+  const handleAccountSelect = async (accountId: string) => {
+    await apiSetSelectedAccount(accountId);
+    setSelectedAccountId(accountId);
   };
 
   // 渲染骨架屏
@@ -344,20 +401,72 @@ export default function AccountPage() {
           ) : (
             <TableBody>
               {accounts.map((account) => (
-                <TableRow key={account.id}>
+                <TableRow
+                  key={account.id}
+                  className={
+                    selectedAccountId === account.id
+                      ? "bg-primary-50 dark:bg-primary-900/20"
+                      : ""
+                  }
+                >
                   <TableCell>
-                    <Checkbox isSelected={selectedKeys.has(account.id)} />
+                    <Checkbox
+                      isSelected={selectedKeys.has(account.id)}
+                      onChange={() => {
+                        const newSelected = new Set(selectedKeys);
+                        if (newSelected.has(account.id)) {
+                          newSelected.delete(account.id);
+                        } else {
+                          newSelected.add(account.id);
+                        }
+                        setSelectedKeys(newSelected);
+                      }}
+                    />
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-sm font-bold text-primary">
-                        {account.nickname.charAt(0).toUpperCase()}
+                      <div
+                        className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-sm font-bold text-primary cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => handleAccountSelect(account.id)}
+                        title={
+                          i18n.language === "zh"
+                            ? "点击选择此账户"
+                            : "Click to select this account"
+                        }
+                      >
+                        {account.avatar ? (
+                          <img
+                            src={account.avatar}
+                            alt={account.nickname}
+                            className="w-full h-full rounded-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display =
+                                "none";
+                              (
+                                e.target as HTMLImageElement
+                              ).parentElement!.textContent = account.nickname
+                                .charAt(0)
+                                .toUpperCase();
+                            }}
+                          />
+                        ) : (
+                          account.nickname.charAt(0).toUpperCase()
+                        )}
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-foreground">
                           {account.nickname}
                         </p>
                         <p className="text-xs text-muted">ID: {account.id}</p>
+                        {selectedAccountId === account.id && (
+                          <Chip
+                            size="sm"
+                            variant="soft"
+                            className="mt-1 bg-primary-100 text-primary"
+                          >
+                            {i18n.language === "zh" ? "当前选中" : "Selected"}
+                          </Chip>
+                        )}
                       </div>
                     </div>
                   </TableCell>
@@ -590,6 +699,17 @@ export default function AccountPage() {
           </Button>
         </CustomModalFooter>
       </CustomModal>
+
+      {/* Role Select Modal */}
+      <RoleSelectModal
+        isOpen={isRoleSelectModalOpen}
+        onClose={() => setIsRoleSelectModalOpen(false)}
+        roles={availableRoles}
+        cred={loginCred}
+        token={loginToken}
+        userId={loginUserId}
+        onSuccess={handleRoleSelectSuccess}
+      />
     </div>
   );
 }

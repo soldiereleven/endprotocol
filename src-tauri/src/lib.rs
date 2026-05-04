@@ -8,7 +8,9 @@ mod services;
 mod utils;
 
 use services::account_service::AccountService;
+use services::avatar_cache_service::AvatarCacheService;
 use services::config_service::ConfigService;
+use services::skland_service::SklandService;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -29,6 +31,9 @@ pub fn run() {
             commands::account::refresh_accounts,
             commands::account::send_verification_code,
             commands::account::add_account_by_code,
+            commands::account::save_selected_roles,
+            commands::account::get_selected_account,
+            commands::account::set_selected_account,
         ])
         .setup(|app| {
             // 初始化配置服务（使用 std::sync::Mutex，因为它是同步的）
@@ -37,8 +42,16 @@ pub fn run() {
             ));
             app.manage(config_service.clone());
 
+            // 初始化 Skland 服务
+            let skland_service = Arc::new(SklandService::new(config_service.clone()));
+
+            // 初始化头像缓存服务
+            let avatar_cache_service =
+                Arc::new(AvatarCacheService::new().map_err(|e| e.to_string())?);
+
             // 初始化账户服务（使用 tokio::sync::Mutex，因为它包含异步方法）
-            let account_service = AccountService::new(config_service.clone());
+            let account_service =
+                AccountService::new(config_service.clone(), skland_service, avatar_cache_service);
             app.manage(Arc::new(Mutex::new(account_service)));
 
             // 启动自动刷新定时器（此时 tokio runtime 已启动）

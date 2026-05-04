@@ -6,6 +6,7 @@ interface PaginationProps {
   page: number;
   onChange: (page: number) => void;
   siblingsCount?: number;
+  showControls?: boolean;
 }
 
 export const SimplePagination: React.FC<PaginationProps> = ({
@@ -13,8 +14,10 @@ export const SimplePagination: React.FC<PaginationProps> = ({
   page,
   onChange,
   siblingsCount = 1,
+  showControls = true,
 }) => {
-  if (total <= 1) return null;
+  // Always render at least a single-page control so UI remains visible
+  if (total < 1) return null;
 
   const getPageNumbers = () => {
     const leftSiblingIndex = Math.max(page - siblingsCount, 1);
@@ -54,26 +57,28 @@ export const SimplePagination: React.FC<PaginationProps> = ({
   return (
     <div className="flex items-center justify-center gap-2">
       {/* Previous button */}
-      <Button
-        size="sm"
-        variant="outline"
-        isDisabled={page === 1}
-        onPress={() => onChange(Math.max(1, page - 1))}
-      >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+      {showControls && (
+        <Button
+          size="sm"
+          variant="outline"
+          isDisabled={page === 1}
+          onPress={() => onChange(Math.max(1, page - 1))}
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 19l-7-7 7-7"
-          />
-        </svg>
-      </Button>
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </Button>
+      )}
 
       {/* Page numbers */}
       <div className="flex items-center gap-1">
@@ -105,26 +110,28 @@ export const SimplePagination: React.FC<PaginationProps> = ({
       </div>
 
       {/* Next button */}
-      <Button
-        size="sm"
-        variant="outline"
-        isDisabled={page === total}
-        onPress={() => onChange(Math.min(total, page + 1))}
-      >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+      {showControls && (
+        <Button
+          size="sm"
+          variant="outline"
+          isDisabled={page === total}
+          onPress={() => onChange(Math.min(total, page + 1))}
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 5l7 7-7 7"
-          />
-        </svg>
-      </Button>
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </Button>
+      )}
     </div>
   );
 };

@@ -23,6 +23,10 @@
     "help": "Help & Feedback"
   },
   "common": {
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next"
+    },
     "search": "Search...",
     "sponsor": "Sponsor",
     "app_subtitle": "Admin Console",
@@ -101,6 +105,7 @@
       "sending": "Sending...",
       "select_login_method": "Please select login method",
       "back": "Back",
+      "confirm": "Confirm",
       "loading": "Loading...",
       "refreshing": "Refreshing...",
       "refresh_success": "Refresh successful",

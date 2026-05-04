@@ -23,6 +23,10 @@
     "help": "帮助与反馈"
   },
   "common": {
+    "pagination": {
+      "previous": "上一页",
+      "next": "下一页"
+    },
     "search": "搜索...",
     "sponsor": "赞助",
     "app_subtitle": "管理控制台",
@@ -101,6 +105,7 @@
       "sending": "发送中...",
       "select_login_method": "请选择登录方式",
       "back": "返回",
+      "confirm": "确认",
       "loading": "加载中...",
       "refreshing": "刷新中...",
       "refresh_success": "刷新成功",

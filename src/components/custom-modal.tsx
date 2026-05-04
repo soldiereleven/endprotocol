@@ -6,6 +6,8 @@ interface ModalProps {
   onClose: () => void;
   children: React.ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
+  height?: "auto" | "fixed";
+  disableBackdropClick?: boolean; // 禁用点击背景关闭
 }
 
 export const CustomModal: React.FC<ModalProps> = ({
@@ -13,6 +15,8 @@ export const CustomModal: React.FC<ModalProps> = ({
   onClose,
   children,
   size = "md",
+  height = "fixed",
+  disableBackdropClick = false,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -37,7 +41,7 @@ export const CustomModal: React.FC<ModalProps> = ({
 
   // 点击背景关闭
   const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
+    if (!disableBackdropClick && e.target === e.currentTarget) {
       onClose();
     }
   };
@@ -85,6 +89,7 @@ export const CustomModal: React.FC<ModalProps> = ({
             "relative w-full rounded-xl shadow-2xl border border-separator pointer-events-auto transform transition-all duration-300 ease-out",
             "bg-background",
             sizeClasses[size],
+            height === "auto" ? "max-h-[90vh]" : "max-h-[85vh]",
             isOpen
               ? "opacity-100 scale-100 translate-y-0"
               : "opacity-0 scale-95 translate-y-4",

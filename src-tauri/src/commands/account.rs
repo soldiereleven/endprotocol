@@ -4,6 +4,7 @@ use tokio::sync::Mutex;
 
 use crate::models::account::{AccountInfo, AccountLoginResult, AccountRefreshResult};
 use crate::models::login::{CodeLoginRequest, LoginRequest, SendCodeRequest};
+use crate::models::role::RoleDisplayInfo;
 use crate::services::account_service::AccountService;
 
 /// 获取所有账户
@@ -81,4 +82,49 @@ pub async fn add_account_by_code(
         .add_account_by_code(login_request)
         .await
         .map_err(|e| e.to_string())
+}
+
+/// 保存用户选择的角色
+#[tauri::command]
+pub async fn save_selected_roles(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+    cred: String,
+    token: String,
+    user_id: String,
+    selected_roles: Vec<RoleDisplayInfo>,
+) -> Result<Vec<AccountInfo>, String> {
+    let service = state.lock().await;
+    service
+        .save_selected_roles(cred, token, user_id, selected_roles)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// 获取当前选中的账户 ID
+#[tauri::command]
+pub async fn get_selected_account(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+) -> Result<Option<String>, String> {
+    let service = state.lock().await;
+    let config = service.get_config_service();
+    let config_guard = config.lock().unwrap();
+    Ok(config_guard.get("selected_account_id"))
+}
+
+/// 设置当前选中的账户 ID
+#[tauri::command]
+pub async fn set_selected_account(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+    account_id: String,
+) -> Result<bool, String> {
+    let service = state.lock().await;
+    let config = service.get_config_service();
+    let mut config_guard = config.lock().unwrap();
+    config_guard
+        .set(
+            "selected_account_id".to_string(),
+            serde_json::json!(account_id),
+        )
+        .map_err(|e| e.to_string())?;
+    Ok(true)
 }

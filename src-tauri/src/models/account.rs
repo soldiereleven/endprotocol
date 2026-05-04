@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct AccountInfo {
-    pub id: String,
+    pub id: String, // roleId
     pub avatar: String,
     pub nickname: String,
     pub level: i32,
@@ -12,6 +12,8 @@ pub struct AccountInfo {
     pub status: String, // online/offline/loading
     pub cred: Option<String>,
     pub token: Option<String>,
+    pub user_id: Option<String>,
+    pub server_id: Option<String>,
 }
 
 /// 账户刷新结果
@@ -31,4 +33,8 @@ pub struct AccountLoginResult {
     pub success: bool,
     pub error_message: Option<String>,
     pub account: Option<AccountInfo>,
+    pub available_roles: Option<Vec<crate::models::role::RoleDisplayInfo>>,
+    pub cred: Option<String>,
+    pub token: Option<String>,
+    pub user_id: Option<String>,
 }

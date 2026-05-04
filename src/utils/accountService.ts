@@ -12,6 +12,20 @@ export interface Account {
   status: 'online' | 'offline' | 'loading';
   cred?: string;
   token?: string;
+  userId?: string;
+  serverId?: string;
+}
+
+/**
+ * 角色展示信息接口
+ */
+export interface RoleDisplayInfo {
+  roleId: string;
+  userId: string;
+  serverId: string;
+  nickname: string;
+  level: number;
+  avatarUrl: string;
 }
 
 /**
@@ -29,6 +43,10 @@ export interface LoginResult {
   success: boolean;
   errorMessage?: string;
   account?: Account;
+  availableRoles?: RoleDisplayInfo[];
+  cred?: string;
+  token?: string;
+  userId?: string;
 }
 
 /**
@@ -167,5 +185,54 @@ export async function addAccountByCode(loginRequest: CodeLoginRequest): Promise<
       errorMessage: String(error),
       account: undefined,
     };
+  }
+}
+
+/**
+ * 保存用户选择的角色
+ * @param cred 凭证
+ * @param token 令牌
+ * @param userId 用户ID
+ * @param selectedRoles 选中的角色列表
+ * @returns 创建的账户列表
+ */
+export async function saveSelectedRoles(
+  cred: string,
+  token: string,
+  userId: string,
+  selectedRoles: RoleDisplayInfo[]
+): Promise<Account[]> {
+  try {
+    return await invoke('save_selected_roles', { cred, token, userId, selectedRoles });
+  } catch (error) {
+    console.error('Failed to save selected roles:', error);
+    throw error;
+  }
+}
+
+/**
+ * 获取当前选中的账户 ID
+ * @returns 选中的账户 ID
+ */
+export async function getSelectedAccount(): Promise<string | null> {
+  try {
+    return await invoke('get_selected_account');
+  } catch (error) {
+    console.error('Failed to get selected account:', error);
+    return null;
+  }
+}
+
+/**
+ * 设置当前选中的账户 ID
+ * @param accountId 账户 ID
+ * @returns 是否成功
+ */
+export async function setSelectedAccount(accountId: string): Promise<boolean> {
+  try {
+    return await invoke('set_selected_account', { accountId });
+  } catch (error) {
+    console.error('Failed to set selected account:', error);
+    return false;
   }
 }
