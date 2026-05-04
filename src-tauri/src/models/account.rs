@@ -10,6 +10,7 @@ pub struct AccountInfo {
     pub level: i32,
     pub server: String,
     pub status: String, // online/offline/loading
+    pub sync_status: Option<String>, // SYNCING/FAILED/null (null 表示正常)
     pub cred: Option<String>,
     pub token: Option<String>,
     pub user_id: Option<String>,

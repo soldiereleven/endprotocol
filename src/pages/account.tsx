@@ -33,6 +33,7 @@ import {
   saveSelectedRoles,
   getSelectedAccount,
   setSelectedAccount as apiSetSelectedAccount,
+  checkAndRefreshCred,
   Account,
   RoleDisplayInfo,
 } from "@/utils/accountService";
@@ -71,61 +72,19 @@ export default function AccountPage() {
       setIsLoading(true);
 
       try {
-        // 调用 C# 端获取账户数据
+        // 调用 C# 端获取账户数据（后端会同步检查并刷新 cred）
         const accounts = await getAccounts();
 
-        if (accounts && accounts.length > 0) {
-          setAccounts(accounts);
-        } else {
-          // 如果没有数据，使用模拟数据用于展示
-          const mockAccounts: Account[] = [
-            {
-              id: "1",
-              avatar: "https://i.pravatar.cc/150?u=1",
-              nickname: "玩家一号",
-              level: 45,
-              server: "服务器A",
-              status: "online",
-            },
-            {
-              id: "2",
-              avatar: "https://i.pravatar.cc/150?u=2",
-              nickname: "Player Two",
-              level: 32,
-              server: "Server B",
-              status: "offline",
-            },
-            {
-              id: "3",
-              avatar: "https://i.pravatar.cc/150?u=3",
-              nickname: "测试用户",
-              level: 28,
-              server: "服务器C",
-              status: "online",
-            },
-          ];
-          setAccounts(mockAccounts);
-        }
-
+        setAccounts(accounts || []);
         setLastRefreshTime(new Date());
+        setIsLoading(false);
       } catch (error) {
         console.error("Failed to load accounts:", error);
-      } finally {
         setIsLoading(false);
       }
     };
 
     loadAccounts();
-
-    // 设置定时刷新（每5分钟）
-    const interval = setInterval(
-      () => {
-        refreshData();
-      },
-      5 * 60 * 1000,
-    );
-
-    return () => clearInterval(interval);
   }, []);
 
   // 加载选中的账户
@@ -142,7 +101,7 @@ export default function AccountPage() {
     setIsRefreshing(true);
 
     try {
-      // 调用 C# 端的刷新接口
+      // 调用 C# 端的刷新接口（同步获取完整数据）
       const result = await refreshAccountData();
 
       if (result.success && result.accounts) {
@@ -481,24 +440,73 @@ export default function AccountPage() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      size="sm"
-                      variant="soft"
-                      color={
-                        account.status === "online" ? "success" : "default"
-                      }
-                    >
-                      {account.status === "online"
-                        ? i18n.language === "zh"
-                          ? "在线"
-                          : "Online"
-                        : i18n.language === "zh"
-                          ? "离线"
-                          : "Offline"}
-                    </Chip>
+                    <div className="flex items-center gap-2">
+                      {/* 同步状态指示器 */}
+                      {account.syncStatus === "HYTOKEN_EXPIRED" && (
+                        <Chip
+                          size="sm"
+                          variant="soft"
+                          className="bg-red-100 text-red-600"
+                          startContent={
+                            <span className="w-2 h-2 rounded-full bg-red-500 inline-block mr-1" />
+                          }
+                        >
+                          {i18n.language === "zh" ? "凭证失效" : "Cred Expired"}
+                        </Chip>
+                      )}
+                      {account.syncStatus === "FAILED" && (
+                        <Chip
+                          size="sm"
+                          variant="soft"
+                          className="bg-orange-100 text-orange-600"
+                          startContent={
+                            <span className="w-2 h-2 rounded-full bg-orange-500 inline-block mr-1" />
+                          }
+                        >
+                          {i18n.language === "zh" ? "同步失败" : "Sync Failed"}
+                        </Chip>
+                      )}
+                      {/* 正常状态指示器（仅在非同步状态时显示） */}
+                      {!account.syncStatus && (
+                        <Chip
+                          size="sm"
+                          variant="soft"
+                          color={
+                            account.status === "online" ? "success" : "default"
+                          }
+                        >
+                          {account.status === "online"
+                            ? i18n.language === "zh"
+                              ? "在线"
+                              : "Online"
+                            : i18n.language === "zh"
+                              ? "离线"
+                              : "Offline"}
+                        </Chip>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
+                      {/* 如果同步失败（非 hytoken 失效），显示手动刷新按钮 */}
+                      {account.syncStatus === "FAILED" && account.userId && (
+                        <Button
+                          size="sm"
+                          variant="flat"
+                          color="primary"
+                          onPress={async () => {
+                            try {
+                              // 调用后端刷新 cred（后端会自动检查并刷新）
+                              await refreshData();
+                            } catch (error) {
+                              console.error("Manual refresh failed:", error);
+                            }
+                          }}
+                        >
+                          {i18n.language === "zh" ? "重试" : "Retry"}
+                        </Button>
+                      )}
+                      {/* HYTOKEN_EXPIRED 状态不提供刷新按钮，只能重新登录 */}
                       <Dropdown>
                         <DropdownTrigger>
                           <Button variant="outline" size="sm">

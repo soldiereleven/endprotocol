@@ -128,3 +128,16 @@ pub async fn set_selected_account(
         .map_err(|e| e.to_string())?;
     Ok(true)
 }
+
+/// 检查并刷新指定用户的 cred
+#[tauri::command]
+pub async fn check_and_refresh_cred(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+    user_id: String,
+) -> Result<Option<(String, String)>, String> {
+    let service = state.lock().await;
+    service
+        .check_and_refresh_user_cred(&user_id)
+        .await
+        .map_err(|e| e.to_string())
+}

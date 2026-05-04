@@ -34,6 +34,7 @@ pub fn run() {
             commands::account::save_selected_roles,
             commands::account::get_selected_account,
             commands::account::set_selected_account,
+            commands::account::check_and_refresh_cred,
         ])
         .setup(|app| {
             // 初始化配置服务（使用 std::sync::Mutex，因为它是同步的）

@@ -95,7 +95,7 @@
       "login": "Login",
       "phone_login": "Password Login",
       "qrcode_login": "Verification Code Login",
-      "phone_number": "Phone Number",
+      "phone_number": "Phone",
       "password": "Password",
       "verification_code": "Verification Code",
       "enter_phone": "Enter phone number",

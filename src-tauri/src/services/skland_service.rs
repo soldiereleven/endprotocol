@@ -642,6 +642,130 @@ impl SklandService {
         }
     }
 
+    /// 检查 cred 是否有效
+    pub async fn check_cred(&self, cred: &str) -> Result<bool, AppError> {
+        let client = http_client::create_client();
+        
+        let response = client
+            .get("https://zonai.skland.com/api/v1/user/check")
+            .header("cred", cred)
+            .header("Content-Type", "application/json")
+            .send()
+            .await
+            .map_err(|e| AppError::AuthError { 
+                message: format!("HTTP request failed: {}", e) 
+            })?;
+        
+        let json: serde_json::Value = response.json().await.map_err(|e| AppError::AuthError {
+            message: format!("Failed to parse response: {}", e),
+        })?;
+        
+        // code 为 0 表示 cred 有效
+        let is_valid = json.get("code").and_then(|c| c.as_i64()) == Some(0);
+        Ok(is_valid)
+    }
+
+    /// 使用 hytoken 重新换取 cred 和 token
+    pub async fn refresh_cred_by_hytoken(
+        &self,
+        hytoken: &str,
+    ) -> Result<(String, String, String), AppError> {
+        let client = http_client::create_client();
+        
+        let response = client
+            .post("https://as.hypergryph.com/user/oauth2/v2/grant")
+            .json(&serde_json::json!({
+                "token": hytoken,
+                "appCode": "4ca99fa6b56cc2ba",
+                "type": 0
+            }))
+            .send()
+            .await
+            .map_err(|e| AppError::AuthError { 
+                message: format!("Step 1 (OAuth grant) failed: {}", e) 
+            })?;
+        
+        let json: serde_json::Value = response.json().await.map_err(|e| AppError::AuthError {
+            message: format!("Failed to parse OAuth response: {}", e),
+        })?;
+        
+        if json.get("status").and_then(|v| v.as_i64()) != Some(0) {
+            let msg = json
+                .get("msg")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown error");
+            return Err(AppError::AuthError {
+                message: format!("OAuth grant failed: {}", msg),
+            });
+        }
+        
+        let sk_code = json
+            .get("data")
+            .and_then(|d| d.get("code"))
+            .and_then(|c| c.as_str())
+            .ok_or_else(|| AppError::AuthError {
+                message: "Code not found in OAuth response".to_string(),
+            })?
+            .to_string();
+        
+        // Step 2: 使用 sk_code 换取新的 cred 和 token
+        let response = client
+            .post("https://zonai.skland.com/api/v1/user/auth/generate_cred_by_code")
+            .json(&serde_json::json!({
+                "kind": 1,
+                "code": sk_code
+            }))
+            .send()
+            .await
+            .map_err(|e| AppError::AuthError { 
+                message: format!("Step 2 (generate cred) failed: {}", e) 
+            })?;
+        
+        let json: serde_json::Value = response.json().await.map_err(|e| AppError::AuthError {
+            message: format!("Failed to parse cred response: {}", e),
+        })?;
+        
+        if json.get("code").and_then(|v| v.as_i64()) != Some(0) {
+            let msg = json
+                .get("message")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown error");
+            return Err(AppError::AuthError {
+                message: format!("Generate cred failed: {}", msg),
+            });
+        }
+        
+        let data = json.get("data").ok_or_else(|| AppError::AuthError {
+            message: "Data not found in cred response".to_string(),
+        })?;
+        
+        let cred = data
+            .get("cred")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| AppError::AuthError {
+                message: "Cred not found".to_string(),
+            })?
+            .to_string();
+        
+        let token = data
+            .get("token")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| AppError::AuthError {
+                message: "Token not found".to_string(),
+            })?
+            .to_string();
+        
+        let user_id = data
+            .get("userId")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| AppError::AuthError {
+                message: "UserId not found".to_string(),
+            })?
+            .to_string();
+        
+        Ok((cred, token, user_id))
+    }
+
     /// 提取终末地角色列表
     pub fn extract_endfield_roles(bindings: &[GameBinding]) -> Vec<(String, String, String)> {
         let mut roles = Vec::new();

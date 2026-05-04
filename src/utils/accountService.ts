@@ -10,6 +10,7 @@ export interface Account {
   level: number;
   server: string;
   status: 'online' | 'offline' | 'loading';
+  syncStatus?: 'SYNCING' | 'FAILED' | 'HYTOKEN_EXPIRED' | null; // 同步状态
   cred?: string;
   token?: string;
   userId?: string;
@@ -234,5 +235,19 @@ export async function setSelectedAccount(accountId: string): Promise<boolean> {
   } catch (error) {
     console.error('Failed to set selected account:', error);
     return false;
+  }
+}
+
+/**
+ * 检查并刷新指定用户的 cred
+ * @param userId 用户 ID
+ * @returns 新的 cred 和 token（如果刷新了），或 null（如果无需刷新）
+ */
+export async function checkAndRefreshCred(userId: string): Promise<[string, string] | null> {
+  try {
+    return await invoke('check_and_refresh_cred', { userId });
+  } catch (error) {
+    console.error('Failed to check and refresh cred:', error);
+    throw error;
   }
 }

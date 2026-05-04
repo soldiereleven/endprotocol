@@ -469,29 +469,31 @@ export default function AccountPage() {
     }, 300); // 与动画时长一致
   };
 
-  // 获取排序后的账户列表（选中的置顶，其余按字典序）
+  // 获取排序后的账户列表（选中的置顶，EXPIRED 排第二，其余按字典序）
   const getSortedAccounts = (): Account[] => {
     const sorted = [...accounts];
 
-    // 找到当前选中的账户
-    const selectedIndex = sorted.findIndex(
-      (acc) => acc.id === currentAccountId,
-    );
-    if (selectedIndex > 0) {
-      // 将选中的账户移到第一位
-      const [selected] = sorted.splice(selectedIndex, 1);
-      sorted.unshift(selected);
-    }
+    // 按优先级排序：ACTIVE (isSelected) > EXPIRED > 其他
+    const activeAccounts: Account[] = [];
+    const expiredAccounts: Account[] = [];
+    const normalAccounts: Account[] = [];
 
-    // 对未选中的账户按nickname字典序排序
-    if (sorted.length > 1) {
-      const selectedAccount = sorted[0];
-      const unsortedAccounts = sorted.slice(1);
-      unsortedAccounts.sort((a, b) => a.nickname.localeCompare(b.nickname));
-      return [selectedAccount, ...unsortedAccounts];
-    }
+    sorted.forEach((acc) => {
+      if (acc.id === currentAccountId) {
+        activeAccounts.push(acc);
+      } else if (acc.syncStatus === "HYTOKEN_EXPIRED") {
+        expiredAccounts.push(acc);
+      } else {
+        normalAccounts.push(acc);
+      }
+    });
 
-    return sorted;
+    // 对各类别内的账户按 nickname 字典序排序
+    activeAccounts.sort((a, b) => a.nickname.localeCompare(b.nickname));
+    expiredAccounts.sort((a, b) => a.nickname.localeCompare(b.nickname));
+    normalAccounts.sort((a, b) => a.nickname.localeCompare(b.nickname));
+
+    return [...activeAccounts, ...expiredAccounts, ...normalAccounts];
   };
 
   const sortedAccounts = getSortedAccounts();
@@ -651,6 +653,11 @@ export default function AccountPage() {
                   const isSelected = account.id === currentAccountId;
                   const isPreviousActive = account.id === previousAccountId;
 
+                  // 判断账户是否有错误状态
+                  const hasErrorStatus =
+                    account.syncStatus === "HYTOKEN_EXPIRED" ||
+                    account.syncStatus === "FAILED";
+
                   // 计算动画类型
                   let animationClass = "";
                   let zIndex = 0;
@@ -667,14 +674,25 @@ export default function AccountPage() {
                     animationClass = "animate-fade-in";
                   }
 
+                  // 根据状态决定边框颜色
+                  let borderColorClass =
+                    "border-separator hover:border-content3/50";
+                  let shadowClass = "shadow-md hover:shadow-lg";
+                  if (isSelected && !hasErrorStatus) {
+                    borderColorClass = "border-green-400 dark:border-green-300";
+                    shadowClass = "shadow-xl";
+                  } else if (hasErrorStatus) {
+                    borderColorClass =
+                      account.syncStatus === "HYTOKEN_EXPIRED"
+                        ? "border-red-400 dark:border-red-300"
+                        : "border-orange-400 dark:border-orange-300";
+                    shadowClass = "shadow-xl";
+                  }
+
                   return (
                     <Card
                       key={account.id}
-                      className={`cursor-pointer transition-all duration-300 ease-in-out ${
-                        isSelected
-                          ? "bg-content1 shadow-xl border-2 border-green-400 dark:border-green-300 box-border"
-                          : "bg-content1 shadow-md border-2 border-separator hover:shadow-lg hover:border-content3/50 box-border"
-                      } ${animationClass}`}
+                      className={`cursor-pointer transition-all duration-300 ease-in-out bg-content1 ${borderColorClass} ${shadowClass} border-2 box-border ${animationClass}`}
                       style={{
                         height: `${CARD_HEIGHT}px`,
                         position: isAnimating ? "relative" : "static",
@@ -685,11 +703,30 @@ export default function AccountPage() {
                       <div className="flex items-center h-full px-3">
                         <div className="flex items-center justify-between w-full">
                           <div className="flex items-center gap-3 flex-1">
-                            {/* LED 指示灯 */}
-                            {isSelected && (
+                            {/* LED 指示灯 - 根据状态显示不同颜色 */}
+                            {isSelected && !hasErrorStatus && (
                               <div className="relative flex-shrink-0">
                                 <div className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] dark:shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
                                 <div className="absolute inset-0 w-3 h-3 rounded-full bg-green-400 animate-ping opacity-20" />
+                              </div>
+                            )}
+                            {isSelected &&
+                              account.syncStatus === "HYTOKEN_EXPIRED" && (
+                                <div className="relative flex-shrink-0">
+                                  <div className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] dark:shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
+                                  <div className="absolute inset-0 w-3 h-3 rounded-full bg-red-400 animate-ping opacity-20" />
+                                </div>
+                              )}
+                            {isSelected && account.syncStatus === "FAILED" && (
+                              <div className="relative flex-shrink-0">
+                                <div className="w-3 h-3 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)] dark:shadow-[0_0_10px_rgba(249,115,22,0.8)]" />
+                                <div className="absolute inset-0 w-3 h-3 rounded-full bg-orange-400 animate-ping opacity-20" />
+                              </div>
+                            )}
+                            {/* 灰色指示灯 - 未选中且无错误状态 */}
+                            {!isSelected && !hasErrorStatus && (
+                              <div className="relative flex-shrink-0">
+                                <div className="w-3 h-3 rounded-full bg-gray-400 dark:bg-gray-500" />
                               </div>
                             )}
 
@@ -740,11 +777,32 @@ export default function AccountPage() {
                           </div>
 
                           <div className="flex items-center gap-2 flex-shrink-0">
-                            {isSelected && (
+                            {/* 状态标签 - 错误状态优先级高于 ACTIVE */}
+                            {account.syncStatus === "HYTOKEN_EXPIRED" && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-red-600 dark:text-red-400 tracking-wider">
+                                EXPIRED
+                              </span>
+                            )}
+                            {account.syncStatus === "FAILED" && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-orange-600 dark:text-orange-400 tracking-wider">
+                                {i18n.language === "zh"
+                                  ? "同步失败"
+                                  : "SYNC FAILED"}
+                              </span>
+                            )}
+                            {/* 只有在没有错误状态时才显示 ACTIVE */}
+                            {isSelected && !account.syncStatus && (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-green-600 dark:text-green-400 tracking-wider">
                                 ACTIVE
                               </span>
                             )}
+                            {/* 未选中且无错误状态的账户显示 AVAILABLE */}
+                            {!isSelected && !account.syncStatus && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-gray-600 dark:text-gray-400 tracking-wider">
+                                AVAILABLE
+                              </span>
+                            )}
+
                             <Button
                               size="sm"
                               variant="outline"
@@ -858,64 +916,101 @@ export default function AccountPage() {
         <CustomModalBody>
           {selectedAccount && (
             <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-2xl font-bold text-primary overflow-hidden">
-                  {selectedAccount.avatar ? (
-                    <img
-                      src={selectedAccount.avatar}
-                      alt={selectedAccount.nickname}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                        const parent = (e.target as HTMLImageElement)
-                          .parentElement;
-                        if (parent) {
-                          parent.textContent = selectedAccount.nickname
-                            .charAt(0)
-                            .toUpperCase();
-                        }
-                      }}
-                    />
-                  ) : (
-                    selectedAccount.nickname.charAt(0).toUpperCase()
-                  )}
-                </div>
-                <div>
-                  <p className="text-xl font-semibold text-foreground">
-                    {selectedAccount.nickname}
+              {/* 凭证失效警告 - 只显示红色警告框 */}
+              {selectedAccount.syncStatus === "HYTOKEN_EXPIRED" ? (
+                <div className="text-center py-8 border-2 border-red-500 rounded-lg bg-red-50 dark:bg-red-950/30">
+                  <p className="text-5xl font-black text-red-600 dark:text-red-400 tracking-wider mb-4">
+                    EXPIRED
                   </p>
-                  <p className="text-sm text-muted">ID: {selectedAccount.id}</p>
+                  <div className="space-y-2 text-left px-4">
+                    <div>
+                      <p className="text-xs italic text-muted mb-1">Hytoken:</p>
+                      <p className="text-xs font-mono text-red-600 dark:text-red-400 break-all">
+                        {selectedAccount.token || "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs italic text-muted mb-1">Cred:</p>
+                      <p className="text-xs font-mono text-red-600 dark:text-red-400 break-all">
+                        {selectedAccount.cred || "N/A"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-left px-4 mt-2">
+                    <p className="text-xs italic text-muted">
+                      *{" "}
+                      {i18n.language === "zh"
+                        ? "Hytoken过期，我们无法刷新令牌，请重新登录。"
+                        : "Hytoken expired, we cannot refresh the token. Please log in again."}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* 正常账户信息 */
+                <>
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-2xl font-bold text-primary overflow-hidden">
+                      {selectedAccount.avatar ? (
+                        <img
+                          src={selectedAccount.avatar}
+                          alt={selectedAccount.nickname}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display =
+                              "none";
+                            const parent = (e.target as HTMLImageElement)
+                              .parentElement;
+                            if (parent) {
+                              parent.textContent = selectedAccount.nickname
+                                .charAt(0)
+                                .toUpperCase();
+                            }
+                          }}
+                        />
+                      ) : (
+                        selectedAccount.nickname.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xl font-semibold text-foreground">
+                        {selectedAccount.nickname}
+                      </p>
+                      <p className="text-sm text-muted">
+                        ID: {selectedAccount.id}
+                      </p>
+                    </div>
+                  </div>
 
-              <div className="border-t border-separator my-4" />
+                  <div className="border-t border-separator my-4" />
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted mb-1">
-                    {i18n.language === "zh" ? "等级" : "Level"}
-                  </p>
-                  <p className="text-base font-medium text-foreground">
-                    Lv.{selectedAccount.level}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted mb-1">
-                    {i18n.language === "zh" ? "服务器" : "Server"}
-                  </p>
-                  <p className="text-base font-medium text-foreground">
-                    {selectedAccount.server === "1"
-                      ? i18n.language === "zh"
-                        ? "官服"
-                        : "Official"
-                      : selectedAccount.server === "2"
-                        ? i18n.language === "zh"
-                          ? "BiliBili服"
-                          : "BiliBili"
-                        : selectedAccount.server}
-                  </p>
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted mb-1">
+                        {i18n.language === "zh" ? "等级" : "Level"}
+                      </p>
+                      <p className="text-base font-medium text-foreground">
+                        Lv.{selectedAccount.level}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted mb-1">
+                        {i18n.language === "zh" ? "服务器" : "Server"}
+                      </p>
+                      <p className="text-base font-medium text-foreground">
+                        {selectedAccount.server === "1"
+                          ? i18n.language === "zh"
+                            ? "官服"
+                            : "Official"
+                          : selectedAccount.server === "2"
+                            ? i18n.language === "zh"
+                              ? "BiliBili服"
+                              : "BiliBili"
+                            : selectedAccount.server}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </CustomModalBody>
@@ -1129,12 +1224,12 @@ export default function AccountPage() {
               )}
 
               {/* 手机号和密码输入 */}
-              <div className="space-y-4">
+              <div className="grid grid-cols-[auto_1fr] items-center gap-y-4 gap-x-3">
                 {/* 手机号输入行 */}
-                <div className="flex items-center gap-3">
-                  <label className="text-sm font-medium text-foreground whitespace-nowrap min-w-[80px]">
-                    {t("settings.account.phone_number")}
-                  </label>
+                <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
+                  {t("settings.account.phone_number")}
+                </label>
+                <div className="flex flex-col gap-1">
                   <input
                     type="tel"
                     value={phone}
@@ -1150,31 +1245,29 @@ export default function AccountPage() {
                         handleLogin();
                       }
                     }}
-                    className="flex-1 px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                    className="w-full px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   />
+                  {phoneError && (
+                    <p className="text-xs text-danger">{phoneError}</p>
+                  )}
                 </div>
-                {phoneError && (
-                  <p className="text-xs text-danger ml-[80px]">{phoneError}</p>
-                )}
 
                 {/* 密码输入行 */}
-                <div className="flex items-center gap-3">
-                  <label className="text-sm font-medium text-foreground whitespace-nowrap min-w-[80px]">
-                    {t("settings.account.password")}
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={t("settings.account.enter_password")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !isLoggingIn) {
-                        handleLogin();
-                      }
-                    }}
-                    className="flex-1 px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                  />
-                </div>
+                <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
+                  {t("settings.account.password")}
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={t("settings.account.enter_password")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !isLoggingIn) {
+                      handleLogin();
+                    }
+                  }}
+                  className="w-full px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                />
               </div>
             </div>
           ) : (
@@ -1225,87 +1318,81 @@ export default function AccountPage() {
               )}
 
               {/* 手机号和验证码输入 */}
-              <div className="space-y-4">
+              <div className="grid grid-cols-[auto_1fr] items-center gap-y-4 gap-x-3">
                 {/* 手机号输入行 */}
-                <div className="flex items-center gap-3">
-                  <label className="text-sm font-medium text-foreground whitespace-nowrap min-w-[80px]">
-                    {t("settings.account.phone_number")}
-                  </label>
-                  <div className="flex gap-2 flex-1 items-stretch">
-                    <input
-                      type="tel"
-                      placeholder={
-                        i18n.language === "zh"
-                          ? "请输入手机号"
-                          : "Enter phone number"
-                      }
-                      value={phone}
-                      onChange={(e) => {
-                        setPhone(e.target.value);
-                        setCodeSentSuccess(false);
-                        if (phoneError) setPhoneError("");
-                      }}
-                      disabled={isLoggingIn || isSendingCode}
-                      maxLength={11}
-                      onKeyDown={(e) => {
-                        if (
-                          e.key === "Enter" &&
-                          !isLoggingIn &&
-                          !isSendingCode
-                        ) {
-                          handleSendCode();
-                        }
-                      }}
-                      className="flex-1 px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                    />
-                    <Button
-                      variant="outline"
-                      onPress={handleSendCode}
-                      isDisabled={isSendingCode || countdown > 0 || !phone}
-                      className="min-w-[120px] whitespace-nowrap border border-separator rounded-lg bg-default-100 hover:bg-default-200 transition-all !h-[44px] !px-4"
-                    >
-                      {countdown > 0
-                        ? `${countdown}s`
-                        : isSendingCode
-                          ? t("settings.account.sending")
-                          : t("settings.account.send_code")}
-                    </Button>
-                  </div>
-                </div>
-                {phoneError && (
-                  <p className="text-xs text-danger ml-[80px]">{phoneError}</p>
-                )}
-
-                {/* 验证码输入行 */}
-                <div className="flex items-center gap-3">
-                  <label className="text-sm font-medium text-foreground whitespace-nowrap min-w-[80px]">
-                    {t("settings.account.verification_code")}
-                  </label>
+                <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
+                  {t("settings.account.phone_number")}
+                </label>
+                <div className="flex gap-2 items-stretch">
                   <input
-                    type="text"
+                    type="tel"
                     placeholder={
                       i18n.language === "zh"
-                        ? t("settings.account.enter_verification_code")
-                        : t("settings.account.enter_verification_code")
+                        ? "请输入手机号"
+                        : "Enter phone number"
                     }
-                    value={verificationCode}
+                    value={phone}
                     onChange={(e) => {
-                      setVerificationCode(e.target.value);
-                      // 当用户输入验证码时，清除发送成功的提示
-                      if (codeSentSuccess) {
-                        setCodeSentSuccess(false);
-                      }
+                      setPhone(e.target.value);
+                      setCodeSentSuccess(false);
+                      if (phoneError) setPhoneError("");
                     }}
-                    disabled={isLoggingIn}
-                    maxLength={6}
+                    disabled={isLoggingIn || isSendingCode}
+                    maxLength={11}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && !isLoggingIn) {
-                        handleLogin();
+                      if (e.key === "Enter" && !isLoggingIn && !isSendingCode) {
+                        handleSendCode();
                       }
                     }}
                     className="flex-1 px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                   />
+                  <Button
+                    variant="outline"
+                    onPress={handleSendCode}
+                    isDisabled={isSendingCode || countdown > 0 || !phone}
+                    className="min-w-[120px] whitespace-nowrap border border-separator rounded-lg bg-default-100 hover:bg-default-200 transition-all !h-[44px] !px-4"
+                  >
+                    {countdown > 0
+                      ? `${countdown}s`
+                      : isSendingCode
+                        ? t("settings.account.sending")
+                        : t("settings.account.send_code")}
+                  </Button>
                 </div>
+                {/* 占位元素，保持 grid 布局 */}
+                <div></div>
+                {phoneError && (
+                  <p className="text-xs text-danger">{phoneError}</p>
+                )}
+
+                {/* 验证码输入行 */}
+                <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
+                  {t("settings.account.verification_code")}
+                </label>
+                <input
+                  type="text"
+                  placeholder={
+                    i18n.language === "zh"
+                      ? t("settings.account.enter_verification_code")
+                      : t("settings.account.enter_verification_code")
+                  }
+                  value={verificationCode}
+                  onChange={(e) => {
+                    setVerificationCode(e.target.value);
+                    // 当用户输入验证码时，清除发送成功的提示
+                    if (codeSentSuccess) {
+                      setCodeSentSuccess(false);
+                    }
+                  }}
+                  disabled={isLoggingIn}
+                  maxLength={6}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !isLoggingIn) {
+                      handleLogin();
+                    }
+                  }}
+                  className="w-full px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                />
               </div>
             </div>
           )}
