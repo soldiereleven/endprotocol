@@ -1,17 +1,28 @@
 import { useTranslation } from "react-i18next";
-import { Card, Button } from "@heroui/react";
+import { Card, Button, Switch, Label } from "@heroui/react";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { useState, useEffect, useRef } from "react";
+import { getConfig, setConfig } from "@/utils/configService";
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const langDropdownRef = useRef<HTMLDivElement>(null);
+  const [refreshOnSwitch, setRefreshOnSwitch] = useState(false);
 
   const languages = [
     { key: "en", label: "English" },
     { key: "zh", label: "简体中文" },
   ];
+
+  // Load config on mount
+  useEffect(() => {
+    const loadConfig = async () => {
+      const value = await getConfig<boolean>("refresh_on_account_switch");
+      setRefreshOnSwitch(value ?? false); // 默认为false
+    };
+    loadConfig();
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -33,6 +44,11 @@ export default function SettingsPage() {
   const handleLanguageChange = (langKey: string) => {
     i18n.changeLanguage(langKey);
     setIsLangDropdownOpen(false);
+  };
+
+  const handleRefreshOnSwitchChange = async (value: boolean) => {
+    setRefreshOnSwitch(value);
+    await setConfig("refresh_on_account_switch", value);
   };
 
   return (
@@ -138,6 +154,34 @@ export default function SettingsPage() {
                 </p>
               </div>
               <ThemeSwitch />
+            </div>
+
+            <div className="h-px bg-separator w-full" />
+
+            <div
+              id="settings-refresh-on-switch"
+              className="flex items-center justify-between"
+            >
+              <div>
+                <p className="font-medium text-foreground">
+                  {i18n.language === "zh"
+                    ? "切换账户时刷新数据"
+                    : "Refresh on Account Switch"}
+                </p>
+                <p className="text-sm text-muted mt-0.5">
+                  {i18n.language === "zh"
+                    ? "切换账户时是否访问API获取最新数据"
+                    : "Whether to fetch latest data from API when switching accounts"}
+                </p>
+              </div>
+              <Switch
+                isSelected={refreshOnSwitch}
+                onChange={handleRefreshOnSwitchChange}
+              >
+                <Switch.Control>
+                  <Switch.Thumb />
+                </Switch.Control>
+              </Switch>
             </div>
           </div>
         </Card>

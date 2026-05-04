@@ -2,7 +2,7 @@ import { Route, Routes } from "react-router-dom";
 
 import DashboardPage from "@/pages/dashboard";
 import SettingsPage from "@/pages/settings";
-import AccountPage from "@/pages/account-new";
+import AccountPage from "@/pages/account";
 import DashboardLayout from "@/layouts/dashboard";
 
 function App() {

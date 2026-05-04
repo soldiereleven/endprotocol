@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Kbd } from "@heroui/react";
+import { Button, Kbd, Skeleton } from "@heroui/react";
 import {
   HomeIcon,
   SettingsIcon,
@@ -14,6 +14,15 @@ import {
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { LanguageSwitch } from "@/components/language-switch";
+import AccountSwitchModal from "./account-switch-modal";
+import {
+  getAccounts,
+  getSelectedAccount,
+  setSelectedAccount as apiSetSelectedAccount,
+  Account,
+} from "@/utils/accountService";
+import { accountCache } from "@/utils/accountCache";
+import { getConfig } from "@/utils/configService";
 
 interface SearchResult {
   id: string;
@@ -45,6 +54,94 @@ export const Sidebar = () => {
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+
+  // 选中账户状态
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  const [isLoadingAccount, setIsLoadingAccount] = useState(true);
+  const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
+
+  // 加载选中的账户
+  useEffect(() => {
+    const loadSelectedAccount = async () => {
+      try {
+        setIsLoadingAccount(true);
+        const selectedId = await getSelectedAccount();
+        console.log("[Sidebar] Selected account ID:", selectedId);
+
+        if (selectedId) {
+          // 优先使用缓存
+          let accounts = accountCache.getAllAccounts();
+
+          if (!accounts || accounts.length === 0) {
+            // 如果缓存为空，才从API获取
+            console.log("[Sidebar] Cache is empty, fetching from API");
+            accounts = await getAccounts();
+            if (accounts && accounts.length > 0) {
+              accountCache.cacheAccounts(accounts);
+            }
+          } else {
+            console.log("[Sidebar] Using cached accounts");
+          }
+
+          console.log("[Sidebar] Loaded accounts:", accounts.length);
+          const account = accounts.find((acc) => acc.id === selectedId);
+          console.log("[Sidebar] Found account:", account?.nickname);
+          setSelectedAccount(account || null);
+        } else {
+          console.log("[Sidebar] No selected account ID");
+          setSelectedAccount(null);
+        }
+      } catch (error) {
+        console.error("Failed to load selected account:", error);
+      } finally {
+        setIsLoadingAccount(false);
+      }
+    };
+
+    loadSelectedAccount();
+
+    // 监听账户变化事件（从Account页面切换时触发）
+    const handleAccountChange = async () => {
+      console.log("[Sidebar] Account changed event received");
+
+      // 检查是否需要刷新数据
+      const shouldRefresh = await getConfig<boolean>(
+        "refresh_on_account_switch",
+      );
+      console.log("[Sidebar] Should refresh on switch:", shouldRefresh);
+
+      if (shouldRefresh) {
+        // 如果需要刷新，从API获取
+        console.log("[Sidebar] Fetching accounts from API...");
+        const accounts = await getAccounts();
+        // 更新缓存
+        if (accounts && accounts.length > 0) {
+          accountCache.cacheAccounts(accounts);
+        }
+
+        // 重新加载选中账户
+        const selectedId = await getSelectedAccount();
+        if (selectedId) {
+          const account = accounts.find((acc) => acc.id === selectedId);
+          setSelectedAccount(account || null);
+        }
+      } else {
+        // 如果不需要刷新，直接使用缓存
+        console.log("[Sidebar] Using cached accounts");
+        const accounts = accountCache.getAllAccounts();
+        const selectedId = await getSelectedAccount();
+        if (selectedId && accounts.length > 0) {
+          const account = accounts.find((acc) => acc.id === selectedId);
+          setSelectedAccount(account || null);
+        }
+      }
+    };
+
+    window.addEventListener("accountChanged", handleAccountChange);
+    return () => {
+      window.removeEventListener("accountChanged", handleAccountChange);
+    };
+  }, []);
 
   // Generate searchable content from all pages and navigation (with multi-language support)
   const getAllSearchableContent = useMemo(() => {
@@ -635,6 +732,87 @@ export const Sidebar = () => {
           </div>
         </div>
 
+        {/* Selected Account Display */}
+        <div className="px-4 py-3 border-b border-separator">
+          {isLoadingAccount ? (
+            // 骨架屏加载状态
+            <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-default-100 transition-colors cursor-pointer">
+              <Skeleton className="w-10 h-10 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="w-24 h-4 rounded-lg" />
+                <Skeleton className="w-16 h-3 rounded-lg" />
+              </div>
+            </div>
+          ) : selectedAccount ? (
+            // 显示选中的账户信息
+            <button
+              onClick={() => setIsSwitchModalOpen(true)}
+              className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-default-100 transition-colors group"
+            >
+              <div className="relative">
+                <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-sm font-bold text-primary overflow-hidden">
+                  {selectedAccount.avatar ? (
+                    <img
+                      src={selectedAccount.avatar}
+                      alt={selectedAccount.nickname}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                        (
+                          e.target as HTMLImageElement
+                        ).parentElement!.textContent = selectedAccount.nickname
+                          .charAt(0)
+                          .toUpperCase();
+                      }}
+                    />
+                  ) : (
+                    selectedAccount.nickname.charAt(0).toUpperCase()
+                  )}
+                </div>
+                {/* ACTIVE 指示器 */}
+                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-success rounded-full border-2 border-background" />
+              </div>
+              <div className="flex-1 text-left min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">
+                  {selectedAccount.nickname}
+                </p>
+                <p className="text-xs text-muted truncate">
+                  Lv.{selectedAccount.level} •{" "}
+                  {(() => {
+                    const serverId = parseInt(selectedAccount.server);
+                    if (serverId === 1) {
+                      return i18n.language === "zh" ? "官服" : "Official";
+                    } else if (serverId === 2) {
+                      return i18n.language === "zh" ? "Bilibili服" : "Bilibili";
+                    }
+                    return selectedAccount.server;
+                  })()}
+                </p>
+              </div>
+              <SearchIcon className="w-4 h-4 text-muted group-hover:text-foreground transition-colors flex-shrink-0" />
+            </button>
+          ) : (
+            // 没有选中账户时显示提示
+            <div className="flex items-center gap-3 p-2 rounded-lg bg-default-50 border border-dashed border-separator">
+              <div className="w-10 h-10 rounded-full bg-muted/20 flex items-center justify-center">
+                <AccountIcon className="w-5 h-5 text-muted" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-muted">
+                  {i18n.language === "zh"
+                    ? "未选择账户"
+                    : "No account selected"}
+                </p>
+                <p className="text-xs text-muted/70">
+                  {i18n.language === "zh"
+                    ? "前往账户页面选择"
+                    : "Go to Account page"}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Search Section */}
         <div className="px-4 py-4" ref={searchRef}>
           <div className="relative">
@@ -906,6 +1084,13 @@ export const Sidebar = () => {
           aria-label="Close menu"
         />
       )}
+
+      {/* Account Switch Modal */}
+      <AccountSwitchModal
+        isOpen={isSwitchModalOpen}
+        onClose={() => setIsSwitchModalOpen(false)}
+        currentAccountId={selectedAccount?.id}
+      />
     </>
   );
 };
