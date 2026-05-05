@@ -715,23 +715,6 @@ export const Sidebar = () => {
             : "-translate-x-full lg:translate-x-0",
         )}
       >
-        {/* Header - Logo and Title */}
-        <div className="px-6 py-5 border-b border-separator">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-600 flex items-center justify-center shadow-lg">
-              <span className="text-primary-foreground font-bold text-lg">
-                E
-              </span>
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-foreground leading-tight">
-                {t("sidebar.title")}
-              </h1>
-              <p className="text-xs text-muted">{t("common.app_subtitle")}</p>
-            </div>
-          </div>
-        </div>
-
         {/* Selected Account Display */}
         <div className="px-4 py-3 border-b border-separator">
           {isLoadingAccount ? (
@@ -1027,15 +1010,26 @@ export const Sidebar = () => {
           {/* Bottom Navigation */}
           <div className="space-y-1">
             {bottomItems.map((item) => {
+              const isActive = location.pathname === item.href;
               const Icon = item.icon;
 
               return (
                 <Link
                   key={item.href}
                   to={item.href}
-                  className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-foreground hover:bg-default-100 group"
+                  className={clsx(
+                    "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group",
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : "text-foreground hover:bg-default-100 hover:translate-x-1",
+                  )}
                 >
-                  <Icon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  <Icon
+                    className={clsx(
+                      "w-5 h-5 transition-transform",
+                      isActive ? "scale-110" : "group-hover:scale-110",
+                    )}
+                  />
                   <span className="text-sm font-medium">{item.label}</span>
                 </Link>
               );

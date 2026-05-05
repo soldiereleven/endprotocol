@@ -40,6 +40,10 @@ pub fn run() {
             commands::account::get_selected_account,
             commands::account::set_selected_account,
             commands::account::check_and_refresh_cred,
+            // Window commands
+            commands::window::minimize_window,
+            commands::window::toggle_maximize_window,
+            commands::window::close_window,
         ])
         .setup(|app| {
             // 初始化配置服务（使用 std::sync::Mutex，因为它是同步的）

@@ -103,3 +103,61 @@
 .animate-fade-out {
   animation: fade-out 0.3s ease-in;
 }
+
+/* 自定义滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--heroui-default-300) / 0.5);
+  border-radius: 4px;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--heroui-default-400) / 0.7);
+}
+
+/* 移除滚动条箭头按钮 */
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* 默认隐藏滚动条 */
+::-webkit-scrollbar {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* 鼠标悬停时显示滚动条 */
+*:hover::-webkit-scrollbar {
+  opacity: 1;
+}
+
+/* 深色模式下的滚动条 */
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(var(--heroui-default-600) / 0.5);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--heroui-default-500) / 0.7);
+}
+
+/* Firefox 滚动条样式 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--heroui-default-300) / 0.5) transparent;
+}
+
+.dark * {
+  scrollbar-color: hsl(var(--heroui-default-600) / 0.5) transparent;
+}
