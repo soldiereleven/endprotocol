@@ -1,4 +1,5 @@
 import { Account } from './accountService';
+import logger, { logDebug, logInfo, logWarn, logError } from "./logger";
 
 /**
  * 账户数据内存缓存服务
@@ -18,7 +19,7 @@ class AccountCacheService {
       this.cache.set(account.id, account);
       this.lastUpdateTime.set(account.id, now);
     });
-    console.log('[AccountCache] Cached', accounts.length, 'accounts');
+    logDebug(`[AccountCache] Cached ${accounts.length} accounts`);
   }
   
   /**
@@ -28,7 +29,7 @@ class AccountCacheService {
   updateAccount(account: Account): void {
     this.cache.set(account.id, account);
     this.lastUpdateTime.set(account.id, Date.now());
-    console.log('[AccountCache] Updated account:', account.nickname);
+    logDebug(`[AccountCache] Updated account: ${account.nickname}`);
   }
   
   /**
@@ -55,7 +56,7 @@ class AccountCacheService {
   removeAccount(accountId: string): void {
     this.cache.delete(accountId);
     this.lastUpdateTime.delete(accountId);
-    console.log('[AccountCache] Removed account:', accountId);
+    logDebug(`[AccountCache] Removed account: ${accountId}`);
   }
   
   /**
@@ -64,7 +65,7 @@ class AccountCacheService {
   clearCache(): void {
     this.cache.clear();
     this.lastUpdateTime.clear();
-    console.log('[AccountCache] Cache cleared');
+    logDebug('[AccountCache] Cache cleared');
   }
   
   /**

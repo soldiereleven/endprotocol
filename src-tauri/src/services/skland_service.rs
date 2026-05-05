@@ -19,6 +19,7 @@ use crate::models::role::{
 };
 use crate::services::config_service::ConfigService;
 use crate::utils::{http_client, AppError};
+use crate::{log_debug, log_info, log_warn, log_error};
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -120,10 +121,9 @@ impl SklandService {
             BASE64.encode(ep_bytes)
         };
 
-        println!("=== STEP 2: RSA Encryption ===");
-        println!("EP_BASE64: {}", ep);
-        println!("EP_LENGTH: {}", ep.len());
-        println!();
+        log_debug!("=== STEP 2: RSA Encryption ===");
+        log_debug!("EP_BASE64: {}", ep);
+        log_debug!("EP_LENGTH: {}", ep.len());
 
         // 构造指纹数据（与 Python 完全一致）
         let curr_ms = Utc::now().timestamp_millis();
@@ -132,12 +132,11 @@ impl SklandService {
         let vpw = Uuid::new_v4().to_string();
         let trees = Uuid::new_v4().to_string();
 
-        println!("=== STEP 3: Target Data ===");
-        println!("  curr_ms: {}", curr_ms);
-        println!("  smid: {}", smid);
-        println!("  vpw: {}", vpw);
-        println!("  trees: {}", trees);
-        println!();
+        log_debug!("=== STEP 3: Target Data ===");
+        log_debug!("  curr_ms: {}", curr_ms);
+        log_debug!("  smid: {}", smid);
+        log_debug!("  vpw: {}", vpw);
+        log_debug!("  trees: {}", trees);
 
         // 所有需要混淆的字段
         let mut target = serde_json::Map::new();
@@ -187,7 +186,7 @@ impl SklandService {
 
         // 对每个字段进行 DES 加密或保持原样
         let mut obfuscated = serde_json::Map::new();
-        println!("=== STEP 4: DES Obfuscation Details ===");
+        log_debug!("=== STEP 4: DES Obfuscation Details ===");
 
         // 创建 des_rules 的查找表
         let des_rules_map: std::collections::HashMap<&str, (&str, &str)> = des_rules
@@ -225,25 +224,20 @@ impl SklandService {
                         };
 
                         let enc = des_encrypt_3des(key, &value_str)?;
-                        println!("  Field: {}", field_name);
-                        println!("    Key: {}", key);
-                        println!("    ObfName: {}", obf_name);
-                        println!("    Original: {}", value_str);
-                        println!("    Encrypted: {}", enc);
+                        log_debug!("DES Encrypt - Field: {}, Key: {}, ObfName: {}", field_name, key, obf_name);
+                        log_debug!("  Original: {}", value_str);
+                        log_debug!("  Encrypted: {}", enc);
 
                         obfuscated.insert(obf_name.to_string(), serde_json::Value::String(enc));
                     } else {
                         // 不需要加密，保持原始类型
-                        println!("  Field: {}", field_name);
-                        println!("    ObfName: {}", obf_name);
-                        println!("    Value (kept original type): {}", value);
+                        log_debug!("Keep Original - Field: {}, ObfName: {}, Value: {}", field_name, obf_name, value);
 
                         obfuscated.insert(obf_name.to_string(), value.clone());
                     }
                 }
             }
         }
-        println!();
 
         // 手动根据 field_order 构建 JSON 字符串以确保键顺序与 Python 完全一致
         let mut parts: Vec<String> = Vec::new();
@@ -257,11 +251,9 @@ impl SklandService {
         }
         let obfuscated_json = format!("{{{}}}", parts.join(","));
 
-        println!("=== STEP 5: JSON Serialization ===");
-        println!("JSON_LENGTH: {}", obfuscated_json.len());
-        println!("JSON_HEX: {}", hex::encode(obfuscated_json.as_bytes()));
-        println!("JSON_STR: {}", obfuscated_json);
-        println!();
+        log_debug!("=== STEP 5: JSON Serialization ===");
+        log_debug!("JSON_LENGTH: {}", obfuscated_json.len());
+        log_debug!("JSON_HEX: {}", hex::encode(obfuscated_json.as_bytes()));
 
         // Gzip 压缩，使用 GzBuilder 并固定 mtime=0，匹配 Python gzip.compress(..., mtime=0)
         use flate2::Compression;
@@ -275,12 +267,9 @@ impl SklandService {
         let compressed = encoder.finish()?;
         let base64_gzip = BASE64.encode(&compressed);
 
-        println!("=== STEP 6: Gzip Compression ===");
-        println!("GZIP_LENGTH: {}", compressed.len());
-        println!("GZIP_BASE64: {}", base64_gzip);
-        println!("GZIP_BASE64_LENGTH: {}", base64_gzip.len());
-        println!("GZIP_HEX: {}", hex::encode(&compressed));
-        println!();
+        log_debug!("=== STEP 6: Gzip Compression ===");
+        log_debug!("GZIP_LENGTH: {}", compressed.len());
+        log_debug!("GZIP_BASE64_LENGTH: {}", base64_gzip.len());
 
         // AES-128-CBC 加密（特殊填充：先加 \x00，再补到16字节倍数）
         use aes::cipher::{BlockEncrypt, KeyInit};
@@ -319,11 +308,7 @@ impl SklandService {
         }
 
         let aes_data = hex::encode(result);
-        println!("AES data length: {}", aes_data.len());
-        println!(
-            "AES data first 100 chars: {}",
-            &aes_data[..100.min(aes_data.len())]
-        );
+        log_debug!("AES data length: {}", aes_data.len());
 
         // 请求数美接口
         let payload = json!({
@@ -351,7 +336,7 @@ impl SklandService {
             })?;
 
         // 打印完整的响应用于调试
-        println!("数美接口完整响应: {}", resp_text);
+        log_debug!("数美接口完整响应: {}", resp_text);
 
         // 检查是否有错误码（注意：数美接口某些非0码也可能成功，如1100）
         // 只有当没有deviceId字段时才认为失败
@@ -413,20 +398,20 @@ impl SklandService {
         let raw_data = format!("{}{}{}{}", path, body, ts, h_ca_str);
 
         // Debug: print the exact inputs used to compute the sign
-        println!("[DEBUG] calculate_sign header_json: {}", h_ca_str);
-        println!("[DEBUG] calculate_sign raw: {}", raw_data);
+        log_debug!("calculate_sign header_json: {}", h_ca_str);
+        log_debug!("calculate_sign raw: {}", raw_data);
 
         // 2. HMAC-SHA256
         let mut mac = HmacSha256::new_from_slice(token.as_bytes()).expect("HMAC key error");
         mac.update(raw_data.as_bytes());
         let hmac_res = hex::encode(mac.finalize().into_bytes());
 
-        println!("[DEBUG] calculate_sign hex_hmac: {}", hmac_res);
+        log_debug!("calculate_sign hex_hmac: {}", hmac_res);
 
         // 3. MD5
         let digest = Md5::digest(hmac_res.as_bytes());
         let md5_hex = format!("{:x}", digest);
-        println!("[DEBUG] calculate_sign md5: {}", md5_hex);
+        log_debug!("calculate_sign md5: {}", md5_hex);
 
         md5_hex
     }
@@ -507,20 +492,19 @@ impl SklandService {
                 }
             };
 
-            let ts = (Utc::now().timestamp() - 2).to_string();
+            let ts = (Utc::now().timestamp()).to_string();
             let sign = self.calculate_sign(path, body, &ts, &did, token);
 
             // 调试：打印认证信息
-            println!("=== Binding List Request Debug (attempt {}) ===", attempt + 1);
-            println!("cred length: {}", cred.len());
-            println!(
+            log_debug!("=== Binding List Request Debug (attempt {}) ===", attempt + 1);
+            log_debug!("cred length: {}", cred.len());
+            log_debug!(
                 "cred first 20 chars: {}",
                 if cred.len() >= 20 { &cred[..20] } else { cred }
             );
-            println!("dId: {}", did);
-            println!("sign: {}", sign);
-            println!("timestamp: {}", ts);
-            println!("=================================");
+            log_debug!("dId: {}", did);
+            log_debug!("sign: {}", sign);
+            log_debug!("timestamp: {}", ts);
 
             let response = self
                 .build_skland_request(&client, "GET", &url, cred, &did, &sign, &ts)
@@ -540,19 +524,19 @@ impl SklandService {
             let resp_text = response.text().await.map_err(|e| AppError::AuthError {
                 message: format!("Failed to read response text: {}", e),
             })?;
-            println!("Binding list response status: {}", status);
-            println!("Binding list response body: {}", resp_text);
+            log_debug!("Binding list response status: {}", status);
+            log_debug!("Binding list response body: {}", resp_text);
 
             // 解析JSON
             match serde_json::from_str::<BindingResponse>(&resp_text) {
                 Ok(json) => {
-                    println!("JSON parsed successfully, code: {}", json.code);
+                    log_debug!("JSON parsed successfully, code: {}", json.code);
                     if json.code == 0 {
-                        println!("Binding list parsed, returning {} games", json.data.list.len());
+                        log_debug!("Binding list parsed, returning {} games", json.data.list.len());
                         for game in &json.data.list {
-                            println!("  Game: app_code={}, binding_list count={}", game.app_code, game.binding_list.len());
+                            log_debug!("  Game: app_code={}, binding_list count={}", game.app_code, game.binding_list.len());
                             for binding in &game.binding_list {
-                                println!("    Binding: uid={}, roles count={}", binding.uid, binding.roles.len());
+                                log_debug!("    Binding: uid={}, roles count={}", binding.uid, binding.roles.len());
                             }
                         }
                         return Ok(json.data.list);

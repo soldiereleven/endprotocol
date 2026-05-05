@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import logger, { logDebug, logInfo, logWarn, logError } from "./logger";
 
 /**
  * 账户信息接口
@@ -84,7 +85,7 @@ export async function getAccounts(): Promise<Account[]> {
   try {
     return await invoke('get_accounts');
   } catch (error) {
-    console.error('Failed to get accounts:', error);
+    logError('Failed to get accounts:', error);
     return [];
   }
 }
@@ -98,7 +99,7 @@ export async function addAccount(loginRequest: LoginRequest): Promise<LoginResul
   try {
     return await invoke('add_account', { loginRequest });
   } catch (error) {
-    console.error('Failed to add account:', error);
+    logError('Failed to add account:', error);
     return {
       success: false,
       errorMessage: String(error),
@@ -116,7 +117,7 @@ export async function logoutAccount(accountId: string): Promise<boolean> {
   try {
     return await invoke('logout_account', { accountId });
   } catch (error) {
-    console.error('Failed to logout account:', error);
+    logError('Failed to logout account:', error);
     return false;
   }
 }
@@ -130,7 +131,7 @@ export async function batchLogout(accountIds: string[]): Promise<boolean> {
   try {
     return await invoke('batch_logout', { accountIds });
   } catch (error) {
-    console.error('Failed to batch logout:', error);
+    logError('Failed to batch logout:', error);
     return false;
   }
 }
@@ -143,7 +144,7 @@ export async function refreshAccounts(): Promise<RefreshResult> {
   try {
     return await invoke('refresh_accounts');
   } catch (error) {
-    console.error('Failed to refresh accounts:', error);
+    logError('Failed to refresh accounts:', error);
     return {
       success: false,
       errorMessage: String(error),
@@ -166,7 +167,7 @@ export async function sendVerificationCode(request: SendCodeRequest): Promise<bo
   try {
     return await invoke('send_verification_code', { request });
   } catch (error) {
-    console.error('Failed to send verification code:', error);
+    logError('Failed to send verification code:', error);
     return false;
   }
 }

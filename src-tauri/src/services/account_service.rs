@@ -10,6 +10,7 @@ use crate::services::avatar_cache_service::AvatarCacheService;
 use crate::services::config_service::ConfigService;
 use crate::services::skland_service::SklandService;
 use crate::utils::{http_client, AppError};
+use crate::{log_debug, log_error, log_info, log_warn};
 
 /// 用于异步任务的简化版账户服务（避免 Arc<Mutex<>> 的复杂性）
 struct AsyncAccountService {
@@ -68,8 +69,8 @@ impl AsyncAccountService {
             Ok(true) => {
                 // cred 有效，无需刷新
                 tracing::debug!("Cred is valid for user {}", user_id);
-                println!(
-                    "[DEBUG] check_and_refresh_user_cred: Cred is VALID for user {}",
+                log_debug!(
+                    "check_and_refresh_user_cred: Cred is VALID for user {}",
                     user_id
                 );
                 Ok(None)
@@ -77,18 +78,21 @@ impl AsyncAccountService {
             Ok(false) => {
                 // cred 无效，需要刷新
                 tracing::info!("Cred expired for user {}, refreshing...", user_id);
-                println!("[DEBUG] check_and_refresh_user_cred: Cred EXPIRED for user {}, attempting refresh...", user_id);
+                log_info!(
+                    "check_and_refresh_user_cred: Cred EXPIRED for user {}, attempting refresh...",
+                    user_id
+                );
 
                 let hytoken = match hytoken {
                     Some(h) => {
-                        println!(
-                            "[DEBUG] check_and_refresh_user_cred: Found hytoken (len={})",
+                        log_debug!(
+                            "check_and_refresh_user_cred: Found hytoken (len={})",
                             h.len()
                         );
                         h
                     }
                     None => {
-                        println!("[ERROR] check_and_refresh_user_cred: hytoken NOT FOUND for user {}, cannot refresh", user_id);
+                        log_error!("check_and_refresh_user_cred: hytoken NOT FOUND for user {}, cannot refresh", user_id);
                         return Err(AppError::AuthError {
                             message: format!("hytoken not found for user {}, cannot refresh cred. Please re-login.", user_id),
                         });
@@ -96,26 +100,31 @@ impl AsyncAccountService {
                 };
 
                 // 使用 hytoken 重新换取 cred 和 token
-                println!("[DEBUG] check_and_refresh_user_cred: Calling refresh_cred_by_hytoken...");
+                log_debug!("check_and_refresh_user_cred: Calling refresh_cred_by_hytoken...");
                 match self.skland_service.refresh_cred_by_hytoken(&hytoken).await {
                     Ok((new_cred, new_token, _)) => {
-                        println!("[DEBUG] check_and_refresh_user_cred: refresh_cred_by_hytoken SUCCESS, new_cred_len={}, new_token_len={}", new_cred.len(), new_token.len());
+                        log_debug!("check_and_refresh_user_cred: refresh_cred_by_hytoken SUCCESS, new_cred_len={}, new_token_len={}", new_cred.len(), new_token.len());
                         // 更新配置中的 cred 和 token
                         let mut config = self.config_service.lock().unwrap();
                         let mut updated_data = token_data.unwrap();
                         if let Some(obj) = updated_data.as_object_mut() {
                             obj.insert("cred".to_string(), json!(new_cred));
                             obj.insert("token".to_string(), json!(new_token));
-                            println!("[DEBUG] check_and_refresh_user_cred: Updated cred and token in config");
+                            log_debug!(
+                                "check_and_refresh_user_cred: Updated cred and token in config"
+                            );
                         }
                         config.set(token_key, updated_data)?;
-                        println!("[DEBUG] check_and_refresh_user_cred: Config saved successfully");
+                        log_debug!("check_and_refresh_user_cred: Config saved successfully");
 
                         tracing::info!("Cred refreshed successfully for user {}", user_id);
                         Ok(Some((new_cred, new_token)))
                     }
                     Err(e) => {
-                        println!("[ERROR] check_and_refresh_user_cred: refresh_cred_by_hytoken FAILED: {}", e);
+                        log_error!(
+                            "check_and_refresh_user_cred: refresh_cred_by_hytoken FAILED: {}",
+                            e
+                        );
                         tracing::error!("Failed to refresh cred for user {}: {}", user_id, e);
                         Err(e)
                     }
@@ -123,8 +132,8 @@ impl AsyncAccountService {
             }
             Err(e) => {
                 // check_cred API 调用失败
-                println!(
-                    "[ERROR] check_and_refresh_user_cred: check_cred API call failed: {}",
+                log_error!(
+                    "check_and_refresh_user_cred: check_cred API call failed: {}",
                     e
                 );
                 tracing::warn!(
@@ -135,21 +144,23 @@ impl AsyncAccountService {
 
                 let hytoken = match hytoken {
                     Some(h) => {
-                        println!("[DEBUG] check_and_refresh_user_cred: Found hytoken (len={}), attempting refresh despite API error", h.len());
+                        log_debug!("check_and_refresh_user_cred: Found hytoken (len={}), attempting refresh despite API error", h.len());
                         h
                     }
                     None => {
-                        println!("[ERROR] check_and_refresh_user_cred: hytoken NOT FOUND and check_cred failed, cannot proceed");
+                        log_error!("check_and_refresh_user_cred: hytoken NOT FOUND and check_cred failed, cannot proceed");
                         return Err(AppError::AuthError {
                             message: format!("hytoken not found for user {} and check_cred failed: {}. Please re-login.", user_id, e),
                         });
                     }
                 };
 
-                println!("[DEBUG] check_and_refresh_user_cred: Attempting refresh despite check_cred failure...");
+                log_debug!(
+                    "check_and_refresh_user_cred: Attempting refresh despite check_cred failure..."
+                );
                 match self.skland_service.refresh_cred_by_hytoken(&hytoken).await {
                     Ok((new_cred, new_token, _)) => {
-                        println!("[DEBUG] check_and_refresh_user_cred: Refresh succeeded despite check_cred failure");
+                        log_debug!("check_and_refresh_user_cred: Refresh succeeded despite check_cred failure");
                         let mut config = self.config_service.lock().unwrap();
                         let mut updated_data = token_data.unwrap();
                         if let Some(obj) = updated_data.as_object_mut() {
@@ -165,7 +176,10 @@ impl AsyncAccountService {
                         Ok(Some((new_cred, new_token)))
                     }
                     Err(refresh_err) => {
-                        println!("[ERROR] check_and_refresh_user_cred: Both check_cred and refresh failed: {}", refresh_err);
+                        log_error!(
+                            "check_and_refresh_user_cred: Both check_cred and refresh failed: {}",
+                            refresh_err
+                        );
                         Err(AppError::AuthError {
                             message: format!(
                                 "check_cred failed: {}. Refresh also failed: {}. Please re-login.",
@@ -225,8 +239,8 @@ impl AccountService {
 
     /// 为指定用户设置 hytoken（在登录成功后调用）
     pub async fn set_hytoken_for_user(&self, user_id: &str, hytoken: &str) -> Result<(), AppError> {
-        println!(
-            "[DEBUG] set_hytoken_for_user: START for user_id={}, hytoken_len={}",
+        log_debug!(
+            "set_hytoken_for_user: START for user_id={}, hytoken_len={}",
             user_id,
             hytoken.len()
         );
@@ -234,8 +248,8 @@ impl AccountService {
         let token_key = format!("account_token_{}", user_id);
 
         let mut token_data: serde_json::Value = config.get(&token_key).unwrap_or(json!({}));
-        println!(
-            "[DEBUG] set_hytoken_for_user: Current token_data keys: {:?}",
+        log_debug!(
+            "set_hytoken_for_user: Current token_data keys: {:?}",
             token_data
                 .as_object()
                 .map(|obj| obj.keys().collect::<Vec<_>>())
@@ -243,16 +257,16 @@ impl AccountService {
 
         if let Some(obj) = token_data.as_object_mut() {
             obj.insert("hytoken".to_string(), json!(hytoken));
-            println!("[DEBUG] set_hytoken_for_user: hytoken inserted successfully");
+            log_debug!("set_hytoken_for_user: hytoken inserted successfully");
         } else {
-            println!("[ERROR] set_hytoken_for_user: token_data is not an object!");
+            log_error!("set_hytoken_for_user: token_data is not an object!");
             return Err(AppError::ConfigError {
                 message: "token_data is not a valid JSON object".to_string(),
             });
         }
 
         config.set(token_key, token_data)?;
-        println!("[DEBUG] set_hytoken_for_user: Config saved successfully");
+        log_debug!("set_hytoken_for_user: Config saved successfully");
         Ok(())
     }
 
@@ -270,15 +284,15 @@ impl AccountService {
 
     /// 获取所有账户（同步获取完整数据）
     pub async fn get_accounts(&self) -> Vec<AccountInfo> {
-        println!("[DEBUG] get_accounts: START");
+        log_debug!("get_accounts: START");
 
         // 先收集所有需要获取详情的角色信息
         let role_infos = {
             let config = self.config_service.lock().unwrap();
             let all_config = config.get_all();
 
-            println!(
-                "[DEBUG] get_accounts: all_config keys = {:?}",
+            log_debug!(
+                "get_accounts: all_config keys = {:?}",
                 all_config.keys().collect::<Vec<_>>()
             );
 
@@ -299,8 +313,8 @@ impl AccountService {
                         .and_then(|v| v.as_str())
                         .map(|s| s.to_string());
 
-                    println!(
-                        "[DEBUG] get_accounts: user_id={}, cred_len={}, token_len={}",
+                    log_debug!(
+                        "get_accounts: user_id={}, cred_len={}, token_len={}",
                         user_id,
                         cred.as_ref().map(|s| s.len()).unwrap_or(0),
                         token.as_ref().map(|s| s.len()).unwrap_or(0)
@@ -326,17 +340,14 @@ impl AccountService {
                 }
             }
 
-            println!(
-                "[DEBUG] get_accounts: found {} roles to fetch",
-                role_infos.len()
-            );
+            log_debug!("get_accounts: found {} roles to fetch", role_infos.len());
             role_infos
             // config 在这里被自动 drop
         };
 
         // 如果没有角色，直接返回空数组
         if role_infos.is_empty() {
-            println!("[DEBUG] get_accounts: No roles found, returning empty");
+            log_debug!("get_accounts: No roles found, returning empty");
             return Vec::new();
         }
 
@@ -345,38 +356,34 @@ impl AccountService {
 
         for (role_id, server_id, user_id, cred_opt, token_opt) in role_infos {
             if let (Some(cred), Some(token)) = (cred_opt, token_opt) {
-                println!(
-                    "[DEBUG] get_accounts: Processing role_id={}, user_id={}",
-                    role_id, user_id
+                log_debug!(
+                    "get_accounts: Processing role_id={}, user_id={}",
+                    role_id,
+                    user_id
                 );
 
                 // 先检查并刷新 cred（如果需要）
-                println!(
-                    "[DEBUG] get_accounts: Checking cred for user_id={}",
-                    user_id
-                );
+                log_debug!("get_accounts: Checking cred for user_id={}", user_id);
                 let (final_cred, final_token) = match self
                     .check_and_refresh_user_cred(&user_id)
                     .await
                 {
                     Ok(Some((new_cred, new_token))) => {
                         tracing::info!("Cred refreshed for user {}", user_id);
-                        println!("[DEBUG] get_accounts: Cred refreshed for user {}", user_id);
+                        log_debug!("get_accounts: Cred refreshed for user {}", user_id);
                         (new_cred, new_token)
                     }
                     Ok(None) => {
                         // cred 仍然有效，使用原有的
-                        println!(
-                            "[DEBUG] get_accounts: Cred still valid for user {}",
-                            user_id
-                        );
+                        log_debug!("get_accounts: Cred still valid for user {}", user_id);
                         (cred, token)
                     }
                     Err(e) => {
                         tracing::error!("Failed to check/refresh cred for user {}: {}", user_id, e);
-                        println!(
-                            "[DEBUG] get_accounts: Failed to check/refresh cred for user {}: {}",
-                            user_id, e
+                        log_error!(
+                            "get_accounts: Failed to check/refresh cred for user {}: {}",
+                            user_id,
+                            e
                         );
 
                         // 判断是否是 hytoken 失效
@@ -385,11 +392,8 @@ impl AccountService {
                             || error_string.contains("OAuth")
                             || error_string.contains("grant failed");
 
-                        println!("[DEBUG] get_accounts: Error string = '{}'", error_string);
-                        println!(
-                            "[DEBUG] get_accounts: is_hytoken_expired = {}",
-                            is_hytoken_expired
-                        );
+                        log_debug!("get_accounts: Error string = '{}'", error_string);
+                        log_debug!("get_accounts: is_hytoken_expired = {}", is_hytoken_expired);
 
                         // 刷新失败，创建 FAILED 状态的账户
                         let account = AccountInfo {
@@ -409,8 +413,8 @@ impl AccountService {
                             user_id: Some(user_id.clone()),
                             server_id: Some(server_id.clone()),
                         };
-                        println!(
-                            "[DEBUG] get_accounts: Created account with sync_status = {:?}",
+                        log_debug!(
+                            "get_accounts: Created account with sync_status = {:?}",
                             account.sync_status
                         );
                         accounts.push(account);
@@ -448,9 +452,10 @@ impl AccountService {
                     }
                     Err(e) => {
                         tracing::warn!("Failed to get role detail for {}: {}", role_id, e);
-                        println!(
-                            "[DEBUG] get_accounts: Failed to get role detail for {}: {}",
-                            role_id, e
+                        log_error!(
+                            "get_accounts: Failed to get role detail for {}: {}",
+                            role_id,
+                            e
                         );
                         // 创建失败状态的账户
                         let account = AccountInfo {
@@ -472,10 +477,7 @@ impl AccountService {
             }
         }
 
-        println!(
-            "[DEBUG] get_accounts: Completed with {} accounts",
-            accounts.len()
-        );
+        log_debug!("get_accounts: Completed with {} accounts", accounts.len());
         accounts
     }
 
@@ -536,19 +538,19 @@ impl AccountService {
         };
 
         // 保存 hytoken（与 cred 同级存储）
-        println!("[DEBUG] About to save hytoken for user_id={}", user_id);
+        log_debug!("About to save hytoken for user_id={}", user_id);
         if let Err(e) = self.set_hytoken_for_user(&user_id, &hy_token).await {
             tracing::warn!("Failed to save hytoken for user {}: {}", user_id, e);
-            println!("[ERROR] Failed to save hytoken: {}", e);
+            log_error!("Failed to save hytoken: {}", e);
         } else {
-            println!("[DEBUG] hytoken saved successfully");
+            log_debug!("hytoken saved successfully");
         }
 
         // Step 4: 获取玩家绑定列表
         let bindings = match self.skland_service.get_player_binding(&cred, &token).await {
             Ok(bindings) => bindings,
             Err(e) => {
-                println!("[ERROR] Step 4 failed: {}", e);
+                log_error!("Step 4 failed: {}", e);
                 return Ok(AccountLoginResult {
                     success: false,
                     error_message: Some(format!("Failed to get binding list: {}", e)),
@@ -565,7 +567,7 @@ impl AccountService {
         let endfield_roles = SklandService::extract_endfield_roles(&bindings);
 
         if endfield_roles.is_empty() {
-            println!("[ERROR] No Endfield roles found!");
+            log_error!("No Endfield roles found!");
             return Ok(AccountLoginResult {
                 success: false,
                 error_message: Some("No Endfield roles found in binding list".to_string()),
@@ -598,7 +600,7 @@ impl AccountService {
                     role_details.push(detail_with_cached_avatar);
                 }
                 Err(e) => {
-                    println!("[ERROR] Failed to get role detail for {}: {}", role_id, e);
+                    log_error!("Failed to get role detail for {}: {}", role_id, e);
                     // 跳过失败的角色
                 }
             }
@@ -694,7 +696,7 @@ impl AccountService {
 
     /// 刷新账户数据（手动刷新时也会检查 cred）
     pub async fn refresh_accounts(&self) -> AccountRefreshResult {
-        println!("[DEBUG] refresh_accounts: START");
+        log_debug!("refresh_accounts: START");
 
         // 先收集所有需要刷新的角色信息
         let role_infos = {
@@ -714,8 +716,8 @@ impl AccountService {
                         .and_then(|v| v.as_str())
                         .map(|s| s.to_string());
 
-                    println!(
-                        "[DEBUG] refresh_accounts: user_id={}, cred_len={}, token_len={}",
+                    log_debug!(
+                        "refresh_accounts: user_id={}, cred_len={}, token_len={}",
                         user_id,
                         cred.as_ref().map(|s| s.len()).unwrap_or(0),
                         token.as_ref().map(|s| s.len()).unwrap_or(0)
@@ -739,8 +741,8 @@ impl AccountService {
                     }
                 }
             }
-            println!(
-                "[DEBUG] refresh_accounts: found {} roles to refresh",
+            log_debug!(
+                "refresh_accounts: found {} roles to refresh",
                 role_infos.len()
             );
             role_infos
@@ -750,39 +752,35 @@ impl AccountService {
         let mut refreshed_accounts = Vec::new();
         for (role_id, server_id, user_id, cred_opt, token_opt) in role_infos {
             if let (Some(cred), Some(token)) = (cred_opt, token_opt) {
-                println!(
-                    "[DEBUG] refresh_accounts: Processing role_id={}, user_id={}",
-                    role_id, user_id
+                log_debug!(
+                    "refresh_accounts: Processing role_id={}, user_id={}",
+                    role_id,
+                    user_id
                 );
 
                 // 先检查并刷新 cred（如果需要）
-                println!(
-                    "[DEBUG] refresh_accounts: Checking cred for user_id={}",
-                    user_id
-                );
+                log_debug!("refresh_accounts: Checking cred for user_id={}", user_id);
                 let (final_cred, final_token) = match self
                     .check_and_refresh_user_cred(&user_id)
                     .await
                 {
                     Ok(Some((new_cred, new_token))) => {
                         tracing::info!("Cred refreshed for user {} during manual refresh", user_id);
-                        println!(
-                            "[DEBUG] refresh_accounts: Cred refreshed for user {}",
-                            user_id
-                        );
+                        log_debug!("refresh_accounts: Cred refreshed for user {}", user_id);
                         (new_cred, new_token)
                     }
                     Ok(None) => {
                         // cred 仍然有效，使用原有的
-                        println!(
-                            "[DEBUG] refresh_accounts: Cred still valid for user {}",
-                            user_id
-                        );
+                        log_debug!("refresh_accounts: Cred still valid for user {}", user_id);
                         (cred, token)
                     }
                     Err(e) => {
                         tracing::error!("Failed to check/refresh cred for user {}: {}", user_id, e);
-                        println!("[DEBUG] refresh_accounts: Failed to check/refresh cred for user {}: {}", user_id, e);
+                        log_error!(
+                            "refresh_accounts: Failed to check/refresh cred for user {}: {}",
+                            user_id,
+                            e
+                        );
 
                         // 判断是否是 hytoken 失效
                         let is_hytoken_expired = e.to_string().contains("hytoken")
@@ -842,9 +840,10 @@ impl AccountService {
                     }
                     Err(e) => {
                         tracing::warn!("Failed to refresh account {}: {}", role_id, e);
-                        println!(
-                            "[DEBUG] refresh_accounts: Failed to refresh account {}: {}",
-                            role_id, e
+                        log_error!(
+                            "refresh_accounts: Failed to refresh account {}: {}",
+                            role_id,
+                            e
                         );
                         // 保留旧数据，但标记为离线和 FAILED
                         let account = AccountInfo {
@@ -866,8 +865,8 @@ impl AccountService {
             }
         }
 
-        println!(
-            "[DEBUG] refresh_accounts: Completed with {} accounts",
+        log_debug!(
+            "refresh_accounts: Completed with {} accounts",
             refreshed_accounts.len()
         );
 
@@ -1000,12 +999,12 @@ impl AccountService {
         };
 
         // 保存 hytoken（与 cred 同级存储）
-        println!("[DEBUG] About to save hytoken for user_id={}", user_id);
+        log_debug!("About to save hytoken for user_id={}", user_id);
         if let Err(e) = self.set_hytoken_for_user(&user_id, &hy_token).await {
             tracing::warn!("Failed to save hytoken for user {}: {}", user_id, e);
-            println!("[ERROR] Failed to save hytoken: {}", e);
+            log_error!("Failed to save hytoken: {}", e);
         } else {
-            println!("[DEBUG] hytoken saved successfully");
+            log_debug!("hytoken saved successfully");
         }
 
         // Step 4: 获取玩家绑定列表
@@ -1028,7 +1027,7 @@ impl AccountService {
         let endfield_roles = SklandService::extract_endfield_roles(&bindings);
 
         if endfield_roles.is_empty() {
-            println!("[ERROR] No Endfield roles found!");
+            log_error!("No Endfield roles found!");
             return Ok(AccountLoginResult {
                 success: false,
                 error_message: Some("No Endfield roles found in binding list".to_string()),
@@ -1041,15 +1040,16 @@ impl AccountService {
         }
 
         // Step 6: 获取每个角色的详情
-        println!(
-            "[DEBUG] Step 6: Getting role details for {} roles...",
+        log_debug!(
+            "Step 6: Getting role details for {} roles...",
             endfield_roles.len()
         );
         let mut role_details = Vec::new();
         for (uid, server_id, role_id) in &endfield_roles {
-            println!(
-                "[DEBUG]   Getting detail for role_id={}, server_id={}",
-                role_id, server_id
+            log_debug!(
+                "  Getting detail for role_id={}, server_id={}",
+                role_id,
+                server_id
             );
             match self
                 .skland_service
@@ -1057,10 +1057,7 @@ impl AccountService {
                 .await
             {
                 Ok(detail) => {
-                    println!(
-                        "[DEBUG]   Role detail success: nickname={}",
-                        detail.nickname
-                    );
+                    log_debug!("  Role detail success: nickname={}", detail.nickname);
                     // 下载并缓存头像（返回 base64）
                     let cached_avatar = self
                         .avatar_cache_service
@@ -1073,16 +1070,13 @@ impl AccountService {
                     role_details.push(detail_with_cached_avatar);
                 }
                 Err(e) => {
-                    println!("[ERROR] Failed to get role detail for {}: {}", role_id, e);
+                    log_error!("Failed to get role detail for {}: {}", role_id, e);
                     // 跳过失败的角色
                 }
             }
         }
 
-        println!(
-            "[DEBUG] Step 6 complete: got {} role details",
-            role_details.len()
-        );
+        log_debug!("Step 6 complete: got {} role details", role_details.len());
 
         // 返回可用角色列表，等待前端选择
         Ok(AccountLoginResult {
@@ -1104,7 +1098,7 @@ impl AccountService {
         user_id: String,
         selected_roles: Vec<crate::models::role::RoleDisplayInfo>,
     ) -> Result<Vec<AccountInfo>, AppError> {
-        println!("[DEBUG] save_selected_roles: START for user_id={}", user_id);
+        log_debug!("save_selected_roles: START for user_id={}", user_id);
 
         // Step 1: 保存配置（在 MutexGuard 作用域内）
         {
@@ -1121,8 +1115,8 @@ impl AccountService {
                 .and_then(|h| h.as_str())
                 .map(|s| s.to_string());
 
-            println!(
-                "[DEBUG] save_selected_roles: Existing hytoken exists: {}",
+            log_debug!(
+                "save_selected_roles: Existing hytoken exists: {}",
                 hytoken.is_some()
             );
 
@@ -1145,12 +1139,12 @@ impl AccountService {
             token_data_obj.insert("roles".to_string(), json!(roles));
             if let Some(hyt) = hytoken {
                 token_data_obj.insert("hytoken".to_string(), json!(hyt));
-                println!("[DEBUG] save_selected_roles: Preserved hytoken in config");
+                log_debug!("save_selected_roles: Preserved hytoken in config");
             }
             let token_data = serde_json::Value::Object(token_data_obj);
 
             config.set(token_key, token_data)?;
-            println!("[DEBUG] save_selected_roles: Config saved successfully");
+            log_debug!("save_selected_roles: Config saved successfully");
 
             // 更新 account_list
             let mut account_list: Vec<String> = config.get("account_list").unwrap_or_default();

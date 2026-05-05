@@ -29,7 +29,8 @@ import {
   LoginResult,
   RoleDisplayInfo,
 } from "@/utils/accountService";
-import { accountCache } from "@/utils/accountCache";
+import { accountCache } from "../utils/accountCache";
+import logger, { logDebug, logInfo, logWarn, logError } from "../utils/logger";
 import { getConfig } from "@/utils/configService";
 
 export default function AccountPage() {
@@ -86,10 +87,10 @@ export default function AccountPage() {
         let accounts;
 
         if (cachedAccounts && cachedAccounts.length > 0) {
-          console.log("[Account] Using cached accounts on initial load");
+          logDebug("[Account] Using cached accounts on initial load");
           accounts = cachedAccounts;
         } else {
-          console.log("[Account] Cache is empty, fetching from API");
+          logDebug("[Account] Cache is empty, fetching from API");
           accounts = await getAccounts();
           // 缓存账户数据到内存
           if (accounts && accounts.length > 0) {
@@ -112,7 +113,7 @@ export default function AccountPage() {
 
         setLastRefreshTime(new Date());
       } catch (error) {
-        console.error("Failed to load accounts:", error);
+        logError("Failed to load accounts:", error);
       } finally {
         setIsLoading(false);
       }
@@ -123,7 +124,7 @@ export default function AccountPage() {
     // 设置定时刷新（每5分钟）- 总是刷新
     const interval = setInterval(
       () => {
-        console.log("[Account] Auto refreshing data (timer)...");
+        logDebug("[Account] Auto refreshing data (timer)...");
         refreshData();
       },
       5 * 60 * 1000,
@@ -135,7 +136,7 @@ export default function AccountPage() {
   // 监听账户切换事件（从侧边栏切换时触发）
   useEffect(() => {
     const handleAccountChanged = async () => {
-      console.log("[Account] Received accountChanged event");
+      logDebug("[Account] Received accountChanged event");
 
       // 重新加载账户数据
       setIsLoading(true);
@@ -163,11 +164,11 @@ export default function AccountPage() {
           }
         } else {
           // 如果不需要刷新，从缓存读取
-          console.log("[Account] Using cached account data (sidebar)");
+          logDebug("[Account] Using cached account data (sidebar)");
           accountsData = accountCache.getAllAccounts();
           // 如果缓存为空，则从API获取
           if (!accountsData || accountsData.length === 0) {
-            console.log("[Account] Cache is empty, fetching from API");
+            logDebug("[Account] Cache is empty, fetching from API");
             accountsData = await getAccounts();
             if (accountsData && accountsData.length > 0) {
               accountCache.cacheAccounts(accountsData);
@@ -179,7 +180,7 @@ export default function AccountPage() {
 
         // 获取新的选中账户
         const selectedId = await getSelectedAccount();
-        console.log("[Account] New selected account ID:", selectedId);
+        logDebug("[Account] New selected account ID:", selectedId);
 
         // 播放切换动画
         setPreviousAccountId(currentAccountId);
@@ -191,7 +192,7 @@ export default function AccountPage() {
           setPreviousAccountId(null);
         }, 300);
       } catch (error) {
-        console.error("Failed to reload accounts:", error);
+        logError("Failed to reload accounts:", error);
       } finally {
         setIsLoading(false);
       }
@@ -217,7 +218,7 @@ export default function AccountPage() {
         accountCache.cacheAccounts(result.accounts);
       }
     } catch (error) {
-      console.error("Failed to refresh data:", error);
+      logError("Failed to refresh data:", error);
     } finally {
       setIsRefreshing(false);
     }
@@ -249,7 +250,7 @@ export default function AccountPage() {
         setTimeout(() => setGlobalAlert(null), 3000);
       }
     } catch (error) {
-      console.error("Failed to logout:", error);
+      logError("Failed to logout:", error);
       setGlobalAlert({
         type: "danger",
         message:
@@ -339,7 +340,7 @@ export default function AccountPage() {
         }, 1000);
 
         // 显示成功提示
-        console.log("验证码发送成功，设置 codeSentSuccess 为 true");
+        logDebug("验证码发送成功，设置 codeSentSuccess 为 true");
         setCodeSentSuccess(true);
       } else {
         setLoginError(
@@ -349,7 +350,7 @@ export default function AccountPage() {
         );
       }
     } catch (error) {
-      console.error("Send code error:", error);
+      logError("Send code error:", error);
       setLoginError(
         i18n.language === "zh" ? "发送验证码出错" : "Error sending code",
       );
