@@ -12,6 +12,7 @@ import {
   setSelectedAccount as apiSetSelectedAccount,
   Account,
 } from "@/utils/accountService";
+import { accountCache } from "@/utils/accountCache";
 
 interface AccountSwitchModalProps {
   isOpen: boolean;
@@ -29,19 +30,47 @@ export default function AccountSwitchModal({
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [switchingId, setSwitchingId] = useState<string | null>(null);
+  const [expectedAccountCount, setExpectedAccountCount] = useState<number>(3); // 预期的账户数量
 
   // 加载账户列表
   useEffect(() => {
     if (isOpen) {
       loadAccounts();
     }
+
+    // 监听手动刷新事件
+    const handleManualRefresh = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const count = customEvent.detail?.count || 3;
+      setExpectedAccountCount(Math.min(count, 5)); // 最多5个
+    };
+
+    window.addEventListener("manualRefresh", handleManualRefresh);
+
+    return () => {
+      window.removeEventListener("manualRefresh", handleManualRefresh);
+    };
   }, [isOpen]);
 
   const loadAccounts = async () => {
     setIsLoading(true);
     try {
-      const accountsData = await getAccounts();
-      setAccounts(accountsData || []);
+      // 直接使用缓存
+      const cachedAccounts = accountCache.getAllAccounts();
+
+      if (cachedAccounts && cachedAccounts.length > 0) {
+        console.log("[AccountSwitchModal] Using cached accounts");
+        setAccounts(cachedAccounts);
+      } else {
+        // 如果缓存为空，才从API获取
+        console.log("[AccountSwitchModal] Cache is empty, fetching from API");
+        const accountsData = await getAccounts();
+        setAccounts(accountsData || []);
+        // 更新缓存
+        if (accountsData && accountsData.length > 0) {
+          accountCache.cacheAccounts(accountsData);
+        }
+      }
     } catch (error) {
       console.error("Failed to load accounts:", error);
     } finally {
@@ -141,9 +170,9 @@ export default function AccountSwitchModal({
         {/* 账户列表 */}
         <div className="space-y-2 max-h-[400px] overflow-y-auto">
           {isLoading ? (
-            // 骨架屏
+            // 骨架屏 - 使用动态数量
             <>
-              {[1, 2, 3].map((i) => (
+              {[...Array(expectedAccountCount)].map((_, i) => (
                 <Card key={i} className="p-3">
                   <div className="flex items-center gap-3">
                     <Skeleton className="w-12 h-12 rounded-full" />

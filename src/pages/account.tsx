@@ -49,6 +49,7 @@ export default function AccountPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [expectedAccountCount, setExpectedAccountCount] = useState<number>(0); // 预期的账户数量
 
   // 添加账户相关状态
   type LoginMethod = "phone" | "qrcode" | null;
@@ -131,7 +132,65 @@ export default function AccountPage() {
     );
 
     return () => clearInterval(interval);
-  }, []);
+  }, []); // 只在组件挂载时执行一次
+
+  // 当账户数据加载完成后，重新计算 itemsPerPage
+  useEffect(() => {
+    if (accounts.length > 0 && containerRef.current) {
+      console.log("[Account] Accounts loaded, recalculating itemsPerPage");
+      // 延迟一下确保 DOM 已渲染
+      setTimeout(() => {
+        const calculateItemsPerPage = () => {
+          if (!containerRef.current) return;
+
+          // 使用窗口高度减去固定的顶部区域
+          // 估算：顶部标题栏(~60px) + 页面标题和按钮(~120px) + 刷新时间(~30px) + 上下边距(~40px) = ~250px
+          const topOffset = 250;
+          const windowHeight = window.innerHeight;
+          const availableHeight = windowHeight - topOffset;
+
+          console.log(
+            "[Account] Window height:",
+            windowHeight,
+            "Available height:",
+            availableHeight,
+          );
+
+          if (availableHeight <= 0) {
+            setItemsPerPage(1);
+            return;
+          }
+
+          // 分页组件高度约 60px
+          const paginationHeight = 60;
+          const contentAvailableHeight = availableHeight - paginationHeight;
+
+          if (contentAvailableHeight <= 0) {
+            setItemsPerPage(1);
+            return;
+          }
+
+          let count = 0;
+          let usedHeight = 0;
+
+          while (count < 100) {
+            const cardHeight = CARD_HEIGHT + (count > 0 ? GAP_SIZE : 0);
+            if (usedHeight + cardHeight > contentAvailableHeight) {
+              break;
+            }
+            usedHeight += cardHeight;
+            count++;
+          }
+
+          const newCount = Math.max(1, count);
+          console.log("[Account] Recalculated items per page:", newCount);
+          setItemsPerPage(newCount);
+        };
+
+        calculateItemsPerPage();
+      }, 200);
+    }
+  }, [accounts.length]);
 
   // 监听账户切换事件（从侧边栏切换时触发）
   useEffect(() => {
@@ -204,9 +263,42 @@ export default function AccountPage() {
     };
   }, [currentAccountId]);
 
+  // 获取预期的账户数量（从配置中读取）
+  const getExpectedAccountCount = async (): Promise<number> => {
+    try {
+      // 获取 account_list
+      const accountList = await getConfig<string[]>("account_list");
+      if (accountList && Array.isArray(accountList)) {
+        // 最多显示5个骨架屏
+        return Math.min(accountList.length, 5);
+      }
+
+      // 如果 account_list 不存在，尝试从缓存中获取
+      const cachedAccounts = accountCache.getAllAccounts();
+      if (cachedAccounts && cachedAccounts.length > 0) {
+        return Math.min(cachedAccounts.length, 5);
+      }
+
+      // 默认显示3个
+      return 3;
+    } catch (error) {
+      console.error("Failed to get expected account count:", error);
+      return 3; // 出错时默认显示3个
+    }
+  };
+
   // 刷新数据函数
   const refreshData = async () => {
     setIsRefreshing(true);
+
+    // 先获取预期的账户数量
+    const count = await getExpectedAccountCount();
+    setExpectedAccountCount(count);
+
+    // 通知侧边栏显示骨架屏
+    window.dispatchEvent(
+      new CustomEvent("manualRefresh", { detail: { count } }),
+    );
 
     try {
       const result = await refreshAccountData();
@@ -221,6 +313,7 @@ export default function AccountPage() {
       logError("Failed to refresh data:", error);
     } finally {
       setIsRefreshing(false);
+      setExpectedAccountCount(0);
     }
   };
 
@@ -638,54 +731,179 @@ export default function AccountPage() {
 
   // 分页相关状态
   const [currentPage, setCurrentPage] = useState(1);
-  const CARD_HEIGHT = 80; // 固定卡片高度（像素）- 缩小
-  const CONTAINER_HEIGHT = 400; // 容器高度（像素）
+  const [itemsPerPage, setItemsPerPage] = useState(1); // 初始为1，等待计算
+  const CARD_HEIGHT = 80; // 固定卡片高度（像素）
   const CONTAINER_PADDING = 15; // 上下间隙
-  const GAP_SIZE = 5; // 卡片间距（像素）- 缩小
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const GAP_SIZE = 5; // 卡片间距（像素）
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // 固定显示 5 个 card 的高度（业务要求）
-  const FIXED_ITEMS_PER_PAGE = 5;
-  const itemsPerPage = FIXED_ITEMS_PER_PAGE;
+  // 使用 ResizeObserver 动态计算每页能显示的账户数量
+  useEffect(() => {
+    const calculateItemsPerPage = () => {
+      if (!containerRef.current) {
+        console.log("[Account] containerRef not ready");
+        return;
+      }
+
+      // 使用窗口高度减去固定的顶部区域
+      const topOffset = 250;
+      const windowHeight = window.innerHeight;
+      const availableHeight = windowHeight - topOffset;
+
+      console.log(
+        "[Account] Window height:",
+        windowHeight,
+        "Available height:",
+        availableHeight,
+      );
+
+      if (availableHeight <= 0) {
+        console.log("[Account] Available height is 0 or negative");
+        return;
+      }
+
+      // 分页组件高度约 60px
+      const paginationHeight = 60;
+      const contentAvailableHeight = availableHeight - paginationHeight;
+
+      console.log(
+        "[Account] Content available height:",
+        contentAvailableHeight,
+      );
+
+      if (contentAvailableHeight <= 0) {
+        console.log(
+          "[Account] Content available height is 0 or negative, setting to 1",
+        );
+        setItemsPerPage(1);
+        return;
+      }
+
+      // 计算能容纳的卡片数量
+      let count = 0;
+      let usedHeight = 0;
+
+      while (count < 100) {
+        const cardHeight = CARD_HEIGHT + (count > 0 ? GAP_SIZE : 0);
+        if (usedHeight + cardHeight > contentAvailableHeight) {
+          console.log(
+            "[Account] Break at count:",
+            count,
+            "usedHeight:",
+            usedHeight,
+            "cardHeight:",
+            cardHeight,
+          );
+          break;
+        }
+        usedHeight += cardHeight;
+        count++;
+      }
+
+      // 至少显示1个
+      const newCount = Math.max(1, count);
+      console.log(
+        "[Account] Calculated items per page:",
+        newCount,
+        "current:",
+        itemsPerPage,
+      );
+
+      if (newCount !== itemsPerPage) {
+        setItemsPerPage(newCount);
+      }
+    };
+
+    // 初始计算（延迟一下确保 DOM 已渲染）
+    const timer = setTimeout(calculateItemsPerPage, 100);
+
+    // 监听窗口大小变化
+    window.addEventListener("resize", calculateItemsPerPage);
+
+    // 使用 ResizeObserver 监听父容器大小变化
+    let resizeObserver: ResizeObserver | null = null;
+    if (containerRef.current?.parentElement) {
+      resizeObserver = new ResizeObserver(() => {
+        calculateItemsPerPage();
+      });
+      resizeObserver.observe(containerRef.current.parentElement);
+    }
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", calculateItemsPerPage);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+    };
+  }, []); // 移除 itemsPerPage 依赖，避免循环
 
   // 获取当前页的账户
   const getCurrentPageAccounts = (): Account[] => {
+    console.log(
+      "[Account] getCurrentPageAccounts - total:",
+      accounts.length,
+      "sorted:",
+      sortedAccounts.length,
+      "currentPage:",
+      currentPage,
+      "itemsPerPage:",
+      itemsPerPage,
+    );
     if (accounts.length === 0) return [];
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return sortedAccounts.slice(startIndex, endIndex);
+    const result = sortedAccounts.slice(startIndex, endIndex);
+    console.log(
+      "[Account] getCurrentPageAccounts - returning:",
+      result.length,
+      "accounts",
+    );
+    return result;
   };
 
   const totalPages = Math.ceil(accounts.length / itemsPerPage);
   const currentPageAccounts = getCurrentPageAccounts();
 
-  // 当账户列表变化时，重置到第一页
+  // 当账户列表或每页数量变化时，重置到第一页
   useEffect(() => {
     setCurrentPage(1);
-  }, [accounts.length]);
+  }, [accounts.length, itemsPerPage]);
 
-  // 不再使用 ResizeObserver - 固定每页5个
+  // 使用 ResizeObserver 动态计算每页显示数量
 
   // 渲染骨架屏
-  const renderSkeleton = () => (
-    <div className="space-y-4">
-      {[1, 2, 3].map((item) => (
-        <Card key={item} className="p-4 bg-content1">
-          <div className="flex items-center gap-4">
-            <Skeleton className="w-12 h-12 rounded-full" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="w-32 h-4 rounded-lg" />
-              <Skeleton className="w-24 h-3 rounded-lg" />
+  const renderSkeleton = () => {
+    // 如果在刷新状态且有预期数量，使用预期数量；否则使用当前计算的每页数量
+    const skeletonCount =
+      isRefreshing && expectedAccountCount > 0
+        ? Math.min(expectedAccountCount, itemsPerPage)
+        : itemsPerPage;
+
+    return (
+      <div className="space-y-[5px]">
+        {[...Array(skeletonCount)].map((_, index) => (
+          <Card
+            key={index}
+            className="p-4 bg-content1"
+            style={{ height: `${CARD_HEIGHT}px` }}
+          >
+            <div className="flex items-center gap-4 h-full">
+              <Skeleton className="w-12 h-12 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="w-32 h-4 rounded-lg" />
+                <Skeleton className="w-24 h-3 rounded-lg" />
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="w-20 h-8 rounded-lg" />
+                <Skeleton className="w-20 h-8 rounded-lg" />
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Skeleton className="w-20 h-8 rounded-lg" />
-              <Skeleton className="w-20 h-8 rounded-lg" />
-            </div>
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
+          </Card>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12 relative">
@@ -740,8 +958,90 @@ export default function AccountPage() {
       )}
 
       {/* Accounts List */}
-      {isLoading ? (
-        renderSkeleton()
+      {isLoading || isRefreshing ? (
+        <div className="flex flex-col flex-1">
+          {/* 账户卡片区域 - 带外框 */}
+          <Card className="shadow-sm border-2 border-separator p-0 flex flex-col">
+            <div
+              ref={containerRef}
+              className="relative px-[15px] py-[15px] space-y-[5px]"
+            >
+              {renderSkeleton()}
+            </div>
+
+            {/* Card footer: pagination (disabled during refresh) */}
+            <div className="border-t border-separator px-3 py-3 w-full">
+              <div className="flex items-center justify-center w-full gap-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  isDisabled={true}
+                  className="flex items-center gap-2"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                  {t("common.pagination.previous")}
+                </Button>
+
+                <div className="flex items-center">
+                  <SimplePagination
+                    total={Math.max(
+                      1,
+                      Math.ceil(expectedAccountCount / itemsPerPage) || 1,
+                    )}
+                    page={1}
+                    onChange={() => {}}
+                    showControls={false}
+                  />
+                  {/* keep HeroUI Pagination for compatibility (visually hidden) */}
+                  <div className="sr-only">
+                    <Pagination
+                      total={1}
+                      page={1}
+                      onChange={() => {}}
+                      size="sm"
+                      isDisabled={true}
+                      showControls={true}
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  isDisabled={true}
+                  className="flex items-center gap-2"
+                >
+                  {t("common.pagination.next")}
+                  <svg
+                    className="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
       ) : accounts.length === 0 ? (
         <Card
           className="p-12 bg-content1 shadow-md border border-separator"
@@ -772,199 +1072,189 @@ export default function AccountPage() {
           </div>
         </Card>
       ) : (
-        <div
-          className="flex flex-col flex-1"
-          style={{ minHeight: `${CONTAINER_HEIGHT + 60}px` }}
-        >
-          {/* 账户卡片区域 - 固定高度，带外框，占满空间 */}
-          <Card className="shadow-sm border-2 border-separator flex-1 p-0 flex flex-col">
+        <div className="flex flex-col flex-1">
+          {/* 账户卡片区域 - 带外框 */}
+          <Card className="shadow-sm border-2 border-separator p-0 flex flex-col">
             <div
-              className="relative overflow-hidden"
-              style={{ height: `${CONTAINER_HEIGHT}px` }}
+              ref={containerRef}
+              className="relative px-[15px] py-[15px] space-y-[5px]"
             >
-              <div
-                ref={scrollRef}
-                className="flex-1 overflow-y-auto px-[15px] py-[15px] space-y-[5px] box-border"
-                style={{ scrollbarWidth: "thin" }}
-              >
-                {currentPageAccounts.map((account, index) => {
-                  const isSelected = account.id === currentAccountId;
-                  const isPreviousActive = account.id === previousAccountId;
+              {currentPageAccounts.map((account, index) => {
+                const isSelected = account.id === currentAccountId;
+                const isPreviousActive = account.id === previousAccountId;
 
-                  // 判断账户是否有错误状态
-                  const hasErrorStatus =
-                    account.syncStatus === "HYTOKEN_EXPIRED" ||
-                    account.syncStatus === "FAILED";
+                // 判断账户是否有错误状态
+                const hasErrorStatus =
+                  account.syncStatus === "HYTOKEN_EXPIRED" ||
+                  account.syncStatus === "FAILED";
 
-                  // 计算动画类型
-                  let animationClass = "";
-                  let zIndex = 0;
+                // 计算动画类型
+                let animationClass = "";
+                let zIndex = 0;
 
-                  if (isAnimating) {
-                    if (isSelected) {
-                      animationClass = "animate-fade-in";
-                      zIndex = 30;
-                    } else if (isPreviousActive) {
-                      animationClass = "animate-fade-out";
-                      zIndex = 20;
-                    }
-                  } else {
+                if (isAnimating) {
+                  if (isSelected) {
                     animationClass = "animate-fade-in";
+                    zIndex = 30;
+                  } else if (isPreviousActive) {
+                    animationClass = "animate-fade-out";
+                    zIndex = 20;
                   }
+                } else {
+                  animationClass = "animate-fade-in";
+                }
 
-                  // 根据状态决定边框颜色
-                  let borderColorClass =
-                    "border-separator hover:border-content3/50";
-                  let shadowClass = "shadow-md hover:shadow-lg";
-                  if (isSelected && !hasErrorStatus) {
-                    borderColorClass = "border-green-400 dark:border-green-300";
-                    shadowClass = "shadow-xl";
-                  } else if (hasErrorStatus) {
-                    borderColorClass =
-                      account.syncStatus === "HYTOKEN_EXPIRED"
-                        ? "border-red-400 dark:border-red-300"
-                        : "border-orange-400 dark:border-orange-300";
-                    shadowClass = "shadow-xl";
-                  }
+                // 根据状态决定边框颜色
+                let borderColorClass =
+                  "border-separator hover:border-content3/50";
+                let shadowClass = "shadow-md hover:shadow-lg";
+                if (isSelected && !hasErrorStatus) {
+                  borderColorClass = "border-green-400 dark:border-green-300";
+                  shadowClass = "shadow-xl";
+                } else if (hasErrorStatus) {
+                  borderColorClass =
+                    account.syncStatus === "HYTOKEN_EXPIRED"
+                      ? "border-red-400 dark:border-red-300"
+                      : "border-orange-400 dark:border-orange-300";
+                  shadowClass = "shadow-xl";
+                }
 
-                  return (
-                    <Card
-                      key={account.id}
-                      className={`cursor-pointer transition-all duration-300 ease-in-out bg-content1 ${borderColorClass} ${shadowClass} border-2 box-border ${animationClass}`}
-                      style={{
-                        height: `${CARD_HEIGHT}px`,
-                        position: isAnimating ? "relative" : "static",
-                        zIndex,
-                      }}
-                      onClick={() => handleSelectAccount(account.id)}
-                    >
-                      <div className="flex items-center h-full px-3">
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center gap-3 flex-1">
-                            {/* LED 指示灯 - 根据状态显示不同颜色 */}
-                            {isSelected && !hasErrorStatus && (
-                              <div className="relative flex-shrink-0">
-                                <div className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] dark:shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
-                                <div className="absolute inset-0 w-3 h-3 rounded-full bg-green-400 animate-ping opacity-20" />
-                              </div>
-                            )}
-                            {isSelected &&
-                              account.syncStatus === "HYTOKEN_EXPIRED" && (
-                                <div className="relative flex-shrink-0">
-                                  <div className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] dark:shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
-                                  <div className="absolute inset-0 w-3 h-3 rounded-full bg-red-400 animate-ping opacity-20" />
-                                </div>
-                              )}
-                            {isSelected && account.syncStatus === "FAILED" && (
-                              <div className="relative flex-shrink-0">
-                                <div className="w-3 h-3 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)] dark:shadow-[0_0_10px_rgba(249,115,22,0.8)]" />
-                                <div className="absolute inset-0 w-3 h-3 rounded-full bg-orange-400 animate-ping opacity-20" />
-                              </div>
-                            )}
-                            {/* 灰色指示灯 - 未选中且无错误状态 */}
-                            {!isSelected && !hasErrorStatus && (
-                              <div className="relative flex-shrink-0">
-                                <div className="w-3 h-3 rounded-full bg-gray-400 dark:bg-gray-500" />
-                              </div>
-                            )}
-
-                            {/* Avatar */}
-                            <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-base font-bold text-primary flex-shrink-0 overflow-hidden">
-                              {account.avatar ? (
-                                <img
-                                  src={account.avatar}
-                                  alt={account.nickname}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    (
-                                      e.target as HTMLImageElement
-                                    ).style.display = "none";
-                                    const parent = (
-                                      e.target as HTMLImageElement
-                                    ).parentElement;
-                                    if (parent) {
-                                      parent.textContent = account.nickname
-                                        .charAt(0)
-                                        .toUpperCase();
-                                    }
-                                  }}
-                                />
-                              ) : (
-                                account.nickname.charAt(0).toUpperCase()
-                              )}
+                return (
+                  <Card
+                    key={account.id}
+                    data-account-card="true"
+                    className={`cursor-pointer transition-all duration-300 ease-in-out bg-content1 ${borderColorClass} ${shadowClass} border-2 box-border ${animationClass}`}
+                    style={{
+                      height: `${CARD_HEIGHT}px`,
+                      position: isAnimating ? "relative" : "static",
+                      zIndex,
+                    }}
+                    onClick={() => handleSelectAccount(account.id)}
+                  >
+                    <div className="flex items-center h-full px-3">
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-3 flex-1">
+                          {/* LED 指示灯 - 根据状态显示不同颜色 */}
+                          {isSelected && !hasErrorStatus && (
+                            <div className="relative flex-shrink-0">
+                              <div className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] dark:shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
+                              <div className="absolute inset-0 w-3 h-3 rounded-full bg-green-400 animate-ping opacity-20" />
                             </div>
-
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-foreground truncate">
-                                {account.nickname}
-                              </p>
-                              <p className="text-xs text-muted">
-                                {i18n.language === "zh" ? "等级" : "Level"}:{" "}
-                                {account.level} •{" "}
-                                {account.server === "1"
-                                  ? i18n.language === "zh"
-                                    ? "官服"
-                                    : "Official"
-                                  : account.server === "2"
-                                    ? i18n.language === "zh"
-                                      ? "BiliBili服"
-                                      : "BiliBili"
-                                    : account.server}
-                              </p>
+                          )}
+                          {isSelected &&
+                            account.syncStatus === "HYTOKEN_EXPIRED" && (
+                              <div className="relative flex-shrink-0">
+                                <div className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] dark:shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
+                                <div className="absolute inset-0 w-3 h-3 rounded-full bg-red-400 animate-ping opacity-20" />
+                              </div>
+                            )}
+                          {isSelected && account.syncStatus === "FAILED" && (
+                            <div className="relative flex-shrink-0">
+                              <div className="w-3 h-3 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)] dark:shadow-[0_0_10px_rgba(249,115,22,0.8)]" />
+                              <div className="absolute inset-0 w-3 h-3 rounded-full bg-orange-400 animate-ping opacity-20" />
                             </div>
+                          )}
+                          {/* 灰色指示灯 - 未选中且无错误状态 */}
+                          {!isSelected && !hasErrorStatus && (
+                            <div className="relative flex-shrink-0">
+                              <div className="w-3 h-3 rounded-full bg-gray-400 dark:bg-gray-500" />
+                            </div>
+                          )}
+
+                          {/* Avatar */}
+                          <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-base font-bold text-primary flex-shrink-0 overflow-hidden">
+                            {account.avatar ? (
+                              <img
+                                src={account.avatar}
+                                alt={account.nickname}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display =
+                                    "none";
+                                  const parent = (e.target as HTMLImageElement)
+                                    .parentElement;
+                                  if (parent) {
+                                    parent.textContent = account.nickname
+                                      .charAt(0)
+                                      .toUpperCase();
+                                  }
+                                }}
+                              />
+                            ) : (
+                              account.nickname.charAt(0).toUpperCase()
+                            )}
                           </div>
 
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {/* 状态标签 - 错误状态优先级高于 ACTIVE */}
-                            {account.syncStatus === "HYTOKEN_EXPIRED" && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-red-600 dark:text-red-400 tracking-wider">
-                                EXPIRED
-                              </span>
-                            )}
-                            {account.syncStatus === "FAILED" && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-orange-600 dark:text-orange-400 tracking-wider">
-                                SYNC FAILED
-                              </span>
-                            )}
-                            {/* 只有在没有错误状态时才显示 ACTIVE */}
-                            {isSelected && !account.syncStatus && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-green-600 dark:text-green-400 tracking-wider">
-                                ACTIVE
-                              </span>
-                            )}
-                            {/* 未选中且无错误状态的账户显示 AVAILABLE */}
-                            {!isSelected && !account.syncStatus && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-gray-600 dark:text-gray-400 tracking-wider">
-                                AVAILABLE
-                              </span>
-                            )}
-
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onPress={() => handleViewDetails(account)}
-                              className="!h-7 !px-2 text-xs"
-                            >
-                              {t("settings.account.view_details")}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onPress={() => handleLogout(account.id)}
-                              className="text-danger border-danger hover:bg-danger-50 !h-7 !px-2 text-xs"
-                            >
-                              {t("settings.account.logout")}
-                            </Button>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-foreground truncate">
+                              {account.nickname}
+                            </p>
+                            <p className="text-xs text-muted">
+                              {i18n.language === "zh" ? "等级" : "Level"}:{" "}
+                              {account.level} •{" "}
+                              {account.server === "1"
+                                ? i18n.language === "zh"
+                                  ? "官服"
+                                  : "Official"
+                                : account.server === "2"
+                                  ? i18n.language === "zh"
+                                    ? "BiliBili服"
+                                    : "BiliBili"
+                                  : account.server}
+                            </p>
                           </div>
                         </div>
+
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {/* 状态标签 - 错误状态优先级高于 ACTIVE */}
+                          {account.syncStatus === "HYTOKEN_EXPIRED" && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-red-600 dark:text-red-400 tracking-wider">
+                              EXPIRED
+                            </span>
+                          )}
+                          {account.syncStatus === "FAILED" && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-orange-600 dark:text-orange-400 tracking-wider">
+                              SYNC FAILED
+                            </span>
+                          )}
+                          {/* 只有在没有错误状态时才显示 ACTIVE */}
+                          {isSelected && !account.syncStatus && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-green-600 dark:text-green-400 tracking-wider">
+                              ACTIVE
+                            </span>
+                          )}
+                          {/* 未选中且无错误状态的账户显示 AVAILABLE */}
+                          {!isSelected && !account.syncStatus && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-gray-600 dark:text-gray-400 tracking-wider">
+                              AVAILABLE
+                            </span>
+                          )}
+
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onPress={() => handleViewDetails(account)}
+                            className="!h-7 !px-2 text-xs"
+                          >
+                            {t("settings.account.view_details")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onPress={() => handleLogout(account.id)}
+                            className="text-danger border-danger hover:bg-danger-50 !h-7 !px-2 text-xs"
+                          >
+                            {t("settings.account.logout")}
+                          </Button>
+                        </div>
                       </div>
-                    </Card>
-                  );
-                })}
-              </div>
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
 
-            {/* Card footer: pagination (HeroUI) */}
+            {/* Card footer: pagination */}
             <div className="border-t border-separator px-3 py-3 w-full">
               <div className="flex items-center justify-center w-full gap-3">
                 <Button
@@ -1509,40 +1799,45 @@ export default function AccountPage() {
                         : t("settings.account.send_code")}
                   </Button>
                 </div>
+
                 {/* 占位元素，保持 grid 布局 */}
                 <div></div>
-                {phoneError && (
-                  <p className="text-xs text-danger">{phoneError}</p>
-                )}
+                <div>
+                  {phoneError && (
+                    <p className="text-xs text-danger">{phoneError}</p>
+                  )}
+                </div>
 
                 {/* 验证码输入行 */}
                 <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
                   {t("settings.account.verification_code")}
                 </label>
-                <input
-                  type="text"
-                  placeholder={
-                    i18n.language === "zh"
-                      ? t("settings.account.enter_verification_code")
-                      : t("settings.account.enter_verification_code")
-                  }
-                  value={verificationCode}
-                  onChange={(e) => {
-                    setVerificationCode(e.target.value);
-                    // 当用户输入验证码时，清除发送成功的提示
-                    if (codeSentSuccess) {
-                      setCodeSentSuccess(false);
+                <div className="flex flex-col gap-1">
+                  <input
+                    type="text"
+                    placeholder={
+                      i18n.language === "zh"
+                        ? t("settings.account.enter_verification_code")
+                        : t("settings.account.enter_verification_code")
                     }
-                  }}
-                  disabled={isLoggingIn}
-                  maxLength={6}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !isLoggingIn) {
-                      handleLogin();
-                    }
-                  }}
-                  className="w-full px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                />
+                    value={verificationCode}
+                    onChange={(e) => {
+                      setVerificationCode(e.target.value);
+                      // 当用户输入验证码时，清除发送成功的提示
+                      if (codeSentSuccess) {
+                        setCodeSentSuccess(false);
+                      }
+                    }}
+                    disabled={isLoggingIn}
+                    maxLength={6}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !isLoggingIn) {
+                        handleLogin();
+                      }
+                    }}
+                    className="w-full px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                  />
+                </div>
               </div>
             </div>
           )}

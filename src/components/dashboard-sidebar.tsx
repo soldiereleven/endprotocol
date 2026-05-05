@@ -60,6 +60,8 @@ export const Sidebar = () => {
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [isLoadingAccount, setIsLoadingAccount] = useState(true);
   const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false); // 手动刷新状态
+  const [expectedAccountCount, setExpectedAccountCount] = useState<number>(3); // 预期的账户数量
 
   // 监听主题变化，强制重新渲染
   useEffect(() => {
@@ -151,8 +153,30 @@ export const Sidebar = () => {
     };
 
     window.addEventListener("accountChanged", handleAccountChange);
+
+    // 监听手动刷新事件
+    const handleManualRefresh = (event: Event) => {
+      console.log("[Sidebar] Manual refresh event received");
+
+      // 从事件中获取账户数量
+      const customEvent = event as CustomEvent;
+      const count = customEvent.detail?.count || 3;
+      setExpectedAccountCount(Math.min(count, 5)); // 最多5个
+
+      setIsManualRefreshing(true);
+
+      // 刷新完成后隐藏骨架屏（延迟一下确保数据已更新）
+      setTimeout(() => {
+        setIsManualRefreshing(false);
+        setExpectedAccountCount(3); // 重置为默认值
+      }, 300);
+    };
+
+    window.addEventListener("manualRefresh", handleManualRefresh);
+
     return () => {
       window.removeEventListener("accountChanged", handleAccountChange);
+      window.removeEventListener("manualRefresh", handleManualRefresh);
     };
   }, []);
 
@@ -731,8 +755,8 @@ export const Sidebar = () => {
       >
         {/* Selected Account Display */}
         <div className="px-4 py-3 border-b border-separator">
-          {isLoadingAccount ? (
-            // 骨架屏加载状态
+          {isLoadingAccount || isManualRefreshing ? (
+            // 骨架屏加载状态（包括初始加载和手动刷新）
             <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-default-100 transition-colors cursor-pointer">
               <Skeleton className="w-10 h-10 rounded-full" />
               <div className="flex-1 space-y-2">

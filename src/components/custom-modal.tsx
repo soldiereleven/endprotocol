@@ -60,7 +60,7 @@ export const CustomModal: React.FC<ModalProps> = ({
       {/* Backdrop - 覆盖整个屏幕，让背景模糊 */}
       <div
         className={clsx(
-          "fixed inset-0 z-40 bg-transparent backdrop-blur-md transition-all duration-300",
+          "fixed top-0 left-0 w-screen h-screen z-[9999] bg-transparent backdrop-blur-md transition-all duration-300",
           isOpen
             ? "opacity-100 pointer-events-auto"
             : "opacity-0 pointer-events-none",
@@ -79,7 +79,7 @@ export const CustomModal: React.FC<ModalProps> = ({
       {/* Modal content - 完全不透明，在模糊层之上 */}
       <div
         className={clsx(
-          "fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none",
+          "fixed top-0 left-0 w-screen h-screen z-[10000] flex items-center justify-center p-4 pointer-events-none",
           isOpen ? "opacity-100" : "opacity-0",
         )}
       >
