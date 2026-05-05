@@ -9,6 +9,7 @@ export default function SettingsPage() {
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const langDropdownRef = useRef<HTMLDivElement>(null);
   const [refreshOnSwitch, setRefreshOnSwitch] = useState(false);
+  const [themeChangeKey, setThemeChangeKey] = useState(0);
 
   const languages = [
     { key: "en", label: "English" },
@@ -22,6 +23,18 @@ export default function SettingsPage() {
       setRefreshOnSwitch(value ?? false); // 默认为false
     };
     loadConfig();
+  }, []);
+
+  // 监听主题变化，强制重新渲染
+  useEffect(() => {
+    const handleThemeChange = () => {
+      setThemeChangeKey((prev) => prev + 1);
+    };
+
+    window.addEventListener("themeChange", handleThemeChange);
+    return () => {
+      window.removeEventListener("themeChange", handleThemeChange);
+    };
   }, []);
 
   // Close dropdown when clicking outside
@@ -140,6 +153,7 @@ export default function SettingsPage() {
             <div className="h-px bg-separator w-full" />
 
             <div
+              key={themeChangeKey}
               id="settings-theme"
               className="flex items-center justify-between"
             >

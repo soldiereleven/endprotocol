@@ -556,7 +556,7 @@ impl SklandService {
         Err(last_err.unwrap_or(AppError::AuthError { message: "Unknown error getting binding list".to_string() }))
     }
 
-    /// 获取角色详情
+    /// 获取角色详情（带自动重试机制）
     pub async fn get_role_detail(
         &self,
         cred: &str,

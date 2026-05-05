@@ -457,6 +457,99 @@ impl AccountService {
                             role_id,
                             e
                         );
+
+                        // 检查是否是 SYNC FAILED 错误，尝试自动刷新 cred
+                        let error_string = e.to_string();
+                        let is_sync_failed = error_string.contains("API error")
+                            || error_string.contains("Failed to parse JSON")
+                            || error_string.contains("HTTP request failed");
+
+                        if is_sync_failed {
+                            log_debug!("get_accounts: Detected SYNC FAILED, attempting auto-refresh for user {}", user_id);
+
+                            // 尝试使用 hytoken 重新获取 cred
+                            let hytoken_key = format!("account_token_{}", user_id);
+                            let hytoken: Option<String> = {
+                                let config = self.config_service.lock().unwrap();
+                                config.get::<serde_json::Value>(&hytoken_key).and_then(|v| {
+                                    v.get("hytoken")
+                                        .and_then(|h| h.as_str())
+                                        .map(|s| s.to_string())
+                                })
+                            };
+
+                            if let Some(hyt) = hytoken {
+                                log_debug!("get_accounts: Found hytoken, attempting refresh...");
+                                match self.skland_service.refresh_cred_by_hytoken(&hyt).await {
+                                    Ok((new_cred, new_token, _)) => {
+                                        log_debug!("get_accounts: Auto-refresh succeeded, retrying get_role_detail...");
+
+                                        // 更新配置中的 cred 和 token
+                                        {
+                                            let mut config = self.config_service.lock().unwrap();
+                                            let mut token_data: serde_json::Value =
+                                                config.get(&hytoken_key).unwrap_or(json!({}));
+                                            if let Some(obj) = token_data.as_object_mut() {
+                                                obj.insert("cred".to_string(), json!(new_cred));
+                                                obj.insert("token".to_string(), json!(new_token));
+                                            }
+                                            let _ = config.set(hytoken_key, token_data);
+                                        }
+
+                                        // 重试获取角色详情
+                                        match self
+                                            .skland_service
+                                            .get_role_detail(
+                                                &new_cred, &new_token, &role_id, &server_id,
+                                                &user_id,
+                                            )
+                                            .await
+                                        {
+                                            Ok(detail) => {
+                                                // 下载并缓存头像（返回 base64）
+                                                let cached_avatar = self
+                                                    .avatar_cache_service
+                                                    .get_or_download_avatar_base64(
+                                                        &detail.avatar_url,
+                                                    )
+                                                    .await
+                                                    .unwrap_or_else(|_| detail.avatar_url.clone());
+
+                                                let account = AccountInfo {
+                                                    id: role_id.clone(),
+                                                    avatar: cached_avatar,
+                                                    nickname: detail.nickname,
+                                                    level: detail.level,
+                                                    server: detail.server_id.clone(),
+                                                    status: "online".to_string(),
+                                                    sync_status: None, // 同步成功，清除状态
+                                                    cred: Some(new_cred),
+                                                    token: Some(new_token),
+                                                    user_id: Some(user_id.clone()),
+                                                    server_id: Some(server_id.clone()),
+                                                };
+                                                accounts.push(account);
+                                                continue; // 跳过下面的 FAILED 状态创建
+                                            }
+                                            Err(retry_e) => {
+                                                log_error!("get_accounts: Auto-refresh retry also failed: {}", retry_e);
+                                                // 重试也失败了，继续创建 FAILED 状态
+                                            }
+                                        }
+                                    }
+                                    Err(refresh_e) => {
+                                        log_error!(
+                                            "get_accounts: Auto-refresh failed: {}",
+                                            refresh_e
+                                        );
+                                        // 刷新失败，继续创建 FAILED 状态
+                                    }
+                                }
+                            } else {
+                                log_warn!("get_accounts: No hytoken found for auto-refresh");
+                            }
+                        }
+
                         // 创建失败状态的账户
                         let account = AccountInfo {
                             id: role_id.clone(),
@@ -845,6 +938,101 @@ impl AccountService {
                             role_id,
                             e
                         );
+
+                        // 检查是否是 SYNC FAILED 错误，尝试自动刷新 cred
+                        let error_string = e.to_string();
+                        let is_sync_failed = error_string.contains("API error")
+                            || error_string.contains("Failed to parse JSON")
+                            || error_string.contains("HTTP request failed");
+
+                        if is_sync_failed {
+                            log_debug!("refresh_accounts: Detected SYNC FAILED, attempting auto-refresh for user {}", user_id);
+
+                            // 尝试使用 hytoken 重新获取 cred
+                            let hytoken_key = format!("account_token_{}", user_id);
+                            let hytoken: Option<String> = {
+                                let config = self.config_service.lock().unwrap();
+                                config.get::<serde_json::Value>(&hytoken_key).and_then(|v| {
+                                    v.get("hytoken")
+                                        .and_then(|h| h.as_str())
+                                        .map(|s| s.to_string())
+                                })
+                            };
+
+                            if let Some(hyt) = hytoken {
+                                log_debug!(
+                                    "refresh_accounts: Found hytoken, attempting refresh..."
+                                );
+                                match self.skland_service.refresh_cred_by_hytoken(&hyt).await {
+                                    Ok((new_cred, new_token, _)) => {
+                                        log_debug!("refresh_accounts: Auto-refresh succeeded, retrying get_role_detail...");
+
+                                        // 更新配置中的 cred 和 token
+                                        {
+                                            let mut config = self.config_service.lock().unwrap();
+                                            let mut token_data: serde_json::Value =
+                                                config.get(&hytoken_key).unwrap_or(json!({}));
+                                            if let Some(obj) = token_data.as_object_mut() {
+                                                obj.insert("cred".to_string(), json!(new_cred));
+                                                obj.insert("token".to_string(), json!(new_token));
+                                            }
+                                            let _ = config.set(hytoken_key, token_data);
+                                        }
+
+                                        // 重试获取角色详情
+                                        match self
+                                            .skland_service
+                                            .get_role_detail(
+                                                &new_cred, &new_token, &role_id, &server_id,
+                                                &user_id,
+                                            )
+                                            .await
+                                        {
+                                            Ok(detail) => {
+                                                // 下载并缓存头像（返回 base64）
+                                                let cached_avatar = self
+                                                    .avatar_cache_service
+                                                    .get_or_download_avatar_base64(
+                                                        &detail.avatar_url,
+                                                    )
+                                                    .await
+                                                    .unwrap_or_else(|_| detail.avatar_url.clone());
+
+                                                let refreshed_account = AccountInfo {
+                                                    id: role_id.clone(),
+                                                    avatar: cached_avatar,
+                                                    nickname: detail.nickname,
+                                                    level: detail.level,
+                                                    server: detail.server_id.clone(),
+                                                    status: "online".to_string(),
+                                                    sync_status: None, // 同步成功，清除状态
+                                                    cred: Some(new_cred),
+                                                    token: Some(new_token),
+                                                    user_id: Some(user_id.clone()),
+                                                    server_id: Some(server_id.clone()),
+                                                };
+                                                refreshed_accounts.push(refreshed_account);
+                                                continue; // 跳过下面的 FAILED 状态创建
+                                            }
+                                            Err(retry_e) => {
+                                                log_error!("refresh_accounts: Auto-refresh retry also failed: {}", retry_e);
+                                                // 重试也失败了，继续创建 FAILED 状态
+                                            }
+                                        }
+                                    }
+                                    Err(refresh_e) => {
+                                        log_error!(
+                                            "refresh_accounts: Auto-refresh failed: {}",
+                                            refresh_e
+                                        );
+                                        // 刷新失败，继续创建 FAILED 状态
+                                    }
+                                }
+                            } else {
+                                log_warn!("refresh_accounts: No hytoken found for auto-refresh");
+                            }
+                        }
+
                         // 保留旧数据，但标记为离线和 FAILED
                         let account = AccountInfo {
                             id: role_id.clone(),

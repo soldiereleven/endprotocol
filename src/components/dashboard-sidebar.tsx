@@ -50,6 +50,7 @@ export const Sidebar = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showResults, setShowResults] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [themeChangeKey, setThemeChangeKey] = useState(0);
   const { t, i18n } = useTranslation();
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -59,6 +60,18 @@ export const Sidebar = () => {
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [isLoadingAccount, setIsLoadingAccount] = useState(true);
   const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
+
+  // 监听主题变化，强制重新渲染
+  useEffect(() => {
+    const handleThemeChange = () => {
+      setThemeChangeKey((prev) => prev + 1);
+    };
+
+    window.addEventListener("themeChange", handleThemeChange);
+    return () => {
+      window.removeEventListener("themeChange", handleThemeChange);
+    };
+  }, []);
 
   // 加载选中的账户
   useEffect(() => {
@@ -708,6 +721,7 @@ export const Sidebar = () => {
 
       {/* Sidebar */}
       <aside
+        key={themeChangeKey}
         className={clsx(
           "fixed lg:static inset-y-0 left-0 z-40 w-72 bg-background border-r border-separator transform transition-transform duration-300 ease-in-out flex flex-col",
           isMobileMenuOpen
@@ -728,52 +742,75 @@ export const Sidebar = () => {
             </div>
           ) : selectedAccount ? (
             // 显示选中的账户信息
-            <button
-              onClick={() => setIsSwitchModalOpen(true)}
-              className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-default-100 transition-colors group"
-            >
-              <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-sm font-bold text-primary overflow-hidden">
-                  {selectedAccount.avatar ? (
-                    <img
-                      src={selectedAccount.avatar}
-                      alt={selectedAccount.nickname}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                        (
-                          e.target as HTMLImageElement
-                        ).parentElement!.textContent = selectedAccount.nickname
-                          .charAt(0)
-                          .toUpperCase();
-                      }}
-                    />
-                  ) : (
-                    selectedAccount.nickname.charAt(0).toUpperCase()
-                  )}
+            <div className="flex items-center gap-3 p-2 rounded-lg">
+              {/* 左侧：头像和信息（不可点击） */}
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="relative flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-sm font-bold text-primary overflow-hidden">
+                    {selectedAccount.avatar ? (
+                      <img
+                        src={selectedAccount.avatar}
+                        alt={selectedAccount.nickname}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                          (
+                            e.target as HTMLImageElement
+                          ).parentElement!.textContent =
+                            selectedAccount.nickname.charAt(0).toUpperCase();
+                        }}
+                      />
+                    ) : (
+                      selectedAccount.nickname.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  {/* ACTIVE 指示器 */}
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-success rounded-full border-2 border-background" />
                 </div>
-                {/* ACTIVE 指示器 */}
-                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-success rounded-full border-2 border-background" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">
+                    {selectedAccount.nickname}
+                  </p>
+                  <p className="text-xs text-muted truncate">
+                    Lv.{selectedAccount.level} •{" "}
+                    {(() => {
+                      const serverId = parseInt(selectedAccount.server);
+                      if (serverId === 1) {
+                        return i18n.language === "zh" ? "官服" : "Official";
+                      } else if (serverId === 2) {
+                        return i18n.language === "zh"
+                          ? "Bilibili服"
+                          : "Bilibili";
+                      }
+                      return selectedAccount.server;
+                    })()}
+                  </p>
+                </div>
               </div>
-              <div className="flex-1 text-left min-w-0">
-                <p className="text-sm font-semibold text-foreground truncate">
-                  {selectedAccount.nickname}
-                </p>
-                <p className="text-xs text-muted truncate">
-                  Lv.{selectedAccount.level} •{" "}
-                  {(() => {
-                    const serverId = parseInt(selectedAccount.server);
-                    if (serverId === 1) {
-                      return i18n.language === "zh" ? "官服" : "Official";
-                    } else if (serverId === 2) {
-                      return i18n.language === "zh" ? "Bilibili服" : "Bilibili";
-                    }
-                    return selectedAccount.server;
-                  })()}
-                </p>
-              </div>
-              <SearchIcon className="w-4 h-4 text-muted group-hover:text-foreground transition-colors flex-shrink-0" />
-            </button>
+
+              {/* 右侧：切换按钮 */}
+              <button
+                onClick={() => {
+                  setIsSwitchModalOpen(true);
+                }}
+                className="p-2 hover:bg-default-100 rounded-lg transition-colors flex-shrink-0"
+                title={i18n.language === "zh" ? "切换账户" : "Switch Account"}
+              >
+                <svg
+                  className="w-5 h-5 text-muted hover:text-foreground transition-colors"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                  />
+                </svg>
+              </button>
+            </div>
           ) : (
             // 没有选中账户时显示提示
             <div className="flex items-center gap-3 p-2 rounded-lg bg-default-50 border border-dashed border-separator">
@@ -796,185 +833,194 @@ export const Sidebar = () => {
           )}
         </div>
 
-        {/* Search Section */}
-        <div className="px-4 py-4" ref={searchRef}>
-          <div className="relative">
-            <div className="bg-default-100 hover:bg-default-200 transition-colors rounded-lg h-9 flex items-center px-3 gap-2">
-              <SearchIcon className="text-base text-muted pointer-events-none flex-shrink-0" />
-              <input
-                ref={inputRef}
-                type="search"
-                placeholder={t("common.search")}
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setShowResults(true);
-                  setSelectedIndex(-1);
-                }}
-                onFocus={() => searchQuery.trim() && setShowResults(true)}
-                className="bg-transparent border-none outline-none text-sm w-full text-foreground placeholder:text-muted"
-                aria-label="Search"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setShowResults(false);
+        {/* Search Section - Hidden */}
+        {false && (
+          <div className="px-4 py-4" ref={searchRef}>
+            <div className="relative">
+              <div className="bg-default-100 hover:bg-default-200 transition-colors rounded-lg h-9 flex items-center px-3 gap-2">
+                <SearchIcon className="text-base text-muted pointer-events-none flex-shrink-0" />
+                <input
+                  ref={inputRef}
+                  type="search"
+                  placeholder={t("common.search")}
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setShowResults(true);
                     setSelectedIndex(-1);
                   }}
-                  className="text-muted hover:text-foreground transition-colors"
-                  aria-label="Clear search"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                  onFocus={() => searchQuery.trim() && setShowResults(true)}
+                  className="bg-transparent border-none outline-none text-sm w-full text-foreground placeholder:text-muted"
+                  aria-label="Search"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery("");
+                      setShowResults(false);
+                      setSelectedIndex(-1);
+                    }}
+                    className="text-muted hover:text-foreground transition-colors"
+                    aria-label="Clear search"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              )}
-              {!searchQuery && (
-                <Kbd className="hidden lg:inline-flex text-xs">
-                  <Kbd.Abbr keyValue="command" />
-                  <Kbd.Content>K</Kbd.Content>
-                </Kbd>
-              )}
-            </div>
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                )}
+                {!searchQuery && (
+                  <Kbd className="hidden lg:inline-flex text-xs">
+                    <Kbd.Abbr keyValue="command" />
+                    <Kbd.Content>K</Kbd.Content>
+                  </Kbd>
+                )}
+              </div>
 
-            {/* Search Results Dropdown */}
-            {showResults && searchQuery.trim() && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-background border-2 border-separator rounded-lg shadow-2xl z-50 max-h-[400px] overflow-y-auto">
-                {searchResults.length === 0 ? (
-                  <div className="py-6 text-center">
-                    <SearchIcon className="w-8 h-8 text-muted mx-auto mb-2 opacity-50" />
-                    <p className="text-sm text-muted">
-                      {i18n.language === "zh"
-                        ? "未找到结果"
-                        : "No results found"}
-                    </p>
-                  </div>
-                ) : (
-                  <div ref={resultsRef}>
-                    {/* Group results by category */}
-                    {Object.entries(
-                      searchResults.reduce(
-                        (groups, result) => {
-                          const category = result.category;
-                          if (!groups[category]) {
-                            groups[category] = [];
-                          }
-                          groups[category].push(result);
-                          return groups;
-                        },
-                        {} as Record<string, SearchResult[]>,
-                      ),
-                    ).map(([category, items]) => (
-                      <div key={category}>
-                        <div className="px-3 py-2 text-xs font-semibold text-muted uppercase tracking-wider bg-default-100 border-b border-separator">
-                          {category}
-                        </div>
-                        {items.map((result) => {
-                          const globalIndex = searchResults.findIndex(
-                            (r) => r.id === result.id,
-                          );
-                          const isSelected = globalIndex === selectedIndex;
+              {/* Search Results Dropdown */}
+              {showResults && searchQuery.trim() && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-background border-2 border-separator rounded-lg shadow-2xl z-50 max-h-[400px] overflow-y-auto">
+                  {searchResults.length === 0 ? (
+                    <div className="py-6 text-center">
+                      <SearchIcon className="w-8 h-8 text-muted mx-auto mb-2 opacity-50" />
+                      <p className="text-sm text-muted">
+                        {i18n.language === "zh"
+                          ? "未找到结果"
+                          : "No results found"}
+                      </p>
+                    </div>
+                  ) : (
+                    <div ref={resultsRef}>
+                      {/* Group results by category */}
+                      {Object.entries(
+                        searchResults.reduce(
+                          (groups, result) => {
+                            const category = result.category;
+                            if (!groups[category]) {
+                              groups[category] = [];
+                            }
+                            groups[category].push(result);
+                            return groups;
+                          },
+                          {} as Record<string, SearchResult[]>,
+                        ),
+                      ).map(([category, items]) => (
+                        <div key={category}>
+                          <div className="px-3 py-2 text-xs font-semibold text-muted uppercase tracking-wider bg-default-100 border-b border-separator">
+                            {category}
+                          </div>
+                          {items.map((result) => {
+                            const globalIndex = searchResults.findIndex(
+                              (r) => r.id === result.id,
+                            );
+                            const isSelected = globalIndex === selectedIndex;
 
-                          return (
-                            <button
-                              key={result.id}
-                              className={`w-full px-3 py-2.5 flex items-start gap-3 transition-colors text-left border-b border-separator last:border-b-0 ${
-                                isSelected
-                                  ? "bg-primary/20"
-                                  : "hover:bg-default-50"
-                              }`}
-                              onClick={() => handleSelectResult(result)}
-                              onMouseEnter={() => setSelectedIndex(globalIndex)}
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium text-foreground text-sm truncate">
-                                    {highlightMatch(result.title, searchQuery)}
-                                  </span>
-                                  {/* Show language badge if matched in other language */}
-                                  {result.matchedLang &&
-                                    result.matchedLang !== "current" && (
-                                      <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-warning/20 text-warning border border-warning/30 flex-shrink-0">
-                                        {result.matchedLang === "en"
-                                          ? "EN"
-                                          : "中文"}
-                                      </span>
-                                    )}
-                                </div>
-                                {result.description && (
-                                  <p className="text-xs text-muted mt-0.5 line-clamp-1">
-                                    {highlightMatch(
-                                      result.description,
-                                      searchQuery,
-                                    )}
-                                  </p>
-                                )}
-                                {/* Show matched text from other language */}
-                                {result.matchedLang &&
-                                  result.matchedLang !== "current" &&
-                                  result.matchedText && (
-                                    <p className="text-xs mt-1 px-2 py-1 bg-warning/10 border border-warning/20 rounded">
-                                      <span className="text-warning font-medium mr-1">
-                                        {i18n.language === "zh"
-                                          ? "匹配:"
-                                          : "Match:"}
-                                      </span>
-                                      <mark className="bg-warning/30 text-warning-dark px-0.5 rounded">
-                                        {highlightMatch(
-                                          result.matchedText,
-                                          searchQuery,
-                                        )}
-                                      </mark>
+                            return (
+                              <button
+                                key={result.id}
+                                className={`w-full px-3 py-2.5 flex items-start gap-3 transition-colors text-left border-b border-separator last:border-b-0 ${
+                                  isSelected
+                                    ? "bg-primary/20"
+                                    : "hover:bg-default-50"
+                                }`}
+                                onClick={() => handleSelectResult(result)}
+                                onMouseEnter={() =>
+                                  setSelectedIndex(globalIndex)
+                                }
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-foreground text-sm truncate">
+                                      {highlightMatch(
+                                        result.title,
+                                        searchQuery,
+                                      )}
+                                    </span>
+                                    {/* Show language badge if matched in other language */}
+                                    {result.matchedLang &&
+                                      result.matchedLang !== "current" && (
+                                        <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-warning/20 text-warning border border-warning/30 flex-shrink-0">
+                                          {result.matchedLang === "en"
+                                            ? "EN"
+                                            : "中文"}
+                                        </span>
+                                      )}
+                                  </div>
+                                  {result.description && (
+                                    <p className="text-xs text-muted mt-0.5 line-clamp-1">
+                                      {highlightMatch(
+                                        result.description,
+                                        searchQuery,
+                                      )}
                                     </p>
                                   )}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                                  {/* Show matched text from other language */}
+                                  {result.matchedLang &&
+                                    result.matchedLang !== "current" &&
+                                    result.matchedText && (
+                                      <p className="text-xs mt-1 px-2 py-1 bg-warning/10 border border-warning/20 rounded">
+                                        <span className="text-warning font-medium mr-1">
+                                          {i18n.language === "zh"
+                                            ? "匹配:"
+                                            : "Match:"}
+                                        </span>
+                                        <mark className="bg-warning/30 text-warning-dark px-0.5 rounded">
+                                          {highlightMatch(
+                                            result.matchedText,
+                                            searchQuery,
+                                          )}
+                                        </mark>
+                                      </p>
+                                    )}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-                {/* Footer with keyboard shortcuts */}
-                <div className="border-t-2 border-separator px-3 py-2 flex items-center justify-between text-xs text-muted bg-default-50">
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1">
-                      <Kbd className="text-xs">↑</Kbd>
-                      <Kbd className="text-xs">↓</Kbd>
-                      <span>
-                        {i18n.language === "zh" ? "导航" : "Navigate"}
+                  {/* Footer with keyboard shortcuts */}
+                  <div className="border-t-2 border-separator px-3 py-2 flex items-center justify-between text-xs text-muted bg-default-50">
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center gap-1">
+                        <Kbd className="text-xs">↑</Kbd>
+                        <Kbd className="text-xs">↓</Kbd>
+                        <span>
+                          {i18n.language === "zh" ? "导航" : "Navigate"}
+                        </span>
                       </span>
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Kbd className="text-xs">↵</Kbd>
-                      <span>{i18n.language === "zh" ? "选择" : "Select"}</span>
+                      <span className="flex items-center gap-1">
+                        <Kbd className="text-xs">↵</Kbd>
+                        <span>
+                          {i18n.language === "zh" ? "选择" : "Select"}
+                        </span>
+                      </span>
+                    </div>
+                    <span>
+                      {searchResults.length}{" "}
+                      {i18n.language === "zh" ? "个结果" : "results"}
                     </span>
                   </div>
-                  <span>
-                    {searchResults.length}{" "}
-                    {i18n.language === "zh" ? "个结果" : "results"}
-                  </span>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Main Navigation */}
         <nav className="flex-1 overflow-y-auto px-4">
-          <div className="space-y-1">
+          <div className="space-y-1 py-1">
             {sidebarItems.map((item) => {
               const isActive = location.pathname === item.href;
               const Icon = item.icon;
@@ -984,15 +1030,15 @@ export const Sidebar = () => {
                   key={item.href}
                   to={item.href}
                   className={clsx(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-md"
+                      ? "bg-primary text-primary-foreground shadow-md dark:bg-[#1f1f1f] dark:text-foreground dark:shadow-[inset_0_2px_3px_rgba(0,0,0,0.3),0_1px_0_rgba(255,255,255,0.12)]"
                       : "text-foreground hover:bg-default-100 hover:translate-x-1",
                   )}
                 >
                   <Icon
                     className={clsx(
-                      "w-5 h-5 transition-transform",
+                      "w-5 h-5 transition-transform duration-200",
                       isActive ? "scale-110" : "group-hover:scale-110",
                     )}
                   />
@@ -1008,7 +1054,7 @@ export const Sidebar = () => {
           <div className="h-px bg-separator my-2" />
 
           {/* Bottom Navigation */}
-          <div className="space-y-1">
+          <div className="space-y-1 py-1">
             {bottomItems.map((item) => {
               const isActive = location.pathname === item.href;
               const Icon = item.icon;
@@ -1018,15 +1064,15 @@ export const Sidebar = () => {
                   key={item.href}
                   to={item.href}
                   className={clsx(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group",
+                    "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-md"
+                      ? "bg-primary text-primary-foreground shadow-md dark:bg-[#1f1f1f] dark:text-foreground dark:shadow-[inset_0_2px_3px_rgba(0,0,0,0.3),0_1px_0_rgba(255,255,255,0.12)]"
                       : "text-foreground hover:bg-default-100 hover:translate-x-1",
                   )}
                 >
                   <Icon
                     className={clsx(
-                      "w-5 h-5 transition-transform",
+                      "w-5 h-5 transition-transform duration-200",
                       isActive ? "scale-110" : "group-hover:scale-110",
                     )}
                   />

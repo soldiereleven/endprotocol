@@ -12,15 +12,17 @@ export const ThemeSwitch: FC<ThemeSwitchProps> = ({ className }) => {
 
   useEffect(() => {
     const root = document.documentElement;
-    const savedTheme = localStorage.getItem("theme") as
-      | "light"
-      | "dark"
-      | null;
+    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
     const initialTheme = savedTheme || "dark";
 
     setTheme(initialTheme);
     root.classList.toggle("dark", initialTheme === "dark");
     setIsMounted(true);
+
+    // 保存初始主题到 localStorage
+    if (!savedTheme) {
+      localStorage.setItem("theme", initialTheme);
+    }
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -29,6 +31,11 @@ export const ThemeSwitch: FC<ThemeSwitchProps> = ({ className }) => {
     setTheme(newTheme);
     localStorage.setItem("theme", newTheme);
     document.documentElement.classList.toggle("dark", newTheme === "dark");
+
+    // 触发自定义事件，通知其他组件主题已更改
+    window.dispatchEvent(
+      new CustomEvent("themeChange", { detail: { theme: newTheme } }),
+    );
   }, [theme]);
 
   if (!isMounted) return <div className="w-6 h-6" />;

@@ -1,9 +1,51 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@heroui/react";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listen, UnlistenFn } from "@tauri-apps/api/event";
 
 export const CustomTitlebar = () => {
   const [isMaximized, setIsMaximized] = useState(false);
+
+  // 检查窗口最大化状态
+  const checkMaximizedState = async () => {
+    try {
+      const window = getCurrentWindow();
+      const maximized = await window.isMaximized();
+      setIsMaximized(maximized);
+    } catch (error) {
+      console.error("Failed to check maximized state:", error);
+    }
+  };
+
+  // 组件挂载时检查一次状态，并设置监听器
+  useEffect(() => {
+    let unlistenResize: UnlistenFn | null = null;
+    let unlistenMove: UnlistenFn | null = null;
+
+    // 初始化状态
+    checkMaximizedState();
+
+    // 监听窗口大小变化事件（包括最大化/还原）
+    listen("tauri://resize", async () => {
+      await checkMaximizedState();
+    }).then((unlisten) => {
+      unlistenResize = unlisten;
+    });
+
+    // 监听窗口移动事件（某些情况下也会触发最大化）
+    listen("tauri://move", async () => {
+      await checkMaximizedState();
+    }).then((unlisten) => {
+      unlistenMove = unlisten;
+    });
+
+    // 清理监听器
+    return () => {
+      if (unlistenResize) unlistenResize();
+      if (unlistenMove) unlistenMove();
+    };
+  }, []);
 
   // 最小化窗口
   const handleMinimize = async () => {
@@ -19,8 +61,11 @@ export const CustomTitlebar = () => {
   const handleMaximize = async () => {
     try {
       await invoke("toggle_maximize_window");
-      setIsMaximized(!isMaximized);
-      console.log("Window maximized state:", !isMaximized);
+      // 等待一小段时间后重新检查状态，确保同步
+      setTimeout(() => {
+        checkMaximizedState();
+      }, 100);
+      console.log("Window toggle maximize called");
     } catch (error) {
       console.error("Failed to toggle maximize:", error);
     }
