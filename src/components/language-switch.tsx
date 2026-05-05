@@ -108,11 +108,6 @@ export const LanguageSwitch = () => {
           variant="tertiary"
           size="sm"
           className="min-w-[120px] h-9 px-3 gap-2"
-          style={{
-            backgroundColor: "rgb(40, 40, 40)",
-            color: "#fff",
-            border: "1px solid rgb(60, 60, 60)",
-          }}
           onPress={() => setIsOpen(!isOpen)}
         >
           {selectedLang.flag}
@@ -122,7 +117,6 @@ export const LanguageSwitch = () => {
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
-            style={{ color: "#fff" }}
           >
             <path
               strokeLinecap="round"
@@ -136,73 +130,35 @@ export const LanguageSwitch = () => {
 
       {isOpen && (
         <div
-          className={`absolute left-0 w-[220px] border rounded-lg shadow-xl z-50 ${
+          className={`absolute left-0 w-[220px] bg-background border border-separator rounded-lg shadow-xl z-50 ${
             dropdownPosition === "bottom" ? "top-full mt-2" : "bottom-full mb-2"
           }`}
-          style={{
-            backgroundColor: "rgb(20, 20, 20)",
-            borderColor: "rgb(50, 50, 50)",
-          }}
         >
-          <div
-            className="p-2 border-b"
-            style={{ borderColor: "rgb(50, 50, 50)" }}
-          >
+          <div className="p-2 border-b border-separator">
             <Input
               placeholder="Search language..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-8"
-              style={{
-                backgroundColor: "rgb(35, 35, 35)",
-                color: "#fff",
-                border: "1px solid rgb(60, 60, 60)",
-              }}
             />
           </div>
-          <div
-            className="max-h-[200px] overflow-y-auto py-1"
-            style={{ backgroundColor: "rgb(20, 20, 20)" }}
-          >
+          <div className="max-h-[200px] overflow-y-auto py-1">
             {filteredLanguages.map((lang) => (
               <button
                 key={lang.key}
-                className="w-full px-3 py-2 flex items-center gap-3 transition-colors"
-                style={{
-                  backgroundColor:
-                    i18n.language === lang.key
-                      ? "rgb(45, 45, 45)"
-                      : "transparent",
-                  color: "#fff",
-                  border: "none",
-                  cursor: "pointer",
-                }}
-                onMouseEnter={(e) => {
-                  if (i18n.language !== lang.key) {
-                    e.currentTarget.style.backgroundColor = "rgb(35, 35, 35)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (i18n.language !== lang.key) {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                  }
-                }}
+                className="w-full px-3 py-2 flex items-center gap-3 transition-colors hover:bg-default-100"
                 onClick={() => handleLanguageChange(lang.key)}
               >
                 <div className="flex-shrink-0">{lang.flag}</div>
                 <div className="flex flex-col flex-1 items-start">
-                  <span className="text-sm font-medium">{lang.label}</span>
-                  <span
-                    className="text-xs"
-                    style={{ color: "rgb(150, 150, 150)" }}
-                  >
+                  <span className="text-sm font-medium text-foreground">{lang.label}</span>
+                  <span className="text-xs text-muted">
                     {lang.code}
                   </span>
                 </div>
                 {i18n.language === lang.key && (
                   <svg
-                    className="w-4 h-4"
-                    style={{ color: "#4CAF50" }}
+                    className="w-4 h-4 text-success"
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >

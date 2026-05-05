@@ -923,9 +923,7 @@ export default function AccountPage() {
                             )}
                             {account.syncStatus === "FAILED" && (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-orange-600 dark:text-orange-400 tracking-wider">
-                                {i18n.language === "zh"
-                                  ? "同步失败"
-                                  : "SYNC FAILED"}
+                                SYNC FAILED
                               </span>
                             )}
                             {/* 只有在没有错误状态时才显示 ACTIVE */}
@@ -1080,6 +1078,20 @@ export default function AccountPage() {
                       {i18n.language === "zh"
                         ? "Hytoken过期，我们无法刷新令牌，请重新登录。"
                         : "Hytoken expired, we cannot refresh the token. Please log in again."}
+                    </p>
+                  </div>
+                </div>
+              ) : selectedAccount.syncStatus === "FAILED" ? (
+                <div className="text-center py-8 border-2 border-orange-500 rounded-lg bg-orange-50 dark:bg-orange-950/30">
+                  <p className="text-5xl font-black text-orange-600 dark:text-orange-400 tracking-wider mb-4">
+                    SYNC FAILED
+                  </p>
+                  <div className="text-left px-4 mt-2">
+                    <p className="text-xs italic text-muted">
+                      *{" "}
+                      {i18n.language === "zh"
+                        ? "我们未能同步角色信息，请检查网络连接后重试"
+                        : "We failed to sync role information, please check your network connection and try again"}
                     </p>
                   </div>
                 </div>
