@@ -1,0 +1,2902 @@
+{
+  "code": 0,
+  "message": "OK",
+  "timestamp": "1778329350",
+  "data": {
+    "detail": {
+      "base": {
+        "serverName": "",
+        "roleId": "1113780450",
+        "name": "Sciencekill",
+        "createTime": "1769091716",
+        "saveTime": "1778317644",
+        "lastLoginTime": "1778310145",
+        "exp": 343970,
+        "level": 60,
+        "worldLevel": 7,
+        "gender": 2,
+        "avatarUrl": "https://bbs.hycdn.cn/image/2026/04/14/54d0e7a29ee3afef7fffcd27e1be7bd2.png",
+        "mainMission": {
+          "id": "",
+          "description": "志同道合"
+        },
+        "charNum": 25,
+        "weaponNum": 48,
+        "docNum": 275
+      },
+      "chars": [
+        {
+          "charData": {
+            "id": "ee3bf7197a05580397b45ba2fb1de28e",
+            "name": "汤汤",
+            "avatarSqUrl": "https://bbs.hycdn.cn/image/2026/03/11/b3f147ff208fabfbfc775cbcef36bd16.png",
+            "avatarRtUrl": "https://bbs.hycdn.cn/image/2026/03/09/0922f52bc5d8938e8be0d5e8278509bb.png",
+            "rarity": {
+              "key": "rarity_6",
+              "value": "6"
+            },
+            "profession": {
+              "key": "profession_caster",
+              "value": "术师"
+            },
+            "property": {
+              "key": "char_property_cryst",
+              "value": "寒冷"
+            },
+            "weaponType": {
+              "key": "weapon_type_pistol",
+              "value": "手铳"
+            },
+            "skills": [
+              {
+                "id": "d4d592a186c2b114d53b5f1a15008381",
+                "name": "崩你脑壳！",
+                "type": {
+                  "key": "skill_type_normal_attack",
+                  "value": "普通攻击"
+                },
+                "property": {
+                  "key": "skill_property_cryst",
+                  "value": "寒冷"
+                },
+                "iconUrl": "https://bbs.hycdn.cn/image/2025/11/12/3fd23aa8ae8e94f1047c424df5e1055e.png",
+                "desc": "普通攻击：\n对敌人进行至多5段攻击，造成<@ba.cryst>寒冷伤害</>。作为主控干员时，<#ba.lastcombo>重击</>会造成<@ba.poise>{poise:0}</>点失衡。\n \n下落攻击：\n处于空中时使用普通攻击，会下落并攻击附近敌人，造成<@ba.cryst>寒冷伤害</>。\n \n处决攻击：\n附近有敌人处于失衡状态时使用普通攻击，将处决该敌人，造成大量<@ba.cryst>寒冷伤害</>并恢复一定技力。",
+                "descParams": {
+                  "atb": "18",
+                  "atk_scale": "1.13",
+                  "poise": "18"
+                },
+                "descLevelParams": {
+                  "1": {
+                    "level": "1",
+                    "params": {
+                      "atb": "18",
+                      "atk_scale": "1.13",
+                      "poise": "18"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "8b550363e3e6ce95f03b30a2e3526ffa",
+                "name": "踏潮卷浪！",
+                "type": {
+                  "key": "skill_type_normal_skill",
+                  "value": "战技"
+                },
+                "property": {
+                  "key": "skill_property_cryst",
+                  "value": "寒冷"
+                },
+                "iconUrl": "https://bbs.hycdn.cn/image/2026/03/10/e54649425b1e132789cc119d33a795c2.png",
+                "desc": "从水中跃出，对敌人抵近射击，造成<@ba.cryst>寒冷伤害</>，并掀起一个<@ba.key>水龙卷</>。\n同时消耗附近所有<@ba.key>涡流</>使其形成额外的<@ba.key>水龙卷</>，并根据形成数量<#ba.return>返还</>一定技力。\n<@ba.key>水龙卷</>：对范围内敌人施加1层<#ba.crystinflict>寒冷附着</>，并持续造成<@ba.cryst>寒冷伤害</>。若本次形成多个<@ba.key>水龙卷</>，将对敌人额外施加<#ba.spellvul>法术脆弱</>，但无法重复施加<#ba.crystinflict>寒冷附着</>。\n<@ba.info>水龙卷伤害视为战技伤害。</>",
+                "descParams": {
+                  "atb_return": "20",
+                  "atb_return_02": "40",
+                  "atk_scale_1": "0.36",
+                  "display_atk_scale1": "1.8",
+                  "display_atk_scale2": "3",
+                  "display_poise": "10",
+                  "duration_spellvulnerable": "15",
+                  "duration_tornado": "3",
+                  "poise1": "2",
+                  "poise_tornado": "0",
+                  "rate_spellvulnerable": "0.05",
+                  "rate_spellvulnerable_02": "0.1"
+                },
+                "descLevelParams": {
+                  "1": {
+                    "level": "1",
+                    "params": {
+                      "atb_return": "20",
+                      "atb_return_02": "40",
+                      "atk_scale_1": "0.36",
+                      "display_atk_scale1": "1.8",
+                      "display_atk_scale2": "3",
+                      "display_poise": "10",
+                      "duration_spellvulnerable": "15",
+                      "duration_tornado": "3",
+                      "poise1": "2",
+                      "poise_tornado": "0",
+                      "rate_spellvulnerable": "0.05",
+                      "rate_spellvulnerable_02": "0.1"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "3256e7bed3f397a894c0f44c524845c8",
+                "name": "河水，助我！",
+                "type": {
+                  "key": "skill_type_combo_skill",
+                  "value": "连携技"
+                },
+                "property": {
+                  "key": "skill_property_cryst",
+                  "value": "寒冷"
+                },
+                "iconUrl": "https://bbs.hycdn.cn/image/2026/03/10/4e06af8247fb86258f714ef65ba962da.png",
+                "desc": "当有敌人被施加<#ba.crystinflict>寒冷附着</>或受到<#ba.spellburst>法术爆发</>伤害时可以发动。\n释放一道强力的水流，贯穿前方敌人造成<@ba.cryst>寒冷伤害</>，并迸射出一处<@ba.key>涡流</>。\n<@ba.info>场上最多存在2处涡流。</>",
+                "descParams": {
+                  "atk_scale": "2.4",
+                  "duration_water": "30",
+                  "poise": "10",
+                  "usp": "10"
+                },
+                "descLevelParams": {
+                  "1": {
+                    "level": "1",
+                    "params": {
+                      "atk_scale": "2.4",
+                      "duration_water": "30",
+                      "poise": "10",
+                      "usp": "10"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "b2d6edc461b21c9383d9ca22e25891ff",
+                "name": "大当家盯着呢！",
+                "type": {
+                  "key": "skill_type_ultimate_skill",
+                  "value": "终结技"
+                },
+                "property": {
+                  "key": "skill_property_cryst",
+                  "value": "寒冷"
+                },
+                "iconUrl": "https://bbs.hycdn.cn/image/2026/03/10/0887537c12e1712095cbba9bb9bd067f.png",
+                "desc": "汤汤揭开眼罩，释放眼中的<@ba.key>古老图形</>封锁范围内的敌人，使其暂停行动一段时间，并造成持续的<@ba.cryst>寒冷伤害</>。\n<@ba.key>古老图形</>演化结束时降下巨浪，对范围内敌人造成大量<@ba.cryst>寒冷伤害</>。\n若主控干员在<@ba.key>古老图形</>中下落攻击，会提前结束演化降下巨浪，巨浪造成的<@ba.cryst>寒冷伤害</>提升。",
+                "descParams": {
+                  "atk_scale_1": "0.4",
+                  "atk_scale_2": "4",
+                  "atk_scale_3": "7",
+                  "display_atk_scale": "3.2",
+                  "display_duration": "4",
+                  "poise2": "15",
+                  "poise3": "20"
+                },
+                "descLevelParams": {
+                  "1": {
+                    "level": "1",
+                    "params": {
+                      "atk_scale_1": "0.4",
+                      "atk_scale_2": "4",
+                      "atk_scale_3": "7",
+                      "display_atk_scale": "3.2",
+                      "display_duration": "4",
+                      "poise2": "15",
+                      "poise3": "20"
+                    }
+                  }
+                }
+              }
+            ],
+            "illustrationUrl": "https://bbs.hycdn.cn/image/2026/03/09/e86ee666aa775f25d09be261edc5abe4.png",
+            "tags": [
+              "寒冷附着",
+              "法术脆弱"
+            ],
+            "abilityTalents": [
+              {
+                "id": "chr_0027_tangtang_7",
+                "name": "游刃",
+                "iconUrl": "https://bbs.hycdn.cn/image/2026/03/10/ba2bd0924e18d1ae48acf7a60d69e5ac.png",
+                "desc": "干员敏捷能力值提升20。",
+                "descParams": {},
+                "lockedIconUrl": ""
+              },
+              {
+                "id": "chr_0027_tangtang_3",
+                "name": "游刃",
+                "iconUrl": "https://bbs.hycdn.cn/image/2026/03/10/ba2bd0924e18d1ae48acf7a60d69e5ac.png",
+                "desc": "干员敏捷能力值提升15。",
+                "descParams": {},
+                "lockedIconUrl": ""
+              },
+              {
+                "id": "chr_0027_tangtang_1",
+                "name": "游刃",
+                "iconUrl": "https://bbs.hycdn.cn/image/2026/03/10/ba2bd0924e18d1ae48acf7a60d69e5ac.png",
+                "desc": "干员敏捷能力值提升10。",
+                "descParams": {},
+                "lockedIconUrl": ""
+              },
+              {
+                "id": "chr_0027_tangtang_5",
+                "name": "游刃",
+                "iconUrl": "https://bbs.hycdn.cn/image/2026/03/10/ba2bd0924e18d1ae48acf7a60d69e5ac.png",
+                "desc": "干员敏捷能力值提升15。",
+                "descParams": {},
+                "lockedIconUrl": ""
+              }
+            ],
+            "combatTalents": [
+              {
+                "id": "chr_0027_tangtang_passive_skill_0_2",
+                "name": "肝胆相照",
+                "iconUrl": "https://bbs.hycdn.cn/image/2026/03/10/46b8b50ed394f25da6a308916646fd94.png",
+                "desc": "<@ba.key>涡流</>附近<@ba.vup>{range_talent1buff:0}</>米范围内，友方干员获得<@ba.vup>{ratio_speed:0%}</><#ba.speedup>加速</>，敌人受到<@ba.vup>{1-ratio_speedreduction:0%}</><#ba.slow>缓速</>，离开范围后该效果持续{duration_talent1buff:0}秒。",
+                "descParams": {
+                  "duration_talent1buff": "3",
+                  "range_talent1buff": "5",
+                  "ratio_speed": "0.2",
+                  "ratio_speedreduction": "0.6",
+                  "talent1_speed": "1"
+                },
+                "lockedIconUrl": ""
+              },
+              {
+                "id": "chr_0027_tangtang_passive_skill_1_2",
+                "name": "呼风唤浪",
+                "iconUrl": "https://bbs.hycdn.cn/image/2026/03/10/06f624c277b8685dbfa3848bacd2eb86.png",
+                "desc": "主控干员在<@ba.key>古老图形</>中进行下落攻击，提前结束演化时，形成一个<@ba.key>水龙卷</>，并消耗附近所有<@ba.key>涡流</>使其形成额外的<@ba.key>水龙卷</>。\n此次形成的<@ba.key>水龙卷</>效果同战技<@ba.key>踏潮卷浪！</>，造成的伤害<@ba.vup>+{dmg_up_water_ult:0%}</>。",
+                "descParams": {
+                  "dmg_up_water_ult": "0.6",
+                  "talent2": "1"
+                },
+                "lockedIconUrl": ""
+              },
+              {
+                "id": "chr_0027_tangtang_passive_skill_0_1",
+                "name": "肝胆相照",
+                "iconUrl": "https://bbs.hycdn.cn/image/2026/03/10/46b8b50ed394f25da6a308916646fd94.png",
+                "desc": "<@ba.key>涡流</>附近<@ba.vup>{range_talent1buff:0}</>米范围内，友方干员获得<@ba.vup>{ratio_speed:0%}</><#ba.speedup>加速</>，敌人受到<@ba.vup>{1-ratio_speedreduction:0%}</><#ba.slow>缓速</>，离开范围后该效果持续{duration_talent1buff:0}秒。",
+                "descParams": {
+                  "duration_talent1buff": "3",
+                  "range_talent1buff": "5",
+                  "ratio_speed": "0.1",
+                  "ratio_speedreduction": "0.8",
+                  "talent1_speed": "1"
+                },
+                "lockedIconUrl": ""
+              },
+              {
+                "id": "chr_0027_tangtang_passive_skill_1_1",
+                "name": "呼风唤浪",
+                "iconUrl": "https://bbs.hycdn.cn/image/2026/03/10/06f624c277b8685dbfa3848bacd2eb86.png",
+                "desc": "主控干员在<@ba.key>古老图形</>中进行下落攻击，提前结束演化时，形成一个<@ba.key>水龙卷</>，并消耗附近所有<@ba.key>涡流</>使其形成额外的<@ba.key>水龙卷</>。\n此次形成的<@ba.key>水龙卷</>效果同战技<@ba.key>踏潮卷浪！</>，造成的伤害<@ba.vup>+{dmg_up_water_ult:0%}</>。",
+                "descParams": {
+                  "dmg_up_water_ult": "0.4",
+                  "talent2": "1"
+                },
+                "lockedIconUrl": ""
+              }
+            ],
+            "cultivationTalents": [
+              {
+                "id": "spaceship_skill_chr_0027_tangtang_2_1",
+                "name": "河流的女儿·β",
+                "iconUrl": "https://bbs.hycdn.cn/image/2026/03/10/55671808789f5e8e3e19c3ebbad24cdd.png",
+                "desc": "进驻培养舱时，晶植质料的培养速度提升20%",
+                "descParams": {},
+                "lockedIconUrl": "https://bbs.hycdn.cn/image/2026/03/10/c1c2247ac125f3276924b39f94dafc22.png"
+              },
+              {
+                "id": "spaceship_skill_chr_0027_tangtang_2_2",
+                "name": "河流的女儿·γ",
+                "iconUrl": "https://bbs.hycdn.cn/image/2026/03/10/55671808789f5e8e3e19c3ebbad24cdd.png",
+                "desc": "进驻培养舱时，晶植质料的培养速度提升30%",
+                "descParams": {},
+                "lockedIconUrl": "https://bbs.hycdn.cn/image/2026/03/10/c1c2247ac125f3276924b39f94dafc22.png"
+              },
+              {
+                "id": "spaceship_skill_chr_0027_tangtang_1_1",
+                "name": "大当家·β",
+                "iconUrl": "https://bbs.hycdn.cn/image/2026/03/10/8e04af16532121433de0f01ff5da6fe5.png",
+                "desc": "进驻培养舱时，舱室内干员心情消耗降低14%",
+                "descParams": {},
+                "lockedIconUrl": "https://bbs.hycdn.cn/image/2026/03/10/b4ffb4e7cb1fef659ae638055080d806.png"
+              },
+              {
+                "id": "spaceship_skill_chr_0027_tangtang_1_2",
+                "name": "大当家·γ",
+                "iconUrl": "https://bbs.hycdn.cn/image/2026/03/10/8e04af16532121433de0f01ff5da6fe5.png",
+                "desc": "进驻培养舱时，舱室内干员心情消耗降低18%",
+                "descParams": {},
+                "lockedIconUrl": "https://bbs.hycdn.cn/image/2026/03/10/b4ffb4e7cb1fef659ae638055080d806.png"
+              }
+            ]
+          },
+          "id": "ee3bf7197a05580397b45ba2fb1de28e",
+          "level": 90,
+          "userSkills": {
+            "3256e7bed3f397a894c0f44c524845c8": {
+              "skillId": "3256e7bed3f397a894c0f44c524845c8",
+              "level": 9,
+              "maxLevel": 12
+            },
+            "8b550363e3e6ce95f03b30a2e3526ffa": {
+              "skillId": "8b550363e3e6ce95f03b30a2e3526ffa",
+              "level": 12,
+              "maxLevel": 12
+            },
+            "b2d6edc461b21c9383d9ca22e25891ff": {
+              "skillId": "b2d6edc461b21c9383d9ca22e25891ff",
+              "level": 12,
+              "maxLevel": 12
+            },
+            "d4d592a186c2b114d53b5f1a15008381": {
+              "skillId": "d4d592a186c2b114d53b5f1a15008381",
+              "level": 9,
+              "maxLevel": 12
+            }
+          },
+          "bodyEquip": {
+            "equipId": "376381c49a9f68d868eddaae95cc564d",
+            "equipData": {
+              "id": "376381c49a9f68d868eddaae95cc564d",
+              "name": "碾骨重护甲·贰型",
+              "iconUrl": "https://bbs.hycdn.cn/image/2026/03/09/0e8c76586c74aead9bc368cf34e1fd96.png",
+              "rarity": {
+                "key": "equip_rarity_5",
+                "value": "金色品质"
+              },
+              "type": {
+                "key": "equip_type_body",
+                "value": "护甲"
+              },
+              "level": {
+                "key": "equip_level_70",
+                "value": "70"
+              },
+              "properties": [
+                "equip_attr_agi",
+                "equip_attr_str",
+                "equip_attr_cryst_and_pulse_damage_increase"
+              ],
+              "isAccessory": false,
+              "suit": {
+                "id": "83bebe5e37738300a7787a4fead16633",
+                "name": "碾骨",
+                "skillId": "passive_equipsuit_attrisuit_01",
+                "skillDesc": "3件套组效果：装备者攻击力<@ba.vup>+{atk_up:0%}</>。\n当装备者施放连携技时，获得一层<@ba.key>碾骨重压</>，下一次的战技伤害<@ba.vup>+{dmg_up:0%}</>，<@ba.key>碾骨重压</>最多可叠加{max_stack:0}层。",
+                "skillDescParams": {
+                  "atk_up": "0.15",
+                  "dmg_up": "0.3",
+                  "max_stack": "2"
+                }
+              },
+              "function": "本装备由终末地工业参考荒野手工艺品设计，使用集成工业系统制造，能够提高使用者的作战能力。\n",
+              "pkg": "设计灵感来自于碾骨氏族的装备。\n厚重护甲不单单具有防护能力，在荒地行人眼中，它也代表着一种冷酷残忍的行事风格。"
+            }
+          },
+          "armEquip": {
+            "equipId": "27a6cef2a710a0aa27427d1c731bfb98",
+            "equipData": {
+              "id": "27a6cef2a710a0aa27427d1c731bfb98",
+              "name": "碾骨腕带·壹型",
+              "iconUrl": "https://bbs.hycdn.cn/image/2026/03/09/038638ecf2ed1030c2809b460aee9511.png",
+              "rarity": {
+                "key": "equip_rarity_5",
+                "value": "金色品质"
+              },
+              "type": {
+                "key": "equip_type_hand",
+                "value": "护手"
+              },
+              "level": {
+                "key": "equip_level_70",
+                "value": "70"
+              },
+              "properties": [
+                "equip_attr_agi",
+                "equip_attr_str",
+                "equip_attr_cryst_and_pulse_damage_increase"
+              ],
+              "isAccessory": false,
+              "suit": {
+                "id": "83bebe5e37738300a7787a4fead16633",
+                "name": "碾骨",
+                "skillId": "passive_equipsuit_attrisuit_01",
+                "skillDesc": "3件套组效果：装备者攻击力<@ba.vup>+{atk_up:0%}</>。\n当装备者施放连携技时，获得一层<@ba.key>碾骨重压</>，下一次的战技伤害<@ba.vup>+{dmg_up:0%}</>，<@ba.key>碾骨重压</>最多可叠加{max_stack:0}层。",
+                "skillDescParams": {
+                  "atk_up": "0.15",
+                  "dmg_up": "0.3",
+                  "max_stack": "2"
+                }
+              },
+              "function": "本装备由终末地工业参考荒野手工艺品设计，使用集成工业系统制造，能够提高使用者的作战能力。",
+              "pkg": "设计灵感来自于碾骨氏族的装备。\n并非每一个走上荒野的人都会变成裂地者，但被荒野束缚住的人永远无法回头。"
+            }
+          },
+          "firstAccessory": {
+            "equipId": "aa7bee68526f4f5b1669ccac1c3c19dc",
+            "equipData": {
+              "id": "aa7bee68526f4f5b1669ccac1c3c19dc",
+              "name": "碾骨面具·贰型",
+              "iconUrl": "https://bbs.hycdn.cn/image/2026/03/09/a8866464f4b1e09079c5920a9bef0c7c.png",
+              "rarity": {
+                "key": "equip_rarity_5",
+                "value": "金色品质"
+              },
+              "type": {
+                "key": "equip_type_edc",
+                "value": "配件"
+              },
+              "level": {
+                "key": "equip_level_70",
+                "value": "70"
+              },
+              "properties": [
+                "equip_attr_agi",
+                "equip_attr_str",
+                "equip_attr_normal_skill_damage_increase"
+              ],
+              "isAccessory": false,
+              "suit": {
+                "id": "83bebe5e37738300a7787a4fead16633",
+                "name": "碾骨",
+                "skillId": "passive_equipsuit_attrisuit_01",
+                "skillDesc": "3件套组效果：装备者攻击力<@ba.vup>+{atk_up:0%}</>。\n当装备者施放连携技时，获得一层<@ba.key>碾骨重压</>，下一次的战技伤害<@ba.vup>+{dmg_up:0%}</>，<@ba.key>碾骨重压</>最多可叠加{max_stack:0}层。",
+                "skillDescParams": {
+                  "atk_up": "0.15",
+                  "dmg_up": "0.3",
+                  "max_stack": "2"
+                }
+              },
+              "function": "本装备由终末地工业参考荒野手工艺品设计，使用集成工业系统制造，能够提高使用者的作战能力。",
+              "pkg": "设计灵感来自于碾骨氏族的装备。\n代表着某种狂热的面具。单纯的信念无法让人在侵蚀环境中存活更久。无论是挂在腰间还是戴在脸上，都只不过是轻飘飘的木块罢了。"
+            }
+          },
+          "secondAccessory": {
+            "equipId": "8728d1d6a3205cabde33016e2960d4b5",
+            "equipData": {
+              "id": "8728d1d6a3205cabde33016e2960d4b5",
+              "name": "纾难印章",
+              "iconUrl": "https://bbs.hycdn.cn/image/2025/11/21/6769a25cc92cca5ef75797174b41a904.png",
+              "rarity": {
+                "key": "equip_rarity_5",
+                "value": "金色品质"
+              },
+              "type": {
+                "key": "equip_type_edc",
+                "value": "配件"
+              },
+              "level": {
+                "key": "equip_level_70",
+                "value": "70"
+              },
+              "properties": [
+                "equip_attr_wisd",
+                "equip_attr_ultimate_sp_gain_scalar",
+                ""
+              ],
+              "isAccessory": true,
+              "suit": null,
+              "function": "本装备由宏山选剑局设计，使用集成工业系统制造，能够提高使用者的作战能力。",
+              "pkg": "象征着艰辛前路的装备。“事未竟，路犹长。”"
+            }
+          },
+          "tacticalItem": {
+            "tacticalItemId": "a2dbb40f592266f50257165c6c352bc7",
+            "tacticalItemData": {
+              "id": "a2dbb40f592266f50257165c6c352bc7",
+              "name": "优质芽针针剂",
+              "iconUrl": "https://bbs.hycdn.cn/image/2026/03/09/1eead7d3cdc3b50815f7ee44b523c85e.png",
+              "rarity": {
+                "key": "equip_rarity_4",
+                "value": "紫色品质"
+              },
+              "activeEffectType": {
+                "key": "active_effect_type_heal",
+                "value": "恢复"
+              },
+              "activeEffect": "使用后，每秒回复<@ba.vup>{triggerheal:0}</>点生命值，持续<@ba.vup>{duration:0}</>秒。",
+              "passiveEffect": "装备后，当队伍中任意干员生命值低于<@ba.vup>{param1:0%}</>时自动对其使用，单场战斗中最多可用<@ba.vup>{count:0}</>次。\n - <@tips.purple>无限制支援主控干员</>\n - <@tips.orange>用尽后恢复次数</>",
+              "activeEffectParams": {
+                "duration": "6",
+                "maxcount": "5",
+                "triggerheal": "391",
+                "value": "0"
+              },
+              "passiveEffectParams": {
+                "count": "3",
+                "param1": "0.5",
+                "param2": "lt"
+              }
+            }
+          },
+          "evolvePhase": 4,
+          "potentialLevel": 0,
+          "weapon": {
+            "weaponData": {
+              "id": "8d4ce28361d86b4d85bd13258decc134",
+              "name": "望乡",
+              "iconUrl": "https://bbs.hycdn.cn/image/2026/03/09/c964ca7df527680772bd41fbe4c69a47.png",
+              "rarity": {
+                "key": "rarity_6",
+                "value": "6"
+              },
+              "type": {
+                "key": "weapon_type_pistol",
+                "value": "手铳"
+              },
+              "function": "终末地干员用武器，装备之后可以显著提升干员的作战能力。",
+              "description": "宏山选剑局研发的铳械。为贴合宏科院武装力量的基本方针，在设计时特别减轻了重量，优化了持握手感。",
+              "skills": [
+                {
+                  "key": "wpn_attr_agi_high",
+                  "value": "敏捷提升·大"
+                },
+                {
+                  "key": "wpn_sp_attr_crystdam_high",
+                  "value": "寒冷伤害提升·大"
+                },
+                {
+                  "key": "sk_wpn_pistol_0007",
+                  "value": "压制·旧时月"
+                }
+              ]
+            },
+            "level": 90,
+            "refineLevel": 0,
+            "breakthroughLevel": 4,
+            "gem": {
+              "id": "item_gem_rarity_5-2e03b6f455b52b4c659f500c9566c77b",
+              "icon": "",
+              "gemData": {
+                "termId": "2e03b6f455b52b4c659f500c9566c77b",
+                "name": "无瑕基质·压制",
+                "icon": "https://bbs.hycdn.cn/image/2026/03/10/edde1a7993bb37af6f3195bbf866bfa6.png",
+                "templateId": "item_gem_rarity_5"
+              }
+            },
+            "wikiItemId": "1174"
+          },
+          "gender": "CHAR_GENDER_FEMALE",
+          "ownTs": "1773308959",
+          "wikiItemId": "1130",
+          "talent": {
+            "latestBreakNode": "charBreak70",
+            "attrNodes": [
+              "chr_0027_tangtang_1",
+              "chr_0027_tangtang_3",
+              "chr_0027_tangtang_5",
+              "chr_0027_tangtang_7"
+            ],
+            "latestPassiveSkillNodes": [
+              "chr_0027_tangtang_passive_skill_0_2",
+              "chr_0027_tangtang_passive_skill_1_2"
+            ],
+            "latestFactorySkillNodes": [
+              "fac_chr_0027_tangtang_0_2",
+              "fac_chr_0027_tangtang_1_2"
+            ],
+            "latestSpaceshipSkillNodes": [
+              "spaceship_skill_chr_0027_tangtang_1_2",
+              "spaceship_skill_chr_0027_tangtang_2_2"
+            ]
+          }
+        }
+      ],
+      "achieve": {
+        "achieveMedals": [
+          {
+            "achievementData": {
+              "id": "ada43df861bef9688aa20480b9508567",
+              "name": "“不稳定表象”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/04/16/d5a2d16c0c90cf09e711177e425ecc9c.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1776437530"
+          },
+          {
+            "achievementData": {
+              "id": "f762e5b40cc92f09c384079a88c194bd",
+              "name": "“灼痛疤痕”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/10/aeda013dff29f27bfcce5d27b7378f69.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/03/10/b2650788268f70b28cacc2a971235ce3.png",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1774535232"
+          },
+          {
+            "achievementData": {
+              "id": "df764b1c4229e4ae745e57069bec735f",
+              "name": "“枯枝忿怒，复归凋零”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/10/8a99b02c1e475fec5e7f3f48ce15b824.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/03/10/90886e185fda1ae3e204b166ee2caf73.png",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1773500002"
+          },
+          {
+            "achievementData": {
+              "id": "84f96618e4e5d1cb6c52df0d69881033",
+              "name": "“征服者之死”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/04/16/d37661da061539b2e8d4c79616c2e1f4.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "章节奖章",
+              "canCertify": false,
+              "cate": "achv_type_quest",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1776510188"
+          },
+          {
+            "achievementData": {
+              "id": "e082dda418672351f130c5f7b5e314d0",
+              "name": "收获助力奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/9c0813b4e17f527f7735c5001beb9a17.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "社交奖章",
+              "canCertify": false,
+              "cate": "achv_type_social",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1772633878"
+          },
+          {
+            "achievementData": {
+              "id": "d066b16059f61b5fad1d0c73caa0ae7c",
+              "name": "“燃尽记忆之灰”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/341d6ffc10b0c746687c4f4f21c789be.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "章节奖章",
+              "canCertify": false,
+              "cate": "achv_type_quest",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1769341425"
+          },
+          {
+            "achievementData": {
+              "id": "fc1e1d415a294c3c9c54725a2e121bd2",
+              "name": "谷地调查者奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/f76de142df1048e9b993863241c93757.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/cfc138a15bafeb71f6789f1da7042b66.png",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "地区奖章",
+              "canCertify": false,
+              "cate": "achv_type_adventure",
+              "initLevel": 2
+            },
+            "level": 2,
+            "isPlated": false,
+            "obtainTs": "1771594858"
+          },
+          {
+            "achievementData": {
+              "id": "400d7809fe76eb76b3f8b89b1dd542f6",
+              "name": "“星体的残肢”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/6d8eea287019c228613acb3a394907b6.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/03/30/556b40eeb83eb4df84aa8396f320081f.png",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1770973201"
+          },
+          {
+            "achievementData": {
+              "id": "31e2d303787301be5ae9679ac46f8351",
+              "name": "“碎片的重聚”·Ⅰ",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/96f9a57ad6f403fb0496276396a14344.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/04/16/5823cccb7d2f002b989bd69d56044abf.png",
+              "cateName": "地区奖章",
+              "canCertify": false,
+              "cate": "achv_type_adventure",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1771681694"
+          },
+          {
+            "achievementData": {
+              "id": "7a2dbbe68f38266ed45ffb8226ad7b9f",
+              "name": "模拟空间奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/10/93d3e9799a45229488160e3642a77f58.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/10/7a882090e3f15e41aadf9b8f9fa6ab92.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/10/c646588f80bb10fb36333822a546e185.png",
+              "platedIcon": "",
+              "cateName": "建设奖章",
+              "canCertify": false,
+              "cate": "achv_type_factory",
+              "initLevel": 1
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1774153146"
+          },
+          {
+            "achievementData": {
+              "id": "0549d8a146533238dc20602bdf6d7869",
+              "name": "“死域游身”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/10/ed995b28f962337a24e8c2f708cfeec1.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "奇想奖章",
+              "canCertify": false,
+              "cate": "achv_type_hide",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1773499404"
+          },
+          {
+            "achievementData": {
+              "id": "57ac67b28db8a4ba49276f214eb68f76",
+              "name": "“爱，呐喊和原型机”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/59c5f82c3778205e1b2efba693277fcc.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "章节奖章",
+              "canCertify": false,
+              "cate": "achv_type_quest",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1769938769"
+          },
+          {
+            "achievementData": {
+              "id": "af296578d85f9a96c8e724688ba7dc75",
+              "name": "武陵调度专家奖章·Ⅲ",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/04/16/8ace375ced29beb669cf12c487e88fd2.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "建设奖章",
+              "canCertify": false,
+              "cate": "achv_type_factory",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1776399768"
+          },
+          {
+            "achievementData": {
+              "id": "8a5476eed6f6311b1764135ebe42c7d6",
+              "name": "全面抹消奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/3e13ccb54fda50bc25ee24f6e3cbb1f2.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1769943042"
+          },
+          {
+            "achievementData": {
+              "id": "e707c26a2edf241afaa781bf2a84be01",
+              "name": "“轻舟已过”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/04/16/b33d2d8de57cd37d1c66fdc63e2eaf73.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "章节奖章",
+              "canCertify": false,
+              "cate": "achv_type_quest",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1776521456"
+          },
+          {
+            "achievementData": {
+              "id": "55a1218640bccc15e5c7de339ae4486f",
+              "name": "“无机造物”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/37e97af6c78f1c473fdc4242037a5f6c.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/03/30/0bf5fdd84ee0df2292fddffcbb766c73.png",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1771736117"
+          },
+          {
+            "achievementData": {
+              "id": "99b08fcb7565c3d0fc306780980ff5e4",
+              "name": "谷地据点开拓奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/c89c214047769ffcef2c8c4fc7015238.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/03/30/cec8de418396d2086dad7b46ed7eae40.png",
+              "cateName": "建设奖章",
+              "canCertify": false,
+              "cate": "achv_type_factory",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1769855532"
+          },
+          {
+            "achievementData": {
+              "id": "aaf8cf8d3aedf75b89f5d9e32abe5df6",
+              "name": "“掌中大救星”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/04/16/5d6c9d7f056ce5352cc052d41b7012c1.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/04/16/30150265c93886fde16e0198bd7a85de.png",
+              "cateName": "活动奖章",
+              "canCertify": false,
+              "cate": "achv_type_event",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1778076765"
+          },
+          {
+            "achievementData": {
+              "id": "80bd25a68372a11df7e24caf863d4588",
+              "name": "“回归的噩兆”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/ecc6df93a2d35fd3dcbcf04d78bb67e8.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "章节奖章",
+              "canCertify": false,
+              "cate": "achv_type_quest",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1769611399"
+          },
+          {
+            "achievementData": {
+              "id": "c33ca2ac8a70e9cc75a0f015856f2080",
+              "name": "谷地工业先驱奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/bc16132cb48ee809fe6dd2be78f9b381.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "建设奖章",
+              "canCertify": false,
+              "cate": "achv_type_factory",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1769905670"
+          },
+          {
+            "achievementData": {
+              "id": "1cde4c80922ace97fbaea2111bbbd59c",
+              "name": "完美装备奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/6b81e80326b969374f0ae19ffe103ddc.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "锤炼奖章",
+              "canCertify": false,
+              "cate": "achv_type_growth",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1770773659"
+          },
+          {
+            "achievementData": {
+              "id": "0c280654cfdc215d441c699c2bd3bd52",
+              "name": "千锤百炼奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/69028fd0aea55dde90b068c9f0b59081.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/f51e4863142cfc4a417d83d665502011.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/23f6f3a4dc2fb31760b885af0637ab81.png",
+              "platedIcon": "",
+              "cateName": "锤炼奖章",
+              "canCertify": false,
+              "cate": "achv_type_growth",
+              "initLevel": 1
+            },
+            "level": 3,
+            "isPlated": false,
+            "obtainTs": "1775054693"
+          },
+          {
+            "achievementData": {
+              "id": "670254ccabeabb5ae5b719e9523e3d8f",
+              "name": "情报交流奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/24ed1f425d6a6699e1afa1f6e025138c.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "社交奖章",
+              "canCertify": false,
+              "cate": "achv_type_social",
+              "initLevel": 1
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1770975421"
+          },
+          {
+            "achievementData": {
+              "id": "51f7d83d0684f2a3301b49bb00ee0cf9",
+              "name": "“溺水”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/10/7d222aa8d52b9d1a5ee2aac2eba5d306.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "章节奖章",
+              "canCertify": false,
+              "cate": "achv_type_quest",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1773415256"
+          },
+          {
+            "achievementData": {
+              "id": "7ccafe729b186cef06ac7e164ea75c4d",
+              "name": "“碾碎拳骨”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/2decdd37cee4c98ec6156073f2df96f9.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/03/30/3d77d3d26f65b564d4bad516517c8ed5.png",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1770643674"
+          },
+          {
+            "achievementData": {
+              "id": "e9cad451a665c88f784e0517809313a8",
+              "name": "“碾碎星辰的残片”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/185e43919376b02304974e7c5af5aed4.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "章节奖章",
+              "canCertify": false,
+              "cate": "achv_type_quest",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1769334690"
+          },
+          {
+            "achievementData": {
+              "id": "ccbc9663d929c1bf1057b125bf5acbbe",
+              "name": "熟练截击奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/4f6ac35d88aec155eb85e9c9c25be7a6.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/bfb60493d79a07cd9f62210261dbe8b6.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/afcb15a363e39a956365a385b025dcbd.png",
+              "platedIcon": "",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 1
+            },
+            "level": 3,
+            "isPlated": false,
+            "obtainTs": "1770773450"
+          },
+          {
+            "achievementData": {
+              "id": "a1ecde736011325030adbb9188fc1b81",
+              "name": "干员联络奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/7eecb38480e2a9b8cd75feb83b7cc874.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/3bfa73cf81209985c182034b518ca646.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/a75665e676826d8a1d7f3fbb6471bdde.png",
+              "platedIcon": "",
+              "cateName": "锤炼奖章",
+              "canCertify": true,
+              "cate": "achv_type_growth",
+              "initLevel": 1
+            },
+            "level": 3,
+            "isPlated": false,
+            "obtainTs": "1770456344"
+          },
+          {
+            "achievementData": {
+              "id": "f989ebd9dfb6acc081ce735aa709a8c7",
+              "name": "“四皇会战”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/6094f9a813c59e5ce733527e18df8557.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "奇想奖章",
+              "canCertify": false,
+              "cate": "achv_type_hide",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1769304360"
+          },
+          {
+            "achievementData": {
+              "id": "171e438b7e34cb87d74551f92c75f6e9",
+              "name": "环境监测奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/fabddd5c87084de26bc2c25dbcf79311.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/03/30/2844b9951e192a5db77f7baf83cd4027.png",
+              "cateName": "建设奖章",
+              "canCertify": false,
+              "cate": "achv_type_factory",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1770803158"
+          },
+          {
+            "achievementData": {
+              "id": "4374821b1b000fa9421448e63e3caaa6",
+              "name": "“离群之狼”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/1c39ef4ecfaa038f0e4fd37e63366ee0.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "章节奖章",
+              "canCertify": false,
+              "cate": "achv_type_quest",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1769858345"
+          },
+          {
+            "achievementData": {
+              "id": "e98a7dba3a5ce93875b4e4cb25c9cd1c",
+              "name": "材料收集奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/e10af59169cfb955515fcb04b14e0a03.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1770985631"
+          },
+          {
+            "achievementData": {
+              "id": "bd3fac1e0f3350ca6e6cca89ab2f87e7",
+              "name": "“碎片的再会”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/412cfd6a194ad91a5d98e4259e16eec1.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/45d63de7bbd2a8863429e9ce89cdfda7.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/65250417b1b903c1749f3f9d3df25f95.png",
+              "platedIcon": "",
+              "cateName": "地区奖章",
+              "canCertify": false,
+              "cate": "achv_type_adventure",
+              "initLevel": 1
+            },
+            "level": 3,
+            "isPlated": false,
+            "obtainTs": "1771586423"
+          },
+          {
+            "achievementData": {
+              "id": "347bfe3aa6f149692cdcf6a552231fa7",
+              "name": "“水自天流”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/10/5f9a748ab4b4cf69b83800e81b76362a.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "奇想奖章",
+              "canCertify": false,
+              "cate": "achv_type_hide",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1773493940"
+          },
+          {
+            "achievementData": {
+              "id": "b38784d1fd39988767ffecd8a87abe25",
+              "name": "“平步险窟”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/10/b359b7e7b8d39961b260d94a23fe2051.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/03/10/39fd495ea97ff4ab7ae1fbc7c99a7571.png",
+              "cateName": "活动奖章",
+              "canCertify": false,
+              "cate": "achv_type_event",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1774760533"
+          },
+          {
+            "achievementData": {
+              "id": "94b108beb4429921b1de622b9693cce4",
+              "name": "携手对敌奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/33a93e957ae6cf79f5c9617860d84e4d.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/2b0d1c595b5cedb7d519bf457a7e22db.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/378d3adf32f35fb6ccb7388875996970.png",
+              "platedIcon": "",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 1
+            },
+            "level": 3,
+            "isPlated": false,
+            "obtainTs": "1770297803"
+          },
+          {
+            "achievementData": {
+              "id": "f2fd4f57f4feb47efb260739d0b58e0a",
+              "name": "“我最后侍奉的王”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/04/16/7a1ed3a7ea8734e04a59014789d27df8.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "章节奖章",
+              "canCertify": false,
+              "cate": "achv_type_quest",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1776438715"
+          },
+          {
+            "achievementData": {
+              "id": "fd9ce36165286f4b0e527da012d5268b",
+              "name": "锚定武陵奖章·Ⅰ",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/2d8e927c94436a5d2cfe60a3caa34e1b.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "地区奖章",
+              "canCertify": false,
+              "cate": "achv_type_adventure",
+              "initLevel": 1
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1770129649"
+          },
+          {
+            "achievementData": {
+              "id": "a0917421d5d9e2a174ac47d10ebc7be0",
+              "name": "“苏醒”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/4364e666e162e5d56d02b8bb0037c203.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "章节奖章",
+              "canCertify": false,
+              "cate": "achv_type_quest",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1769093391"
+          },
+          {
+            "achievementData": {
+              "id": "4bd752d293546201d7ea1ca3a03a6e7c",
+              "name": "“红骑士”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/27/894223e8b0832fcfc64966c4d9271aae.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "章节奖章",
+              "canCertify": false,
+              "cate": "achv_type_quest",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1774763538"
+          },
+          {
+            "achievementData": {
+              "id": "bef48ad5538c32f45299ad5f5001b33d",
+              "name": "“禁止绑票！”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/10/9aab93d1b2b3cc0f3dc0b24617b93906.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1773484751"
+          },
+          {
+            "achievementData": {
+              "id": "0e9708bceb7bc9f1032058c0b6924e64",
+              "name": "高阶培养奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/ebdaa78b7a58118d1a58e3545bec4042.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1770986158"
+          },
+          {
+            "achievementData": {
+              "id": "28ca5ff385cf13c4e4a75782d9372a9d",
+              "name": "“易守‘难’攻？”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/9aba633857478ea3c6d81e7c2c85c373.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "章节奖章",
+              "canCertify": false,
+              "cate": "achv_type_quest",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1769301399"
+          },
+          {
+            "achievementData": {
+              "id": "3d6eb74f55bbc85565057c47352a73a3",
+              "name": "总控升级奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/b9597e7c8379b6dbdb92a97d2e478dfa.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "建设奖章",
+              "canCertify": false,
+              "cate": "achv_type_factory",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1770118935"
+          },
+          {
+            "achievementData": {
+              "id": "767a77b9e902f95cac6eaeed8bd0dc91",
+              "name": "“轨道激流”\n",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/04/16/96058218b2cc8f842dde401ca7bf3c9b.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "地区奖章",
+              "canCertify": false,
+              "cate": "achv_type_adventure",
+              "initLevel": 1
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1776555177"
+          },
+          {
+            "achievementData": {
+              "id": "c881e323ebe36f7b8b82d6e1899d47cc",
+              "name": "“比肩传送”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/5d4f52691f8a4e4fc38e6c45c5fa1fd5.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "地区奖章",
+              "canCertify": false,
+              "cate": "achv_type_adventure",
+              "initLevel": 1
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1771594394"
+          },
+          {
+            "achievementData": {
+              "id": "435456458ddb2f7201dccdd3c2597411",
+              "name": "谷地调度专家奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/553c00c0ab33bdddaecd649ad36d8891.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/4380a6ba7e12d51df6f9f60505ba2c5c.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/a3c86236b58ef14625aca727ca0d9793.png",
+              "platedIcon": "",
+              "cateName": "建设奖章",
+              "canCertify": false,
+              "cate": "achv_type_factory",
+              "initLevel": 1
+            },
+            "level": 3,
+            "isPlated": false,
+            "obtainTs": "1771309166"
+          },
+          {
+            "achievementData": {
+              "id": "ecaf1fcf3d256ebeae2b88fb42844b77",
+              "name": "“正在抓捕验收人员”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/63a569e81fe1f3262e964498d0227cff.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "奇想奖章",
+              "canCertify": false,
+              "cate": "achv_type_hide",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1769334998"
+          },
+          {
+            "achievementData": {
+              "id": "81bd0021f3ef3d052d52bfc7f636b83d",
+              "name": "武陵据点开拓奖章·Ⅰ",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/04/16/ed7854b8c4a1835fd4d7f9f157901bc5.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/04/16/32abc593083f4827b5e45280510c36fd.png",
+              "cateName": "建设奖章",
+              "canCertify": false,
+              "cate": "achv_type_factory",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1776439164"
+          },
+          {
+            "achievementData": {
+              "id": "509074091c144eb02e319fdb07b6a6e5",
+              "name": "依依难舍奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/fd87a082712b33316b5df39eb8c7dd09.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/54fa8b9010dcb890ecaeeddd53430bce.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/7b78420f8ab1207e6b5aa58067342ff7.png",
+              "platedIcon": "",
+              "cateName": "社交奖章",
+              "canCertify": false,
+              "cate": "achv_type_social",
+              "initLevel": 1
+            },
+            "level": 3,
+            "isPlated": false,
+            "obtainTs": "1769937337"
+          },
+          {
+            "achievementData": {
+              "id": "43734f7c89116f1bdcb5f8c0a27c4b0f",
+              "name": "武陵工业先驱奖章·Ⅱ",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/10/ea2d0668b2e9dd813f52542174fb7739.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "建设奖章",
+              "canCertify": false,
+              "cate": "achv_type_factory",
+              "initLevel": 1
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1773494315"
+          },
+          {
+            "achievementData": {
+              "id": "9138d8701793611f48a6459b6f1d770c",
+              "name": "武陵调度专家奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/a2258f399effe9cc7a9fbc8f4b5e11bc.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "建设奖章",
+              "canCertify": false,
+              "cate": "achv_type_factory",
+              "initLevel": 1
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1770296745"
+          },
+          {
+            "achievementData": {
+              "id": "423b750de5628f113a42adf49bb0cdc9",
+              "name": "“熵减”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/10/8e79a5e3ed5e22900843b4487f037945.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 1
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1774099107"
+          },
+          {
+            "achievementData": {
+              "id": "d901a4e4672a9f186c6563e5c4b4e958",
+              "name": "助人为乐奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/1cfc7f858cf0b0ec8efdf722d6e7a386.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/94b1fdcaa73eae250794d7f6aa2deba5.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/b9562bd8bd358475718e0b8a7d978acb.png",
+              "platedIcon": "",
+              "cateName": "章节奖章",
+              "canCertify": false,
+              "cate": "achv_type_quest",
+              "initLevel": 1
+            },
+            "level": 3,
+            "isPlated": false,
+            "obtainTs": "1771382140"
+          },
+          {
+            "achievementData": {
+              "id": "4a4e69e688d69c6c6fbb3bca6919354d",
+              "name": "谷地储藏家奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/97f4a913977845e613cf4643dac7dd3f.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/3bd6d712d83fa8b5212f3cd7dd6e07ba.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/8ca7fe680167157e2f013cc5fb7d74a1.png",
+              "platedIcon": "",
+              "cateName": "地区奖章",
+              "canCertify": false,
+              "cate": "achv_type_adventure",
+              "initLevel": 1
+            },
+            "level": 3,
+            "isPlated": false,
+            "obtainTs": "1771587588"
+          },
+          {
+            "achievementData": {
+              "id": "f1fb0f4ff1540d7887d0bfed621da882",
+              "name": "智能歼灭奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/bd9a8838572c5a1f4dae6362772560f3.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/c27ccacb6f3053bf026497446e777df6.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/24cb48b4a2fa9111d4fdcf1fb13609ed.png",
+              "platedIcon": "",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 1
+            },
+            "level": 3,
+            "isPlated": false,
+            "obtainTs": "1770131673"
+          },
+          {
+            "achievementData": {
+              "id": "f8a8d7f401de0714d8754dab42b9756d",
+              "name": "稳定出售奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/c41912ce2a21f63a775eda996dbbac39.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/03/30/6d470c2a3edee5fc35eeacbfa1a79764.png",
+              "cateName": "建设奖章",
+              "canCertify": false,
+              "cate": "achv_type_factory",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1770208186"
+          },
+          {
+            "achievementData": {
+              "id": "99bd09c23f17f71f3ff9f3074484cd4d",
+              "name": "武陵调度专家奖章·Ⅱ",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/10/43c8b048b566f8fa016854017742a41f.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "建设奖章",
+              "canCertify": false,
+              "cate": "achv_type_factory",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1773290396"
+          },
+          {
+            "achievementData": {
+              "id": "952bc3493723a0e68ab164f9d6574383",
+              "name": "锚定谷地奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/0d62f21e166cabbfa228eac9da4db95c.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/89e2f628db80627040c8335c0677aa5f.png",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "地区奖章",
+              "canCertify": false,
+              "cate": "achv_type_adventure",
+              "initLevel": 1
+            },
+            "level": 2,
+            "isPlated": false,
+            "obtainTs": "1769698212"
+          },
+          {
+            "achievementData": {
+              "id": "184e825ddc1ae868eab43d4a7411349a",
+              "name": "深情厚谊奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/8a2e19737b0fddcd0762e1bb209e9c85.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/629ad685e3d2a82520939571170d5caa.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/a66ebf4db81da501202fd24fdf2471b1.png",
+              "platedIcon": "",
+              "cateName": "建设奖章",
+              "canCertify": true,
+              "cate": "achv_type_factory",
+              "initLevel": 1
+            },
+            "level": 3,
+            "isPlated": false,
+            "obtainTs": "1772634845"
+          },
+          {
+            "achievementData": {
+              "id": "07fcc5d7fd45b2183f6f5528b45ad759",
+              "name": "淤积清理奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/30688e55bed508c4a434962861752342.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1770986812"
+          },
+          {
+            "achievementData": {
+              "id": "c9dd81b6453c234a3a1556a4e50e1a85",
+              "name": "“羽兽三抄水”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/7a872ca0ae888dcf1d59a0ab5bfa92dd.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "地区奖章",
+              "canCertify": false,
+              "cate": "achv_type_adventure",
+              "initLevel": 1
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1771667513"
+          },
+          {
+            "achievementData": {
+              "id": "c6049d54f75afc08a107cfcd931e36cc",
+              "name": "技艺流转奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/b6d05b759232d93d586fbabc856f4125.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/996de9cd70f8cf054f91fbbe4714cd3f.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/5023f60a2e119883203723065c2b43fb.png",
+              "platedIcon": "",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 1
+            },
+            "level": 3,
+            "isPlated": false,
+            "obtainTs": "1769701631"
+          },
+          {
+            "achievementData": {
+              "id": "c8b082531ed401e2fa2747342d624160",
+              "name": "“全位显现”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/04/16/5bdd109f03e7c18bcca59c8c8211bb6d.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "奇想奖章",
+              "canCertify": false,
+              "cate": "achv_type_hide",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1776510017"
+          },
+          {
+            "achievementData": {
+              "id": "7a7049ad6b48e22b08d786980fb94f8a",
+              "name": "潜能解放奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/dcced5f3cb9850820f95a8d363e8437a.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/56e03affc5ed54f5e39ebb3c4e6f8854.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/d282231f450951cca4ec21b2c1409159.png",
+              "platedIcon": "",
+              "cateName": "锤炼奖章",
+              "canCertify": true,
+              "cate": "achv_type_growth",
+              "initLevel": 1
+            },
+            "level": 2,
+            "isPlated": false,
+            "obtainTs": "1771905675"
+          },
+          {
+            "achievementData": {
+              "id": "01c2266e1019d947766153b8716bc983",
+              "name": "深度探索奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/f5a06a78063923f81fdc7afce9ef6e49.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/47a6c69aaee87b642a547c0e3f438db5.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/194b90d372985d62e3b116b0f18ba50f.png",
+              "platedIcon": "",
+              "cateName": "锤炼奖章",
+              "canCertify": false,
+              "cate": "achv_type_growth",
+              "initLevel": 1
+            },
+            "level": 3,
+            "isPlated": false,
+            "obtainTs": "1770023740"
+          },
+          {
+            "achievementData": {
+              "id": "ff259f23c98ba3a044989b47707fb8b2",
+              "name": "武库完备奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/49425f8ab13331a256f2d5050b5a972f.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/18253bb53e6b035a0f603f79dd57d85e.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/8bdd8c4c46854ac8c0fb67512a5428d3.png",
+              "platedIcon": "",
+              "cateName": "锤炼奖章",
+              "canCertify": true,
+              "cate": "achv_type_growth",
+              "initLevel": 1
+            },
+            "level": 3,
+            "isPlated": false,
+            "obtainTs": "1770456949"
+          },
+          {
+            "achievementData": {
+              "id": "da290b0c688ccb0d2e932ad41565d2f5",
+              "name": "“征服者的遗恨”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/04/16/8809f09622813c73495c057399e11dd2.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/04/16/a6bed0dde5c99ea2742a1af49f6d00fb.png",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1776567657"
+          },
+          {
+            "achievementData": {
+              "id": "69a229dc121aee5a0e34d9b24ff37ae2",
+              "name": "“关闭裂隙”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/c09f30edf8cb1500e123e8d9e3149df1.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "章节奖章",
+              "canCertify": false,
+              "cate": "achv_type_quest",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1769526327"
+          },
+          {
+            "achievementData": {
+              "id": "2f00aba4530c02872c46707d4e36894b",
+              "name": "干员教学奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/ab1f6125960eb87149c8a577f5eb8054.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 1
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1771395207"
+          },
+          {
+            "achievementData": {
+              "id": "bbdb145b21326041a8874e6041bf964e",
+              "name": "“重拳落空”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/1e2f7d6d4964508cb39f84f689ee52f5.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "章节奖章",
+              "canCertify": false,
+              "cate": "achv_type_quest",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1769182581"
+          },
+          {
+            "achievementData": {
+              "id": "54f908ab7f537973b13afa6ae44fc745",
+              "name": "“浊流具现”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/04/16/a1c84ab51ba7ad5da089e820d492345b.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/04/16/9b3897016d1b775c8f630f28a4aa9935.png",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1778252734"
+          },
+          {
+            "achievementData": {
+              "id": "57d79a9e4da416fa037a8cf008dcba82",
+              "name": "“涤荡浊流”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/10/d1847d71fc82c9df63096aa473f2979a.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "地区奖章",
+              "canCertify": false,
+              "cate": "achv_type_adventure",
+              "initLevel": 1
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1773491872"
+          },
+          {
+            "achievementData": {
+              "id": "cab4b56414914d574f886a345ae58370",
+              "name": "“人造南墙”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/81d94669d4e3d222aaa41b7ed480b962.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "奇想奖章",
+              "canCertify": false,
+              "cate": "achv_type_hide",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1771740348"
+          },
+          {
+            "achievementData": {
+              "id": "6b615d3536f3c9dd346e97f3cad0140a",
+              "name": "终极武器奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/8f3222924acf0075d6bf7f3e2b5b03de.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/03/30/694ad52ecea17e60a3bf72072526a07b.png",
+              "cateName": "锤炼奖章",
+              "canCertify": false,
+              "cate": "achv_type_growth",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1770375000"
+          },
+          {
+            "achievementData": {
+              "id": "ea58c2c0372920f5e26bca4de09e4583",
+              "name": "武陵工业先驱奖章·Ⅰ",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/5c5680641bc76afd195897cb8c107df4.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "建设奖章",
+              "canCertify": false,
+              "cate": "achv_type_factory",
+              "initLevel": 1
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1770130855"
+          },
+          {
+            "achievementData": {
+              "id": "df7e21385a1cc78ae80539fada06bcba",
+              "name": "“协议ε·20.00m”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/38e8c0cf0e278cbeb888082ed2d921e2.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "奇想奖章",
+              "canCertify": false,
+              "cate": "achv_type_hide",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1771740591"
+          },
+          {
+            "achievementData": {
+              "id": "5215f2ff6876cfc78e427b18a160acec",
+              "name": "“于谷地的密境中”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/41144a1ab91728fd21c16cf1104a8d0e.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/03/30/4745109d8f7ed3aa9582ab1de8a75982.png",
+              "cateName": "活动奖章",
+              "canCertify": false,
+              "cate": "achv_type_event",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1772073976"
+          },
+          {
+            "achievementData": {
+              "id": "4ca6ffb232173eca901ba265d85367fd",
+              "name": "劲力展露奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/b6548b620d8a84086dc578a4ab71da01.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/edaf4b65c579f37e2b87e2e4ddaebefd.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/09c2523d7b5358f8c6fb79cd5bc4fbd5.png",
+              "platedIcon": "",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 1
+            },
+            "level": 3,
+            "isPlated": false,
+            "obtainTs": "1769437835"
+          },
+          {
+            "achievementData": {
+              "id": "6027dea42acee784af84cacf78d77b2e",
+              "name": "亲切赠礼奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/ccabe941af9994ca835b55d915f8392a.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/3612d6c5850f8ce34623378892069085.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/ef73a043e80af43c2129868a9d1f8ff3.png",
+              "platedIcon": "",
+              "cateName": "建设奖章",
+              "canCertify": false,
+              "cate": "achv_type_factory",
+              "initLevel": 1
+            },
+            "level": 2,
+            "isPlated": false,
+            "obtainTs": "1772241677"
+          },
+          {
+            "achievementData": {
+              "id": "637b63cf41a1943b5ea7d6aa0fd85654",
+              "name": "“生存专家”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/10/032899213f7204ebd6da553241fc52a1.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/03/10/18e407d7837c89e24882cd3951b72cd5.png",
+              "cateName": "活动奖章",
+              "canCertify": false,
+              "cate": "achv_type_event",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1776263133"
+          },
+          {
+            "achievementData": {
+              "id": "381462d0d6802385c2665c59151f18cf",
+              "name": "武陵储藏家奖章·Ⅰ",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/d1c4d2db33b9635cf40e60026b82d3ab.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/04/16/d99ea70e0c3de3fa2ace7d9870fa697f.png",
+              "cateName": "地区奖章",
+              "canCertify": false,
+              "cate": "achv_type_adventure",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1771682217"
+          },
+          {
+            "achievementData": {
+              "id": "aa3bb7c2eec8b68637f4562101facc64",
+              "name": "多维禁锢奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/672b1015dfc7405711d05a60f648ab64.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1769337409"
+          },
+          {
+            "achievementData": {
+              "id": "33172f3001913a07df3099afdb36d68d",
+              "name": "“Delta救星”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/9a3c4a26a3fe89a711c720fa43ee5270.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/8cc9fdc2f8802abb4436849cbd7dd5a7.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/4f4214c81994968d477ba3f849f31c2e.png",
+              "platedIcon": "",
+              "cateName": "地区奖章",
+              "canCertify": false,
+              "cate": "achv_type_adventure",
+              "initLevel": 1
+            },
+            "level": 3,
+            "isPlated": false,
+            "obtainTs": "1772159401"
+          },
+          {
+            "achievementData": {
+              "id": "4d79dd06a58d5a1c25cd2c551ce3943a",
+              "name": "技能提升奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/17eb1bad50c2c4ed18983abbd28babb4.png",
+              "reforge2Icon": "https://bbs.hycdn.cn/image/2026/03/30/5f9aee9ed06f4d784f20acb66d06a8ce.png",
+              "reforge3Icon": "https://bbs.hycdn.cn/image/2026/03/30/e1ad4bb809fb502bd76eb5e95ff25cec.png",
+              "platedIcon": "",
+              "cateName": "锤炼奖章",
+              "canCertify": true,
+              "cate": "achv_type_growth",
+              "initLevel": 1
+            },
+            "level": 2,
+            "isPlated": false,
+            "obtainTs": "1777701441"
+          },
+          {
+            "achievementData": {
+              "id": "67858a7294c3c053fe38a2e78dd9cc23",
+              "name": "武陵调查者奖章·Ⅰ",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/ea50a1b09fc016744cd56cc490400cd0.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "地区奖章",
+              "canCertify": false,
+              "cate": "achv_type_adventure",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1771595260"
+          },
+          {
+            "achievementData": {
+              "id": "9928aed6506bd4522d2276ddbcecae7b",
+              "name": "“诸尘皆净”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/10/d48aab7246f6dce2451303608261ff4a.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/03/10/b6203e61fb2909cc30862a31e11b757d.png",
+              "cateName": "活动奖章",
+              "canCertify": false,
+              "cate": "achv_type_event",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1775266774"
+          },
+          {
+            "achievementData": {
+              "id": "029af528bc1de386ca32820fd5704c78",
+              "name": "“大地的弃子”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/c02bb55006f5eb32a742fa79baa07de8.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/03/30/2e78ab7103c215857a742e907342cb16.png",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1770880854"
+          },
+          {
+            "achievementData": {
+              "id": "b909e6e90fb9fe77644b6b93eeb96a66",
+              "name": "“苍白的溃灭”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/e42d80d9209cf63793d73b75accc88ee.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/03/30/c5d0acd884a90f1e4b47f5bfa5c74147.png",
+              "cateName": "技艺奖章",
+              "canCertify": false,
+              "cate": "achv_type_battle",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1770975184"
+          },
+          {
+            "achievementData": {
+              "id": "96443d456b2aa060b9d831bc30f681fa",
+              "name": "“非正常移动”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/ecdf0dbbc4c4d0296841381d2333b16a.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "奇想奖章",
+              "canCertify": false,
+              "cate": "achv_type_hide",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1770118281"
+          },
+          {
+            "achievementData": {
+              "id": "8d43ff56580b8e3d5b8aead487a8f91a",
+              "name": "“击股传虫”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/9dc44d15d3c1a8f3397ad5d4c4d119e2.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "地区奖章",
+              "canCertify": false,
+              "cate": "achv_type_adventure",
+              "initLevel": 1
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1771678841"
+          },
+          {
+            "achievementData": {
+              "id": "a5524701a5bc49f795bd55d72fe544e6",
+              "name": "“初至武陵城”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/e4c3da95e4d6fd2e59cb660ca088851c.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "章节奖章",
+              "canCertify": false,
+              "cate": "achv_type_quest",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1769783882"
+          },
+          {
+            "achievementData": {
+              "id": "590dfeca9079bd6f44f25c33b12c307a",
+              "name": "“信使的信”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/19da8b9948462efe4dd0a4d35ffbae0f.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "章节奖章",
+              "canCertify": false,
+              "cate": "achv_type_quest",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1770376827"
+          },
+          {
+            "achievementData": {
+              "id": "09f4bf457abf66815a8f1fdce1c073f9",
+              "name": "慷慨助力奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/4265d65f63fe6f3dfe95933d56fda8eb.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "社交奖章",
+              "canCertify": false,
+              "cate": "achv_type_social",
+              "initLevel": 1
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1770558293"
+          },
+          {
+            "achievementData": {
+              "id": "e5d0d5409169055008e73b1b90ff03f8",
+              "name": "货物运送奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/05c797a21b11d696a2eb57125d548aea.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "https://bbs.hycdn.cn/image/2026/03/30/f1e8280b30a374f4c5a7061cca4b9fcd.png",
+              "cateName": "建设奖章",
+              "canCertify": false,
+              "cate": "achv_type_factory",
+              "initLevel": 2
+            },
+            "level": 1,
+            "isPlated": true,
+            "obtainTs": "1770860128"
+          },
+          {
+            "achievementData": {
+              "id": "74d7956ce3e465ebd1d4a40583bb272c",
+              "name": "“核心降落”",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/50815d7c97108e45c313fec2f48b1de8.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "章节奖章",
+              "canCertify": false,
+              "cate": "achv_type_quest",
+              "initLevel": 3
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1769095539"
+          },
+          {
+            "achievementData": {
+              "id": "3997e99d106fafa57e8809f9b7ce8f8a",
+              "name": "资源回收奖章",
+              "initIcon": "https://bbs.hycdn.cn/image/2026/03/30/eab0c1b4a6744d7d72d2bd9fa6946866.png",
+              "reforge2Icon": "",
+              "reforge3Icon": "",
+              "platedIcon": "",
+              "cateName": "建设奖章",
+              "canCertify": false,
+              "cate": "achv_type_factory",
+              "initLevel": 1
+            },
+            "level": 1,
+            "isPlated": false,
+            "obtainTs": "1770622971"
+          }
+        ],
+        "display": {
+          "1": "029af528bc1de386ca32820fd5704c78",
+          "2": "7ccafe729b186cef06ac7e164ea75c4d",
+          "3": "55a1218640bccc15e5c7de339ae4486f",
+          "4": "400d7809fe76eb76b3f8b89b1dd542f6",
+          "5": "f762e5b40cc92f09c384079a88c194bd",
+          "6": "b909e6e90fb9fe77644b6b93eeb96a66",
+          "7": "5215f2ff6876cfc78e427b18a160acec",
+          "8": "df764b1c4229e4ae745e57069bec735f",
+          "9": "b38784d1fd39988767ffecd8a87abe25",
+          "10": "da290b0c688ccb0d2e932ad41565d2f5"
+        },
+        "count": 97
+      },
+      "spaceShip": {
+        "rooms": [
+          {
+            "id": "",
+            "type": 3,
+            "level": 1,
+            "chars": [],
+            "reports": {}
+          },
+          {
+            "id": "",
+            "type": 0,
+            "level": 5,
+            "chars": [
+              {
+                "charId": "chr_0004_pelica",
+                "physicalStrength": 9667.2705,
+                "favorability": 567,
+                "avatarUrl": "https://bbs.hycdn.cn/image/2025/11/12/3bbc15c803354e16dece5ec65d327604.png"
+              },
+              {
+                "charId": "chr_0012_avywen",
+                "physicalStrength": 8460.161,
+                "favorability": 1198,
+                "avatarUrl": "https://bbs.hycdn.cn/image/2025/11/12/10184e5312118c648b417ec853a1c26a.png"
+              },
+              {
+                "charId": "chr_0024_deepfin",
+                "physicalStrength": 6499.4824,
+                "favorability": 674,
+                "avatarUrl": "https://bbs.hycdn.cn/image/2025/11/12/8b8a50678f2518e751c01c4adfe7426f.png"
+              }
+            ],
+            "reports": {}
+          },
+          {
+            "id": "",
+            "type": 1,
+            "level": 3,
+            "chars": [
+              {
+                "charId": "chr_0013_aglina",
+                "physicalStrength": 9215.413,
+                "favorability": 1175,
+                "avatarUrl": "https://bbs.hycdn.cn/image/2025/11/12/74dee1c724e749e1c1ad0b456b6545d0.png"
+              },
+              {
+                "charId": "chr_0005_chen",
+                "physicalStrength": 8500.781,
+                "favorability": 360,
+                "avatarUrl": "https://bbs.hycdn.cn/image/2025/11/12/6c6c1917465ddd170c010510fe60728e.png"
+              },
+              {
+                "charId": "chr_0007_ikut",
+                "physicalStrength": 7200.554,
+                "favorability": 360,
+                "avatarUrl": "https://bbs.hycdn.cn/image/2025/11/12/c94c95819c4e2c9df3af7a53f16d1783.png"
+              }
+            ],
+            "reports": {}
+          },
+          {
+            "id": "",
+            "type": 5,
+            "level": 3,
+            "chars": [
+              {
+                "charId": "chr_0009_azrila",
+                "physicalStrength": 9762.315,
+                "favorability": 210,
+                "avatarUrl": "https://bbs.hycdn.cn/image/2025/11/12/65227b68442687d0dc4ca554f2b2d449.png"
+              },
+              {
+                "charId": "chr_0025_ardelia",
+                "physicalStrength": 9285.393,
+                "favorability": 555,
+                "avatarUrl": "https://bbs.hycdn.cn/image/2025/11/12/a5d57a216e8edb9ebbf8b66f14cceb1d.png"
+              },
+              {
+                "charId": "chr_0019_karin",
+                "physicalStrength": 9392.689,
+                "favorability": 435,
+                "avatarUrl": "https://bbs.hycdn.cn/image/2025/11/12/5322d4a993d240b0d5fcbda2e6857ffe.png"
+              }
+            ],
+            "reports": {}
+          },
+          {
+            "id": "",
+            "type": 2,
+            "level": 3,
+            "chars": [
+              {
+                "charId": "chr_0027_tangtang",
+                "physicalStrength": 6293.205,
+                "favorability": 390,
+                "avatarUrl": "https://bbs.hycdn.cn/image/2026/03/11/b3f147ff208fabfbfc775cbcef36bd16.png"
+              },
+              {
+                "charId": "chr_0017_yvonne",
+                "physicalStrength": 6293.205,
+                "favorability": 775,
+                "avatarUrl": "https://bbs.hycdn.cn/image/2025/11/12/e3c7ea28957851f6e0c5873de05cb61d.png"
+              },
+              {
+                "charId": "chr_0023_antal",
+                "physicalStrength": 7338.069,
+                "favorability": 440,
+                "avatarUrl": "https://bbs.hycdn.cn/image/2025/11/12/0ebec85a7b1387b2fb71ac489a938a20.png"
+              }
+            ],
+            "reports": {}
+          },
+          {
+            "id": "",
+            "type": 1,
+            "level": 3,
+            "chars": [
+              {
+                "charId": "chr_0016_laevat",
+                "physicalStrength": 8152.0674,
+                "favorability": 1500,
+                "avatarUrl": "https://bbs.hycdn.cn/image/2025/11/12/4c0224b22ca8b3a4370d21376337e742.png"
+              },
+              {
+                "charId": "chr_0011_seraph",
+                "physicalStrength": 9046.82,
+                "favorability": 540,
+                "avatarUrl": "https://bbs.hycdn.cn/image/2025/11/12/7104bc725461810f7381b9b220ee03c6.png"
+              },
+              {
+                "charId": "chr_0030_zhuangfy",
+                "physicalStrength": 2600.6313,
+                "favorability": 392,
+                "avatarUrl": "https://bbs.hycdn.cn/image/2026/04/14/f7aa78d695654b4ed1db934eb5903712.png"
+              }
+            ],
+            "reports": {}
+          }
+        ]
+      },
+      "domain": [
+        {
+          "domainId": "domain_1",
+          "level": 12,
+          "settlements": [
+            {
+              "id": "stm_tundra_1",
+              "level": 4,
+              "exp": "0",
+              "expToLevelUp": "0",
+              "remainMoney": "601052",
+              "moneyMax": "2200000",
+              "officerCharIds": "0b199a0eaae5a9b37a5d3c990b6c8bca",
+              "officerCharAvatar": "https://bbs.hycdn.cn/image/2025/11/12/4c0224b22ca8b3a4370d21376337e742.png",
+              "name": "难民暂居处",
+              "lastTickTime": "1778317592"
+            },
+            {
+              "id": "stm_tundra_2",
+              "level": 4,
+              "exp": "0",
+              "expToLevelUp": "0",
+              "remainMoney": "803139",
+              "moneyMax": "3000000",
+              "officerCharIds": "05047b063867199b953b30ac8df9a853",
+              "officerCharAvatar": "https://bbs.hycdn.cn/image/2025/11/12/e3c7ea28957851f6e0c5873de05cb61d.png",
+              "name": "基建前站",
+              "lastTickTime": "1778317592"
+            },
+            {
+              "id": "stm_tundra_3",
+              "level": 4,
+              "exp": "0",
+              "expToLevelUp": "0",
+              "remainMoney": "1079879",
+              "moneyMax": "3800000",
+              "officerCharIds": "0295282ff895bd1b7242d137da99dc94",
+              "officerCharAvatar": "https://bbs.hycdn.cn/image/2025/11/12/74dee1c724e749e1c1ad0b456b6545d0.png",
+              "name": "重建指挥部",
+              "lastTickTime": "1778317592"
+            }
+          ],
+          "moneyMgr": {
+            "total": "30000000",
+            "count": "29836791"
+          },
+          "collections": [
+            {
+              "levelId": "map01_lv001",
+              "puzzleCount": 43,
+              "trchestCount": 107,
+              "equipTrchestCount": 0,
+              "pieceCount": 0,
+              "blackboxCount": 11
+            },
+            {
+              "levelId": "map01_lv002",
+              "puzzleCount": 14,
+              "trchestCount": 12,
+              "equipTrchestCount": 0,
+              "pieceCount": 0,
+              "blackboxCount": 4
+            },
+            {
+              "levelId": "map01_lv003",
+              "puzzleCount": 17,
+              "trchestCount": 32,
+              "equipTrchestCount": 0,
+              "pieceCount": 1,
+              "blackboxCount": 3
+            },
+            {
+              "levelId": "map01_lv005",
+              "puzzleCount": 30,
+              "trchestCount": 36,
+              "equipTrchestCount": 0,
+              "pieceCount": 1,
+              "blackboxCount": 4
+            },
+            {
+              "levelId": "map01_lv006",
+              "puzzleCount": 39,
+              "trchestCount": 65,
+              "equipTrchestCount": 0,
+              "pieceCount": 2,
+              "blackboxCount": 3
+            },
+            {
+              "levelId": "map01_lv007",
+              "puzzleCount": 23,
+              "trchestCount": 36,
+              "equipTrchestCount": 0,
+              "pieceCount": 0,
+              "blackboxCount": 0
+            }
+          ],
+          "levels": [
+            {
+              "levelId": "map01_lv001",
+              "name": "枢纽区",
+              "puzzleCount": {
+                "count": 43,
+                "total": 43
+              },
+              "trchestCount": {
+                "count": 107,
+                "total": 107
+              },
+              "equipTrchestCount": {
+                "count": 0,
+                "total": 0
+              },
+              "pieceCount": {
+                "count": 0,
+                "total": 0
+              },
+              "blackboxCount": {
+                "count": 11,
+                "total": 11
+              }
+            },
+            {
+              "levelId": "map01_lv002",
+              "name": "谷地通道",
+              "puzzleCount": {
+                "count": 14,
+                "total": 14
+              },
+              "trchestCount": {
+                "count": 12,
+                "total": 12
+              },
+              "equipTrchestCount": {
+                "count": 0,
+                "total": 0
+              },
+              "pieceCount": {
+                "count": 0,
+                "total": 0
+              },
+              "blackboxCount": {
+                "count": 4,
+                "total": 4
+              }
+            },
+            {
+              "levelId": "map01_lv003",
+              "name": "阿伯莉采石场",
+              "puzzleCount": {
+                "count": 17,
+                "total": 17
+              },
+              "trchestCount": {
+                "count": 32,
+                "total": 32
+              },
+              "equipTrchestCount": {
+                "count": 0,
+                "total": 0
+              },
+              "pieceCount": {
+                "count": 1,
+                "total": 1
+              },
+              "blackboxCount": {
+                "count": 3,
+                "total": 3
+              }
+            },
+            {
+              "levelId": "map01_lv005",
+              "name": "源石研究园",
+              "puzzleCount": {
+                "count": 30,
+                "total": 30
+              },
+              "trchestCount": {
+                "count": 36,
+                "total": 36
+              },
+              "equipTrchestCount": {
+                "count": 0,
+                "total": 0
+              },
+              "pieceCount": {
+                "count": 1,
+                "total": 1
+              },
+              "blackboxCount": {
+                "count": 4,
+                "total": 4
+              }
+            },
+            {
+              "levelId": "map01_lv006",
+              "name": "矿脉源区",
+              "puzzleCount": {
+                "count": 39,
+                "total": 39
+              },
+              "trchestCount": {
+                "count": 65,
+                "total": 65
+              },
+              "equipTrchestCount": {
+                "count": 0,
+                "total": 0
+              },
+              "pieceCount": {
+                "count": 2,
+                "total": 2
+              },
+              "blackboxCount": {
+                "count": 3,
+                "total": 3
+              }
+            },
+            {
+              "levelId": "map01_lv007",
+              "name": "供能高地",
+              "puzzleCount": {
+                "count": 23,
+                "total": 23
+              },
+              "trchestCount": {
+                "count": 36,
+                "total": 36
+              },
+              "equipTrchestCount": {
+                "count": 0,
+                "total": 0
+              },
+              "pieceCount": {
+                "count": 0,
+                "total": 0
+              },
+              "blackboxCount": {
+                "count": 0,
+                "total": 0
+              }
+            }
+          ],
+          "factory": null,
+          "name": "四号谷地"
+        },
+        {
+          "domainId": "domain_2",
+          "level": 12,
+          "settlements": [
+            {
+              "id": "stm_hongs_1",
+              "level": 3,
+              "exp": "0",
+              "expToLevelUp": "3000000",
+              "remainMoney": "996349",
+              "moneyMax": "2600000",
+              "officerCharIds": "ee3bf7197a05580397b45ba2fb1de28e",
+              "officerCharAvatar": "https://bbs.hycdn.cn/image/2026/03/11/b3f147ff208fabfbfc775cbcef36bd16.png",
+              "name": "天王坪援建点",
+              "lastTickTime": "1778317592"
+            },
+            {
+              "id": "stm_hongs_2",
+              "level": 2,
+              "exp": "0",
+              "expToLevelUp": "800000",
+              "remainMoney": "288775",
+              "moneyMax": "720000",
+              "officerCharIds": "c2fa8a588cab489795166bed5161fefc",
+              "officerCharAvatar": "https://bbs.hycdn.cn/image/2026/04/14/f7aa78d695654b4ed1db934eb5903712.png",
+              "name": "心脏修缮站",
+              "lastTickTime": "1778317592"
+            }
+          ],
+          "moneyMgr": {
+            "total": "14000000",
+            "count": "134785"
+          },
+          "collections": [
+            {
+              "levelId": "map02_lv001",
+              "puzzleCount": 20,
+              "trchestCount": 44,
+              "equipTrchestCount": 4,
+              "pieceCount": 1,
+              "blackboxCount": 6
+            },
+            {
+              "levelId": "map02_lv002",
+              "puzzleCount": 61,
+              "trchestCount": 198,
+              "equipTrchestCount": 8,
+              "pieceCount": 1,
+              "blackboxCount": 8
+            },
+            {
+              "levelId": "map02_lv003",
+              "puzzleCount": 14,
+              "trchestCount": 36,
+              "equipTrchestCount": 3,
+              "pieceCount": 0,
+              "blackboxCount": 5
+            },
+            {
+              "levelId": "map02_lv004",
+              "puzzleCount": 26,
+              "trchestCount": 48,
+              "equipTrchestCount": 3,
+              "pieceCount": 0,
+              "blackboxCount": 4
+            },
+            {
+              "levelId": "indie_dg007",
+              "puzzleCount": 2,
+              "trchestCount": 5,
+              "equipTrchestCount": 1,
+              "pieceCount": 0,
+              "blackboxCount": 0
+            }
+          ],
+          "levels": [
+            {
+              "levelId": "map02_lv001",
+              "name": "景玉谷",
+              "puzzleCount": {
+                "count": 20,
+                "total": 20
+              },
+              "trchestCount": {
+                "count": 44,
+                "total": 44
+              },
+              "equipTrchestCount": {
+                "count": 4,
+                "total": 4
+              },
+              "pieceCount": {
+                "count": 1,
+                "total": 1
+              },
+              "blackboxCount": {
+                "count": 6,
+                "total": 6
+              }
+            },
+            {
+              "levelId": "map02_lv002",
+              "name": "武陵城",
+              "puzzleCount": {
+                "count": 61,
+                "total": 61
+              },
+              "trchestCount": {
+                "count": 198,
+                "total": 198
+              },
+              "equipTrchestCount": {
+                "count": 8,
+                "total": 8
+              },
+              "pieceCount": {
+                "count": 1,
+                "total": 1
+              },
+              "blackboxCount": {
+                "count": 8,
+                "total": 8
+              }
+            },
+            {
+              "levelId": "map02_lv003",
+              "name": "清波寨",
+              "puzzleCount": {
+                "count": 14,
+                "total": 14
+              },
+              "trchestCount": {
+                "count": 36,
+                "total": 36
+              },
+              "equipTrchestCount": {
+                "count": 3,
+                "total": 3
+              },
+              "pieceCount": {
+                "count": 0,
+                "total": 0
+              },
+              "blackboxCount": {
+                "count": 5,
+                "total": 5
+              }
+            },
+            {
+              "levelId": "map02_lv004",
+              "name": "首墩",
+              "puzzleCount": {
+                "count": 26,
+                "total": 26
+              },
+              "trchestCount": {
+                "count": 48,
+                "total": 48
+              },
+              "equipTrchestCount": {
+                "count": 3,
+                "total": 3
+              },
+              "pieceCount": {
+                "count": 0,
+                "total": 0
+              },
+              "blackboxCount": {
+                "count": 4,
+                "total": 4
+              }
+            },
+            {
+              "levelId": "indie_dg007",
+              "name": "首墩内部",
+              "puzzleCount": {
+                "count": 2,
+                "total": 2
+              },
+              "trchestCount": {
+                "count": 5,
+                "total": 5
+              },
+              "equipTrchestCount": {
+                "count": 1,
+                "total": 1
+              },
+              "pieceCount": {
+                "count": 0,
+                "total": 0
+              },
+              "blackboxCount": {
+                "count": 0,
+                "total": 0
+              }
+            }
+          ],
+          "factory": null,
+          "name": "武陵"
+        }
+      ],
+      "dungeon": {
+        "curStamina": "59",
+        "maxTs": "1778459382",
+        "maxStamina": "360"
+      },
+      "bpSystem": {
+        "curLevel": 60,
+        "maxLevel": 60
+      },
+      "dailyMission": {
+        "dailyActivation": 100,
+        "maxDailyActivation": 100
+      },
+      "weeklyMission": {
+        "score": 10,
+        "total": 10
+      },
+      "config": {
+        "charSwitch": true,
+        "charIds": [
+          "ee3bf7197a05580397b45ba2fb1de28e",
+          "c2fa8a588cab489795166bed5161fefc",
+          "0295282ff895bd1b7242d137da99dc94",
+          "0b199a0eaae5a9b37a5d3c990b6c8bca",
+          "05047b063867199b953b30ac8df9a853",
+          "3839d35948216cc09368cd62167c7368",
+          "00ff4c582aeeafc237695f81e36969b4",
+          "c4cf7541c23c93f991e2e464ee18bb18"
+        ]
+      },
+      "currentTs": "1778329350",
+      "quickaccess": [
+        {
+          "name": "每日签到",
+          "icon": "https://bbs.hycdn.cn/image/2026/01/22/a4348ea2407f43888a0cb3ea3056739a.png",
+          "link": "skland://web?url=https%3A%2F%2Fgame.skland.com%2Fendfield%2Fsign-in%3Fheader%3D0"
+        },
+        {
+          "name": "配队工具",
+          "icon": "https://bbs.hycdn.cn/image/2026/01/22/5ba247ba7d196184fbd1ce2257d11450.png",
+          "link": "skland://web?url=https%3A%2F%2Fgame.skland.com%2Ftools%2Fendfield%2Frec-team%3Fheader%3D0%26ctr_orientation%3Dlandscape%26routeId%3D0"
+        },
+        {
+          "name": "养成建议",
+          "icon": "https://bbs.hycdn.cn/image/2026/01/22/3c3f63afd766e97125b654472cf43a75.png",
+          "link": "skland://web?url=https%3A%2F%2Fgame.skland.com%2Ftools%2Fendfield%2Fbuild-guide%3Fheader%3D0%26ctr_orientation%3Dlandscape%26routeId%3D1"
+        },
+        {
+          "name": "地图工具",
+          "icon": "https://bbs.hycdn.cn/image/2026/01/22/802975d55707096d88175db904b637e9.png",
+          "link": "skland://web?url=https%3A%2F%2Fgame.skland.com%2Fmap%2Fendfield%3Fheader%3D0%26ctr_orientation%3Dlandscape"
+        }
+      ]
+    }
+  }
+}

@@ -40,6 +40,51 @@
   animation: pulse-once 0.6s ease-out;
 }
 
+/* 技能描述标记样式 */
+.ba-tag {
+  display: inline-block;
+  padding: 0 3px;
+  border-radius: 3px;
+  font-weight: bold;
+  line-height: 1.4;
+}
+
+/* @ba. 属性标记 */
+.ba-at-cryst { color: #6CB4EE; }
+.ba-at-key { color: #F39C12; }
+.ba-at-vup { color: #2ECC71; }
+.ba-at-poise { color: #3498DB; }
+.ba-at-info { color: #95A5A6; }
+.ba-at-lastcombo { color: #F1C40F; }
+.ba-at-return { color: #58D68D; }
+.ba-at-speedup { color: #58D68D; }
+.ba-at-slow { color: #5DADE2; }
+.ba-at-spellburst { color: #8E44AD; }
+.ba-at-spellvul { color: #EC7063; }
+.ba-at-crystinflict { color: #5DADE2; }
+.ba-at-purple { color: #9B59D0; }
+.ba-at-orange { color: #F39C12; }
+
+/* #ba. 状态标记 */
+.ba-hash-cryst { color: #6CB4EE; }
+.ba-hash-key { color: #F39C12; }
+.ba-hash-vup { color: #2ECC71; }
+.ba-hash-poise { color: #3498DB; }
+.ba-hash-info { color: #95A5A6; }
+.ba-hash-lastcombo { color: #F1C40F; }
+.ba-hash-return { color: #58D68D; }
+.ba-hash-speedup { color: #58D68D; }
+.ba-hash-slow { color: #5DADE2; }
+.ba-hash-spellburst { color: #8E44AD; }
+.ba-hash-spellvul { color: #EC7063; }
+.ba-hash-crystinflict { color: #5DADE2; }
+.ba-hash-purple { color: #9B59D0; }
+.ba-hash-orange { color: #F39C12; }
+
+/* @tips. 提示标记 */
+.ba-tips-purple { color: #9B59D0; }
+.ba-tips-orange { color: #F39C12; }
+
 /* 账户切换上浮动画 */
 @keyframes slide-up {
   0% {

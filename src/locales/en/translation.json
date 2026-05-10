@@ -55,7 +55,8 @@
     "save": "Save",
     "cancel": "Cancel",
     "enabled": "Enabled",
-    "disabled": "Disabled"
+    "disabled": "Disabled",
+    "slot": "Slot {{number}}"
   },
   "settings": {
     "title": "Settings",
@@ -115,6 +116,25 @@
       "title": "Notification Settings",
       "email_notifications": "Email Notifications",
       "push_notifications": "Push Notifications"
+    },
+    "characters": {
+      "pin_characters": "Pin Characters (Max {{max}})",
+      "pinned_count": "{{count}} / {{max}} pinned",
+      "select_slot": "Pin Slot for {{name}}",
+      "choose_slot": "Choose a slot to pin this character",
+      "click_to_select": "Click on a slot to select it. Click Confirm to pin.",
+      "confirm_pin": "Confirm Pin",
+      "cancel": "Cancel",
+      "empty_slot": "Empty",
+      "current": "Current",
+      "selected": "Selected",
+      "pin_success": "Successfully pinned {{name}} to Slot {{slot}}!",
+      "details": "Details",
+      "pin": "Pin",
+      "characters_count": "Characters ({{count}}/3)",
+      "passive_skills": "Passive Skills",
+      "ability_talents": "Ability Talents",
+      "cultivation_talents": "O.M.V. Dijiang Skills"
     }
   }
 }

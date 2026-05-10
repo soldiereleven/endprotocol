@@ -40,6 +40,9 @@ pub fn run() {
             commands::account::get_selected_account,
             commands::account::set_selected_account,
             commands::account::check_and_refresh_cred,
+            commands::account::save_selected_char_ids,
+            commands::account::get_selected_char_ids,
+            commands::account::get_char_detail,
             // Window commands
             commands::window::minimize_window,
             commands::window::toggle_maximize_window,

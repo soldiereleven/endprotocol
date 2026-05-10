@@ -6,6 +6,10 @@ import {
   Alert,
   Checkbox,
   Pagination,
+  InputOTP,
+  Label,
+  Link,
+  Spinner,
 } from "@heroui/react";
 import { SimplePagination } from "@/components/simple-pagination";
 import { useState, useEffect, useRef } from "react";
@@ -30,7 +34,7 @@ import {
   RoleDisplayInfo,
 } from "@/utils/accountService";
 import { accountCache } from "../utils/accountCache";
-import logger, { logDebug, logInfo, logWarn, logError } from "../utils/logger";
+import logger, { logDebug, logError } from "../utils/logger";
 import { getConfig } from "@/utils/configService";
 
 export default function AccountPage() {
@@ -63,6 +67,8 @@ export default function AccountPage() {
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [codeSentSuccess, setCodeSentSuccess] = useState(false);
+  const [showOtpInput, setShowOtpInput] = useState(false); // 是否显示 OTP 输入界面
+  const [isOtpInvalid, setIsOtpInvalid] = useState(false); // OTP 是否无效
 
   // 角色选择状态
   const [availableRoles, setAvailableRoles] = useState<RoleDisplayInfo[]>([]);
@@ -87,12 +93,21 @@ export default function AccountPage() {
         const cachedAccounts = accountCache.getAllAccounts();
         let accounts;
 
+        logDebug(
+          "[Account] Loading accounts, cached count:",
+          cachedAccounts?.length || 0,
+        );
+
         if (cachedAccounts && cachedAccounts.length > 0) {
           logDebug("[Account] Using cached accounts on initial load");
           accounts = cachedAccounts;
         } else {
           logDebug("[Account] Cache is empty, fetching from API");
           accounts = await getAccounts();
+          logDebug(
+            "[Account] Fetched accounts from API, count:",
+            accounts?.length || 0,
+          );
           // 缓存账户数据到内存
           if (accounts && accounts.length > 0) {
             accountCache.cacheAccounts(accounts);
@@ -100,6 +115,10 @@ export default function AccountPage() {
         }
 
         // 直接使用后端返回的数据（无论是否为空）
+        logDebug(
+          "[Account] Setting accounts state, count:",
+          accounts?.length || 0,
+        );
         setAccounts(accounts || []);
 
         // 如果有账户且没有选中任何账户，默认选中第一个
@@ -317,6 +336,19 @@ export default function AccountPage() {
     }
   };
 
+  // 重试同步失败的账户
+  const retrySyncAccount = async (accountId: string) => {
+    logDebug("[Account] Retrying sync for account:", accountId);
+
+    // 重新加载所有账户数据（这会触发后端的自动重试机制）
+    await refreshData();
+
+    // 如果当前选中的是失败的账户，确保它仍然被选中
+    if (currentAccountId === accountId) {
+      setCurrentAccountId(accountId);
+    }
+  };
+
   // 处理登出
   const handleLogout = async (accountId: string) => {
     try {
@@ -382,6 +414,8 @@ export default function AccountPage() {
     setLoginError("");
     setCodeSentSuccess(false);
     setCountdown(0);
+    setShowOtpInput(false);
+    setIsOtpInvalid(false);
     // 清除角色选择状态 - 放弃这次登录
     setAvailableRoles([]);
     setSelectedRoles([]);
@@ -391,8 +425,8 @@ export default function AccountPage() {
     setIsAddModalOpen(false);
   };
 
-  // 发送验证码
-  const handleSendCode = async () => {
+  // 发送验证码并进入 OTP 输入页面
+  const handleSendCodeAndShowOtp = async () => {
     if (!phone) {
       setPhoneError(
         i18n.language === "zh" ? "请输入手机号" : "Please enter phone number",
@@ -435,6 +469,11 @@ export default function AccountPage() {
         // 显示成功提示
         logDebug("验证码发送成功，设置 codeSentSuccess 为 true");
         setCodeSentSuccess(true);
+
+        // 进入 OTP 输入页面
+        setShowOtpInput(true);
+        setVerificationCode("");
+        setIsOtpInvalid(false);
       } else {
         setLoginError(
           i18n.language === "zh"
@@ -483,19 +522,10 @@ export default function AccountPage() {
         return;
       }
     } else if (loginMethod === "qrcode") {
-      // 验证码登录
-      if (!phone || !verificationCode) {
-        if (!phone) {
-          setPhoneError(
-            i18n.language === "zh"
-              ? "请输入手机号"
-              : "Please enter phone number",
-          );
-        }
-        setLoginError(
-          i18n.language === "zh"
-            ? "请输入手机号和验证码"
-            : "Please enter phone and verification code",
+      // 验证码登录 - 检查是否有验证码
+      if (!phone) {
+        setPhoneError(
+          i18n.language === "zh" ? "请输入手机号" : "Please enter phone number",
         );
         return;
       }
@@ -507,6 +537,22 @@ export default function AccountPage() {
           i18n.language === "zh"
             ? "请输入有效的11位手机号"
             : "Please enter a valid 11-digit phone number",
+        );
+        return;
+      }
+
+      // 如果还没有显示 OTP 输入框，先发送验证码
+      if (!showOtpInput) {
+        await handleSendCodeAndShowOtp();
+        return;
+      }
+
+      // 如果有 OTP 输入框，检查验证码
+      if (!verificationCode) {
+        setLoginError(
+          i18n.language === "zh"
+            ? "请输入验证码"
+            : "Please enter verification code",
         );
         return;
       }
@@ -568,12 +614,23 @@ export default function AccountPage() {
         setLoginUserId(result.userId || "");
         setSelectedRoles([]); // 重置选择
       } else {
-        setLoginError(
-          result.errorMessage ||
-            (i18n.language === "zh"
-              ? "登录失败，请重试"
-              : "Login failed, please try again"),
-        );
+        // 验证码错误
+        if (loginMethod === "qrcode") {
+          setIsOtpInvalid(true);
+          setLoginError(
+            result.errorMessage ||
+              (i18n.language === "zh"
+                ? "验证码错误，请重试"
+                : "Invalid verification code, please try again"),
+          );
+        } else {
+          setLoginError(
+            result.errorMessage ||
+              (i18n.language === "zh"
+                ? "登录失败，请重试"
+                : "Login failed, please try again"),
+          );
+        }
       }
     } catch (error) {
       console.error("Login error:", error);
@@ -1384,6 +1441,23 @@ export default function AccountPage() {
                         : "We failed to sync role information, please check your network connection and try again"}
                     </p>
                   </div>
+                  {/* 重试按钮 */}
+                  <button
+                    onClick={() => retrySyncAccount(selectedAccount.id)}
+                    disabled={isRefreshing}
+                    className="mt-4 px-6 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto"
+                  >
+                    {isRefreshing ? (
+                      <>
+                        <Spinner size="sm" color="white" />
+                        {i18n.language === "zh" ? "重试中..." : "Retrying..."}
+                      </>
+                    ) : (
+                      <>
+                        ↻ {i18n.language === "zh" ? "重试同步" : "Retry Sync"}
+                      </>
+                    )}
+                  </button>
                 </div>
               ) : (
                 /* 正常账户信息 */
@@ -1479,7 +1553,11 @@ export default function AccountPage() {
         <CustomModalHeader onClose={handleCloseAddModal}>
           {t("settings.account.add_account")}
         </CustomModalHeader>
-        <CustomModalBody>
+        <CustomModalBody
+          className={
+            loginMethod === "qrcode" && showOtpInput ? "overflow-hidden" : ""
+          }
+        >
           {availableRoles.length > 0 ? (
             // 角色选择界面
             <div className="space-y-4">
@@ -1714,7 +1792,11 @@ export default function AccountPage() {
             // 验证码登录表单
             <div className="space-y-4">
               <button
-                onClick={() => setLoginMethod(null)}
+                onClick={() => {
+                  setLoginMethod(null);
+                  setShowOtpInput(false);
+                  setIsOtpInvalid(false);
+                }}
                 className="flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors mb-4"
               >
                 <svg
@@ -1743,102 +1825,192 @@ export default function AccountPage() {
                 </Alert>
               )}
 
-              {/* 发送验证码成功提示 */}
-              {codeSentSuccess && (
-                <Alert status="success">
-                  <Alert.Indicator />
-                  <Alert.Content>
-                    <Alert.Description>
-                      {i18n.language === "zh"
-                        ? "验证码已发送，请注意查收"
-                        : "Verification code sent"}
-                    </Alert.Description>
-                  </Alert.Content>
-                </Alert>
-              )}
+              {!showOtpInput ? (
+                // 第一步：输入手机号
+                <div className="flex flex-col gap-4">
+                  <div className="grid grid-cols-[auto_1fr] items-center gap-y-4 gap-x-3">
+                    <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
+                      {t("settings.account.phone_number")}
+                    </label>
+                    <div className="flex flex-col gap-1">
+                      <input
+                        type="tel"
+                        placeholder={
+                          i18n.language === "zh"
+                            ? "请输入手机号"
+                            : "Enter phone number"
+                        }
+                        value={phone}
+                        onChange={(e) => {
+                          setPhone(e.target.value);
+                          setCodeSentSuccess(false);
+                          if (phoneError) setPhoneError("");
+                        }}
+                        disabled={isLoggingIn || isSendingCode}
+                        maxLength={11}
+                        onKeyDown={(e) => {
+                          if (
+                            e.key === "Enter" &&
+                            !isLoggingIn &&
+                            !isSendingCode
+                          ) {
+                            handleSendCodeAndShowOtp();
+                          }
+                        }}
+                        className="w-full px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                      />
+                      {phoneError && (
+                        <p className="text-xs text-danger">{phoneError}</p>
+                      )}
+                    </div>
+                  </div>
 
-              {/* 手机号和验证码输入 */}
-              <div className="grid grid-cols-[auto_1fr] items-center gap-y-4 gap-x-3">
-                {/* 手机号输入行 */}
-                <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
-                  {t("settings.account.phone_number")}
-                </label>
-                <div className="flex gap-2 items-stretch">
-                  <input
-                    type="tel"
-                    placeholder={
-                      i18n.language === "zh"
-                        ? "请输入手机号"
-                        : "Enter phone number"
-                    }
-                    value={phone}
-                    onChange={(e) => {
-                      setPhone(e.target.value);
-                      setCodeSentSuccess(false);
-                      if (phoneError) setPhoneError("");
-                    }}
-                    disabled={isLoggingIn || isSendingCode}
-                    maxLength={11}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !isLoggingIn && !isSendingCode) {
-                        handleSendCode();
-                      }
-                    }}
-                    className="flex-1 px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                  />
                   <Button
-                    variant="outline"
-                    onPress={handleSendCode}
-                    isDisabled={isSendingCode || countdown > 0 || !phone}
-                    className="min-w-[120px] whitespace-nowrap border border-separator rounded-lg bg-default-100 hover:bg-default-200 transition-all !h-[44px] !px-4"
+                    variant="primary"
+                    onPress={handleSendCodeAndShowOtp}
+                    isDisabled={isSendingCode || !phone}
+                    className="w-full mt-2"
                   >
-                    {countdown > 0
-                      ? `${countdown}s`
-                      : isSendingCode
-                        ? t("settings.account.sending")
-                        : t("settings.account.send_code")}
+                    {isSendingCode ? (
+                      <>
+                        <Spinner color="current" size="sm" />
+                        {t("settings.account.sending")}
+                      </>
+                    ) : (
+                      t("settings.account.confirm")
+                    )}
                   </Button>
                 </div>
+              ) : (
+                // 第二步：输入验证码
+                <div className="flex w-full flex-col gap-2">
+                  <div className="flex flex-col gap-1">
+                    <Label>
+                      {i18n.language === "zh" ? "验证账户" : "Verify account"}
+                    </Label>
+                    <p className="text-sm text-muted">
+                      {i18n.language === "zh"
+                        ? `我们已向 ${phone} 发送验证码`
+                        : `We've sent a code to ${phone}`}
+                    </p>
+                  </div>
 
-                {/* 占位元素，保持 grid 布局 */}
-                <div></div>
-                <div>
-                  {phoneError && (
-                    <p className="text-xs text-danger">{phoneError}</p>
-                  )}
-                </div>
-
-                {/* 验证码输入行 */}
-                <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
-                  {t("settings.account.verification_code")}
-                </label>
-                <div className="flex flex-col gap-1">
-                  <input
-                    type="text"
-                    placeholder={
-                      i18n.language === "zh"
-                        ? t("settings.account.enter_verification_code")
-                        : t("settings.account.enter_verification_code")
-                    }
+                  <InputOTP
+                    aria-describedby={isOtpInvalid ? "code-error" : undefined}
+                    isInvalid={isOtpInvalid}
+                    maxLength={6}
                     value={verificationCode}
-                    onChange={(e) => {
-                      setVerificationCode(e.target.value);
+                    onComplete={async (code) => {
+                      console.log("Code complete:", code);
+                      // 自动提交验证码
+                      await handleLogin();
+                    }}
+                    onChange={(val) => {
+                      setVerificationCode(val);
+                      setIsOtpInvalid(false);
                       // 当用户输入验证码时，清除发送成功的提示
                       if (codeSentSuccess) {
                         setCodeSentSuccess(false);
                       }
                     }}
-                    disabled={isLoggingIn}
-                    maxLength={6}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !isLoggingIn) {
-                        handleLogin();
-                      }
-                    }}
-                    className="w-full px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                  />
+                  >
+                    <InputOTP.Group>
+                      <InputOTP.Slot index={0} />
+                      <InputOTP.Slot index={1} />
+                      <InputOTP.Slot index={2} />
+                    </InputOTP.Group>
+                    <InputOTP.Separator />
+                    <InputOTP.Group>
+                      <InputOTP.Slot index={3} />
+                      <InputOTP.Slot index={4} />
+                      <InputOTP.Slot index={5} />
+                    </InputOTP.Group>
+                  </InputOTP>
+
+                  {isOtpInvalid && (
+                    <span
+                      className="field-error"
+                      data-visible={isOtpInvalid}
+                      id="code-error"
+                    >
+                      {i18n.language === "zh"
+                        ? "验证码无效，请重试"
+                        : "Invalid code. Please try again."}
+                    </span>
+                  )}
+
+                  <div className="flex items-center justify-between px-1 pt-1">
+                    <div className="flex items-center gap-[5px]">
+                      <p className="text-sm text-muted">
+                        {i18n.language === "zh"
+                          ? "没收到验证码？"
+                          : "Didn't receive a code?"}
+                      </p>
+                      <Link
+                        className="text-foreground underline cursor-pointer"
+                        onPress={async () => {
+                          if (countdown > 0) {
+                            alert(
+                              i18n.language === "zh"
+                                ? `请等待 ${countdown} 秒`
+                                : `Wait ${countdown}s`,
+                            );
+                            return;
+                          }
+
+                          // 重新发送验证码
+                          try {
+                            const success = await sendVerificationCode({
+                              phone,
+                              type: 2,
+                            });
+                            if (success) {
+                              alert(
+                                i18n.language === "zh"
+                                  ? "已重新发送"
+                                  : "Resent",
+                              );
+                              // 重置倒计时
+                              setCountdown(60);
+                              const timer = setInterval(() => {
+                                setCountdown((prev) => {
+                                  if (prev <= 1) {
+                                    clearInterval(timer);
+                                    return 0;
+                                  }
+                                  return prev - 1;
+                                });
+                              }, 1000);
+                            } else {
+                              alert(
+                                i18n.language === "zh" ? "发送失败" : "Failed",
+                              );
+                            }
+                          } catch (error) {
+                            alert(
+                              i18n.language === "zh" ? "发送出错" : "Error",
+                            );
+                          }
+                        }}
+                      >
+                        {i18n.language === "zh" ? "重新发送" : "Resend"}
+                      </Link>
+                    </div>
+
+                    {/* 返回手机号输入按钮 */}
+                    <button
+                      onClick={() => {
+                        setShowOtpInput(false);
+                        setVerificationCode("");
+                        setIsOtpInvalid(false);
+                      }}
+                      className="text-sm text-muted hover:text-foreground transition-colors underline"
+                    >
+                      {i18n.language === "zh" ? "修改手机号" : "Change phone"}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </CustomModalBody>
@@ -1869,28 +2041,43 @@ export default function AccountPage() {
                   : `${t("settings.account.confirm")} (${selectedRoles.length})`}
               </Button>
             </>
-          ) : (
-            (loginMethod === "phone" || loginMethod === "qrcode") && (
-              <>
-                <Button variant="outline" onPress={() => setLoginMethod(null)}>
-                  {t("settings.account.back")}
-                </Button>
-                <Button
-                  variant="primary"
-                  onPress={handleLogin}
-                  isDisabled={
-                    isLoggingIn ||
-                    !phone ||
-                    (loginMethod === "phone" ? !password : !verificationCode)
+          ) : loginMethod === "phone" ? (
+            // 密码登录显示确认按钮
+            <>
+              <Button variant="outline" onPress={() => setLoginMethod(null)}>
+                {t("settings.account.back")}
+              </Button>
+              <Button
+                variant="primary"
+                onPress={handleLogin}
+                isDisabled={isLoggingIn || !phone || !password}
+              >
+                {isLoggingIn
+                  ? t("settings.account.loading")
+                  : t("settings.account.login")}
+              </Button>
+            </>
+          ) : loginMethod === "qrcode" ? (
+            // 验证码登录显示返回按钮
+            <>
+              <Button
+                variant="outline"
+                onPress={() => {
+                  if (showOtpInput) {
+                    // 如果在 OTP 输入阶段，返回手机号输入
+                    setShowOtpInput(false);
+                    setVerificationCode("");
+                    setIsOtpInvalid(false);
+                  } else {
+                    // 否则返回登录方式选择
+                    setLoginMethod(null);
                   }
-                >
-                  {isLoggingIn
-                    ? t("settings.account.loading")
-                    : t("settings.account.login")}
-                </Button>
-              </>
-            )
-          )}
+                }}
+              >
+                {t("settings.account.back")}
+              </Button>
+            </>
+          ) : null}
         </CustomModalFooter>
       </CustomModal>
     </div>

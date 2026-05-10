@@ -49,7 +49,7 @@ impl Default for LoggerConfig {
             log_level: LogLevel::Info,
             log_dir: dirs::data_local_dir()
                 .unwrap_or_else(|| std::env::current_dir().unwrap())
-                .join("EndProtocol")
+                .join("cn.msk-network.endprotocol")
                 .join("logs"),
         }
     }

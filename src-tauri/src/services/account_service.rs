@@ -219,6 +219,11 @@ impl AccountService {
         &self.config_service
     }
 
+    /// 获取 Skland 服务引用
+    pub fn skland_service(&self) -> &Arc<SklandService> {
+        &self.skland_service
+    }
+
     /// 创建一个可用于 async spawn 的克隆（简化版，仅包含必要的服务引用）
     fn clone_for_async(&self) -> AsyncAccountService {
         AsyncAccountService {
@@ -427,20 +432,23 @@ impl AccountService {
                     .get_role_detail(&final_cred, &final_token, &role_id, &server_id, &user_id)
                     .await
                 {
-                    Ok(detail) => {
+                    Ok(char_detail_response) => {
+                        // 从完整响应中提取 AccountInfo 所需字段
+                        let base = &char_detail_response.data.detail.base;
+
                         // 下载并缓存头像（返回 base64）
                         let cached_avatar = self
                             .avatar_cache_service
-                            .get_or_download_avatar_base64(&detail.avatar_url)
+                            .get_or_download_avatar_base64(&base.avatar_url)
                             .await
-                            .unwrap_or_else(|_| detail.avatar_url.clone());
+                            .unwrap_or_else(|_| base.avatar_url.clone());
 
                         let account = AccountInfo {
                             id: role_id.clone(),
                             avatar: cached_avatar,
-                            nickname: detail.nickname,
-                            level: detail.level,
-                            server: detail.server_id.clone(),
+                            nickname: base.name.clone(),
+                            level: base.level,
+                            server: server_id.clone(),
                             status: "online".to_string(),
                             sync_status: None, // 同步成功，清除状态
                             cred: Some(final_cred),
@@ -505,22 +513,23 @@ impl AccountService {
                                             )
                                             .await
                                         {
-                                            Ok(detail) => {
+                                            Ok(char_detail_response) => {
+                                                // 从完整响应中提取 AccountInfo 所需字段
+                                                let base = &char_detail_response.data.detail.base;
+
                                                 // 下载并缓存头像（返回 base64）
                                                 let cached_avatar = self
                                                     .avatar_cache_service
-                                                    .get_or_download_avatar_base64(
-                                                        &detail.avatar_url,
-                                                    )
+                                                    .get_or_download_avatar_base64(&base.avatar_url)
                                                     .await
-                                                    .unwrap_or_else(|_| detail.avatar_url.clone());
+                                                    .unwrap_or_else(|_| base.avatar_url.clone());
 
                                                 let account = AccountInfo {
                                                     id: role_id.clone(),
                                                     avatar: cached_avatar,
-                                                    nickname: detail.nickname,
-                                                    level: detail.level,
-                                                    server: detail.server_id.clone(),
+                                                    nickname: base.name.clone(),
+                                                    level: base.level,
+                                                    server: server_id.clone(),
                                                     status: "online".to_string(),
                                                     sync_status: None, // 同步成功，清除状态
                                                     cred: Some(new_cred),
@@ -680,17 +689,26 @@ impl AccountService {
                 .get_role_detail(&cred, &token, role_id, server_id, &user_id)
                 .await
             {
-                Ok(detail) => {
+                Ok(char_detail_response) => {
+                    // 从完整响应中提取 AccountInfo 所需字段
+                    let base = &char_detail_response.data.detail.base;
+
                     // 下载并缓存头像（返回 base64）
                     let cached_avatar = self
                         .avatar_cache_service
-                        .get_or_download_avatar_base64(&detail.avatar_url)
+                        .get_or_download_avatar_base64(&base.avatar_url)
                         .await
-                        .unwrap_or_else(|_| detail.avatar_url.clone());
+                        .unwrap_or_else(|_| base.avatar_url.clone());
 
-                    let mut detail_with_cached_avatar = detail;
-                    detail_with_cached_avatar.avatar_url = cached_avatar;
-                    role_details.push(detail_with_cached_avatar);
+                    let detail = RoleDisplayInfo {
+                        role_id: role_id.clone(),
+                        user_id: user_id.clone(),
+                        server_id: server_id.clone(),
+                        nickname: base.name.clone(),
+                        level: base.level,
+                        avatar_url: cached_avatar,
+                    };
+                    role_details.push(detail);
                 }
                 Err(e) => {
                     log_error!("Failed to get role detail for {}: {}", role_id, e);
@@ -908,20 +926,23 @@ impl AccountService {
                     .get_role_detail(&final_cred, &final_token, &role_id, &server_id, &user_id)
                     .await
                 {
-                    Ok(detail) => {
+                    Ok(char_detail_response) => {
+                        // 从完整响应中提取 AccountInfo 所需字段
+                        let base = &char_detail_response.data.detail.base;
+
                         // 下载并缓存头像（返回 base64）
                         let cached_avatar = self
                             .avatar_cache_service
-                            .get_or_download_avatar_base64(&detail.avatar_url)
+                            .get_or_download_avatar_base64(&base.avatar_url)
                             .await
-                            .unwrap_or_else(|_| detail.avatar_url.clone());
+                            .unwrap_or_else(|_| base.avatar_url.clone());
 
                         let refreshed_account = AccountInfo {
                             id: role_id,
                             avatar: cached_avatar,
-                            nickname: detail.nickname,
-                            level: detail.level,
-                            server: detail.server_id,
+                            nickname: base.name.clone(),
+                            level: base.level,
+                            server: server_id.clone(),
                             status: "online".to_string(),
                             sync_status: None, // 同步成功，清除状态
                             cred: Some(final_cred),
@@ -988,22 +1009,23 @@ impl AccountService {
                                             )
                                             .await
                                         {
-                                            Ok(detail) => {
+                                            Ok(char_detail_response) => {
+                                                // 从完整响应中提取 AccountInfo 所需字段
+                                                let base = &char_detail_response.data.detail.base;
+
                                                 // 下载并缓存头像（返回 base64）
                                                 let cached_avatar = self
                                                     .avatar_cache_service
-                                                    .get_or_download_avatar_base64(
-                                                        &detail.avatar_url,
-                                                    )
+                                                    .get_or_download_avatar_base64(&base.avatar_url)
                                                     .await
-                                                    .unwrap_or_else(|_| detail.avatar_url.clone());
+                                                    .unwrap_or_else(|_| base.avatar_url.clone());
 
                                                 let refreshed_account = AccountInfo {
                                                     id: role_id.clone(),
                                                     avatar: cached_avatar,
-                                                    nickname: detail.nickname,
-                                                    level: detail.level,
-                                                    server: detail.server_id.clone(),
+                                                    nickname: base.name.clone(),
+                                                    level: base.level,
+                                                    server: server_id.clone(),
                                                     status: "online".to_string(),
                                                     sync_status: None, // 同步成功，清除状态
                                                     cred: Some(new_cred),
@@ -1069,16 +1091,45 @@ impl AccountService {
     /// 发送手机验证码
     pub async fn send_verification_code(&self, request: SendCodeRequest) -> Result<bool, AppError> {
         let client = http_client::create_client();
+        let payload = json!({
+            "phone": request.phone,
+            "type": request.code_type
+        });
+
+        let start_time = std::time::Instant::now();
+        log_info!("=== HTTP REQUEST: 发送验证码 ===");
+        log_info!("Method: POST");
+        log_info!("URL: https://as.hypergryph.com/general/v1/send_phone_code");
+        log_debug!(
+            "Request Body: {}",
+            serde_json::to_string(&payload).unwrap_or_default()
+        );
+
         let response = client
             .post("https://as.hypergryph.com/general/v1/send_phone_code")
-            .json(&json!({
-                "phone": request.phone,
-                "type": request.code_type
-            }))
+            .json(&payload)
             .send()
             .await?;
 
+        let elapsed = start_time.elapsed();
+        let status = response.status();
+        let resp_headers = response.headers().clone();
+
         let json: serde_json::Value = response.json().await?;
+
+        log_info!("=== HTTP RESPONSE: 发送验证码 ===");
+        log_info!("Status: {}", status);
+        log_info!("Time: {:?}", elapsed);
+        log_debug!("Response Headers:");
+        for (name, value) in resp_headers.iter() {
+            if let Ok(value_str) = value.to_str() {
+                log_debug!("  {}: {}", name, value_str);
+            }
+        }
+        log_debug!(
+            "Response Body: {}",
+            serde_json::to_string(&json).unwrap_or_default()
+        );
 
         if json.get("status").and_then(|v| v.as_i64()) == Some(0) {
             Ok(true)
@@ -1100,16 +1151,45 @@ impl AccountService {
         code: &str,
     ) -> Result<String, AppError> {
         let client = http_client::create_client();
+        let payload = json!({
+            "phone": phone,
+            "code": code
+        });
+
+        let start_time = std::time::Instant::now();
+        log_info!("=== HTTP REQUEST: 验证码登录 ===");
+        log_info!("Method: POST");
+        log_info!("URL: https://as.hypergryph.com/user/auth/v2/token_by_phone_code");
+        log_debug!(
+            "Request Body: {}",
+            serde_json::to_string(&payload).unwrap_or_default()
+        );
+
         let response = client
             .post("https://as.hypergryph.com/user/auth/v2/token_by_phone_code")
-            .json(&json!({
-                "phone": phone,
-                "code": code
-            }))
+            .json(&payload)
             .send()
             .await?;
 
+        let elapsed = start_time.elapsed();
+        let status = response.status();
+        let resp_headers = response.headers().clone();
+
         let json: serde_json::Value = response.json().await?;
+
+        log_info!("=== HTTP RESPONSE: 验证码登录 ===");
+        log_info!("Status: {}", status);
+        log_info!("Time: {:?}", elapsed);
+        log_debug!("Response Headers:");
+        for (name, value) in resp_headers.iter() {
+            if let Ok(value_str) = value.to_str() {
+                log_debug!("  {}: {}", name, value_str);
+            }
+        }
+        log_debug!(
+            "Response Body: {}",
+            serde_json::to_string(&json).unwrap_or_default()
+        );
 
         if json.get("status").and_then(|v| v.as_i64()) == Some(0) {
             json.get("data")
@@ -1244,18 +1324,27 @@ impl AccountService {
                 .get_role_detail(&cred, &token, role_id, server_id, &user_id)
                 .await
             {
-                Ok(detail) => {
-                    log_debug!("  Role detail success: nickname={}", detail.nickname);
+                Ok(char_detail_response) => {
+                    // 从完整响应中提取 AccountInfo 所需字段
+                    let base = &char_detail_response.data.detail.base;
+
+                    log_debug!("  Role detail success: nickname={}", base.name);
                     // 下载并缓存头像（返回 base64）
                     let cached_avatar = self
                         .avatar_cache_service
-                        .get_or_download_avatar_base64(&detail.avatar_url)
+                        .get_or_download_avatar_base64(&base.avatar_url)
                         .await
-                        .unwrap_or_else(|_| detail.avatar_url.clone());
+                        .unwrap_or_else(|_| base.avatar_url.clone());
 
-                    let mut detail_with_cached_avatar = detail;
-                    detail_with_cached_avatar.avatar_url = cached_avatar;
-                    role_details.push(detail_with_cached_avatar);
+                    let detail = RoleDisplayInfo {
+                        role_id: role_id.clone(),
+                        user_id: user_id.clone(),
+                        server_id: server_id.clone(),
+                        nickname: base.name.clone(),
+                        level: base.level,
+                        avatar_url: cached_avatar,
+                    };
+                    role_details.push(detail);
                 }
                 Err(e) => {
                     log_error!("Failed to get role detail for {}: {}", role_id, e);
@@ -1386,16 +1475,45 @@ impl AccountService {
     /// Step 1: 手机号密码 → Hypergryph Token
     async fn get_hypergryph_token(&self, phone: &str, password: &str) -> Result<String, AppError> {
         let client = http_client::create_client();
+        let payload = json!({
+            "phone": phone,
+            "password": password
+        });
+
+        let start_time = std::time::Instant::now();
+        log_info!("=== HTTP REQUEST: 密码登录 ===");
+        log_info!("Method: POST");
+        log_info!("URL: https://as.hypergryph.com/user/auth/v1/token_by_phone_password");
+        log_debug!(
+            "Request Body: {{\"phone\": \"{}\", \"password\": \"***\"}}",
+            phone
+        );
+
         let response = client
             .post("https://as.hypergryph.com/user/auth/v1/token_by_phone_password")
-            .json(&json!({
-                "phone": phone,
-                "password": password
-            }))
+            .json(&payload)
             .send()
             .await?;
 
+        let elapsed = start_time.elapsed();
+        let status = response.status();
+        let resp_headers = response.headers().clone();
+
         let json: serde_json::Value = response.json().await?;
+
+        log_info!("=== HTTP RESPONSE: 密码登录 ===");
+        log_info!("Status: {}", status);
+        log_info!("Time: {:?}", elapsed);
+        log_debug!("Response Headers:");
+        for (name, value) in resp_headers.iter() {
+            if let Ok(value_str) = value.to_str() {
+                log_debug!("  {}: {}", name, value_str);
+            }
+        }
+        log_debug!(
+            "Response Body: {}",
+            serde_json::to_string(&json).unwrap_or_default()
+        );
 
         if json.get("status").and_then(|v| v.as_i64()) == Some(0) {
             json.get("data")
@@ -1419,17 +1537,46 @@ impl AccountService {
     /// Step 2: Hypergryph Token → Skland Code
     async fn get_skland_code(&self, hy_token: &str) -> Result<String, AppError> {
         let client = http_client::create_client();
+        let payload = json!({
+            "token": hy_token,
+            "appCode": "4ca99fa6b56cc2ba",
+            "type": 0
+        });
+
+        let start_time = std::time::Instant::now();
+        log_info!("=== HTTP REQUEST: OAuth授权 ===");
+        log_info!("Method: POST");
+        log_info!("URL: https://as.hypergryph.com/user/oauth2/v2/grant");
+        log_debug!(
+            "Request Body: {}",
+            serde_json::to_string(&payload).unwrap_or_default()
+        );
+
         let response = client
             .post("https://as.hypergryph.com/user/oauth2/v2/grant")
-            .json(&json!({
-                "token": hy_token,
-                "appCode": "4ca99fa6b56cc2ba",
-                "type": 0
-            }))
+            .json(&payload)
             .send()
             .await?;
 
+        let elapsed = start_time.elapsed();
+        let status = response.status();
+        let resp_headers = response.headers().clone();
+
         let json: serde_json::Value = response.json().await?;
+
+        log_info!("=== HTTP RESPONSE: OAuth授权 ===");
+        log_info!("Status: {}", status);
+        log_info!("Time: {:?}", elapsed);
+        log_debug!("Response Headers:");
+        for (name, value) in resp_headers.iter() {
+            if let Ok(value_str) = value.to_str() {
+                log_debug!("  {}: {}", name, value_str);
+            }
+        }
+        log_debug!(
+            "Response Body: {}",
+            serde_json::to_string(&json).unwrap_or_default()
+        );
 
         if json.get("status").and_then(|v| v.as_i64()) == Some(0) {
             json.get("data")
@@ -1453,16 +1600,45 @@ impl AccountService {
     /// Step 3: Skland Code → Cred + Token + UserId
     async fn get_skland_cred(&self, sk_code: &str) -> Result<(String, String, String), AppError> {
         let client = http_client::create_client();
+        let payload = json!({
+            "kind": 1,
+            "code": sk_code
+        });
+
+        let start_time = std::time::Instant::now();
+        log_info!("=== HTTP REQUEST: 获取Cred ===");
+        log_info!("Method: POST");
+        log_info!("URL: https://zonai.skland.com/api/v1/user/auth/generate_cred_by_code");
+        log_debug!(
+            "Request Body: {}",
+            serde_json::to_string(&payload).unwrap_or_default()
+        );
+
         let response = client
             .post("https://zonai.skland.com/api/v1/user/auth/generate_cred_by_code")
-            .json(&json!({
-                "kind": 1,
-                "code": sk_code
-            }))
+            .json(&payload)
             .send()
             .await?;
 
+        let elapsed = start_time.elapsed();
+        let status = response.status();
+        let resp_headers = response.headers().clone();
+
         let json: serde_json::Value = response.json().await?;
+
+        log_info!("=== HTTP RESPONSE: 获取Cred ===");
+        log_info!("Status: {}", status);
+        log_info!("Time: {:?}", elapsed);
+        log_debug!("Response Headers:");
+        for (name, value) in resp_headers.iter() {
+            if let Ok(value_str) = value.to_str() {
+                log_debug!("  {}: {}", name, value_str);
+            }
+        }
+        log_debug!(
+            "Response Body: {}",
+            serde_json::to_string(&json).unwrap_or_default()
+        );
 
         if json.get("code").and_then(|v| v.as_i64()) == Some(0) {
             let data = json.get("data").ok_or_else(|| AppError::AuthError {

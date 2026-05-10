@@ -1,35 +1,159 @@
-import { Card, Button } from "@heroui/react";
+import { useEffect, useState } from "react";
+import { Card } from "@heroui/react";
 import { useTranslation } from "react-i18next";
+import { getSelectedAccount } from "@/utils/accountService";
+import { CardContainer } from "@/components/cards/card-container";
+import { CardType, DashboardConfig } from "@/types/dashboard";
+import {
+  getDashboardConfig,
+  addCard,
+  removeCard,
+  moveCard,
+} from "@/utils/dashboardConfig";
+import { logDebug, logError } from "@/utils/logger";
 
 export default function DashboardPage() {
   const { t } = useTranslation();
+  const [currentRoleId, setCurrentRoleId] = useState<string | null>(null);
+  const [dashboardConfig, setDashboardConfig] =
+    useState<DashboardConfig | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const stats = [
-    {
-      title: t("common.totalRevenue"),
-      value: "$45,231.89",
-      change: "+20.1%",
-      changeType: "positive",
-    },
-    {
-      title: t("common.activeUsers"),
-      value: "2,350",
-      change: "+180.1%",
-      changeType: "positive",
-    },
-    {
-      title: t("common.sales"),
-      value: "+12,234",
-      change: "+19%",
-      changeType: "positive",
-    },
-    {
-      title: t("common.activeNow"),
-      value: "+573",
-      change: "+201",
-      changeType: "positive",
-    },
-  ];
+  // Load current account and dashboard config
+  useEffect(() => {
+    const loadDashboard = async () => {
+      try {
+        setIsLoading(true);
+
+        // Get selected account
+        const selectedAccountId = await getSelectedAccount();
+        if (!selectedAccountId) {
+          logDebug("No account selected");
+          setIsLoading(false);
+          return;
+        }
+
+        setCurrentRoleId(selectedAccountId);
+
+        // Load dashboard config for this role
+        const config = await getDashboardConfig(selectedAccountId);
+        setDashboardConfig(config);
+      } catch (error) {
+        logError("Failed to load dashboard:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadDashboard();
+
+    // Listen for account changes
+    const handleAccountChange = () => {
+      loadDashboard();
+    };
+
+    window.addEventListener("accountChanged", handleAccountChange);
+
+    return () => {
+      window.removeEventListener("accountChanged", handleAccountChange);
+    };
+  }, []);
+
+  // Handle adding a card
+  const handleAddCard = async (cardType: CardType) => {
+    if (!currentRoleId) return;
+
+    try {
+      await addCard(currentRoleId, cardType);
+      const config = await getDashboardConfig(currentRoleId);
+      setDashboardConfig(config);
+    } catch (error) {
+      logError("Failed to add card:", error);
+    }
+  };
+
+  // Handle removing a card
+  const handleRemoveCard = async (cardId: string) => {
+    if (!currentRoleId) return;
+
+    try {
+      await removeCard(currentRoleId, cardId);
+      const config = await getDashboardConfig(currentRoleId);
+      setDashboardConfig(config);
+    } catch (error) {
+      logError("Failed to remove card:", error);
+    }
+  };
+
+  // Handle moving a card
+  const handleMoveCard = async (cardId: string, direction: "up" | "down") => {
+    if (!currentRoleId || !dashboardConfig) return;
+
+    const currentIndex = dashboardConfig.cards.findIndex(
+      (c) => c.id === cardId,
+    );
+    if (currentIndex === -1) return;
+
+    let newIndex: number;
+    if (direction === "up") {
+      newIndex = Math.max(0, currentIndex - 1);
+    } else {
+      newIndex = Math.min(dashboardConfig.cards.length - 1, currentIndex + 1);
+    }
+
+    if (newIndex === currentIndex) return;
+
+    try {
+      await moveCard(currentRoleId, cardId, newIndex);
+      const config = await getDashboardConfig(currentRoleId);
+      setDashboardConfig(config);
+    } catch (error) {
+      logError("Failed to move card:", error);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!currentRoleId) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+            {t("nav.dashboard")}
+          </h1>
+        </div>
+        <Card className="p-12 bg-content1 shadow-md border border-separator">
+          <div className="text-center">
+            <svg
+              className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              />
+            </svg>
+            <p className="text-lg font-medium text-foreground">
+              No Account Selected
+            </p>
+            <p className="text-sm text-muted mt-2">
+              Please select an account from the sidebar to view your dashboard
+            </p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 lg:space-y-8">
@@ -42,199 +166,20 @@ export default function DashboardPage() {
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
             {t("nav.dashboard")}
           </h1>
-          <p className="text-muted mt-1">{t("common.welcome")}</p>
-        </div>
-        <Button variant="primary" size="lg">
-          {t("common.createProject")}
-        </Button>
-      </div>
-
-      {/* Stats Cards Grid */}
-      <div
-        id="dashboard-stats"
-        className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
-      >
-        {stats.map((stat, index) => (
-          <Card
-            key={index}
-            className="bg-content1 p-5 shadow-sm hover:shadow-md transition-shadow"
-          >
-            <p className="text-sm text-muted font-medium">{stat.title}</p>
-            <p className="text-3xl font-bold mt-2 text-foreground">
-              {stat.value}
-            </p>
-            <div className="flex items-center mt-2">
-              <span
-                className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                  stat.changeType === "positive"
-                    ? "bg-success/10 text-success"
-                    : "bg-danger/10 text-danger"
-                }`}
-              >
-                {stat.change}
-              </span>
-              <span className="text-xs text-muted ml-2">
-                {t("common.fromLastMonth")}
-              </span>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {/* Main Content Layout */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Left Column - Activity & Quick Actions */}
-        <div className="xl:col-span-2 space-y-6">
-          {/* Recent Activity */}
-          <Card id="dashboard-activity" className="bg-content1 shadow-sm">
-            <div className="p-5 border-b border-separator flex items-center justify-between">
-              <h2 className="text-lg font-semibold">
-                {t("common.recentActivity")}
-              </h2>
-              <Button size="sm" variant="ghost">
-                {t("common.viewReports")}
-              </Button>
-            </div>
-            <div className="p-5">
-              <div className="space-y-5">
-                {[1, 2, 3, 4].map((item) => (
-                  <div key={item} className="flex items-start gap-4 group">
-                    <div className="w-2 h-2 rounded-full bg-primary mt-2.5 group-hover:scale-125 transition-transform" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">
-                        New user registered successfully
-                      </p>
-                      <p className="text-xs text-muted mt-0.5">
-                        2 hours ago • by System
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Card>
-
-          {/* Recent Projects Table */}
-          <Card id="dashboard-projects" className="bg-content1 shadow-sm">
-            <div className="p-5 border-b border-separator">
-              <h2 className="text-lg font-semibold">
-                {t("common.recentProjects")}
-              </h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-default-50">
-                  <tr>
-                    <th className="text-left py-3 px-5 text-xs font-semibold text-muted uppercase tracking-wider">
-                      {t("common.project")}
-                    </th>
-                    <th className="text-left py-3 px-5 text-xs font-semibold text-muted uppercase tracking-wider">
-                      {t("common.status")}
-                    </th>
-                    <th className="text-left py-3 px-5 text-xs font-semibold text-muted uppercase tracking-wider">
-                      {t("common.progress")}
-                    </th>
-                    <th className="text-left py-3 px-5 text-xs font-semibold text-muted uppercase tracking-wider">
-                      {t("common.teamMembers")}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-separator">
-                  {[1, 2, 3].map((item) => (
-                    <tr
-                      key={item}
-                      className="hover:bg-default-50/50 transition-colors"
-                    >
-                      <td className="py-4 px-5">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">
-                            {t("common.project")} {item}
-                          </p>
-                          <p className="text-xs text-muted mt-0.5">
-                            {t("common.descriptionHere")}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="py-4 px-5">
-                        <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-success/10 text-success border border-success/20">
-                          {t("common.active")}
-                        </span>
-                      </td>
-                      <td className="py-4 px-5 w-48">
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1 bg-default-200 rounded-full h-1.5">
-                            <div
-                              className="bg-primary h-1.5 rounded-full transition-all duration-500"
-                              style={{ width: `${Math.random() * 100}%` }}
-                            />
-                          </div>
-                          <span className="text-xs font-medium text-muted">
-                            {Math.floor(Math.random() * 100)}%
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-5">
-                        <div className="flex -space-x-2">
-                          {[1, 2, 3].map((member) => (
-                            <div
-                              key={member}
-                              className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-600 border-2 border-background flex items-center justify-center text-xs font-bold text-primary-foreground shadow-sm"
-                            >
-                              U{member}
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </div>
-
-        {/* Right Column - Quick Actions & Info */}
-        <div className="space-y-6">
-          {/* Quick Actions */}
-          <Card id="dashboard-quick-actions" className="bg-content1 shadow-sm">
-            <div className="p-5 border-b border-separator">
-              <h2 className="text-lg font-semibold">
-                {t("common.quickActions")}
-              </h2>
-            </div>
-            <div className="p-5 space-y-3">
-              <Button className="w-full justify-start" variant="secondary">
-                <span className="mr-2">+</span> {t("common.startNewProject")}
-              </Button>
-              <Button className="w-full justify-start" variant="tertiary">
-                <span className="mr-2">+</span> {t("common.inviteSomeone")}
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <span className="mr-2">📊</span> {t("common.analyticsInsights")}
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <span className="mr-2">⚙️</span> {t("common.managePreferences")}
-              </Button>
-            </div>
-          </Card>
-
-          {/* System Status / Info Card */}
-          <Card className="bg-gradient-to-br from-primary/10 to-secondary/10 border border-primary/20">
-            <div className="p-5">
-              <h3 className="font-semibold text-foreground mb-2">
-                System Status
-              </h3>
-              <p className="text-sm text-muted mb-4">
-                All systems are running smoothly. Last check: 5 mins ago.
-              </p>
-              <div className="flex items-center gap-2 text-success text-sm font-medium">
-                <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                Operational
-              </div>
-            </div>
-          </Card>
+          <p className="text-muted mt-1">Customize your dashboard with cards</p>
         </div>
       </div>
+
+      {/* Card Container */}
+      {dashboardConfig && (
+        <CardContainer
+          roleId={currentRoleId}
+          cards={dashboardConfig.cards}
+          onAddCard={handleAddCard}
+          onRemoveCard={handleRemoveCard}
+          onMoveCard={handleMoveCard}
+        />
+      )}
     </div>
   );
 }

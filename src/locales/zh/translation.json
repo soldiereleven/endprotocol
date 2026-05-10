@@ -55,7 +55,8 @@
     "save": "保存",
     "cancel": "取消",
     "enabled": "已启用",
-    "disabled": "已禁用"
+    "disabled": "已禁用",
+    "slot": "槽位 {{number}}"
   },
   "settings": {
     "title": "设置",
@@ -115,6 +116,25 @@
       "title": "通知设置",
       "email_notifications": "邮件通知",
       "push_notifications": "推送通知"
+    },
+    "characters": {
+      "pin_characters": "固定角色（最多 {{max}} 个）",
+      "pinned_count": "{{count}} / {{max}} 已固定",
+      "select_slot": "为 {{name}} 选择槽位",
+      "choose_slot": "选择一个槽位来固定此角色",
+      "click_to_select": "点击槽位进行选择，然后点击确认来固定。",
+      "confirm_pin": "确认固定",
+      "cancel": "取消",
+      "empty_slot": "空槽位",
+      "current": "当前",
+      "selected": "已选中",
+      "pin_success": "成功将 {{name}} 固定到槽位 {{slot}}！",
+      "details": "详情",
+      "pin": "固定",
+      "characters_count": "角色（{{count}}/3）",
+      "passive_skills": "被动技能",
+      "ability_talents": "能力天赋",
+      "cultivation_talents": "基建技能"
     }
   }
 }
