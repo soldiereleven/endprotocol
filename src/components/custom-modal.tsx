@@ -105,36 +105,41 @@ export const CustomModal: React.FC<ModalProps> = ({
 interface ModalHeaderProps {
   children: React.ReactNode;
   onClose?: () => void;
+  rightContent?: React.ReactNode; // 右侧额外内容
 }
 
 export const CustomModalHeader: React.FC<ModalHeaderProps> = ({
   children,
   onClose,
+  rightContent,
 }) => {
   return (
     <div className="flex items-center justify-between px-6 py-4 border-b border-separator">
       <div className="text-lg font-semibold text-foreground">{children}</div>
-      {onClose && (
-        <button
-          onClick={onClose}
-          className="p-1 rounded-lg hover:bg-default-100 transition-colors text-muted hover:text-foreground"
-          aria-label="Close"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+      <div className="flex items-center gap-2">
+        {rightContent}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg hover:bg-default-100 transition-colors text-muted hover:text-foreground"
+            aria-label="Close"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
-      )}
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        )}
+      </div>
     </div>
   );
 };

@@ -318,7 +318,9 @@ export function CharSelectModal({
             <div className="space-y-6">
               {/* Skills Section */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Skills</h3>
+                <h3 className="text-lg font-semibold mb-3">
+                  {t("character_detail.skills")}
+                </h3>
                 <div className="space-y-3">
                   {getCharById(detailCharId)?.skills.map((skill) => (
                     <div
@@ -399,7 +401,7 @@ export function CharSelectModal({
                     if (activeCombatTalents.length === 0) {
                       return (
                         <p className="text-muted text-center py-4">
-                          No active talents to display
+                          {t("character_detail.no_active_talents")}
                         </p>
                       );
                     }
@@ -473,7 +475,7 @@ export function CharSelectModal({
                     if (activeAbilityTalents.length === 0) {
                       return (
                         <p className="text-muted text-center py-4">
-                          No active ability talents to display
+                          {t("character_detail.no_active_ability_talents")}
                         </p>
                       );
                     }
@@ -527,7 +529,7 @@ export function CharSelectModal({
                     if (activeCultivationTalents.length === 0) {
                       return (
                         <p className="text-muted text-center py-4">
-                          No active cultivation talents to display
+                          {t("character_detail.no_active_cultivation_talents")}
                         </p>
                       );
                     }
@@ -560,18 +562,26 @@ export function CharSelectModal({
 
               {/* Info Section */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Info</h3>
+                <h3 className="text-lg font-semibold mb-3">
+                  {t("character_detail.info")}
+                </h3>
                 <div className="space-y-3 p-4 bg-content1 rounded-lg border border-separator">
                   <div className="flex justify-between">
-                    <span className="text-muted">Property:</span>
+                    <span className="text-muted">
+                      {t("character_detail.property")}:
+                    </span>
                     <span>{getCharById(detailCharId)?.property.value}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted">Weapon Type:</span>
+                    <span className="text-muted">
+                      {t("character_detail.weapon_type")}:
+                    </span>
                     <span>{getCharById(detailCharId)?.weaponType.value}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted">Tags:</span>
+                    <span className="text-muted">
+                      {t("character_detail.tags")}:
+                    </span>
                     <span>{getCharById(detailCharId)?.tags.join(", ")}</span>
                   </div>
                 </div>
@@ -611,12 +621,12 @@ export function CharSelectModal({
                   return (
                     <div
                       key={slotIndex}
-                      className={`relative p-4 rounded-lg border-2 transition-all cursor-pointer ${
+                      className={`relative p-4 rounded-lg transition-all cursor-pointer ${
                         isSelected
-                          ? "border-primary bg-primary/10 shadow-lg"
+                          ? "border-[3px] border-blue-500 bg-blue-50 dark:bg-blue-900/40 shadow-md scale-[1.02]"
                           : hasDuplicate
-                            ? "border-warning bg-warning/10 opacity-50 cursor-not-allowed"
-                            : "border-separator bg-content1 hover:border-primary/50"
+                            ? "border-2 border-warning bg-warning/10 opacity-50 cursor-not-allowed"
+                            : "border-2 border-separator bg-content1 hover:border-blue-400/50 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                       }`}
                       onClick={() =>
                         !hasDuplicate && handleSlotSelect(slotIndex)

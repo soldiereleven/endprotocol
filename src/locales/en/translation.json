@@ -157,5 +157,36 @@
       "character_list": "Character List",
       "character_list_desc": "Display pinned characters"
     }
+  },
+  "common": {
+    "refresh": "Refresh",
+    "refreshing": "Refreshing..."
+  },
+  "role_select": {
+    "title": "Select Roles to Bind",
+    "no_roles_found": "No roles found",
+    "unknown_role": "Unknown Role",
+    "level": "Level",
+    "server": "Server",
+    "cancel": "Cancel",
+    "confirm_selection": "Confirm Selection ({{count}})"
+  },
+  "account_switch": {
+    "title": "Switch Account",
+    "search_placeholder": "Search accounts...",
+    "no_accounts_found": "No accounts found",
+    "accounts_total": "{{count}} accounts total"
+  },
+  "character_detail": {
+    "skills": "Skills",
+    "talents": "Talents",
+    "info": "Info",
+    "property": "Property",
+    "weapon_type": "Weapon Type",
+    "tags": "Tags",
+    "illustration": "Illustration",
+    "no_active_talents": "No active talents to display",
+    "no_active_ability_talents": "No active ability talents to display",
+    "no_active_cultivation_talents": "No active cultivation talents to display"
   }
 }

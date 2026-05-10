@@ -20,33 +20,11 @@ export function CharacterListCard({
   settings,
   isEditMode = false,
 }: CharacterListCardProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [charDetail, setCharDetail] = useState<CharDetailData | null>(null);
   const [selectedCharIds, setSelectedCharIds] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(
-    null,
-  );
-
-  // Long press to enter edit mode
-  const handlePointerDown = () => {
-    if (isEditMode) return; // Already in edit mode
-
-    const timer = setTimeout(() => {
-      // Trigger edit mode event (would need to be passed from parent)
-      console.log("Long press detected - would trigger edit mode");
-    }, 800); // 800ms long press
-
-    setLongPressTimer(timer);
-  };
-
-  const handlePointerUp = () => {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      setLongPressTimer(null);
-    }
-  };
 
   // Load character detail data
   useEffect(() => {
@@ -142,14 +120,18 @@ export function CharacterListCard({
     .filter((c): c is CharacterItem => c !== undefined)
     .slice(0, 3);
 
+  // Clear long press timer when modal opens
+  useEffect(() => {
+    if (isModalOpen) {
+      // Dispatch custom event to clear any active long press timers
+      logDebug("Modal opened, clearing long press timers");
+      window.dispatchEvent(new CustomEvent("clearLongPressTimers"));
+    }
+  }, [isModalOpen]);
+
   if (isLoading) {
     return (
-      <Card
-        className="p-6 bg-content1 shadow-sm border border-separator h-full w-full"
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
-      >
+      <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full">
         <div className="space-y-4">
           {/* Title skeleton */}
           <div className="h-5 bg-default-200 rounded w-1/2 animate-pulse"></div>
@@ -177,7 +159,9 @@ export function CharacterListCard({
   if (!charDetail) {
     return (
       <Card className="p-6 bg-content1 shadow-sm border border-separator">
-        <p className="text-muted text-center">No data available</p>
+        <p className="text-muted text-center">
+          {i18n.language === "zh" ? "无可用数据" : "No data available"}
+        </p>
       </Card>
     );
   }
@@ -187,11 +171,8 @@ export function CharacterListCard({
       <Card
         className="p-6 bg-content1 shadow-sm border border-separator cursor-pointer hover:shadow-md transition-shadow h-full w-full select-none"
         onClick={() => !isEditMode && setIsModalOpen(true)}
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
       >
-        <div className="space-y-2.5">
+        <div className="flex flex-col justify-center h-full gap-4">
           {/* Card Header - Only show character count */}
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-foreground text-base">

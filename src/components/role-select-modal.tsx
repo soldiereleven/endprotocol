@@ -10,6 +10,7 @@ import { Checkbox } from "@heroui/react";
 import { Skeleton } from "@heroui/react";
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useTranslation } from "react-i18next";
 
 interface RoleDisplayInfo {
   roleId: string;
@@ -39,6 +40,7 @@ export default function RoleSelectModal({
   userId,
   onSuccess,
 }: RoleSelectModalProps) {
+  const { t, i18n } = useTranslation();
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -59,7 +61,11 @@ export default function RoleSelectModal({
 
   const handleConfirm = async () => {
     if (selectedRoles.length === 0) {
-      alert("请至少选择一个角色");
+      alert(
+        i18n.language === "zh"
+          ? "请至少选择一个角色"
+          : "Please select at least one role",
+      );
       return;
     }
 
@@ -82,7 +88,7 @@ export default function RoleSelectModal({
       onClose();
     } catch (error) {
       console.error("Failed to save roles:", error);
-      alert(`保存失败: ${error}`);
+      alert(`${i18n.language === "zh" ? "保存失败" : "Save failed"}: ${error}`);
     } finally {
       setIsLoading(false);
     }
@@ -90,78 +96,85 @@ export default function RoleSelectModal({
 
   return (
     <CustomModal isOpen={isOpen} onClose={onClose} size="xl">
-      <CustomModalHeader onClose={onClose}>选择要绑定的角色</CustomModalHeader>
+      <CustomModalHeader onClose={onClose}>
+        {t("role_select.title")}
+      </CustomModalHeader>
       <CustomModalBody>
-              {roles.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">
-                  未找到可用角色
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  {roles.map((role) => (
-                    <Card
-                      key={role.roleId}
-                      className={`cursor-pointer transition-all ${
-                        selectedRoles.includes(role.roleId)
-                          ? "border-2 border-primary"
-                          : "border-2 border-transparent"
-                      }`}
-                      onPress={() => handleRoleToggle(role.roleId)}
-                    >
-                      <div className="p-4">
-                        <div className="flex items-start gap-3">
-                          <Checkbox
-                            isSelected={selectedRoles.includes(role.roleId)}
-                            onChange={() => handleRoleToggle(role.roleId)}
-                          />
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200">
-                                {role.avatarUrl ? (
-                                  <img
-                                    src={role.avatarUrl}
-                                    alt={role.nickname}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      (e.target as HTMLImageElement).src =
-                                        "/tauri.svg";
-                                    }}
-                                  />
-                                ) : (
-                                  <Skeleton className="w-full h-full rounded-full" />
-                                )}
-                              </div>
-                              <div>
-                                <h3 className="font-semibold text-lg">
-                                  {role.nickname || "未知角色"}
-                                </h3>
-                                <p className="text-sm text-gray-500">
-                                  等级: {role.level}
-                                </p>
-                              </div>
-                            </div>
-                            <p className="text-xs text-gray-400">
-                              服务器: {role.serverId}
-                            </p>
-                          </div>
+        {roles.length === 0 ? (
+          <div className="text-center text-gray-500 py-8">
+            {t("role_select.no_roles_found")}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            {roles.map((role) => (
+              <Card
+                key={role.roleId}
+                className={`cursor-pointer transition-all ${
+                  selectedRoles.includes(role.roleId)
+                    ? "border-2 border-primary"
+                    : "border-2 border-transparent"
+                }`}
+                onClick={() => handleRoleToggle(role.roleId)}
+              >
+                <div className="p-4">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      isSelected={selectedRoles.includes(role.roleId)}
+                      onChange={() => handleRoleToggle(role.roleId)}
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200">
+                          {role.avatarUrl ? (
+                            <img
+                              src={role.avatarUrl}
+                              alt={role.nickname}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src =
+                                  "/tauri.svg";
+                              }}
+                            />
+                          ) : (
+                            <Skeleton className="w-full h-full rounded-full" />
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-lg">
+                            {role.nickname || t("role_select.unknown_role")}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            {t("role_select.level")}: {role.level}
+                          </p>
                         </div>
                       </div>
-                    </Card>
-                  ))}
+                      <p className="text-xs text-gray-400">
+                        {t("role_select.server")}: {role.serverId}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              )}
+              </Card>
+            ))}
+          </div>
+        )}
       </CustomModalBody>
       <CustomModalFooter>
-        <Button color="danger" variant="light" onPress={onClose}>
-          取消
+        <Button variant="outline" onPress={onClose}>
+          {t("role_select.cancel")}
         </Button>
         <Button
-          color="primary"
+          variant="primary"
           onPress={handleConfirm}
-          isLoading={isLoading}
-          isDisabled={selectedRoles.length === 0}
+          isDisabled={selectedRoles.length === 0 || isLoading}
         >
-          确认选择 ({selectedRoles.length})
+          {isLoading
+            ? i18n.language === "zh"
+              ? "加载中..."
+              : "Loading..."
+            : t("role_select.confirm_selection", {
+                count: selectedRoles.length,
+              })}
         </Button>
       </CustomModalFooter>
     </CustomModal>

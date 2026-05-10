@@ -68,8 +68,8 @@ export function AddCardModal({
                   isDisabled
                     ? "opacity-50 cursor-not-allowed bg-default-100"
                     : isSelected
-                      ? "border-2 border-primary bg-primary/10"
-                      : "hover:border-primary/50 border-2 border-transparent"
+                      ? "border-[3px] border-blue-500 bg-blue-50 dark:bg-blue-900/40 shadow-md scale-[1.02]"
+                      : "hover:border-blue-400/50 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-2 border-transparent"
                 }`}
                 onClick={() => !isDisabled && setSelectedType(card.type)}
               >
@@ -91,7 +91,7 @@ export function AddCardModal({
         </div>
       </CustomModalBody>
       <CustomModalFooter>
-        <Button variant="flat" onPress={handleClose}>
+        <Button variant="secondary" onPress={handleClose}>
           {t("common.cancel") || "Cancel"}
         </Button>
         <Button

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
@@ -15,6 +15,13 @@ export function DashboardFAB({
 }: DashboardFABProps) {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Auto-expand when entering edit mode
+  useEffect(() => {
+    if (isEditMode) {
+      setIsExpanded(true);
+    }
+  }, [isEditMode]);
 
   const handleClick = () => {
     if (isExpanded) {

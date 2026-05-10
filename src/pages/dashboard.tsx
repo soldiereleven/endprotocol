@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Card } from "@heroui/react";
+import { Card, Button, Tooltip, Skeleton, ProgressCircle } from "@heroui/react";
 import { useTranslation } from "react-i18next";
-import { getSelectedAccount } from "@/utils/accountService";
+import { getSelectedAccount, refreshAccountData } from "@/utils/accountService";
 import { CardContainer } from "@/components/cards/card-container";
 import { DashboardFAB } from "@/components/dashboard-fab";
 import { AddCardModal } from "@/components/add-card-modal";
@@ -22,33 +22,34 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isAddCardModalOpen, setIsAddCardModalOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Load current account and dashboard config
-  useEffect(() => {
-    const loadDashboard = async () => {
-      try {
-        setIsLoading(true);
+  const loadDashboard = async () => {
+    try {
+      setIsLoading(true);
 
-        // Get selected account
-        const selectedAccountId = await getSelectedAccount();
-        if (!selectedAccountId) {
-          logDebug("No account selected");
-          setIsLoading(false);
-          return;
-        }
-
-        setCurrentRoleId(selectedAccountId);
-
-        // Load dashboard config for this role
-        const config = await getDashboardConfig(selectedAccountId);
-        setDashboardConfig(config);
-      } catch (error) {
-        logError("Failed to load dashboard:", error);
-      } finally {
+      // Get selected account
+      const selectedAccountId = await getSelectedAccount();
+      if (!selectedAccountId) {
+        logDebug("No account selected");
         setIsLoading(false);
+        return;
       }
-    };
 
+      setCurrentRoleId(selectedAccountId);
+
+      // Load dashboard config for this role
+      const config = await getDashboardConfig(selectedAccountId);
+      setDashboardConfig(config);
+    } catch (error) {
+      logError("Failed to load dashboard:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadDashboard();
 
     // Listen for account changes
@@ -56,12 +57,163 @@ export default function DashboardPage() {
       loadDashboard();
     };
 
+    // Listen for manual refresh events (from Account page)
+    const handleManualRefresh = () => {
+      logDebug("[Dashboard] Received manual refresh event, reloading data...");
+      loadDashboard();
+    };
+
     window.addEventListener("accountChanged", handleAccountChange);
+    window.addEventListener("manualRefresh", handleManualRefresh);
 
     return () => {
       window.removeEventListener("accountChanged", handleAccountChange);
+      window.removeEventListener("manualRefresh", handleManualRefresh);
     };
   }, []);
+
+  // Handle manual refresh - same as Account page
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+
+      // Notify sidebar to show skeleton (same as Account page)
+      window.dispatchEvent(
+        new CustomEvent("manualRefresh", {
+          detail: { count: dashboardConfig?.cards.length || 1 },
+        }),
+      );
+
+      // Call the same API as Account page
+      const result = await refreshAccountData();
+
+      if (result.success && result.accounts) {
+        logDebug("[Dashboard] Data refreshed successfully");
+        // Reload dashboard config after data refresh
+        await loadDashboard();
+      }
+    } catch (error) {
+      logError("Failed to refresh dashboard:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Render skeleton for dashboard cards
+  const renderSkeleton = () => {
+    const GRID_SIZE = 100; // Match CardContainer grid size
+    const BASE_PADDING = 100; // Match CardContainer's basePadding
+
+    // Use the actual cards array
+    const cards = dashboardConfig?.cards || [];
+    const cardCount = cards.length || 3; // Fallback to 3 if empty
+
+    // Calculate container height the same way CardContainer does
+    let maxY = 0;
+    for (let i = 0; i < cardCount; i++) {
+      const card = cards[i];
+      let y, h;
+
+      if (card && card.x !== undefined && card.y !== undefined) {
+        y = card.y ?? 0;
+        h = card.h ?? 2;
+      } else {
+        // Default layout: 3 cards per row, each card is 2 grid units high
+        const row = Math.floor(i / 3);
+        y = row * 2;
+        h = 2;
+      }
+
+      const cardBottom = (y + h) * GRID_SIZE;
+      maxY = Math.max(maxY, cardBottom);
+    }
+    const containerHeight = maxY + BASE_PADDING;
+
+    console.log("[renderSkeleton] Debug:", {
+      cardCount,
+      maxY,
+      BASE_PADDING,
+      containerHeight,
+      cards: cards.map((c) => ({ x: c.x, y: c.y, w: c.w, h: c.h })),
+    });
+
+    return (
+      <div className="relative w-full">
+        {/* Inner container with dynamic height - matches CardContainer exactly */}
+        <div
+          className="relative w-full"
+          style={{
+            minHeight: containerHeight,
+          }}
+        >
+          {/* Invisible spacer to ensure container height is respected */}
+          <div
+            style={{
+              width: "100%",
+              height: containerHeight,
+              visibility: "hidden",
+              pointerEvents: "none",
+            }}
+            aria-hidden="true"
+          />
+
+          {/* Cards */}
+          {[...Array(cardCount)].map((_, index) => {
+            // Calculate position based on card config or default layout
+            const card = dashboardConfig?.cards[index];
+
+            // Use card's x,y if available, otherwise calculate based on index
+            let x, y, w, h;
+            if (card && card.x !== undefined && card.y !== undefined) {
+              // Use card's actual position
+              x = card.x * GRID_SIZE;
+              y = card.y * GRID_SIZE;
+              w = (card.w ?? 3) * GRID_SIZE;
+              h = (card.h ?? 2) * GRID_SIZE;
+            } else {
+              // Default layout: 3 cards per row, each card is 2 grid units high
+              const col = index % 3;
+              const row = Math.floor(index / 3);
+              x = col * GRID_SIZE;
+              y = row * GRID_SIZE * 2; // Each row is 2 grid units high
+              w = 3 * GRID_SIZE;
+              h = 2 * GRID_SIZE;
+            }
+
+            return (
+              <div
+                key={index}
+                className="absolute"
+                style={{
+                  left: x,
+                  top: y,
+                  width: w,
+                  height: h,
+                }}
+              >
+                <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full">
+                  <div className="space-y-4">
+                    {/* Title skeleton */}
+                    <Skeleton className="w-1/2 h-5 rounded-lg" />
+
+                    {/* Content skeleton */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {[1, 2, 3].map((i) => (
+                        <Skeleton
+                          key={i}
+                          className="w-full h-[140px] rounded-lg"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   // Handle adding a card
   const handleAddCard = async (cardType: CardType) => {
@@ -176,10 +328,47 @@ export default function DashboardPage() {
               "Customize your dashboard with cards"}
           </p>
         </div>
+        <Tooltip content={t("common.refresh") || "Refresh"}>
+          <Button
+            isIconOnly
+            variant="ghost"
+            size="sm"
+            onPress={handleRefresh}
+            isLoading={isRefreshing}
+            className="text-muted hover:text-foreground"
+            aria-label={t("common.refresh") || "Refresh"}
+          >
+            <svg
+              className={`w-5 h-5 ${isRefreshing ? "animate-spin" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+          </Button>
+        </Tooltip>
       </div>
 
       {/* Card Container */}
-      {dashboardConfig && (
+      {isRefreshing ? (
+        <div className="flex flex-col items-center justify-center py-20 space-y-4">
+          <ProgressCircle isIndeterminate size="lg" aria-label="Loading">
+            <ProgressCircle.Track>
+              <ProgressCircle.TrackCircle />
+              <ProgressCircle.FillCircle />
+            </ProgressCircle.Track>
+          </ProgressCircle>
+          <p className="text-sm text-muted">
+            {t("common.refreshing") || "Refreshing..."}
+          </p>
+        </div>
+      ) : dashboardConfig ? (
         <CardContainer
           roleId={currentRoleId}
           cards={dashboardConfig.cards}
@@ -188,7 +377,7 @@ export default function DashboardPage() {
           onEnterEditMode={() => setIsEditMode(true)}
           onExitEditMode={() => setIsEditMode(false)}
         />
-      )}
+      ) : null}
 
       {/* Floating Action Button */}
       <DashboardFAB

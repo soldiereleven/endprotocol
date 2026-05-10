@@ -101,7 +101,8 @@ export default function SettingsPage() {
                   >
                     <span>
                       {languages.find((lang) => lang.key === i18n.language)
-                        ?.label || "简体中文"}
+                        ?.label ||
+                        (i18n.language === "zh" ? "简体中文" : "English")}
                     </span>
                     <svg
                       className={`w-4 h-4 transition-transform ${isLangDropdownOpen ? "rotate-180" : ""}`}

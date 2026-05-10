@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   DndContext,
@@ -72,7 +72,7 @@ function FreeDragCard({
   const {
     longPressProgress,
     handlePointerDown,
-    handlePointerUp,
+    handlePointerUp: originalHandlePointerUp,
     handlePointerLeave,
     triggerDragStart,
   } = useLongPressDrag({
@@ -81,10 +81,52 @@ function FreeDragCard({
     onLongPress,
   });
 
+  // Create a ref to track the latest isDragging value
+  const isDraggingRef = useRef(isDragging);
+
+  // Update the ref whenever isDragging changes
+  useEffect(() => {
+    isDraggingRef.current = isDragging;
+  }, [isDragging]);
+
+  // Wrap handlePointerUp to check if we should exit edit mode
+  const handlePointerUp = () => {
+    console.log("[FreeDragCard] handlePointerUp called", {
+      isEditMode,
+      isDragging,
+    });
+
+    // If in edit mode and not dragging, it means user long-pressed but didn't drag
+    // In this case, we should exit edit mode
+    if (isEditMode && !isDragging) {
+      console.log(
+        "Pointer up in edit mode without dragging, exiting edit mode",
+      );
+      // Delay slightly to allow dnd-kit to process the event
+      setTimeout(() => {
+        // Use the ref to get the latest value
+        console.log(
+          "[FreeDragCard] Checking isDraggingRef after delay:",
+          isDraggingRef.current,
+        );
+        if (!isDraggingRef.current) {
+          console.log("[FreeDragCard] Calling onExitEditMode");
+          onExitEditMode?.();
+        }
+      }, 50);
+    }
+    originalHandlePointerUp();
+  };
+
   // After entering edit mode, trigger drag start if user is still holding
   useEffect(() => {
+    console.log("[FreeDragCard] useEffect triggered", {
+      isEditMode,
+      hasListeners: !!listeners?.onPointerDown,
+    });
     if (isEditMode && listeners?.onPointerDown) {
-      triggerDragStart(listeners.onPointerDown);
+      console.log("[FreeDragCard] Calling triggerDragStart");
+      triggerDragStart(listeners.onPointerDown as any);
     }
   }, [isEditMode, listeners, triggerDragStart]);
 
@@ -126,12 +168,14 @@ function FreeDragCard({
         }
       }}
       onPointerUp={(e) => {
+        // Always call our custom handlePointerUp first
+        handlePointerUp();
+
+        // Then let dnd-kit handle it if in edit mode
         if (isEditMode) {
           if (listeners?.onPointerUp) {
             listeners.onPointerUp(e);
           }
-        } else {
-          handlePointerUp();
         }
       }}
       onPointerLeave={() => {
@@ -197,12 +241,7 @@ function FreeDragCard({
       )}
 
       {/* Card Content */}
-      <div
-        className="h-full w-full"
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
-      >
+      <div className="h-full w-full">
         <CharacterListCard
           roleId={roleId}
           cardId={card.id}
@@ -248,7 +287,25 @@ export function CardContainer({
   // Sort and initialize cards
   useEffect(() => {
     const sorted = [...cards].sort((a, b) => a.position - b.position);
-    setSortedCards(sorted);
+
+    // Assign default positions to cards without x,y coordinates
+    const cardsWithPositions = sorted.map((card, index) => {
+      if (card.x === undefined || card.y === undefined) {
+        // Calculate default position: 3 cards per row, each card is 2 grid units high
+        const col = index % 3;
+        const row = Math.floor(index / 3);
+        return {
+          ...card,
+          x: col,
+          y: row * 2, // Each row is 2 grid units high
+          w: card.w ?? 3,
+          h: card.h ?? 2,
+        };
+      }
+      return card;
+    });
+
+    setSortedCards(cardsWithPositions);
   }, [cards.length]);
 
   // Calculate required container height based on card positions
@@ -398,7 +455,11 @@ export function CardContainer({
 
   // Handle drag end - snap to grid
   const handleDragEnd = async (event: DragEndEvent) => {
-    console.log("Drag ended, highlightGrid:", highlightGrid);
+    console.log("[CardContainer] handleDragEnd called", {
+      draggedViaLongPress,
+      delta: event.delta,
+      activeId: event.active.id,
+    });
     const { active, delta } = event;
     setActiveId(null);
     setIsDragging(false);
@@ -406,7 +467,18 @@ export function CardContainer({
     setHighlightGrid(null); // Clear highlight
     console.log("States cleared");
 
-    if (!delta) return;
+    // Exit edit mode if entered via long press (even without dragging)
+    if (draggedViaLongPress && onExitEditMode) {
+      console.log("Exiting edit mode after long press (with or without drag)");
+      onExitEditMode();
+      setDraggedViaLongPress(false);
+    }
+
+    // If no delta, exit early (no position update needed)
+    if (!delta) {
+      console.log("No delta, exiting early");
+      return;
+    }
 
     const card = sortedCards.find((c) => c.id === active.id);
     if (!card) return;
@@ -463,12 +535,6 @@ export function CardContainer({
       w: cardW,
       h: cardH,
     });
-
-    // Exit edit mode immediately after drag completes if entered via long press
-    if (draggedViaLongPress && onExitEditMode) {
-      onExitEditMode();
-      setDraggedViaLongPress(false);
-    }
   };
 
   // Find active card for overlay

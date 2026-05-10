@@ -157,5 +157,36 @@
       "character_list": "角色列表",
       "character_list_desc": "显示已固定的角色"
     }
+  },
+  "common": {
+    "refresh": "刷新",
+    "refreshing": "刷新中..."
+  },
+  "role_select": {
+    "title": "选择要绑定的角色",
+    "no_roles_found": "未找到可用角色",
+    "unknown_role": "未知角色",
+    "level": "等级",
+    "server": "服务器",
+    "cancel": "取消",
+    "confirm_selection": "确认选择 ({{count}})"
+  },
+  "account_switch": {
+    "title": "切换账户",
+    "search_placeholder": "搜索账户...",
+    "no_accounts_found": "未找到账户",
+    "accounts_total": "共 {{count}} 个账户"
+  },
+  "character_detail": {
+    "skills": "技能",
+    "talents": "天赋",
+    "info": "信息",
+    "property": "属性",
+    "weapon_type": "武器类型",
+    "tags": "标签",
+    "illustration": "插画",
+    "no_active_talents": "无激活的天赋可显示",
+    "no_active_ability_talents": "无激活的能力天赋可显示",
+    "no_active_cultivation_talents": "无激活的培养天赋可显示"
   }
 }

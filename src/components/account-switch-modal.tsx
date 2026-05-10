@@ -128,7 +128,7 @@ export default function AccountSwitchModal({
   return (
     <CustomModal isOpen={isOpen} onClose={onClose} size="lg">
       <CustomModalHeader onClose={onClose}>
-        {i18n.language === "zh" ? "切换账户" : "Switch Account"}
+        {t("account_switch.title")}
       </CustomModalHeader>
       <CustomModalBody>
         {/* 搜索框 */}
@@ -137,9 +137,7 @@ export default function AccountSwitchModal({
             <SearchIcon className="text-base text-muted pointer-events-none flex-shrink-0" />
             <input
               type="search"
-              placeholder={
-                i18n.language === "zh" ? "搜索账户..." : "Search accounts..."
-              }
+              placeholder={t("account_switch.search_placeholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-transparent border-none outline-none text-sm w-full text-foreground placeholder:text-muted"
@@ -189,7 +187,7 @@ export default function AccountSwitchModal({
             <div className="text-center py-8">
               <SearchIcon className="w-12 h-12 mx-auto mb-3 text-muted opacity-50" />
               <p className="text-muted">
-                {i18n.language === "zh" ? "未找到账户" : "No accounts found"}
+                {t("account_switch.no_accounts_found")}
               </p>
             </div>
           ) : (
@@ -296,9 +294,9 @@ export default function AccountSwitchModal({
         {/* 底部提示 */}
         {!isLoading && filteredAccounts.length > 0 && (
           <div className="mt-4 pt-3 border-t border-separator text-xs text-muted text-center">
-            {i18n.language === "zh"
-              ? `共 ${filteredAccounts.length} 个账户`
-              : `${filteredAccounts.length} accounts total`}
+            {t("account_switch.accounts_total", {
+              count: filteredAccounts.length,
+            })}
           </div>
         )}
       </CustomModalBody>

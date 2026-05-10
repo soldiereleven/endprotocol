@@ -5,6 +5,7 @@ import {
 } from "./custom-modal";
 import { CharacterData, CharacterItem } from "@/types/charDetail";
 import { SkillDescription } from "@/utils/skillDescParser";
+import { useTranslation } from "react-i18next";
 
 interface CharacterDetailModalProps {
   isOpen: boolean;
@@ -19,6 +20,8 @@ export function CharacterDetailModal({
   character,
   characterItem,
 }: CharacterDetailModalProps) {
+  const { t } = useTranslation();
+
   // 调试日志
   console.log("CharacterDetailModal - characterItem:", characterItem);
   console.log("CharacterDetailModal - talent:", characterItem?.talent);
@@ -77,7 +80,9 @@ export function CharacterDetailModal({
         <div className="space-y-6">
           {/* Skills Section */}
           <div>
-            <h3 className="text-lg font-semibold mb-3">Skills</h3>
+            <h3 className="text-lg font-semibold mb-3">
+              {t("character_detail.skills")}
+            </h3>
             <div className="space-y-3">
               {character.skills.map((skill) => (
                 <div
@@ -109,7 +114,9 @@ export function CharacterDetailModal({
 
           {/* Talents Section */}
           <div>
-            <h3 className="text-lg font-semibold mb-3">Talents</h3>
+            <h3 className="text-lg font-semibold mb-3">
+              {t("character_detail.talents")}
+            </h3>
             <div className="space-y-3">
               {activeCombatTalents.map((talent) => (
                 <div
@@ -138,18 +145,26 @@ export function CharacterDetailModal({
 
           {/* Info Section */}
           <div>
-            <h3 className="text-lg font-semibold mb-3">Info</h3>
+            <h3 className="text-lg font-semibold mb-3">
+              {t("character_detail.info")}
+            </h3>
             <div className="space-y-3 p-4 bg-content1 rounded-lg border border-separator">
               <div className="flex justify-between">
-                <span className="text-muted">Property:</span>
+                <span className="text-muted">
+                  {t("character_detail.property")}:
+                </span>
                 <span>{character.property.value}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted">Weapon Type:</span>
+                <span className="text-muted">
+                  {t("character_detail.weapon_type")}:
+                </span>
                 <span>{character.weaponType.value}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted">Tags:</span>
+                <span className="text-muted">
+                  {t("character_detail.tags")}:
+                </span>
                 <span>{character.tags.join(", ")}</span>
               </div>
             </div>
@@ -158,7 +173,7 @@ export function CharacterDetailModal({
             <div className="mt-4">
               <img
                 src={character.illustrationUrl}
-                alt={`${character.name} Illustration`}
+                alt={`${character.name} ${t("character_detail.illustration")}`}
                 className="w-full rounded-lg"
               />
             </div>
