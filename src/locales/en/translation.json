@@ -136,5 +136,25 @@
       "ability_talents": "Ability Talents",
       "cultivation_talents": "O.M.V. Dijiang Skills"
     }
+  },
+  "dashboard": {
+    "add_card_button": "Add Card",
+    "edit_mode": "Edit Mode",
+    "exit_edit": "Exit Edit",
+    "move_up": "Move up",
+    "move_down": "Move down",
+    "delete_card": "Delete card",
+    "no_account_selected": "No Account Selected",
+    "select_account_hint": "Please select an account from the sidebar to view your dashboard",
+    "customize_hint": "Customize your dashboard with cards",
+    "no_cards": "No cards added yet",
+    "add_card": {
+      "title": "Add Card",
+      "already_added": "Added"
+    },
+    "cards": {
+      "character_list": "Character List",
+      "character_list_desc": "Display pinned characters"
+    }
   }
 }

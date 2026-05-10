@@ -11,12 +11,14 @@ interface CharacterListCardProps {
   roleId: string;
   cardId: string;
   settings: any;
+  isEditMode?: boolean;
 }
 
 export function CharacterListCard({
   roleId,
   cardId,
   settings,
+  isEditMode = false,
 }: CharacterListCardProps) {
   const { t } = useTranslation();
   const [charDetail, setCharDetail] = useState<CharDetailData | null>(null);
@@ -146,9 +148,9 @@ export function CharacterListCard({
 
   return (
     <>
-      <Card
-        className="p-6 bg-content1 shadow-sm border border-separator cursor-pointer hover:shadow-md transition-shadow min-h-[190px] w-[300px]"
-        onClick={() => setIsModalOpen(true)}
+      <Card 
+        className="p-6 bg-content1 shadow-sm border border-separator cursor-pointer hover:shadow-md transition-shadow h-full w-full"
+        onClick={() => !isEditMode && setIsModalOpen(true)}
       >
         <div className="space-y-2.5">
           {/* Card Header - Only show character count */}

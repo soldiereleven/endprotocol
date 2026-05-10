@@ -3,6 +3,8 @@ import { Card } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 import { getSelectedAccount } from "@/utils/accountService";
 import { CardContainer } from "@/components/cards/card-container";
+import { DashboardFAB } from "@/components/dashboard-fab";
+import { AddCardModal } from "@/components/add-card-modal";
 import { CardType, DashboardConfig } from "@/types/dashboard";
 import {
   getDashboardConfig,
@@ -18,6 +20,8 @@ export default function DashboardPage() {
   const [dashboardConfig, setDashboardConfig] =
     useState<DashboardConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isAddCardModalOpen, setIsAddCardModalOpen] = useState(false);
 
   // Load current account and dashboard config
   useEffect(() => {
@@ -144,10 +148,10 @@ export default function DashboardPage() {
               />
             </svg>
             <p className="text-lg font-medium text-foreground">
-              No Account Selected
+              {t('dashboard.no_account_selected') || 'No Account Selected'}
             </p>
             <p className="text-sm text-muted mt-2">
-              Please select an account from the sidebar to view your dashboard
+              {t('dashboard.select_account_hint') || 'Please select an account from the sidebar to view your dashboard'}
             </p>
           </div>
         </Card>
@@ -166,7 +170,7 @@ export default function DashboardPage() {
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
             {t("nav.dashboard")}
           </h1>
-          <p className="text-muted mt-1">Customize your dashboard with cards</p>
+          <p className="text-muted mt-1">{t('dashboard.customize_hint') || 'Customize your dashboard with cards'}</p>
         </div>
       </div>
 
@@ -175,9 +179,25 @@ export default function DashboardPage() {
         <CardContainer
           roleId={currentRoleId}
           cards={dashboardConfig.cards}
-          onAddCard={handleAddCard}
           onRemoveCard={handleRemoveCard}
-          onMoveCard={handleMoveCard}
+          isEditMode={isEditMode}
+        />
+      )}
+
+      {/* Floating Action Button */}
+      <DashboardFAB
+        onAddCard={() => setIsAddCardModalOpen(true)}
+        onToggleEdit={() => setIsEditMode(!isEditMode)}
+        isEditMode={isEditMode}
+      />
+
+      {/* Add Card Modal */}
+      {dashboardConfig && (
+        <AddCardModal
+          isOpen={isAddCardModalOpen}
+          onClose={() => setIsAddCardModalOpen(false)}
+          onAdd={handleAddCard}
+          existingTypes={dashboardConfig.cards.map((c) => c.type)}
         />
       )}
     </div>

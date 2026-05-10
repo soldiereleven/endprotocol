@@ -9,6 +9,10 @@ export interface CardConfig {
   id: string;              // 唯一卡片实例 ID（UUID）
   type: CardType;          // 卡片类型
   position: number;        // 显示顺序（从 0 开始）
+  x?: number;              // 网格 X 坐标（列）
+  y?: number;              // 网格 Y 坐标（行）
+  w?: number;              // 宽度（占据的列数）
+  h?: number;              // 高度（占据的行数）
   settings: CardSettings;  // 卡片特定设置
 }
 

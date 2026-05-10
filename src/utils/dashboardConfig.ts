@@ -99,3 +99,24 @@ export async function moveCard(
   
   await saveDashboardConfig(roleId, config);
 }
+
+/**
+ * 更新卡片网格位置
+ */
+export async function updateCardLayout(
+  roleId: string,
+  cardId: string,
+  layout: { x: number; y: number; w: number; h: number }
+): Promise<void> {
+  const config = await getDashboardConfig(roleId);
+  const card = config.cards.find(c => c.id === cardId);
+  
+  if (!card) return;
+  
+  card.x = layout.x;
+  card.y = layout.y;
+  card.w = layout.w;
+  card.h = layout.h;
+  
+  await saveDashboardConfig(roleId, config);
+}

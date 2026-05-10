@@ -136,5 +136,25 @@
       "ability_talents": "能力天赋",
       "cultivation_talents": "基建技能"
     }
+  },
+  "dashboard": {
+    "add_card_button": "添加卡片",
+    "edit_mode": "编辑模式",
+    "exit_edit": "退出编辑",
+    "move_up": "上移",
+    "move_down": "下移",
+    "delete_card": "删除卡片",
+    "no_account_selected": "未选择账户",
+    "select_account_hint": "请从侧边栏选择一个账户以查看仪表板",
+    "customize_hint": "使用卡片自定义您的仪表板",
+    "no_cards": "尚未添加卡片",
+    "add_card": {
+      "title": "添加卡片",
+      "already_added": "已添加"
+    },
+    "cards": {
+      "character_list": "角色列表",
+      "character_list_desc": "显示已固定的角色"
+    }
   }
 }
