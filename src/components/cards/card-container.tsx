@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   DndContext,
   DragOverlay,
@@ -10,11 +10,13 @@ import {
   type DragStartEvent,
   type DragEndEvent,
   type DragMoveEvent,
-} from '@dnd-kit/core';
-import { snapCenterToCursor } from '@dnd-kit/modifiers';
+} from "@dnd-kit/core";
+import { ProgressCircle } from "@heroui/react";
+import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { CardConfig } from "@/types/dashboard";
 import { CharacterListCard } from "./character-list-card";
-import { updateCardLayout } from '@/utils/dashboardConfig';
+import { updateCardLayout } from "@/utils/dashboardConfig";
+import { useLongPressDrag } from "@/hooks/useLongPressDrag";
 
 // Grid configuration
 const GRID_SIZE = 100; // Each grid cell is 100x100 pixels
@@ -43,45 +45,122 @@ interface FreeDragCardProps {
 }
 
 // Individual draggable card
-function FreeDragCard({ 
-  card, 
-  roleId, 
-  isEditMode, 
+function FreeDragCard({
+  card,
+  roleId,
+  isEditMode,
   onRemoveCard,
   onUpdatePosition,
   isDragging,
-  showGridCoords
-}: FreeDragCardProps & { isDragging?: boolean; showGridCoords?: boolean }) {
-  const { setNodeRef, attributes, listeners, transform } = useDraggable({
+  showGridCoords,
+  onLongPress,
+  onExitEditMode,
+}: FreeDragCardProps & {
+  isDragging?: boolean;
+  showGridCoords?: boolean;
+  onLongPress?: () => void;
+  onExitEditMode?: () => void;
+}) {
+  const draggable = useDraggable({
     id: card.id,
     disabled: !isEditMode,
   });
 
+  const { setNodeRef, attributes, listeners, transform } = draggable;
+
+  // Use reusable long press hook
+  const {
+    longPressProgress,
+    handlePointerDown,
+    handlePointerUp,
+    handlePointerLeave,
+    triggerDragStart,
+  } = useLongPressDrag({
+    isEditMode,
+    isDragging: isDragging || false,
+    onLongPress,
+  });
+
+  // After entering edit mode, trigger drag start if user is still holding
+  useEffect(() => {
+    if (isEditMode && listeners?.onPointerDown) {
+      triggerDragStart(listeners.onPointerDown);
+    }
+  }, [isEditMode, listeners, triggerDragStart]);
+
   // Calculate position from grid coordinates
   const x = (card.x ?? 0) * GRID_SIZE;
   const y = (card.y ?? 0) * GRID_SIZE;
-  
+
   // Apply transform if dragging
   const style: React.CSSProperties = {
-    position: 'absolute',
+    position: "absolute",
     left: x,
     top: y,
     width: (card.w ?? 3) * GRID_SIZE,
-    height: (card.h ?? 2) * GRID_SIZE,  // Default 3x2
-    transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined,
-    cursor: isEditMode ? 'grab' : 'default',
+    height: (card.h ?? 2) * GRID_SIZE, // Default 3x2
+    transform: transform
+      ? `translate(${transform.x}px, ${transform.y}px)`
+      : undefined,
+    cursor: isEditMode ? "grab" : "default",
     // Hide original card when dragging to prevent ghosting
     opacity: isDragging ? 0 : 1,
-    visibility: isDragging ? 'hidden' : 'visible',
+    visibility: isDragging ? "hidden" : "visible",
   };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`group ${isEditMode ? 'active:cursor-grabbing' : ''}`}
+      className={`group ${isEditMode ? "active:cursor-grabbing" : ""}`}
       {...(isEditMode ? { ...attributes, ...listeners } : {})}
+      onPointerDown={(e) => {
+        // In edit mode, let dnd-kit handle everything
+        if (isEditMode) {
+          if (listeners?.onPointerDown) {
+            listeners.onPointerDown(e);
+          }
+        } else {
+          // Not in edit mode - handle long press to enter edit mode
+          handlePointerDown(e);
+        }
+      }}
+      onPointerUp={(e) => {
+        if (isEditMode) {
+          if (listeners?.onPointerUp) {
+            listeners.onPointerUp(e);
+          }
+        } else {
+          handlePointerUp();
+        }
+      }}
+      onPointerLeave={() => {
+        if (!isEditMode) {
+          handlePointerLeave();
+        }
+      }}
     >
+      {/* Long Press Progress Circle - Top Right Corner */}
+      {!isEditMode && !isDragging && longPressProgress > 0 && (
+        <div className="absolute top-2 right-2 z-50 pointer-events-none">
+          <ProgressCircle
+            aria-label="Loading"
+            value={longPressProgress}
+            size="sm"
+            className="w-12 h-12"
+          >
+            <ProgressCircle.Track>
+              <ProgressCircle.TrackCircle />
+              <ProgressCircle.FillCircle />
+            </ProgressCircle.Track>
+          </ProgressCircle>
+          {/* Progress percentage text */}
+          <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-primary drop-shadow-md">
+            {Math.round(longPressProgress)}%
+          </div>
+        </div>
+      )}
+
       {/* Grid Coordinates Display - Show when dragging */}
       {showGridCoords && (
         <div className="absolute -top-8 left-0 z-30 px-2 py-1 bg-content1/90 backdrop-blur-sm rounded shadow-lg text-xs font-mono whitespace-nowrap">
@@ -118,7 +197,12 @@ function FreeDragCard({
       )}
 
       {/* Card Content */}
-      <div className="h-full w-full">
+      <div
+        className="h-full w-full"
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+      >
         <CharacterListCard
           roleId={roleId}
           cardId={card.id}
@@ -135,6 +219,8 @@ interface CardContainerProps {
   cards: CardConfig[];
   onRemoveCard: (cardId: string) => void;
   isEditMode?: boolean;
+  onEnterEditMode?: () => void; // Callback for long press to enter edit mode
+  onExitEditMode?: () => void; // Callback for exiting edit mode after drag
 }
 
 export function CardContainer({
@@ -142,6 +228,8 @@ export function CardContainer({
   cards,
   onRemoveCard,
   isEditMode = false,
+  onEnterEditMode,
+  onExitEditMode,
 }: CardContainerProps) {
   const { t } = useTranslation();
   const [sortedCards, setSortedCards] = useState<CardConfig[]>([]);
@@ -149,6 +237,13 @@ export function CardContainer({
   const [isDragging, setIsDragging] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [extraHeight, setExtraHeight] = useState(0);
+  const [draggedViaLongPress, setDraggedViaLongPress] = useState(false);
+  const [highlightGrid, setHighlightGrid] = useState<{
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  } | null>(null);
 
   // Sort and initialize cards
   useEffect(() => {
@@ -159,13 +254,13 @@ export function CardContainer({
   // Calculate required container height based on card positions
   const containerHeight = useMemo(() => {
     if (sortedCards.length === 0) return 100;
-    
+
     let maxY = 0;
     for (const card of sortedCards) {
       const cardBottom = ((card.y ?? 0) + (card.h ?? 2)) * GRID_SIZE;
       maxY = Math.max(maxY, cardBottom);
     }
-    
+
     // Add padding and extra height during drag
     const basePadding = 100;
     return maxY + basePadding + extraHeight;
@@ -177,7 +272,7 @@ export function CardContainer({
       activationConstraint: {
         distance: 5,
       },
-    })
+    }),
   );
 
   // Snap to grid helper
@@ -189,6 +284,7 @@ export function CardContainer({
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
     setIsDragging(true);
+    console.log("Drag started:", event.active.id);
   };
 
   // Track mouse position during drag
@@ -204,11 +300,11 @@ export function CardContainer({
       setMousePosition({ x: e.clientX, y: e.clientY });
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("pointermove", handlePointerMove);
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("pointermove", handlePointerMove);
     };
   }, [isDragging]);
 
@@ -219,15 +315,15 @@ export function CardContainer({
     const checkAutoScroll = () => {
       const windowHeight = window.innerHeight;
       const mouseY = mousePosition.y;
-      
+
       // Calculate mouse position relative to viewport bottom
       const distanceFromBottom = windowHeight - mouseY;
-      
+
       // If mouse is within 150px of bottom edge
       if (distanceFromBottom < 150 && distanceFromBottom > 0) {
         // Scroll down smoothly - speed increases as you get closer to edge
         const scrollSpeed = Math.max(10, (150 - distanceFromBottom) / 3);
-        window.scrollBy({ top: scrollSpeed, behavior: 'auto' });
+        window.scrollBy({ top: scrollSpeed, behavior: "auto" });
       }
     };
 
@@ -238,11 +334,11 @@ export function CardContainer({
   // Handle drag move - auto scroll based on dragged element position
   const handleDragMove = (event: DragMoveEvent) => {
     const windowHeight = window.innerHeight;
-    
+
     // Method 1: Use the dragged card's rect if available
     let cardBottom: number | null = null;
     let cardLeft: number | null = null;
-    
+
     if (event.active.rect.current.translated) {
       const rect = event.active.rect.current.translated;
       cardBottom = rect.top + rect.height;
@@ -253,37 +349,72 @@ export function CardContainer({
       cardBottom = mousePosition.y;
       cardLeft = mousePosition.x;
     }
-    
+
     if (cardBottom === null || cardLeft === null) return;
-    
+
     const distanceFromBottom = windowHeight - cardBottom;
-    
+
     // If card is near bottom edge, scroll down and expand
     if (distanceFromBottom < 200 && distanceFromBottom > -100) {
       const scrollSpeed = Math.max(15, (200 - distanceFromBottom) / 2);
-      window.scrollBy({ top: scrollSpeed, behavior: 'auto' });
-      
+      window.scrollBy({ top: scrollSpeed, behavior: "auto" });
+
       // Expand container height as we scroll
-      setExtraHeight(prev => prev + scrollSpeed);
+      setExtraHeight((prev) => prev + scrollSpeed);
+    }
+
+    // Calculate and highlight the target grid cell
+    // Use delta to calculate the new position relative to the original position
+    const card = sortedCards.find((c) => c.id === event.active.id);
+
+    if (card && event.delta) {
+      // Get the current grid position
+      const currentGridX = card.x ?? 0;
+      const currentGridY = card.y ?? 0;
+
+      // Calculate the offset in grid units
+      const offsetX = Math.round(event.delta.x / GRID_SIZE);
+      const offsetY = Math.round(event.delta.y / GRID_SIZE);
+
+      // Calculate the new grid position
+      const newGridX = Math.max(0, currentGridX + offsetX);
+      const newGridY = Math.max(0, currentGridY + offsetY);
+
+      console.log("Highlight update:", {
+        currentGrid: { x: currentGridX, y: currentGridY },
+        delta: { x: event.delta.x, y: event.delta.y },
+        offset: { x: offsetX, y: offsetY },
+        newGrid: { x: newGridX, y: newGridY },
+      });
+
+      setHighlightGrid({
+        x: newGridX,
+        y: newGridY,
+        w: card.w ?? 3,
+        h: card.h ?? 2,
+      });
     }
   };
 
   // Handle drag end - snap to grid
   const handleDragEnd = async (event: DragEndEvent) => {
+    console.log("Drag ended, highlightGrid:", highlightGrid);
     const { active, delta } = event;
     setActiveId(null);
     setIsDragging(false);
     setExtraHeight(0); // Reset extra height after drag
+    setHighlightGrid(null); // Clear highlight
+    console.log("States cleared");
 
     if (!delta) return;
 
-    const card = sortedCards.find(c => c.id === active.id);
+    const card = sortedCards.find((c) => c.id === active.id);
     if (!card) return;
 
     // Calculate new position
     const currentX = (card.x ?? 0) * GRID_SIZE;
     const currentY = (card.y ?? 0) * GRID_SIZE;
-    
+
     const newX = snapToGrid(currentX + delta.x);
     const newY = snapToGrid(currentY + delta.y);
 
@@ -291,11 +422,36 @@ export function CardContainer({
     const gridX = Math.max(0, newX / GRID_SIZE);
     const gridY = Math.max(0, newY / GRID_SIZE);
 
+    const cardW = card.w ?? 3;
+    const cardH = card.h ?? 2;
+
+    // Check for collision with other cards
+    const hasCollision = sortedCards.some((otherCard) => {
+      if (otherCard.id === card.id) return false; // Skip self
+
+      const otherX = otherCard.x ?? 0;
+      const otherY = otherCard.y ?? 0;
+      const otherW = otherCard.w ?? 3;
+      const otherH = otherCard.h ?? 2;
+
+      // Check if rectangles overlap
+      return (
+        gridX < otherX + otherW &&
+        gridX + cardW > otherX &&
+        gridY < otherY + otherH &&
+        gridY + cardH > otherY
+      );
+    });
+
+    if (hasCollision) {
+      // Collision detected - card will snap back to original position (no update)
+      console.log("Collision detected, reverting to original position");
+      return;
+    }
+
     // Update card position
-    const updatedCards = sortedCards.map(c => 
-      c.id === card.id 
-        ? { ...c, x: gridX, y: gridY }
-        : c
+    const updatedCards = sortedCards.map((c) =>
+      c.id === card.id ? { ...c, x: gridX, y: gridY } : c,
     );
 
     setSortedCards(updatedCards);
@@ -304,9 +460,15 @@ export function CardContainer({
     await updateCardLayout(roleId, card.id, {
       x: gridX,
       y: gridY,
-      w: card.w ?? 3,
-      h: card.h ?? 2,  // Default 3x2
+      w: cardW,
+      h: cardH,
     });
+
+    // Exit edit mode immediately after drag completes if entered via long press
+    if (draggedViaLongPress && onExitEditMode) {
+      onExitEditMode();
+      setDraggedViaLongPress(false);
+    }
   };
 
   // Find active card for overlay
@@ -314,10 +476,15 @@ export function CardContainer({
     ? sortedCards.find((card) => card.id === activeId)
     : null;
 
+  // Debug: Log rendering state
+  useEffect(() => {
+    console.log("Render state:", { isDragging, highlightGrid, activeId });
+  }, [isDragging, highlightGrid, activeId]);
+
   if (cards.length === 0) {
     return (
       <div className="flex items-center justify-center h-64 text-muted">
-        <p>{t('dashboard.no_cards') || 'No cards added yet'}</p>
+        <p>{t("dashboard.no_cards") || "No cards added yet"}</p>
       </div>
     );
   }
@@ -329,25 +496,55 @@ export function CardContainer({
       onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
     >
-      <div 
+      <div
         className="relative w-full"
         style={{
-          backgroundImage: (isEditMode || isDragging) ? generateGridSVG(isDragging) : 'none',
+          backgroundImage:
+            isEditMode || isDragging ? generateGridSVG(isDragging) : "none",
           backgroundSize: `${GRID_SIZE}px ${GRID_SIZE}px`,
+          // Debug border to see container bounds
+          border: isDragging ? "2px solid red" : "none",
         }}
       >
+        {/* Highlight Grid Cell - Fill the entire grid area */}
+        {isDragging && highlightGrid && (
+          <div
+            className="absolute pointer-events-none transition-all duration-150 ease-out"
+            style={{
+              left: highlightGrid.x * GRID_SIZE,
+              top: highlightGrid.y * GRID_SIZE,
+              width: highlightGrid.w * GRID_SIZE,
+              height: highlightGrid.h * GRID_SIZE,
+              backgroundColor: "rgba(59, 130, 246, 0.3)", // Bright blue with 30% opacity
+              border: "3px solid rgba(59, 130, 246, 1)", // Solid bright blue border
+              borderRadius: "8px",
+              boxShadow:
+                "0 0 30px rgba(59, 130, 246, 0.6), inset 0 0 40px rgba(59, 130, 246, 0.2)",
+              zIndex: 100, // Very high z-index to ensure visibility
+            }}
+            data-testid="highlight-grid"
+          >
+            {/* Debug info */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm font-bold text-blue-600 bg-white/90 px-3 py-2 rounded shadow-lg whitespace-nowrap">
+              📍 ({highlightGrid.x}, {highlightGrid.y}) {highlightGrid.w}x
+              {highlightGrid.h}
+            </div>
+          </div>
+        )}
         {/* Grid Coordinate Labels */}
         {(isEditMode || isDragging) && (
           <div className="absolute inset-0 pointer-events-none">
-            {Array.from({ length: Math.ceil(containerHeight / GRID_SIZE) }).map((_, rowIndex) => (
-              <div
-                key={`row-${rowIndex}`}
-                className="absolute left-2 text-xs text-muted/50 font-mono"
-                style={{ top: rowIndex * GRID_SIZE + 4 }}
-              >
-                {rowIndex}
-              </div>
-            ))}
+            {Array.from({ length: Math.ceil(containerHeight / GRID_SIZE) }).map(
+              (_, rowIndex) => (
+                <div
+                  key={`row-${rowIndex}`}
+                  className="absolute left-2 text-xs text-muted/50 font-mono"
+                  style={{ top: rowIndex * GRID_SIZE + 4 }}
+                >
+                  {rowIndex}
+                </div>
+              ),
+            )}
             {Array.from({ length: 20 }).map((_, colIndex) => (
               <div
                 key={`col-${colIndex}`}
@@ -360,7 +557,7 @@ export function CardContainer({
           </div>
         )}
         {/* Container with dynamic height */}
-        <div 
+        <div
           className="relative w-full"
           style={{
             minHeight: containerHeight,
@@ -376,6 +573,11 @@ export function CardContainer({
               onUpdatePosition={() => {}}
               isDragging={activeId === card.id}
               showGridCoords={isDragging && activeId === card.id}
+              onLongPress={() => {
+                onEnterEditMode?.();
+                setDraggedViaLongPress(true);
+              }}
+              onExitEditMode={onExitEditMode}
             />
           ))}
         </div>
@@ -384,10 +586,13 @@ export function CardContainer({
       {/* Drag Overlay - Only show when actively dragging */}
       <DragOverlay dropAnimation={null}>
         {activeCard ? (
-          <div className="opacity-80 scale-105 rotate-2" style={{
-            width: (activeCard.w ?? 3) * GRID_SIZE,
-            height: (activeCard.h ?? 2) * GRID_SIZE,  // Default 3x2
-          }}>
+          <div
+            className="opacity-80 scale-105 rotate-2"
+            style={{
+              width: (activeCard.w ?? 3) * GRID_SIZE,
+              height: (activeCard.h ?? 2) * GRID_SIZE, // Default 3x2
+            }}
+          >
             <CharacterListCard
               roleId={roleId}
               cardId={activeCard.id}

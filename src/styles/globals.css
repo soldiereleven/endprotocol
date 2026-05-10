@@ -3,6 +3,22 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* 禁止全局蓝色选中背景 */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+::selection {
+  background: hsl(var(--heroui-primary) / 0.3);
+  color: inherit;
+}
+
+::-moz-selection {
+  background: hsl(var(--heroui-primary) / 0.3);
+  color: inherit;
+}
+
 /* 全局 Alert 下滑动画 */
 @keyframes slide-down {
   0% {

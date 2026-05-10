@@ -54,6 +54,7 @@
     "active": "Active",
     "save": "Save",
     "cancel": "Cancel",
+    "confirm": "Confirm",
     "enabled": "Enabled",
     "disabled": "Disabled",
     "slot": "Slot {{number}}"

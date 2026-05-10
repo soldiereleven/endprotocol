@@ -148,10 +148,11 @@ export default function DashboardPage() {
               />
             </svg>
             <p className="text-lg font-medium text-foreground">
-              {t('dashboard.no_account_selected') || 'No Account Selected'}
+              {t("dashboard.no_account_selected") || "No Account Selected"}
             </p>
             <p className="text-sm text-muted mt-2">
-              {t('dashboard.select_account_hint') || 'Please select an account from the sidebar to view your dashboard'}
+              {t("dashboard.select_account_hint") ||
+                "Please select an account from the sidebar to view your dashboard"}
             </p>
           </div>
         </Card>
@@ -170,7 +171,10 @@ export default function DashboardPage() {
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
             {t("nav.dashboard")}
           </h1>
-          <p className="text-muted mt-1">{t('dashboard.customize_hint') || 'Customize your dashboard with cards'}</p>
+          <p className="text-muted mt-1">
+            {t("dashboard.customize_hint") ||
+              "Customize your dashboard with cards"}
+          </p>
         </div>
       </div>
 
@@ -181,6 +185,8 @@ export default function DashboardPage() {
           cards={dashboardConfig.cards}
           onRemoveCard={handleRemoveCard}
           isEditMode={isEditMode}
+          onEnterEditMode={() => setIsEditMode(true)}
+          onExitEditMode={() => setIsEditMode(false)}
         />
       )}
 
