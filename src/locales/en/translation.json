@@ -57,7 +57,22 @@
     "confirm": "Confirm",
     "enabled": "Enabled",
     "disabled": "Disabled",
-    "slot": "Slot {{number}}"
+    "slot": "Slot {{number}}",
+    "no_results_found": "No results found",
+    "show_filters": "Filters",
+    "hide_filters": "Hide Filters",
+    "clear": "Reset Filters",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing..."
+  },
+  "filters": {
+    "title": "Filter Characters",
+    "profession": "Profession",
+    "property": "Property",
+    "rarity": "Rarity",
+    "all_professions": "All Professions",
+    "all_properties": "All Properties",
+    "all_rarities": "All Rarities"
   },
   "settings": {
     "title": "Settings",
@@ -132,6 +147,7 @@
       "pin_success": "Successfully pinned {{name}} to Slot {{slot}}!",
       "details": "Details",
       "pin": "Pin",
+      "unpin": "Unpin",
       "characters_count": "Characters ({{count}}/3)",
       "passive_skills": "Passive Skills",
       "ability_talents": "Ability Talents",
@@ -157,10 +173,6 @@
       "character_list": "Character List",
       "character_list_desc": "Display pinned characters"
     }
-  },
-  "common": {
-    "refresh": "Refresh",
-    "refreshing": "Refreshing..."
   },
   "role_select": {
     "title": "Select Roles to Bind",

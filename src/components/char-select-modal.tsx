@@ -1,19 +1,17 @@
-import { useState, useEffect } from "react";
-import { Button, Alert } from "@heroui/react";
+import { useState, useEffect, useRef } from "react";
+import { Button, Alert, RadioGroup, Radio } from "@heroui/react";
 import {
   CustomModal,
   CustomModalHeader,
   CustomModalBody,
-  CustomModalFooter,
 } from "./custom-modal";
-import { CharDetailData, CharacterItem } from "@/types/charDetail";
+import { CharDetailData } from "@/types/charDetail";
 import { SkillDescription } from "@/utils/skillDescParser";
 import { useTranslation } from "react-i18next";
 
 interface CharSelectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  roleId: string;
   charDetail: CharDetailData;
   selectedCharIds: string[];
   onSave: (selectedIds: string[]) => void;
@@ -22,7 +20,6 @@ interface CharSelectModalProps {
 export function CharSelectModal({
   isOpen,
   onClose,
-  roleId,
   charDetail,
   selectedCharIds,
   onSave,
@@ -34,11 +31,20 @@ export function CharSelectModal({
     "list",
   );
   const [detailCharId, setDetailCharId] = useState<string | null>(null);
-  const [selectingCharId, setSelectingCharId] = useState<string | null>(null); // 正在选择槽位的角色ID
+  const [selectingCharId, setSelectingCharId] = useState<string | null>(null);
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(
     null,
-  ); // 用户选择的槽位
-  const [successMessage, setSuccessMessage] = useState<string | null>(null); // 成功提示信息
+  );
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [filterProfession, setFilterProfession] = useState<string>("all");
+  const [filterProperty, setFilterProperty] = useState<string>("all");
+  const [filterRarity, setFilterRarity] = useState<string>("all");
+  const [showFilters, setShowFilters] = useState<boolean>(false);
+  const [showBackToTop, setShowBackToTop] = useState<boolean>(false);
+  const [scrollPercent, setScrollPercent] = useState<number>(0);
+  const [isHoveringBackToTop, setIsHoveringBackToTop] =
+    useState<boolean>(false);
+  const modalBodyRef = useRef<HTMLDivElement>(null);
 
   // Reset all state when modal opens to ensure fresh data
   useEffect(() => {
@@ -49,6 +55,10 @@ export function CharSelectModal({
       setSelectingCharId(null);
       setSelectedSlotIndex(null);
       setSuccessMessage(null); // Clear success message
+      setFilterProfession("all"); // Reset filters
+      setFilterProperty("all");
+      setFilterRarity("all");
+      setShowFilters(false); // Hide filter panel
     }
   }, [isOpen]);
 
@@ -73,6 +83,49 @@ export function CharSelectModal({
 
     // Finally by name (asc)
     return a.charData.name.localeCompare(b.charData.name);
+  });
+
+  // Get unique professions for filter options
+  const uniqueProfessions = Array.from(
+    new Set(charDetail.chars.map((c) => c.charData.profession.value)),
+  ).sort();
+
+  // Get unique properties for filter options
+  const uniqueProperties = Array.from(
+    new Set(charDetail.chars.map((c) => c.charData.property.value)),
+  ).sort();
+
+  // Get unique rarities for filter options
+  const uniqueRarities = Array.from(
+    new Set(charDetail.chars.map((c) => c.charData.rarity.value)),
+  ).sort((a, b) => parseInt(b) - parseInt(a)); // Sort descending
+
+  // Filter characters based on selected filters
+  const filteredCharacters = sortedCharacters.filter((char) => {
+    const charData = char.charData;
+
+    // Apply profession filter
+    if (
+      filterProfession !== "all" &&
+      charData.profession.value !== filterProfession
+    ) {
+      return false;
+    }
+
+    // Apply property filter
+    if (
+      filterProperty !== "all" &&
+      charData.property.value !== filterProperty
+    ) {
+      return false;
+    }
+
+    // Apply rarity filter
+    if (filterRarity !== "all" && charData.rarity.value !== filterRarity) {
+      return false;
+    }
+
+    return true;
   });
 
   // Get character data by ID
@@ -133,6 +186,17 @@ export function CharSelectModal({
     setSelectedSlotIndex(null);
   };
 
+  // 滚动事件处理
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    const totalHeight = scrollHeight - clientHeight;
+    const percent =
+      totalHeight > 0 ? Math.round((scrollTop / totalHeight) * 100) : 0;
+
+    setScrollPercent(percent);
+    setShowBackToTop(percent > 50);
+  };
+
   return (
     <CustomModal isOpen={isOpen} onClose={onClose} size="xl" height="fixed">
       {/* Success Alert */}
@@ -164,15 +228,25 @@ export function CharSelectModal({
             <h2>
               {t("settings.characters.pin_characters", { max: MAX_SELECTION })}
             </h2>
-            <span className="text-sm text-muted">
-              {t("settings.characters.pinned_count", {
-                count: tempSelectedIds.filter((id) => id).length,
-                max: MAX_SELECTION,
-              })}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted">
+                {t("settings.characters.pinned_count", {
+                  count: tempSelectedIds.filter((id) => id).length,
+                  max: MAX_SELECTION,
+                })}
+              </span>
+              <Button
+                size="sm"
+                variant={showFilters ? "primary" : "outline"}
+                onPress={() => setShowFilters(!showFilters)}
+              >
+                {showFilters
+                  ? t("common.hide_filters")
+                  : t("common.show_filters")}
+              </Button>
+            </div>
           </div>
         ) : viewMode === "detail" ? (
-          // Detail view header
           <div className="flex items-center gap-3">
             {detailCharId && (
               <>
@@ -193,8 +267,7 @@ export function CharSelectModal({
               </>
             )}
           </div>
-        ) : (
-          // Slot selection view header
+        ) : viewMode === "select-slot" ? (
           <div className="flex items-center gap-3">
             {selectingCharId && (
               <>
@@ -216,104 +289,244 @@ export function CharSelectModal({
               </>
             )}
           </div>
-        )}
+        ) : null}
       </CustomModalHeader>
 
       {/* Body */}
-      <CustomModalBody>
+      <CustomModalBody ref={modalBodyRef} onScroll={handleScroll}>
         {viewMode === "list" ? (
-          // List View
-          <div className="space-y-2">
-            {sortedCharacters.map((char) => {
-              const charData = char.charData;
+          <div className="space-y-4">
+            {/* Filter Section */}
+            {showFilters && (
+              <div className="pb-4 border-b border-separator space-y-4">
+                {/* Profession Filter */}
+                <div>
+                  <p className="text-sm font-semibold mb-2">
+                    {t("filters.profession")}
+                  </p>
+                  <RadioGroup
+                    orientation="horizontal"
+                    value={filterProfession}
+                    onChange={(value) => setFilterProfession(value)}
+                    className="gap-2 flex-wrap"
+                  >
+                    <Radio
+                      value="all"
+                      className="px-4 py-2.5 rounded-lg border-2 border-default-300 data-[selected=true]:border-blue-600 data-[selected=true]:bg-blue-500/20 data-[selected=true]:shadow-[0_0_12px_rgba(37,99,235,0.5)] transition-all duration-200 hover:border-default-400"
+                    >
+                      <span className="text-sm font-bold">
+                        {t("filters.all_professions")}
+                      </span>
+                    </Radio>
+                    {uniqueProfessions.map((prof) => (
+                      <Radio
+                        key={prof}
+                        value={prof}
+                        className="px-4 py-2.5 rounded-lg border-2 border-default-300 data-[selected=true]:border-blue-600 data-[selected=true]:bg-blue-500/20 data-[selected=true]:shadow-[0_0_12px_rgba(37,99,235,0.5)] transition-all duration-200 hover:border-default-400"
+                      >
+                        <span className="text-sm font-bold">{prof}</span>
+                      </Radio>
+                    ))}
+                  </RadioGroup>
+                </div>
 
-              return (
-                <div
-                  key={charData.id}
-                  className="flex items-center gap-3 p-3 rounded-lg border border-separator bg-content1 hover:border-primary/50 transition-colors"
-                >
-                  {/* LED Indicator - Show for pinned characters */}
-                  {tempSelectedIds.includes(charData.id) ? (
-                    <div className="relative flex-shrink-0">
-                      <div className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] dark:shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
-                      <div className="absolute inset-0 w-3 h-3 rounded-full bg-green-400 animate-ping opacity-20" />
-                    </div>
-                  ) : (
-                    <div className="relative flex-shrink-0">
-                      <div className="w-3 h-3 rounded-full bg-gray-400 dark:bg-gray-500" />
-                    </div>
-                  )}
+                {/* Property Filter */}
+                <div>
+                  <p className="text-sm font-semibold mb-2">
+                    {t("filters.property")}
+                  </p>
+                  <RadioGroup
+                    orientation="horizontal"
+                    value={filterProperty}
+                    onChange={(value) => setFilterProperty(value)}
+                    className="gap-2 flex-wrap"
+                  >
+                    <Radio
+                      value="all"
+                      className="px-4 py-2.5 rounded-lg border-2 border-default-300 data-[selected=true]:border-blue-600 data-[selected=true]:bg-blue-500/20 data-[selected=true]:shadow-[0_0_12px_rgba(37,99,235,0.5)] transition-all duration-200 hover:border-default-400"
+                    >
+                      <span className="text-sm font-bold">
+                        {t("filters.all_properties")}
+                      </span>
+                    </Radio>
+                    {uniqueProperties.map((prop) => (
+                      <Radio
+                        key={prop}
+                        value={prop}
+                        className="px-4 py-2.5 rounded-lg border-2 border-default-300 data-[selected=true]:border-blue-600 data-[selected=true]:bg-blue-500/20 data-[selected=true]:shadow-[0_0_12px_rgba(37,99,235,0.5)] transition-all duration-200 hover:border-default-400"
+                      >
+                        <span className="text-sm font-bold">{prop}</span>
+                      </Radio>
+                    ))}
+                  </RadioGroup>
+                </div>
 
-                  {/* Avatar */}
-                  <img
-                    src={charData.avatarSqUrl}
-                    alt={charData.name}
-                    className="w-12 h-12 rounded-lg object-cover cursor-pointer"
-                    onClick={() => {
-                      setDetailCharId(charData.id);
-                      setViewMode("detail");
-                    }}
-                  />
+                {/* Rarity Filter */}
+                <div>
+                  <p className="text-sm font-semibold mb-2">
+                    {t("filters.rarity")}
+                  </p>
+                  <RadioGroup
+                    orientation="horizontal"
+                    value={filterRarity}
+                    onChange={(value) => setFilterRarity(value)}
+                    className="gap-2 flex-wrap"
+                  >
+                    <Radio
+                      value="all"
+                      className="px-4 py-2.5 rounded-lg border-2 border-default-300 data-[selected=true]:border-blue-600 data-[selected=true]:bg-blue-500/20 data-[selected=true]:shadow-[0_0_12px_rgba(37,99,235,0.5)] transition-all duration-200 hover:border-default-400"
+                    >
+                      <span className="text-sm font-bold">
+                        {t("filters.all_rarities")}
+                      </span>
+                    </Radio>
+                    {uniqueRarities.map((rar) => (
+                      <Radio
+                        key={rar}
+                        value={rar}
+                        className="px-4 py-2.5 rounded-lg border-2 border-default-300 data-[selected=true]:border-blue-600 data-[selected=true]:bg-blue-500/20 data-[selected=true]:shadow-[0_0_12px_rgba(37,99,235,0.5)] transition-all duration-200 hover:border-default-400"
+                      >
+                        <span
+                          className={`text-sm font-bold ${
+                            rar === "6"
+                              ? "text-red-500"
+                              : rar === "5"
+                                ? "text-yellow-500"
+                                : rar === "4"
+                                  ? "text-purple-500"
+                                  : "text-blue-500"
+                          }`}
+                        >
+                          {rar}★
+                        </span>
+                      </Radio>
+                    ))}
+                  </RadioGroup>
+                </div>
 
-                  {/* Character Info */}
-                  <div
-                    className="flex-1 min-w-0 cursor-pointer"
-                    onClick={() => {
-                      setDetailCharId(charData.id);
-                      setViewMode("detail");
+                {/* Reset Filters Button */}
+                <div className="flex justify-center pt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-2"
+                    onPress={() => {
+                      setFilterProfession("all");
+                      setFilterProperty("all");
+                      setFilterRarity("all");
                     }}
                   >
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold truncate">
-                        {charData.name}
-                      </h3>
-                      <span className="px-1.5 py-0.5 bg-primary rounded text-xs font-bold text-primary-foreground">
-                        {charData.rarity.value}★
-                      </span>
-                      {/* ACTIVE label for pinned characters */}
-                      {tempSelectedIds.includes(charData.id) && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-green-600 dark:text-green-400 tracking-wider">
-                          ACTIVE
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted">
-                      {charData.profession.value} • {charData.property.value}
-                    </p>
-                  </div>
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+                    {t("common.clear")}
+                  </Button>
+                </div>
+              </div>
+            )}
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-2">
-                    {/* View Details Button */}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onPress={() => {
+            {/* Character Grid */}
+            {filteredCharacters.length === 0 ? (
+              <div className="text-center py-8 text-muted">
+                <p>{t("common.no_results_found") || "No characters found"}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredCharacters.map((char) => {
+                  const charData = char.charData;
+                  const isPinned = tempSelectedIds.includes(charData.id);
+
+                  return (
+                    <div
+                      key={charData.id}
+                      className={`relative p-3 rounded-lg border transition-all cursor-pointer hover:shadow-md ${
+                        isPinned
+                          ? "border-blue-600"
+                          : "border-separator bg-content1 hover:border-primary/50"
+                      }`}
+                      onClick={() => {
                         setDetailCharId(charData.id);
                         setViewMode("detail");
                       }}
                     >
-                      {t("settings.characters.details")}
-                    </Button>
+                      {/* LED Indicator for pinned status */}
+                      {isPinned && (
+                        <div className="absolute top-2 right-2 z-10">
+                          <div className="w-2.5 h-2.5 rounded-full bg-blue-600 shadow-[0_0_6px_rgba(37,99,235,0.6)] dark:shadow-[0_0_8px_rgba(37,99,235,0.8)]" />
+                        </div>
+                      )}
 
-                    {/* Pin Slot Button */}
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onPress={() => {
-                        setSelectingCharId(charData.id);
-                        setViewMode("select-slot");
-                      }}
-                    >
-                      {t("settings.characters.pin")}
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
+                      {/* Character Avatar and Info */}
+                      <div className="flex items-start gap-3">
+                        <img
+                          src={charData.avatarRtUrl || charData.avatarSqUrl}
+                          alt={charData.name}
+                          className="w-16 h-20 rounded-lg object-cover flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold truncate text-sm min-w-[80px]">
+                              {charData.name}
+                            </h3>
+                            <span
+                              className={`text-xs font-bold flex-shrink-0 w-12 text-center ${
+                                charData.rarity.value === "6"
+                                  ? "text-red-500"
+                                  : charData.rarity.value === "5"
+                                    ? "text-yellow-500"
+                                    : charData.rarity.value === "4"
+                                      ? "text-purple-500"
+                                      : "text-blue-500"
+                              }`}
+                            >
+                              {charData.rarity.value}★
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted mb-2">
+                            {charData.profession.value} •{" "}
+                            {charData.property.value}
+                          </p>
+
+                          {/* Pin Icon for unpinned characters */}
+                          {!isPinned && (
+                            <div className="flex justify-end mt-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectingCharId(charData.id);
+                                  setViewMode("select-slot");
+                                }}
+                                className="p-1 hover:bg-default-100 rounded transition-colors cursor-pointer"
+                              >
+                                <svg
+                                  className="w-5 h-5 text-gray-400 dark:text-gray-600 rotate-45 hover:text-black dark:hover:text-white transition-colors"
+                                  fill="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path d="M16 9V4l1 0c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1l1 0v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z" />
+                                </svg>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         ) : viewMode === "detail" ? (
-          // Detail View
           detailCharId && (
             <div className="space-y-6">
               {/* Skills Section */}
@@ -328,11 +541,13 @@ export function CharSelectModal({
                       className="p-4 bg-content1 rounded-lg border border-separator"
                     >
                       <div className="flex items-start gap-3">
-                        <img
-                          src={skill.iconUrl}
-                          alt={skill.name}
-                          className="w-12 h-12 rounded object-cover flex-shrink-0"
-                        />
+                        <div className="w-12 h-12 rounded-full bg-gray-500/40 dark:bg-transparent flex items-center justify-center flex-shrink-0">
+                          <img
+                            src={skill.iconUrl}
+                            alt={skill.name}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        </div>
                         <div className="flex-1">
                           <h4 className="font-semibold">{skill.name}</h4>
                           <p className="text-xs text-muted mb-2">
@@ -412,11 +627,13 @@ export function CharSelectModal({
                         className="p-4 bg-content1 rounded-lg border border-separator"
                       >
                         <div className="flex items-start gap-3">
-                          <img
-                            src={talent.iconUrl}
-                            alt={talent.name}
-                            className="w-12 h-12 rounded object-cover flex-shrink-0"
-                          />
+                          <div className="w-12 h-12 rounded-full bg-gray-500/40 dark:bg-transparent flex items-center justify-center flex-shrink-0">
+                            <img
+                              src={talent.iconUrl}
+                              alt={talent.name}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          </div>
                           <div className="flex-1">
                             <h4 className="font-semibold">{talent.name}</h4>
                             <SkillDescription
@@ -486,11 +703,13 @@ export function CharSelectModal({
                         className="p-4 bg-content1 rounded-lg border border-separator"
                       >
                         <div className="flex items-start gap-3">
-                          <img
-                            src={talent.iconUrl}
-                            alt={talent.name}
-                            className="w-12 h-12 rounded object-cover flex-shrink-0"
-                          />
+                          <div className="w-12 h-12 rounded-full bg-gray-500/40 dark:bg-transparent flex items-center justify-center flex-shrink-0">
+                            <img
+                              src={talent.iconUrl}
+                              alt={talent.name}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          </div>
                           <div className="flex-1">
                             <h4 className="font-semibold">{talent.name}</h4>
                             <SkillDescription
@@ -540,11 +759,13 @@ export function CharSelectModal({
                         className="p-4 bg-content1 rounded-lg border border-separator"
                       >
                         <div className="flex items-start gap-3">
-                          <img
-                            src={talent.iconUrl}
-                            alt={talent.name}
-                            className="w-12 h-12 rounded object-cover flex-shrink-0"
-                          />
+                          <div className="w-12 h-12 rounded-full bg-gray-500/40 dark:bg-transparent flex items-center justify-center flex-shrink-0">
+                            <img
+                              src={talent.iconUrl}
+                              alt={talent.name}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          </div>
                           <div className="flex-1">
                             <h4 className="font-semibold">{talent.name}</h4>
                             <SkillDescription
@@ -721,6 +942,39 @@ export function CharSelectModal({
           )
         )}
       </CustomModalBody>
+
+      {/* Back to Top Button */}
+      {viewMode === "list" && showBackToTop && (
+        <button
+          className="fixed bottom-6 right-6 z-[10003] w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110"
+          onClick={() => {
+            if (modalBodyRef.current) {
+              modalBodyRef.current.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }}
+          onMouseEnter={() => setIsHoveringBackToTop(true)}
+          onMouseLeave={() => setIsHoveringBackToTop(false)}
+          aria-label="Back to top"
+        >
+          {isHoveringBackToTop ? (
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 8h18M12 20V8m0 0l-6 6m6-6l6 6"
+              />
+            </svg>
+          ) : (
+            <span className="text-xs font-bold">{scrollPercent}%</span>
+          )}
+        </button>
+      )}
     </CustomModal>
   );
 }

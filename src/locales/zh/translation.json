@@ -57,7 +57,22 @@
     "confirm": "确认",
     "enabled": "已启用",
     "disabled": "已禁用",
-    "slot": "槽位 {{number}}"
+    "slot": "槽位 {{number}}",
+    "no_results_found": "未找到结果",
+    "show_filters": "筛选",
+    "hide_filters": "隐藏筛选",
+    "clear": "重置筛选",
+    "refresh": "刷新",
+    "refreshing": "刷新中..."
+  },
+  "filters": {
+    "title": "筛选角色",
+    "profession": "职业",
+    "property": "属性",
+    "rarity": "星级",
+    "all_professions": "全部职业",
+    "all_properties": "全部属性",
+    "all_rarities": "全部星级"
   },
   "settings": {
     "title": "设置",
@@ -132,6 +147,7 @@
       "pin_success": "成功将 {{name}} 固定到槽位 {{slot}}！",
       "details": "详情",
       "pin": "固定",
+      "unpin": "取消固定",
       "characters_count": "角色（{{count}}/3）",
       "passive_skills": "被动技能",
       "ability_talents": "能力天赋",
@@ -157,10 +173,6 @@
       "character_list": "角色列表",
       "character_list_desc": "显示已固定的角色"
     }
-  },
-  "common": {
-    "refresh": "刷新",
-    "refreshing": "刷新中..."
   },
   "role_select": {
     "title": "选择要绑定的角色",

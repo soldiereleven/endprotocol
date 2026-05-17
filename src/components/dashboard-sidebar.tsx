@@ -115,7 +115,7 @@ export const Sidebar = () => {
 
     loadSelectedAccount();
 
-    // 监听账户变化事件（从Account页面切换时触发）
+    // 监听账户变化事件(从Account页面切换时触发)
     const handleAccountChange = async () => {
       console.log("[Sidebar] Account changed event received");
 
@@ -125,30 +125,33 @@ export const Sidebar = () => {
       );
       console.log("[Sidebar] Should refresh on switch:", shouldRefresh);
 
+      let accounts;
       if (shouldRefresh) {
-        // 如果需要刷新，从API获取
+        // 如果需要刷新,从API获取
         console.log("[Sidebar] Fetching accounts from API...");
-        const accounts = await getAccounts();
+        accounts = await getAccounts();
         // 更新缓存
         if (accounts && accounts.length > 0) {
           accountCache.cacheAccounts(accounts);
         }
-
-        // 重新加载选中账户
-        const selectedId = await getSelectedAccount();
-        if (selectedId) {
-          const account = accounts.find((acc) => acc.id === selectedId);
-          setSelectedAccount(account || null);
-        }
       } else {
-        // 如果不需要刷新，直接使用缓存
+        // 如果不需要刷新,直接使用缓存
         console.log("[Sidebar] Using cached accounts");
-        const accounts = accountCache.getAllAccounts();
-        const selectedId = await getSelectedAccount();
-        if (selectedId && accounts.length > 0) {
-          const account = accounts.find((acc) => acc.id === selectedId);
-          setSelectedAccount(account || null);
-        }
+        accounts = accountCache.getAllAccounts();
+      }
+
+      // 重新加载选中账户
+      const selectedId = await getSelectedAccount();
+      console.log("[Sidebar] New selected account ID:", selectedId);
+
+      if (selectedId && accounts && accounts.length > 0) {
+        const account = accounts.find((acc) => acc.id === selectedId);
+        console.log("[Sidebar] Found account:", account?.nickname);
+        // 强制更新状态,确保UI同步
+        setSelectedAccount(account || null);
+      } else {
+        console.log("[Sidebar] No account found or no selected ID");
+        setSelectedAccount(null);
       }
     };
 

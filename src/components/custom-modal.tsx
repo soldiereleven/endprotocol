@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, forwardRef } from "react";
 import clsx from "clsx";
 
 interface ModalProps {
@@ -149,16 +149,23 @@ interface ModalBodyProps {
   className?: string;
 }
 
-export const CustomModalBody: React.FC<ModalBodyProps> = ({
-  children,
-  className = "",
-}) => {
-  return (
-    <div className={clsx("px-6 py-4 max-h-[70vh] overflow-y-auto", className)}>
-      {children}
-    </div>
-  );
-};
+export const CustomModalBody = forwardRef<HTMLDivElement, ModalBodyProps>(
+  ({ children, className = "" }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className={clsx(
+          "px-6 py-4 max-h-[70vh] overflow-y-auto relative",
+          className,
+        )}
+      >
+        {children}
+      </div>
+    );
+  },
+);
+
+CustomModalBody.displayName = "CustomModalBody";
 
 interface ModalFooterProps {
   children: React.ReactNode;

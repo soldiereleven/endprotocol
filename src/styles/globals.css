@@ -222,3 +222,17 @@
 .dark * {
   scrollbar-color: hsl(var(--heroui-default-600) / 0.5) transparent;
 }
+
+/* 右侧抽屉滑入动画 */
+@keyframes slide-in-right {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}

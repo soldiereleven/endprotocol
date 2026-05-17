@@ -238,7 +238,6 @@ export function CharacterListCard({
       <CharSelectModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        roleId={roleId}
         charDetail={charDetail}
         selectedCharIds={selectedCharIds}
         onSave={async (newIds: string[]) => {

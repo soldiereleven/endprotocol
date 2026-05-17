@@ -260,8 +260,8 @@ export default function AccountPage() {
         const selectedId = await getSelectedAccount();
         logDebug("[Account] New selected account ID:", selectedId);
 
-        // 播放切换动画
-        setPreviousAccountId(currentAccountId);
+        // 只更新当前选中的账户，不修改 previousAccountId
+        // previousAccountId 应该由 handleSelectAccount 设置
         setCurrentAccountId(selectedId);
         setIsAnimating(true);
 
@@ -280,7 +280,7 @@ export default function AccountPage() {
     return () => {
       window.removeEventListener("accountChanged", handleAccountChanged);
     };
-  }, [currentAccountId]);
+  }, []); // 移除 currentAccountId 依赖，避免循环
 
   // 获取预期的账户数量（从配置中读取）
   const getExpectedAccountCount = async (): Promise<number> => {
@@ -719,6 +719,11 @@ export default function AccountPage() {
       const success = await apiSetSelectedAccount(accountId);
       console.log("[Account] Set selected account result:", success);
 
+      if (!success) {
+        console.error("[Account] Failed to set selected account in backend");
+        return;
+      }
+
       // 检查是否需要刷新数据
       const shouldRefresh = await getConfig<boolean>(
         "refresh_on_account_switch",
@@ -743,9 +748,9 @@ export default function AccountPage() {
         }
       }
 
-      // 触发自定义事件通知侧边栏更新
+      // 确保后端保存成功后，再触发自定义事件通知侧边栏更新
+      console.log("[Account] Dispatching accountChanged event");
       window.dispatchEvent(new CustomEvent("accountChanged"));
-      console.log("[Account] Dispatched accountChanged event");
     } catch (error) {
       console.error("Failed to set selected account:", error);
     }
