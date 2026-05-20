@@ -3,12 +3,14 @@ import { Card, Button, Switch, Label } from "@heroui/react";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { useState, useEffect, useRef } from "react";
 import { getConfig, setConfig } from "@/utils/configService";
+import { roleDetailService } from "@/utils/roleDetailService";
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const langDropdownRef = useRef<HTMLDivElement>(null);
   const [refreshOnSwitch, setRefreshOnSwitch] = useState(false);
+  const [lazyLoadEnabled, setLazyLoadEnabled] = useState(true);
   const [themeChangeKey, setThemeChangeKey] = useState(0);
 
   const languages = [
@@ -21,6 +23,10 @@ export default function SettingsPage() {
     const loadConfig = async () => {
       const value = await getConfig<boolean>("refresh_on_account_switch");
       setRefreshOnSwitch(value ?? false); // 默认为false
+
+      // 加载懒加载配置
+      const lazyLoadValue = await roleDetailService.isLazyLoadEnabled();
+      setLazyLoadEnabled(lazyLoadValue);
     };
     loadConfig();
   }, []);
@@ -62,6 +68,17 @@ export default function SettingsPage() {
   const handleRefreshOnSwitchChange = async (value: boolean) => {
     setRefreshOnSwitch(value);
     await setConfig("refresh_on_account_switch", value);
+  };
+
+  const handleLazyLoadChange = async (value: boolean) => {
+    setLazyLoadEnabled(value);
+    try {
+      await roleDetailService.setLazyLoadEnabled(value);
+    } catch (error) {
+      console.error("Failed to set lazy load:", error);
+      // 回滚状态
+      setLazyLoadEnabled(!value);
+    }
   };
 
   return (
@@ -192,6 +209,32 @@ export default function SettingsPage() {
               <Switch
                 isSelected={refreshOnSwitch}
                 onChange={handleRefreshOnSwitchChange}
+              >
+                <Switch.Control>
+                  <Switch.Thumb />
+                </Switch.Control>
+              </Switch>
+            </div>
+
+            <div className="h-px bg-separator w-full" />
+
+            <div
+              id="settings-lazy-load"
+              className="flex items-center justify-between"
+            >
+              <div>
+                <p className="font-medium text-foreground">
+                  {i18n.language === "zh" ? "懒加载模式" : "Lazy Load Mode"}
+                </p>
+                <p className="text-sm text-muted mt-0.5">
+                  {i18n.language === "zh"
+                    ? "开启时只加载当前角色的数据，节省内存"
+                    : "Only load current role's data when enabled, saving memory"}
+                </p>
+              </div>
+              <Switch
+                isSelected={lazyLoadEnabled}
+                onChange={handleLazyLoadChange}
               >
                 <Switch.Control>
                   <Switch.Thumb />

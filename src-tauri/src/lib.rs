@@ -43,6 +43,9 @@ pub fn run() {
             commands::account::save_selected_char_ids,
             commands::account::get_selected_char_ids,
             commands::account::get_char_detail,
+            commands::account::set_lazy_load_enabled,
+            commands::account::is_lazy_load_enabled,
+            commands::account::set_current_role_id,
             // Window commands
             commands::window::minimize_window,
             commands::window::toggle_maximize_window,

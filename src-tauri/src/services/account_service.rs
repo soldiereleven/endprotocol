@@ -1,9 +1,11 @@
 use serde_json::json;
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::async_runtime;
 
-use crate::models::account::{AccountInfo, AccountLoginResult, AccountRefreshResult};
+use crate::models::account::{AccountInfo, AccountLoginResult, AccountRefreshResult, AccountSummary};
+use crate::models::char_detail::CharDetailData;
 use crate::models::login::{CodeLoginRequest, LoginRequest, SendCodeRequest};
 use crate::models::role::RoleDisplayInfo;
 use crate::services::avatar_cache_service::AvatarCacheService;
@@ -198,6 +200,16 @@ pub struct AccountService {
     config_service: Arc<Mutex<ConfigService>>,
     skland_service: Arc<SklandService>,
     avatar_cache_service: Arc<AvatarCacheService>,
+    // 账户基本信息缓存 - 懒加载时只存精简版，关闭时存完整版
+    account_list_cache: Arc<Mutex<HashMap<String, Vec<AccountInfo>>>>,
+    // 精简版账户列表缓存 (仅懒加载时使用)
+    account_summary_cache: Arc<Mutex<HashMap<String, Vec<AccountSummary>>>>,
+    // 角色详情内存缓存 (roleId -> CharDetailData) - 懒加载时只保留当前角色
+    char_detail_cache: Arc<Mutex<HashMap<String, CharDetailData>>>,
+    // 懒加载开关
+    lazy_load_enabled: Arc<Mutex<bool>>,
+    // 当前激活的角色ID
+    current_role_id: Arc<Mutex<Option<String>>>,
 }
 
 impl AccountService {
@@ -207,10 +219,21 @@ impl AccountService {
         skland_service: Arc<SklandService>,
         avatar_cache_service: Arc<AvatarCacheService>,
     ) -> Self {
+        // 从配置中读取懒加载设置，默认为true
+        let lazy_load = {
+            let config = config_service.lock().unwrap();
+            config.get("lazy_load_enabled").unwrap_or(true)
+        };
+
         Self {
             config_service,
             skland_service,
             avatar_cache_service,
+            account_list_cache: Arc::new(Mutex::new(HashMap::new())),
+            account_summary_cache: Arc::new(Mutex::new(HashMap::new())),
+            char_detail_cache: Arc::new(Mutex::new(HashMap::new())),
+            lazy_load_enabled: Arc::new(Mutex::new(lazy_load)),
+            current_role_id: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -222,6 +245,318 @@ impl AccountService {
     /// 获取 Skland 服务引用
     pub fn skland_service(&self) -> &Arc<SklandService> {
         &self.skland_service
+    }
+
+    /// 设置懒加载开关
+    pub async fn set_lazy_load_enabled(&self, enabled: bool) -> Result<(), AppError> {
+        {
+            let mut lazy_load = self.lazy_load_enabled.lock().unwrap();
+            *lazy_load = enabled;
+        }
+
+        // 保存到配置
+        {
+            let mut config = self.config_service.lock().unwrap();
+            config.set("lazy_load_enabled".to_string(), json!(enabled))?;
+        }
+
+        log_info!("Lazy load {}", if enabled { "enabled" } else { "disabled" });
+
+        // 如果开启懒加载，清除完整版缓存，保留精简版
+        if enabled {
+            // 先收集需要转换的数据
+            let items_to_convert: Vec<(String, Vec<AccountInfo>)> = {
+                let full_cache = self.account_list_cache.lock().unwrap();
+                
+                // 检查哪些用户还没有精简版缓存
+                let summary_cache = self.account_summary_cache.lock().unwrap();
+                let users_without_summary: Vec<String> = full_cache.keys()
+                    .filter(|user_id| !summary_cache.contains_key(*user_id))
+                    .cloned()
+                    .collect();
+                drop(summary_cache);
+                
+                // 收集需要转换的账户
+                users_without_summary.iter()
+                    .filter_map(|user_id| {
+                        full_cache.get(user_id).map(|accounts| (user_id.clone(), accounts.clone()))
+                    })
+                    .collect()
+            };
+            
+            // 转换为精简版并缓存
+            for (user_id, accounts) in items_to_convert {
+                let summaries: Vec<AccountSummary> = accounts.iter()
+                    .map(|acc| acc.to_summary())
+                    .collect();
+                self.cache_account_summary(&user_id, summaries);
+            }
+            
+            // 清除所有完整版缓存 (避免浪费内存)
+            {
+                let mut full_cache = self.account_list_cache.lock().unwrap();
+                full_cache.clear();
+            }
+            log_info!("Cleared full account cache (lazy load enabled), using summary cache");
+            
+            // 清除除当前角色外的所有详情缓存
+            let current_role = self.current_role_id.lock().unwrap().clone();
+            let mut char_cache = self.char_detail_cache.lock().unwrap();
+            
+            if let Some(current_id) = current_role {
+                let retained = char_cache.remove(&current_id);
+                char_cache.clear();
+                if let Some(detail) = retained {
+                    let role_id_for_log = current_id.clone();
+                    char_cache.insert(current_id, detail);
+                    log_debug!("Retained char detail for current role: {}", role_id_for_log);
+                }
+            } else {
+                char_cache.clear();
+            }
+            
+            log_info!("Cleared char detail cache (lazy load enabled), remaining: {}", char_cache.len());
+        } else {
+            // 如果关闭懒加载，需要合并缓存
+            // 先收集需要合并的数据
+            let items_to_merge: Vec<(String, Vec<AccountSummary>)> = {
+                let summary_cache = self.account_summary_cache.lock().unwrap();
+                let full_cache = self.account_list_cache.lock().unwrap();
+                
+                summary_cache.iter()
+                    .filter(|(user_id, _)| !full_cache.contains_key(*user_id))
+                    .map(|(user_id, summaries)| (user_id.clone(), summaries.clone()))
+                    .collect()
+            };
+            
+            // 合并到完整版缓存
+            for (user_id, summaries) in items_to_merge {
+                // 从配置文件获取完整信息
+                let token_key = format!("account_token_{}", user_id);
+                let config = self.config_service.lock().unwrap();
+                if let Some(token_data) = config.get::<serde_json::Value>(&token_key) {
+                    let cred = token_data.get("cred").and_then(|v| v.as_str()).map(|s| s.to_string());
+                    let token = token_data.get("token").and_then(|v| v.as_str()).map(|s| s.to_string());
+                    
+                    let full_accounts: Vec<AccountInfo> = summaries.iter().map(|s| AccountInfo {
+                        id: s.id.clone(),
+                        avatar: s.avatar.clone(),
+                        nickname: s.nickname.clone(),
+                        level: s.level,
+                        server: s.server.clone(),
+                        status: s.status.clone(),
+                        sync_status: s.sync_status.clone(),
+                        cred: cred.clone(),
+                        token: token.clone(),
+                        user_id: Some(user_id.clone()),
+                        server_id: Some(s.server.clone()),
+                    }).collect();
+                    
+                    drop(config); // 释放锁
+                    {
+                        let mut full_cache = self.account_list_cache.lock().unwrap();
+                        full_cache.insert(user_id.clone(), full_accounts);
+                    }
+                    log_debug!("Merged summary to full cache for user: {}", user_id);
+                }
+            }
+            
+            // 清除精简版缓存 (避免重复存储浪费内存)
+            {
+                let mut summary_cache = self.account_summary_cache.lock().unwrap();
+                summary_cache.clear();
+            }
+            log_info!("Cleared summary cache (lazy load disabled), using full cache");
+            
+            // 预加载所有角色详情
+            self.preload_all_char_details().await?;
+        }
+
+        Ok(())
+    }
+
+    /// 获取懒加载状态
+    pub fn is_lazy_load_enabled(&self) -> bool {
+        *self.lazy_load_enabled.lock().unwrap()
+    }
+
+    /// 设置当前激活的角色ID
+    pub async fn set_current_role_id(&self, role_id: Option<String>) {
+        let mut current = self.current_role_id.lock().unwrap();
+        let old_role_id = current.clone();
+        *current = role_id.clone();
+
+        // 如果开启懒加载且切换了角色，释放旧角色的缓存
+        if self.is_lazy_load_enabled() {
+            if let (Some(old_id), Some(new_id)) = (old_role_id, role_id) {
+                if old_id != new_id {
+                    let mut cache = self.char_detail_cache.lock().unwrap();
+                    cache.remove(&old_id);
+                    log_debug!("Released char detail cache for role: {}", old_id);
+                }
+            }
+        }
+    }
+
+    /// 缓存账户列表
+    pub fn cache_account_list(&self, user_id: &str, accounts: Vec<AccountInfo>) {
+        let mut cache = self.account_list_cache.lock().unwrap();
+        cache.insert(user_id.to_string(), accounts);
+        log_debug!("Cached full account list for user: {}", user_id);
+    }
+
+    /// 缓存精简版账户列表 (仅懒加载时使用)
+    pub fn cache_account_summary(&self, user_id: &str, summaries: Vec<AccountSummary>) {
+        let mut cache = self.account_summary_cache.lock().unwrap();
+        cache.insert(user_id.to_string(), summaries);
+        log_debug!("Cached account summary for user: {}", user_id);
+    }
+
+    /// 获取缓存的账户列表 (根据懒加载状态返回不同版本)
+    pub fn get_cached_accounts(&self, user_id: &str) -> Option<Vec<AccountInfo>> {
+        let lazy_load = self.is_lazy_load_enabled();
+        
+        if lazy_load {
+            // 懒加载时：从精简版缓存读取，转换为完整版
+            let summary_cache = self.account_summary_cache.lock().unwrap();
+            if let Some(summaries) = summary_cache.get(user_id) {
+                log_debug!("Cache hit for account summary: {}", user_id);
+                // 将精简版转换为完整版 (敏感字段为None)
+                let accounts = summaries.iter().map(|s| AccountInfo {
+                    id: s.id.clone(),
+                    avatar: s.avatar.clone(),
+                    nickname: s.nickname.clone(),
+                    level: s.level,
+                    server: s.server.clone(),
+                    status: s.status.clone(),
+                    sync_status: s.sync_status.clone(),
+                    cred: None,
+                    token: None,
+                    user_id: Some(user_id.to_string()),
+                    server_id: Some(s.server.clone()),
+                }).collect();
+                return Some(accounts);
+            }
+        } else {
+            // 非懒加载：从完整版缓存读取
+            let cache = self.account_list_cache.lock().unwrap();
+            let accounts = cache.get(user_id).cloned();
+            if accounts.is_some() {
+                log_debug!("Cache hit for full account list: {}", user_id);
+            }
+            return accounts;
+        }
+        
+        None
+    }
+
+    /// 清除指定用户的账户缓存 (包括完整版和精简版)
+    pub fn clear_account_cache(&self, user_id: &str) {
+        let mut full_cache = self.account_list_cache.lock().unwrap();
+        let mut summary_cache = self.account_summary_cache.lock().unwrap();
+        full_cache.remove(user_id);
+        summary_cache.remove(user_id);
+        log_debug!("Cleared all account cache for user: {}", user_id);
+    }
+
+    /// 获取角色详情（带缓存）
+    pub async fn get_char_detail_with_cache(
+        &self,
+        role_id: &str,
+    ) -> Result<Option<CharDetailData>, AppError> {
+        // 1. 检查内存缓存
+        {
+            let cache = self.char_detail_cache.lock().unwrap();
+            if let Some(detail) = cache.get(role_id) {
+                log_debug!("Cache hit for role detail: {}", role_id);
+                return Ok(Some(detail.clone()));
+            }
+        }
+
+        // 2. 从后端加载
+        log_info!("Loading char detail from API: {}", role_id);
+
+        // 获取账户信息
+        let accounts = self.get_accounts().await;
+        let account = accounts.iter().find(|acc| acc.id == role_id);
+
+        if let Some(acc) = account {
+            if let (Some(cred), Some(token), Some(user_id), Some(server_id)) =
+                (&acc.cred, &acc.token, &acc.user_id, &acc.server_id)
+            {
+                match self
+                    .skland_service
+                    .get_role_detail(cred, token, role_id, server_id, user_id)
+                    .await
+                {
+                    Ok(response) => {
+                        let detail = response.data.detail;
+
+                        // 缓存结果
+                        let mut cache = self.char_detail_cache.lock().unwrap();
+                        cache.insert(role_id.to_string(), detail.clone());
+                        log_info!("Cached char detail for role: {}", role_id);
+
+                        Ok(Some(detail))
+                    }
+                    Err(e) => {
+                        log_error!("Failed to fetch char detail: {}", e);
+                        Err(e)
+                    }
+                }
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// 预加载所有角色详情
+    async fn preload_all_char_details(&self) -> Result<(), AppError> {
+        log_info!("Preloading all character details...");
+
+        let accounts = self.get_accounts().await;
+
+        for account in &accounts {
+            // 跳过已缓存的
+            {
+                let cache = self.char_detail_cache.lock().unwrap();
+                if cache.contains_key(&account.id) {
+                    continue;
+                }
+            }
+
+            // 异步加载
+            if let (Some(cred), Some(token), Some(user_id), Some(server_id)) = (
+                &account.cred,
+                &account.token,
+                &account.user_id,
+                &account.server_id,
+            ) {
+                match self
+                    .skland_service
+                    .get_role_detail(cred, token, &account.id, server_id, user_id)
+                    .await
+                {
+                    Ok(response) => {
+                        let detail = response.data.detail;
+                        let mut cache = self.char_detail_cache.lock().unwrap();
+                        cache.insert(account.id.clone(), detail);
+                        log_debug!("Preloaded char detail for: {}", account.id);
+                    }
+                    Err(e) => {
+                        log_warn!("Failed to preload char detail for {}: {}", account.id, e);
+                    }
+                }
+            }
+        }
+
+        log_info!(
+            "Preload completed, cached {} roles",
+            self.char_detail_cache.lock().unwrap().len()
+        );
+        Ok(())
     }
 
     /// 创建一个可用于 async spawn 的克隆（简化版，仅包含必要的服务引用）
@@ -580,6 +915,35 @@ impl AccountService {
         }
 
         log_debug!("get_accounts: Completed with {} accounts", accounts.len());
+        
+        // 按 user_id 分组
+        let mut accounts_by_user: HashMap<String, Vec<AccountInfo>> = HashMap::new();
+        for account in &accounts {
+            if let Some(user_id) = &account.user_id {
+                accounts_by_user
+                    .entry(user_id.clone())
+                    .or_insert_with(Vec::new)
+                    .push(account.clone());
+            }
+        }
+        
+        // 根据懒加载状态缓存不同版本
+        let lazy_load = self.is_lazy_load_enabled();
+        for (user_id, user_accounts) in &accounts_by_user {
+            if lazy_load {
+                // 懒加载时：只缓存精简版 (节省内存)
+                let summaries: Vec<AccountSummary> = user_accounts.iter()
+                    .map(|acc| acc.to_summary())
+                    .collect();
+                self.cache_account_summary(user_id, summaries);
+                log_debug!("Cached summary for user {} (lazy load enabled)", user_id);
+            } else {
+                // 非懒加载：缓存完整版
+                self.cache_account_list(user_id, user_accounts.clone());
+                log_debug!("Cached full accounts for user {} (lazy load disabled)", user_id);
+            }
+        }
+        
         accounts
     }
 

@@ -12,7 +12,6 @@ import {
   setSelectedAccount as apiSetSelectedAccount,
   Account,
 } from "@/utils/accountService";
-import { accountCache } from "@/utils/accountCache";
 
 interface AccountSwitchModalProps {
   isOpen: boolean;
@@ -55,22 +54,10 @@ export default function AccountSwitchModal({
   const loadAccounts = async () => {
     setIsLoading(true);
     try {
-      // 直接使用缓存
-      const cachedAccounts = accountCache.getAllAccounts();
-
-      if (cachedAccounts && cachedAccounts.length > 0) {
-        console.log("[AccountSwitchModal] Using cached accounts");
-        setAccounts(cachedAccounts);
-      } else {
-        // 如果缓存为空，才从API获取
-        console.log("[AccountSwitchModal] Cache is empty, fetching from API");
-        const accountsData = await getAccounts();
-        setAccounts(accountsData || []);
-        // 更新缓存
-        if (accountsData && accountsData.length > 0) {
-          accountCache.cacheAccounts(accountsData);
-        }
-      }
+      // 直接从后端获取（后端会处理缓存）
+      console.log("[AccountSwitchModal] Fetching accounts from backend...");
+      const accountsData = await getAccounts();
+      setAccounts(accountsData || []);
     } catch (error) {
       console.error("Failed to load accounts:", error);
     } finally {

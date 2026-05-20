@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Card } from "@heroui/react";
-import { invoke } from "@tauri-apps/api/core";
-import { charDetailCache } from "@/utils/charDetailCache";
 import { CharDetailData, CharacterItem } from "@/types/charDetail";
 import { CharSelectModal } from "@/components/char-select-modal";
 import { logDebug, logError } from "@/utils/logger";
 import { useTranslation } from "react-i18next";
+import { roleDetailService } from "@/utils/roleDetailService";
+import { invoke } from "@tauri-apps/api/core";
 
 interface CharacterListCardProps {
   roleId: string;
@@ -31,26 +31,11 @@ export function CharacterListCard({
     const loadData = async () => {
       try {
         setIsLoading(true);
+        logDebug("Fetching character detail from backend...");
 
-        // Check cache first - ALWAYS use cache if available
-        let detail = charDetailCache.getCharDetail(roleId);
-
-        if (!detail) {
-          // Only fetch from backend if cache is empty
-          logDebug("Cache miss, fetching from backend...");
-          const result = await invoke<CharDetailData | null>(
-            "get_char_detail",
-            { roleId },
-          );
-          if (result) {
-            charDetailCache.cacheCharDetail(roleId, result);
-            detail = result;
-          }
-        } else {
-          logDebug("Using cached character detail");
-        }
-
-        setCharDetail(detail || null);
+        // 直接调用后端,后端会处理缓存
+        const result = await roleDetailService.getCharDetail(roleId);
+        setCharDetail(result || null);
       } catch (error) {
         logError("Failed to load character detail:", error);
       } finally {

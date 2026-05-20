@@ -33,7 +33,7 @@ import {
   LoginResult,
   RoleDisplayInfo,
 } from "@/utils/accountService";
-import { accountCache } from "../utils/accountCache";
+import { roleDetailService } from "@/utils/roleDetailService";
 import logger, { logDebug, logError } from "../utils/logger";
 import { getConfig } from "@/utils/configService";
 
@@ -89,30 +89,14 @@ export default function AccountPage() {
       setIsLoading(true);
 
       try {
-        // 优先使用缓存，如果缓存为空才从API获取
-        const cachedAccounts = accountCache.getAllAccounts();
-        let accounts;
+        // 直接从后端获取账户数据（后端会处理缓存）
+        logDebug("[Account] Fetching accounts from backend...");
+        const accounts = await getAccounts();
 
         logDebug(
-          "[Account] Loading accounts, cached count:",
-          cachedAccounts?.length || 0,
+          "[Account] Fetched accounts from backend, count:",
+          accounts?.length || 0,
         );
-
-        if (cachedAccounts && cachedAccounts.length > 0) {
-          logDebug("[Account] Using cached accounts on initial load");
-          accounts = cachedAccounts;
-        } else {
-          logDebug("[Account] Cache is empty, fetching from API");
-          accounts = await getAccounts();
-          logDebug(
-            "[Account] Fetched accounts from API, count:",
-            accounts?.length || 0,
-          );
-          // 缓存账户数据到内存
-          if (accounts && accounts.length > 0) {
-            accountCache.cacheAccounts(accounts);
-          }
-        }
 
         // 直接使用后端返回的数据（无论是否为空）
         logDebug(
@@ -237,21 +221,11 @@ export default function AccountPage() {
           const result = await refreshAccountData();
           if (result.success && result.accounts) {
             accountsData = result.accounts;
-            // 更新缓存
-            accountCache.cacheAccounts(result.accounts);
           }
         } else {
-          // 如果不需要刷新，从缓存读取
-          logDebug("[Account] Using cached account data (sidebar)");
-          accountsData = accountCache.getAllAccounts();
-          // 如果缓存为空，则从API获取
-          if (!accountsData || accountsData.length === 0) {
-            logDebug("[Account] Cache is empty, fetching from API");
-            accountsData = await getAccounts();
-            if (accountsData && accountsData.length > 0) {
-              accountCache.cacheAccounts(accountsData);
-            }
-          }
+          // 如果不需要刷新，直接从后端获取（后端会处理缓存）
+          logDebug("[Account] Fetching account data from backend (sidebar)");
+          accountsData = await getAccounts();
         }
 
         setAccounts(accountsData || []);
@@ -263,6 +237,12 @@ export default function AccountPage() {
         // 只更新当前选中的账户，不修改 previousAccountId
         // previousAccountId 应该由 handleSelectAccount 设置
         setCurrentAccountId(selectedId);
+
+        // 通知后端当前激活的角色ID(用于懒加载)
+        if (selectedId) {
+          await roleDetailService.setCurrentRoleId(selectedId);
+        }
+
         setIsAnimating(true);
 
         setTimeout(() => {
@@ -292,10 +272,10 @@ export default function AccountPage() {
         return Math.min(accountList.length, 5);
       }
 
-      // 如果 account_list 不存在，尝试从缓存中获取
-      const cachedAccounts = accountCache.getAllAccounts();
-      if (cachedAccounts && cachedAccounts.length > 0) {
-        return Math.min(cachedAccounts.length, 5);
+      // 如果 account_list 不存在，直接从后端获取
+      const accounts = await getAccounts();
+      if (accounts && accounts.length > 0) {
+        return Math.min(accounts.length, 5);
       }
 
       // 默认显示3个
@@ -325,8 +305,6 @@ export default function AccountPage() {
       if (result.success && result.accounts) {
         setAccounts(result.accounts);
         setLastRefreshTime(new Date(result.refreshTime));
-        // 更新缓存
-        accountCache.cacheAccounts(result.accounts);
       }
     } catch (error) {
       logError("Failed to refresh data:", error);
@@ -357,9 +335,6 @@ export default function AccountPage() {
       if (success) {
         // 从列表中移除
         setAccounts((prev) => prev.filter((acc) => acc.id !== accountId));
-
-        // 从缓存中移除
-        accountCache.removeAccount(accountId);
 
         // 显示成功提示
         setGlobalAlert({
@@ -672,11 +647,6 @@ export default function AccountPage() {
       const accounts = await getAccounts();
       setAccounts(accounts || []);
 
-      // 更新缓存
-      if (accounts && accounts.length > 0) {
-        accountCache.cacheAccounts(accounts);
-      }
-
       // 关闭模态并清空表单
       handleCloseAddModal();
 
@@ -736,15 +706,13 @@ export default function AccountPage() {
         const result = await refreshAccountData();
         if (result.success && result.accounts) {
           setAccounts(result.accounts);
-          // 更新缓存
-          accountCache.cacheAccounts(result.accounts);
         }
       } else {
-        // 如果不需要刷新，从缓存读取
-        console.log("[Account] Using cached account data");
-        const cachedAccounts = accountCache.getAllAccounts();
-        if (cachedAccounts.length > 0) {
-          setAccounts(cachedAccounts);
+        // 如果不需要刷新，直接从后端获取
+        console.log("[Account] Fetching account data from backend");
+        const accountsData = await getAccounts();
+        if (accountsData && accountsData.length > 0) {
+          setAccounts(accountsData);
         }
       }
 

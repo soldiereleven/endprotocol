@@ -13,6 +13,7 @@ import {
   moveCard,
 } from "@/utils/dashboardConfig";
 import { logDebug, logError } from "@/utils/logger";
+import { roleDetailService } from "@/utils/roleDetailService";
 
 export default function DashboardPage() {
   const { t } = useTranslation();
@@ -38,6 +39,9 @@ export default function DashboardPage() {
       }
 
       setCurrentRoleId(selectedAccountId);
+
+      // 通知后端当前激活的角色ID(用于懒加载)
+      await roleDetailService.setCurrentRoleId(selectedAccountId);
 
       // Load dashboard config for this role
       const config = await getDashboardConfig(selectedAccountId);

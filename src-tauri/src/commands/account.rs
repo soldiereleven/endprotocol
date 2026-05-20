@@ -12,7 +12,46 @@ use crate::services::account_service::AccountService;
 pub async fn get_accounts(
     state: State<'_, Arc<Mutex<AccountService>>>,
 ) -> Result<Vec<AccountInfo>, String> {
+    use crate::log_debug;
+    
     let service = state.lock().await;
+    
+    // 尝试从缓存获取 (根据懒加载状态自动选择精简版或完整版)
+    let all_accounts = {
+        let config_service = service.get_config_service();
+        let config = config_service.lock().unwrap();
+        let all_config = config.get_all();
+        drop(config);
+        
+        let mut all_accounts: Vec<AccountInfo> = Vec::new();
+        let mut cache_hit = true;
+        
+        // 遍历所有 account_token_* 配置项，获取每个用户的缓存
+        for (key, _) in &all_config {
+            if key.starts_with("account_token_") {
+                let user_id = key.trim_start_matches("account_token_");
+                
+                // 尝试从缓存获取
+                if let Some(cached_accounts) = service.get_cached_accounts(user_id) {
+                    all_accounts.extend(cached_accounts);
+                } else {
+                    cache_hit = false;
+                    break; // 有任何一个用户缓存未命中，就需要重新获取
+                }
+            }
+        }
+        
+        // 如果所有用户都缓存命中，直接返回
+        if cache_hit && !all_accounts.is_empty() {
+            log_debug!("[get_accounts] Cache hit for all users, returning {} accounts", all_accounts.len());
+            return Ok(all_accounts);
+        }
+        
+        all_accounts
+    }; // MutexGuard 在这里释放
+    
+    // 否则调用 API 获取最新数据
+    log_debug!("[get_accounts] Cache miss, fetching from API");
     Ok(service.get_accounts().await)
 }
 
@@ -188,232 +227,235 @@ pub async fn get_char_detail(
 
     let service = state.lock().await;
 
-    // 获取账户信息以获取 cred/token
-    let accounts = service.get_accounts().await;
-    let account = accounts.iter().find(|acc| acc.id == role_id);
+    // 使用带缓存的方法获取角色详情
+    match service.get_char_detail_with_cache(&role_id).await {
+        Ok(Some(mut detail)) => {
+            // 创建图片缓存服务
+            let image_cache = ImageCacheService::new()
+                .map_err(|e| format!("Failed to create image cache: {}", e))?;
 
-    if let Some(acc) = account {
-        if let (Some(cred), Some(token), Some(user_id), Some(server_id)) =
-            (&acc.cred, &acc.token, &acc.user_id, &acc.server_id)
-        {
-            // 获取完整详情
-            match service
-                .skland_service()
-                .get_role_detail(cred, token, &role_id, server_id, user_id)
-                .await
-            {
-                Ok(response) => {
-                    let mut detail = response.data.detail;
-
-                    // 创建图片缓存服务
-                    let image_cache = ImageCacheService::new()
-                        .map_err(|e| format!("Failed to create image cache: {}", e))?;
-
-                    // 下载并缓存所有角色的头像、技能图标、天赋图标和立绘
-                    for char in detail.chars.iter_mut() {
-                        if let Some(char_data) = &mut char.char_data {
-                            // 缓存角色正方形头像
-                            if let Some(ref mut avatar_url_opt) = char_data.avatar_sq_url {
-                                if !avatar_url_opt.is_empty()
-                                    && !avatar_url_opt.starts_with("data:")
-                                {
-                                    let url_clone = avatar_url_opt.clone();
-                                    match image_cache
-                                        .get_or_download_image_base64(&url_clone, ImageType::Avatar)
-                                        .await
-                                    {
-                                        Ok(base64_str) => {
-                                            *avatar_url_opt = base64_str;
-                                        }
-                                        Err(e) => {
-                                            log_warn!(
-                                                "Failed to download avatar for {}: {}",
-                                                char_data.name.as_deref().unwrap_or("unknown"),
-                                                e
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-
-                            // 缓存角色长方形头像
-                            if let Some(ref mut avatar_rt_url_opt) = char_data.avatar_rt_url {
-                                if !avatar_rt_url_opt.is_empty()
-                                    && !avatar_rt_url_opt.starts_with("data:")
-                                {
-                                    let url_clone = avatar_rt_url_opt.clone();
-                                    match image_cache
-                                        .get_or_download_image_base64(&url_clone, ImageType::Avatar)
-                                        .await
-                                    {
-                                        Ok(base64_str) => {
-                                            *avatar_rt_url_opt = base64_str;
-                                        }
-                                        Err(e) => {
-                                            log_warn!(
-                                                "Failed to download rectangular avatar for {}: {}",
-                                                char_data.name.as_deref().unwrap_or("unknown"),
-                                                e
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-
-                            // 缓存角色立绘
-                            if let Some(ref mut illustration_url_opt) = char_data.illustration_url {
-                                if !illustration_url_opt.is_empty()
-                                    && !illustration_url_opt.starts_with("data:")
-                                {
-                                    let url_clone = illustration_url_opt.clone();
-                                    match image_cache
-                                        .get_or_download_image_base64(
-                                            &url_clone,
-                                            ImageType::Illustration,
-                                        )
-                                        .await
-                                    {
-                                        Ok(base64_str) => {
-                                            *illustration_url_opt = base64_str;
-                                        }
-                                        Err(e) => {
-                                            log_warn!(
-                                                "Failed to download illustration for {}: {}",
-                                                char_data.name.as_deref().unwrap_or("unknown"),
-                                                e
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-
-                            // 缓存技能图标
-                            if let Some(ref mut skills) = char_data.skills {
-                                for skill in skills.iter_mut() {
-                                    if !skill.icon_url.is_empty()
-                                        && !skill.icon_url.starts_with("data:")
-                                    {
-                                        let url_clone = skill.icon_url.clone();
-                                        match image_cache
-                                            .get_or_download_image_base64(
-                                                &url_clone,
-                                                ImageType::SkillIcon,
-                                            )
-                                            .await
-                                        {
-                                            Ok(base64_str) => {
-                                                skill.icon_url = base64_str;
-                                            }
-                                            Err(e) => {
-                                                log_warn!(
-                                                    "Failed to download skill icon for {}: {}",
-                                                    skill.name,
-                                                    e
-                                                );
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // 缓存天赋图标（ability_talents）
-                            if let Some(ref mut ability_talents) = char_data.ability_talents {
-                                for talent in ability_talents.iter_mut() {
-                                    if !talent.icon_url.is_empty()
-                                        && !talent.icon_url.starts_with("data:")
-                                    {
-                                        let url_clone = talent.icon_url.clone();
-                                        match image_cache
-                                            .get_or_download_image_base64(
-                                                &url_clone,
-                                                ImageType::SkillIcon,
-                                            )
-                                            .await
-                                        {
-                                            Ok(base64_str) => {
-                                                talent.icon_url = base64_str;
-                                            }
-                                            Err(e) => {
-                                                log_warn!("Failed to download ability talent icon for {}: {}", talent.name, e);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // 缓存天赋图标（combat_talents）
-                            if let Some(ref mut combat_talents) = char_data.combat_talents {
-                                for talent in combat_talents.iter_mut() {
-                                    if !talent.icon_url.is_empty()
-                                        && !talent.icon_url.starts_with("data:")
-                                    {
-                                        let url_clone = talent.icon_url.clone();
-                                        match image_cache
-                                            .get_or_download_image_base64(
-                                                &url_clone,
-                                                ImageType::SkillIcon,
-                                            )
-                                            .await
-                                        {
-                                            Ok(base64_str) => {
-                                                talent.icon_url = base64_str;
-                                            }
-                                            Err(e) => {
-                                                log_warn!("Failed to download combat talent icon for {}: {}", talent.name, e);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // 缓存天赋图标（cultivation_talents）
-                            if let Some(ref mut cultivation_talents) = char_data.cultivation_talents
+            // 下载并缓存所有角色的头像、技能图标、天赋图标和立绘
+            for char in detail.chars.iter_mut() {
+                if let Some(char_data) = &mut char.char_data {
+                    // 缓存角色正方形头像
+                    if let Some(ref mut avatar_url_opt) = char_data.avatar_sq_url {
+                        if !avatar_url_opt.is_empty() && !avatar_url_opt.starts_with("data:") {
+                            let url_clone = avatar_url_opt.clone();
+                            match image_cache
+                                .get_or_download_image_base64(&url_clone, ImageType::Avatar)
+                                .await
                             {
-                                for talent in cultivation_talents.iter_mut() {
-                                    if !talent.icon_url.is_empty()
-                                        && !talent.icon_url.starts_with("data:")
-                                    {
-                                        let url_clone = talent.icon_url.clone();
-                                        match image_cache
-                                            .get_or_download_image_base64(
-                                                &url_clone,
-                                                ImageType::SkillIcon,
-                                            )
-                                            .await
-                                        {
-                                            Ok(base64_str) => {
-                                                talent.icon_url = base64_str;
-                                            }
-                                            Err(e) => {
-                                                log_warn!("Failed to download cultivation talent icon for {}: {}", talent.name, e);
-                                            }
-                                        }
+                                Ok(base64_str) => {
+                                    *avatar_url_opt = base64_str;
+                                }
+                                Err(e) => {
+                                    log_warn!(
+                                        "Failed to download avatar for {}: {}",
+                                        char_data.name.as_deref().unwrap_or("unknown"),
+                                        e
+                                    );
+                                }
+                            }
+                        }
+                    }
+
+                    // 缓存角色长方形头像
+                    if let Some(ref mut avatar_rt_url_opt) = char_data.avatar_rt_url {
+                        if !avatar_rt_url_opt.is_empty() && !avatar_rt_url_opt.starts_with("data:")
+                        {
+                            let url_clone = avatar_rt_url_opt.clone();
+                            match image_cache
+                                .get_or_download_image_base64(&url_clone, ImageType::Avatar)
+                                .await
+                            {
+                                Ok(base64_str) => {
+                                    *avatar_rt_url_opt = base64_str;
+                                }
+                                Err(e) => {
+                                    log_warn!(
+                                        "Failed to download rectangular avatar for {}: {}",
+                                        char_data.name.as_deref().unwrap_or("unknown"),
+                                        e
+                                    );
+                                }
+                            }
+                        }
+                    }
+
+                    // 缓存角色立绘
+                    if let Some(ref mut illustration_url_opt) = char_data.illustration_url {
+                        if !illustration_url_opt.is_empty()
+                            && !illustration_url_opt.starts_with("data:")
+                        {
+                            let url_clone = illustration_url_opt.clone();
+                            match image_cache
+                                .get_or_download_image_base64(&url_clone, ImageType::Illustration)
+                                .await
+                            {
+                                Ok(base64_str) => {
+                                    *illustration_url_opt = base64_str;
+                                }
+                                Err(e) => {
+                                    log_warn!(
+                                        "Failed to download illustration for {}: {}",
+                                        char_data.name.as_deref().unwrap_or("unknown"),
+                                        e
+                                    );
+                                }
+                            }
+                        }
+                    }
+
+                    // 缓存技能图标
+                    if let Some(ref mut skills) = char_data.skills {
+                        for skill in skills.iter_mut() {
+                            if !skill.icon_url.is_empty() && !skill.icon_url.starts_with("data:") {
+                                let url_clone = skill.icon_url.clone();
+                                match image_cache
+                                    .get_or_download_image_base64(&url_clone, ImageType::SkillIcon)
+                                    .await
+                                {
+                                    Ok(base64_str) => {
+                                        skill.icon_url = base64_str;
+                                    }
+                                    Err(e) => {
+                                        log_warn!(
+                                            "Failed to download skill icon for {}: {}",
+                                            skill.name,
+                                            e
+                                        );
                                     }
                                 }
                             }
                         }
                     }
 
-                    log_info!("Cached character data for {}", detail.base.name);
+                    // 缓存天赋图标（ability_talents）
+                    if let Some(ref mut ability_talents) = char_data.ability_talents {
+                        for talent in ability_talents.iter_mut() {
+                            if !talent.icon_url.is_empty() && !talent.icon_url.starts_with("data:")
+                            {
+                                let url_clone = talent.icon_url.clone();
+                                match image_cache
+                                    .get_or_download_image_base64(&url_clone, ImageType::SkillIcon)
+                                    .await
+                                {
+                                    Ok(base64_str) => {
+                                        talent.icon_url = base64_str;
+                                    }
+                                    Err(e) => {
+                                        log_warn!(
+                                            "Failed to download ability talent icon for {}: {}",
+                                            talent.name,
+                                            e
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
 
-                    // 返回 detail 部分的 JSON
-                    match serde_json::to_value(detail) {
-                        Ok(value) => Ok(Some(value)),
-                        Err(e) => {
-                            log_error!("Failed to serialize char detail: {}", e);
-                            Ok(None)
+                    // 缓存天赋图标（combat_talents）
+                    if let Some(ref mut combat_talents) = char_data.combat_talents {
+                        for talent in combat_talents.iter_mut() {
+                            if !talent.icon_url.is_empty() && !talent.icon_url.starts_with("data:")
+                            {
+                                let url_clone = talent.icon_url.clone();
+                                match image_cache
+                                    .get_or_download_image_base64(&url_clone, ImageType::SkillIcon)
+                                    .await
+                                {
+                                    Ok(base64_str) => {
+                                        talent.icon_url = base64_str;
+                                    }
+                                    Err(e) => {
+                                        log_warn!(
+                                            "Failed to download combat talent icon for {}: {}",
+                                            talent.name,
+                                            e
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 缓存天赋图标（cultivation_talents）
+                    if let Some(ref mut cultivation_talents) = char_data.cultivation_talents {
+                        for talent in cultivation_talents.iter_mut() {
+                            if !talent.icon_url.is_empty() && !talent.icon_url.starts_with("data:")
+                            {
+                                let url_clone = talent.icon_url.clone();
+                                match image_cache
+                                    .get_or_download_image_base64(&url_clone, ImageType::SkillIcon)
+                                    .await
+                                {
+                                    Ok(base64_str) => {
+                                        talent.icon_url = base64_str;
+                                    }
+                                    Err(e) => {
+                                        log_warn!(
+                                            "Failed to download cultivation talent icon for {}: {}",
+                                            talent.name,
+                                            e
+                                        );
+                                    }
+                                }
+                            }
                         }
                     }
                 }
+            }
+
+            log_info!("Cached character data for {}", detail.base.name);
+
+            // 返回 detail 部分的 JSON
+            match serde_json::to_value(detail) {
+                Ok(value) => Ok(Some(value)),
                 Err(e) => {
-                    log_error!("Failed to fetch char detail: {}", e);
+                    log_error!("Failed to serialize char detail: {}", e);
                     Ok(None)
                 }
             }
-        } else {
+        }
+        Ok(None) => Ok(None),
+        Err(e) => {
+            log_error!("Failed to fetch char detail: {}", e);
             Ok(None)
         }
-    } else {
-        Ok(None)
     }
+}
+
+/// 设置懒加载开关
+#[tauri::command]
+pub async fn set_lazy_load_enabled(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+    enabled: bool,
+) -> Result<bool, String> {
+    let service = state.lock().await;
+    service
+        .set_lazy_load_enabled(enabled)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
+/// 获取懒加载状态
+#[tauri::command]
+pub async fn is_lazy_load_enabled(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+) -> Result<bool, String> {
+    let service = state.lock().await;
+    Ok(service.is_lazy_load_enabled())
+}
+
+/// 设置当前激活的角色ID
+#[tauri::command]
+pub async fn set_current_role_id(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+    role_id: Option<String>,
+) -> Result<bool, String> {
+    let service = state.lock().await;
+    service.set_current_role_id(role_id).await;
+    Ok(true)
 }

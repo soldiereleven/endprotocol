@@ -21,7 +21,6 @@ import {
   setSelectedAccount as apiSetSelectedAccount,
   Account,
 } from "@/utils/accountService";
-import { accountCache } from "@/utils/accountCache";
 import { getConfig } from "@/utils/configService";
 
 interface SearchResult {
@@ -84,19 +83,8 @@ export const Sidebar = () => {
         console.log("[Sidebar] Selected account ID:", selectedId);
 
         if (selectedId) {
-          // 优先使用缓存
-          let accounts = accountCache.getAllAccounts();
-
-          if (!accounts || accounts.length === 0) {
-            // 如果缓存为空，才从API获取
-            console.log("[Sidebar] Cache is empty, fetching from API");
-            accounts = await getAccounts();
-            if (accounts && accounts.length > 0) {
-              accountCache.cacheAccounts(accounts);
-            }
-          } else {
-            console.log("[Sidebar] Using cached accounts");
-          }
+          // 直接从后端获取账户数据（后端会处理缓存）
+          const accounts = await getAccounts();
 
           console.log("[Sidebar] Loaded accounts:", accounts.length);
           const account = accounts.find((acc) => acc.id === selectedId);
@@ -126,19 +114,9 @@ export const Sidebar = () => {
       console.log("[Sidebar] Should refresh on switch:", shouldRefresh);
 
       let accounts;
-      if (shouldRefresh) {
-        // 如果需要刷新,从API获取
-        console.log("[Sidebar] Fetching accounts from API...");
-        accounts = await getAccounts();
-        // 更新缓存
-        if (accounts && accounts.length > 0) {
-          accountCache.cacheAccounts(accounts);
-        }
-      } else {
-        // 如果不需要刷新,直接使用缓存
-        console.log("[Sidebar] Using cached accounts");
-        accounts = accountCache.getAllAccounts();
-      }
+      // 直接从后端获取（后端会处理缓存）
+      console.log("[Sidebar] Fetching accounts from backend...");
+      accounts = await getAccounts();
 
       // 重新加载选中账户
       const selectedId = await getSelectedAccount();
