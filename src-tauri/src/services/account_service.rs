@@ -4,12 +4,15 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::async_runtime;
 
-use crate::models::account::{AccountInfo, AccountLoginResult, AccountRefreshResult, AccountSummary};
+use crate::models::account::{
+    AccountInfo, AccountLoginResult, AccountRefreshResult, AccountSummary,
+};
 use crate::models::char_detail::CharDetailData;
 use crate::models::login::{CodeLoginRequest, LoginRequest, SendCodeRequest};
 use crate::models::role::RoleDisplayInfo;
 use crate::services::avatar_cache_service::AvatarCacheService;
 use crate::services::config_service::ConfigService;
+use crate::services::data_query::{self, DataApi};
 use crate::services::skland_service::SklandService;
 use crate::utils::{http_client, AppError};
 use crate::{log_debug, log_error, log_info, log_warn};
@@ -267,42 +270,45 @@ impl AccountService {
             // 先收集需要转换的数据
             let items_to_convert: Vec<(String, Vec<AccountInfo>)> = {
                 let full_cache = self.account_list_cache.lock().unwrap();
-                
+
                 // 检查哪些用户还没有精简版缓存
                 let summary_cache = self.account_summary_cache.lock().unwrap();
-                let users_without_summary: Vec<String> = full_cache.keys()
+                let users_without_summary: Vec<String> = full_cache
+                    .keys()
                     .filter(|user_id| !summary_cache.contains_key(*user_id))
                     .cloned()
                     .collect();
                 drop(summary_cache);
-                
+
                 // 收集需要转换的账户
-                users_without_summary.iter()
+                users_without_summary
+                    .iter()
                     .filter_map(|user_id| {
-                        full_cache.get(user_id).map(|accounts| (user_id.clone(), accounts.clone()))
+                        full_cache
+                            .get(user_id)
+                            .map(|accounts| (user_id.clone(), accounts.clone()))
                     })
                     .collect()
             };
-            
+
             // 转换为精简版并缓存
             for (user_id, accounts) in items_to_convert {
-                let summaries: Vec<AccountSummary> = accounts.iter()
-                    .map(|acc| acc.to_summary())
-                    .collect();
+                let summaries: Vec<AccountSummary> =
+                    accounts.iter().map(|acc| acc.to_summary()).collect();
                 self.cache_account_summary(&user_id, summaries);
             }
-            
+
             // 清除所有完整版缓存 (避免浪费内存)
             {
                 let mut full_cache = self.account_list_cache.lock().unwrap();
                 full_cache.clear();
             }
             log_info!("Cleared full account cache (lazy load enabled), using summary cache");
-            
+
             // 清除除当前角色外的所有详情缓存
             let current_role = self.current_role_id.lock().unwrap().clone();
             let mut char_cache = self.char_detail_cache.lock().unwrap();
-            
+
             if let Some(current_id) = current_role {
                 let retained = char_cache.remove(&current_id);
                 char_cache.clear();
@@ -314,44 +320,57 @@ impl AccountService {
             } else {
                 char_cache.clear();
             }
-            
-            log_info!("Cleared char detail cache (lazy load enabled), remaining: {}", char_cache.len());
+
+            log_info!(
+                "Cleared char detail cache (lazy load enabled), remaining: {}",
+                char_cache.len()
+            );
         } else {
             // 如果关闭懒加载，需要合并缓存
             // 先收集需要合并的数据
             let items_to_merge: Vec<(String, Vec<AccountSummary>)> = {
                 let summary_cache = self.account_summary_cache.lock().unwrap();
                 let full_cache = self.account_list_cache.lock().unwrap();
-                
-                summary_cache.iter()
+
+                summary_cache
+                    .iter()
                     .filter(|(user_id, _)| !full_cache.contains_key(*user_id))
                     .map(|(user_id, summaries)| (user_id.clone(), summaries.clone()))
                     .collect()
             };
-            
+
             // 合并到完整版缓存
             for (user_id, summaries) in items_to_merge {
                 // 从配置文件获取完整信息
                 let token_key = format!("account_token_{}", user_id);
                 let config = self.config_service.lock().unwrap();
                 if let Some(token_data) = config.get::<serde_json::Value>(&token_key) {
-                    let cred = token_data.get("cred").and_then(|v| v.as_str()).map(|s| s.to_string());
-                    let token = token_data.get("token").and_then(|v| v.as_str()).map(|s| s.to_string());
-                    
-                    let full_accounts: Vec<AccountInfo> = summaries.iter().map(|s| AccountInfo {
-                        id: s.id.clone(),
-                        avatar: s.avatar.clone(),
-                        nickname: s.nickname.clone(),
-                        level: s.level,
-                        server: s.server.clone(),
-                        status: s.status.clone(),
-                        sync_status: s.sync_status.clone(),
-                        cred: cred.clone(),
-                        token: token.clone(),
-                        user_id: Some(user_id.clone()),
-                        server_id: Some(s.server.clone()),
-                    }).collect();
-                    
+                    let cred = token_data
+                        .get("cred")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
+                    let token = token_data
+                        .get("token")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
+
+                    let full_accounts: Vec<AccountInfo> = summaries
+                        .iter()
+                        .map(|s| AccountInfo {
+                            id: s.id.clone(),
+                            avatar: s.avatar.clone(),
+                            nickname: s.nickname.clone(),
+                            level: s.level,
+                            server: s.server.clone(),
+                            status: s.status.clone(),
+                            sync_status: s.sync_status.clone(),
+                            cred: cred.clone(),
+                            token: token.clone(),
+                            user_id: Some(user_id.clone()),
+                            server_id: Some(s.server.clone()),
+                        })
+                        .collect();
+
                     drop(config); // 释放锁
                     {
                         let mut full_cache = self.account_list_cache.lock().unwrap();
@@ -360,14 +379,14 @@ impl AccountService {
                     log_debug!("Merged summary to full cache for user: {}", user_id);
                 }
             }
-            
+
             // 清除精简版缓存 (避免重复存储浪费内存)
             {
                 let mut summary_cache = self.account_summary_cache.lock().unwrap();
                 summary_cache.clear();
             }
             log_info!("Cleared summary cache (lazy load disabled), using full cache");
-            
+
             // 预加载所有角色详情
             self.preload_all_char_details().await?;
         }
@@ -415,26 +434,29 @@ impl AccountService {
     /// 获取缓存的账户列表 (根据懒加载状态返回不同版本)
     pub fn get_cached_accounts(&self, user_id: &str) -> Option<Vec<AccountInfo>> {
         let lazy_load = self.is_lazy_load_enabled();
-        
+
         if lazy_load {
             // 懒加载时：从精简版缓存读取，转换为完整版
             let summary_cache = self.account_summary_cache.lock().unwrap();
             if let Some(summaries) = summary_cache.get(user_id) {
                 log_debug!("Cache hit for account summary: {}", user_id);
                 // 将精简版转换为完整版 (敏感字段为None)
-                let accounts = summaries.iter().map(|s| AccountInfo {
-                    id: s.id.clone(),
-                    avatar: s.avatar.clone(),
-                    nickname: s.nickname.clone(),
-                    level: s.level,
-                    server: s.server.clone(),
-                    status: s.status.clone(),
-                    sync_status: s.sync_status.clone(),
-                    cred: None,
-                    token: None,
-                    user_id: Some(user_id.to_string()),
-                    server_id: Some(s.server.clone()),
-                }).collect();
+                let accounts = summaries
+                    .iter()
+                    .map(|s| AccountInfo {
+                        id: s.id.clone(),
+                        avatar: s.avatar.clone(),
+                        nickname: s.nickname.clone(),
+                        level: s.level,
+                        server: s.server.clone(),
+                        status: s.status.clone(),
+                        sync_status: s.sync_status.clone(),
+                        cred: None,
+                        token: None,
+                        user_id: Some(user_id.to_string()),
+                        server_id: Some(s.server.clone()),
+                    })
+                    .collect();
                 return Some(accounts);
             }
         } else {
@@ -446,7 +468,7 @@ impl AccountService {
             }
             return accounts;
         }
-        
+
         None
     }
 
@@ -915,7 +937,7 @@ impl AccountService {
         }
 
         log_debug!("get_accounts: Completed with {} accounts", accounts.len());
-        
+
         // 按 user_id 分组
         let mut accounts_by_user: HashMap<String, Vec<AccountInfo>> = HashMap::new();
         for account in &accounts {
@@ -926,24 +948,26 @@ impl AccountService {
                     .push(account.clone());
             }
         }
-        
+
         // 根据懒加载状态缓存不同版本
         let lazy_load = self.is_lazy_load_enabled();
         for (user_id, user_accounts) in &accounts_by_user {
             if lazy_load {
                 // 懒加载时：只缓存精简版 (节省内存)
-                let summaries: Vec<AccountSummary> = user_accounts.iter()
-                    .map(|acc| acc.to_summary())
-                    .collect();
+                let summaries: Vec<AccountSummary> =
+                    user_accounts.iter().map(|acc| acc.to_summary()).collect();
                 self.cache_account_summary(user_id, summaries);
                 log_debug!("Cached summary for user {} (lazy load enabled)", user_id);
             } else {
                 // 非懒加载：缓存完整版
                 self.cache_account_list(user_id, user_accounts.clone());
-                log_debug!("Cached full accounts for user {} (lazy load disabled)", user_id);
+                log_debug!(
+                    "Cached full accounts for user {} (lazy load disabled)",
+                    user_id
+                );
             }
         }
-        
+
         accounts
     }
 
@@ -2040,5 +2064,341 @@ impl AccountService {
                 message: format!("Skland API error: {}", msg),
             })
         }
+    }
+
+    /// 统一数据查询入口
+    ///
+    /// # Arguments
+    /// * `role_id` - 角色ID
+    /// * `api_name` - API名称（如 "char_detail"）
+    /// * `paths` - 路径列表，每个路径精确到JSON叶节点（如 "base.name", "chars.0.charData.id"）
+    ///
+    /// # Returns
+    /// HashMap<path, value>，如果路径不存在则对应的值为null
+    pub async fn query_role_data(
+        &self,
+        role_id: &str,
+        api_name: &str,
+        paths: &[String],
+    ) -> Result<HashMap<String, serde_json::Value>, AppError> {
+        log_debug!(
+            "query_role_data: role_id={}, api_name={}, paths_count={}",
+            role_id,
+            api_name,
+            paths.len()
+        );
+
+        // 解析API名称
+        let api = api_name.parse::<DataApi>().map_err(|e| {
+            log_error!("query_role_data: Invalid API name '{}': {}", api_name, e);
+            AppError::ConfigError {
+                message: format!("Invalid API name: {}", e),
+            }
+        })?;
+
+        // 根据API类型获取数据
+        let data_value = match api {
+            DataApi::CharDetail => self.get_char_detail_processed(role_id).await?,
+        };
+
+        // 如果paths为空，返回整个数据对象
+        if paths.is_empty() {
+            log_debug!("query_role_data: No paths specified, returning full data");
+            let mut result = HashMap::new();
+            result.insert("__full__".to_string(), data_value);
+            return Ok(result);
+        }
+
+        // 按路径提取数据
+        let mut result = HashMap::new();
+        for path in paths {
+            log_debug!("query_role_data: Extracting path: {}", path);
+            let segments = data_query::parse_path(path);
+            let value = data_query::get_value_by_path(&data_value, &segments);
+
+            result.insert(path.clone(), value.unwrap_or(serde_json::Value::Null));
+        }
+
+        log_debug!(
+            "query_role_data: Successfully extracted {} paths",
+            result.len()
+        );
+        Ok(result)
+    }
+
+    /// 获取处理后的角色详情（包含图片base64转换）
+    async fn get_char_detail_processed(
+        &self,
+        role_id: &str,
+    ) -> Result<serde_json::Value, AppError> {
+        log_debug!("get_char_detail_processed: role_id={}", role_id);
+
+        // 使用带缓存的方法获取角色详情
+        let detail = match self.get_char_detail_with_cache(role_id).await? {
+            Some(d) => d,
+            None => {
+                log_warn!(
+                    "get_char_detail_processed: No detail found for role_id={}",
+                    role_id
+                );
+                return Err(AppError::ConfigError {
+                    message: format!("Character detail not found for role_id: {}", role_id),
+                });
+            }
+        };
+
+        // 克隆以便修改
+        let mut detail = detail.clone();
+
+        // 处理所有图片URL为base64
+        self.process_char_detail_images(&mut detail).await?;
+
+        // 序列化为JSON Value
+        let json_value = serde_json::to_value(&detail).map_err(|e| {
+            log_error!("get_char_detail_processed: Failed to serialize: {}", e);
+            AppError::ConfigError {
+                message: format!("Failed to serialize character detail: {}", e),
+            }
+        })?;
+
+        log_debug!(
+            "get_char_detail_processed: Successfully processed detail for role_id={}",
+            role_id
+        );
+        Ok(json_value)
+    }
+
+    /// 处理角色详情中的所有图片URL，替换为base64
+    async fn process_char_detail_images(
+        &self,
+        detail: &mut CharDetailData,
+    ) -> Result<(), AppError> {
+        use crate::services::avatar_cache_service::{ImageCacheService, ImageType};
+
+        log_debug!(
+            "process_char_detail_images: Processing images for {} chars",
+            detail.chars.len()
+        );
+
+        // 创建图片缓存服务
+        let image_cache = ImageCacheService::new().map_err(|e| {
+            log_error!(
+                "process_char_detail_images: Failed to create image cache: {}",
+                e
+            );
+            AppError::ConfigError {
+                message: format!("Failed to create image cache: {}", e),
+            }
+        })?;
+
+        // 遍历所有角色
+        for char in detail.chars.iter_mut() {
+            if let Some(char_data) = &mut char.char_data {
+                let char_name = char_data.name.as_deref().unwrap_or("unknown");
+
+                // 缓存角色正方形头像
+                if let Some(ref mut avatar_url_opt) = char_data.avatar_sq_url {
+                    if !avatar_url_opt.is_empty() && !avatar_url_opt.starts_with("data:") {
+                        let url_clone = avatar_url_opt.clone();
+                        match image_cache
+                            .get_or_download_image_base64(&url_clone, ImageType::Avatar)
+                            .await
+                        {
+                            Ok(base64_str) => {
+                                *avatar_url_opt = base64_str;
+                                log_debug!(
+                                    "process_char_detail_images: Cached square avatar for {}",
+                                    char_name
+                                );
+                            }
+                            Err(e) => {
+                                log_warn!(
+                                    "process_char_detail_images: Failed to download square avatar for {}: {}",
+                                    char_name,
+                                    e
+                                );
+                            }
+                        }
+                    }
+                }
+
+                // 缓存角色长方形头像
+                if let Some(ref mut avatar_rt_url_opt) = char_data.avatar_rt_url {
+                    if !avatar_rt_url_opt.is_empty() && !avatar_rt_url_opt.starts_with("data:") {
+                        let url_clone = avatar_rt_url_opt.clone();
+                        match image_cache
+                            .get_or_download_image_base64(&url_clone, ImageType::Avatar)
+                            .await
+                        {
+                            Ok(base64_str) => {
+                                *avatar_rt_url_opt = base64_str;
+                                log_debug!(
+                                    "process_char_detail_images: Cached rectangular avatar for {}",
+                                    char_name
+                                );
+                            }
+                            Err(e) => {
+                                log_warn!(
+                                    "process_char_detail_images: Failed to download rectangular avatar for {}: {}",
+                                    char_name,
+                                    e
+                                );
+                            }
+                        }
+                    }
+                }
+
+                // 缓存角色立绘
+                if let Some(ref mut illustration_url_opt) = char_data.illustration_url {
+                    if !illustration_url_opt.is_empty()
+                        && !illustration_url_opt.starts_with("data:")
+                    {
+                        let url_clone = illustration_url_opt.clone();
+                        match image_cache
+                            .get_or_download_image_base64(&url_clone, ImageType::Illustration)
+                            .await
+                        {
+                            Ok(base64_str) => {
+                                *illustration_url_opt = base64_str;
+                                log_debug!(
+                                    "process_char_detail_images: Cached illustration for {}",
+                                    char_name
+                                );
+                            }
+                            Err(e) => {
+                                log_warn!(
+                                    "process_char_detail_images: Failed to download illustration for {}: {}",
+                                    char_name,
+                                    e
+                                );
+                            }
+                        }
+                    }
+                }
+
+                // 缓存技能图标
+                if let Some(ref mut skills) = char_data.skills {
+                    for skill in skills.iter_mut() {
+                        if !skill.icon_url.is_empty() && !skill.icon_url.starts_with("data:") {
+                            let url_clone = skill.icon_url.clone();
+                            match image_cache
+                                .get_or_download_image_base64(&url_clone, ImageType::SkillIcon)
+                                .await
+                            {
+                                Ok(base64_str) => {
+                                    skill.icon_url = base64_str;
+                                    log_debug!(
+                                        "process_char_detail_images: Cached skill icon '{}' for {}",
+                                        skill.name,
+                                        char_name
+                                    );
+                                }
+                                Err(e) => {
+                                    log_warn!(
+                                        "process_char_detail_images: Failed to download skill icon '{}' for {}: {}",
+                                        skill.name,
+                                        char_name,
+                                        e
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 缓存天赋图标（ability_talents）
+                if let Some(ref mut ability_talents) = char_data.ability_talents {
+                    for talent in ability_talents.iter_mut() {
+                        if !talent.icon_url.is_empty() && !talent.icon_url.starts_with("data:") {
+                            let url_clone = talent.icon_url.clone();
+                            match image_cache
+                                .get_or_download_image_base64(&url_clone, ImageType::SkillIcon)
+                                .await
+                            {
+                                Ok(base64_str) => {
+                                    talent.icon_url = base64_str;
+                                    log_debug!(
+                                        "process_char_detail_images: Cached ability talent icon '{}' for {}",
+                                        talent.name,
+                                        char_name
+                                    );
+                                }
+                                Err(e) => {
+                                    log_warn!(
+                                        "process_char_detail_images: Failed to download ability talent icon '{}' for {}: {}",
+                                        talent.name,
+                                        char_name,
+                                        e
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 缓存天赋图标（combat_talents）
+                if let Some(ref mut combat_talents) = char_data.combat_talents {
+                    for talent in combat_talents.iter_mut() {
+                        if !talent.icon_url.is_empty() && !talent.icon_url.starts_with("data:") {
+                            let url_clone = talent.icon_url.clone();
+                            match image_cache
+                                .get_or_download_image_base64(&url_clone, ImageType::SkillIcon)
+                                .await
+                            {
+                                Ok(base64_str) => {
+                                    talent.icon_url = base64_str;
+                                    log_debug!(
+                                        "process_char_detail_images: Cached combat talent icon '{}' for {}",
+                                        talent.name,
+                                        char_name
+                                    );
+                                }
+                                Err(e) => {
+                                    log_warn!(
+                                        "process_char_detail_images: Failed to download combat talent icon '{}' for {}: {}",
+                                        talent.name,
+                                        char_name,
+                                        e
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 缓存天赋图标（cultivation_talents）
+                if let Some(ref mut cultivation_talents) = char_data.cultivation_talents {
+                    for talent in cultivation_talents.iter_mut() {
+                        if !talent.icon_url.is_empty() && !talent.icon_url.starts_with("data:") {
+                            let url_clone = talent.icon_url.clone();
+                            match image_cache
+                                .get_or_download_image_base64(&url_clone, ImageType::SkillIcon)
+                                .await
+                            {
+                                Ok(base64_str) => {
+                                    talent.icon_url = base64_str;
+                                    log_debug!(
+                                        "process_char_detail_images: Cached cultivation talent icon '{}' for {}",
+                                        talent.name,
+                                        char_name
+                                    );
+                                }
+                                Err(e) => {
+                                    log_warn!(
+                                        "process_char_detail_images: Failed to download cultivation talent icon '{}' for {}: {}",
+                                        talent.name,
+                                        char_name,
+                                        e
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        log_debug!("process_char_detail_images: Completed image processing");
+        Ok(())
     }
 }

@@ -4,7 +4,7 @@ import { CharDetailData, CharacterItem } from "@/types/charDetail";
 import { CharSelectModal } from "@/components/char-select-modal";
 import { logDebug, logError } from "@/utils/logger";
 import { useTranslation } from "react-i18next";
-import { roleDetailService } from "@/utils/roleDetailService";
+import { roleDataService } from "@/utils/roleDataService";
 import { invoke } from "@tauri-apps/api/core";
 
 interface CharacterListCardProps {
@@ -33,8 +33,8 @@ export function CharacterListCard({
         setIsLoading(true);
         logDebug("Fetching character detail from backend...");
 
-        // 直接调用后端,后端会处理缓存
-        const result = await roleDetailService.getCharDetail(roleId);
+        // 使用新的统一查询接口获取完整数据
+        const result = await roleDataService.getFullCharDetail(roleId);
         setCharDetail(result || null);
       } catch (error) {
         logError("Failed to load character detail:", error);

@@ -13,24 +13,24 @@ pub async fn get_accounts(
     state: State<'_, Arc<Mutex<AccountService>>>,
 ) -> Result<Vec<AccountInfo>, String> {
     use crate::log_debug;
-    
+
     let service = state.lock().await;
-    
+
     // 尝试从缓存获取 (根据懒加载状态自动选择精简版或完整版)
     let all_accounts = {
         let config_service = service.get_config_service();
         let config = config_service.lock().unwrap();
         let all_config = config.get_all();
         drop(config);
-        
+
         let mut all_accounts: Vec<AccountInfo> = Vec::new();
         let mut cache_hit = true;
-        
+
         // 遍历所有 account_token_* 配置项，获取每个用户的缓存
         for (key, _) in &all_config {
             if key.starts_with("account_token_") {
                 let user_id = key.trim_start_matches("account_token_");
-                
+
                 // 尝试从缓存获取
                 if let Some(cached_accounts) = service.get_cached_accounts(user_id) {
                     all_accounts.extend(cached_accounts);
@@ -40,16 +40,19 @@ pub async fn get_accounts(
                 }
             }
         }
-        
+
         // 如果所有用户都缓存命中，直接返回
         if cache_hit && !all_accounts.is_empty() {
-            log_debug!("[get_accounts] Cache hit for all users, returning {} accounts", all_accounts.len());
+            log_debug!(
+                "[get_accounts] Cache hit for all users, returning {} accounts",
+                all_accounts.len()
+            );
             return Ok(all_accounts);
         }
-        
+
         all_accounts
     }; // MutexGuard 在这里释放
-    
+
     // 否则调用 API 获取最新数据
     log_debug!("[get_accounts] Cache miss, fetching from API");
     Ok(service.get_accounts().await)
@@ -458,4 +461,54 @@ pub async fn set_current_role_id(
     let service = state.lock().await;
     service.set_current_role_id(role_id).await;
     Ok(true)
+}
+
+/// 统一数据查询接口
+///
+/// # Arguments
+/// * `role_id` - 角色ID
+/// * `api_name` - API名称（如 "char_detail"）
+/// * `paths` - 路径列表，每个路径精确到JSON叶节点
+///   - 空数组表示返回完整数据
+///   - 例如: ["base.name", "chars.0.charData.id", "chars.0.charData.avatarSqUrl"]
+///
+/// # Returns
+/// JSON Object，其中 key 是请求的路径，value 是对应的值
+/// 如果路径不存在，值为 null
+#[tauri::command]
+pub async fn query_role_data(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+    role_id: String,
+    api_name: String,
+    paths: Vec<String>,
+) -> Result<serde_json::Value, String> {
+    use crate::{log_debug, log_error, log_info};
+
+    log_debug!(
+        "query_role_data command: role_id={}, api_name={}, paths_count={}",
+        role_id,
+        api_name,
+        paths.len()
+    );
+
+    let service = state.lock().await;
+
+    match service.query_role_data(&role_id, &api_name, &paths).await {
+        Ok(result) => {
+            log_info!(
+                "query_role_data: Successfully retrieved {} paths for {}",
+                result.len(),
+                role_id
+            );
+            // 将 HashMap 转换为 JSON Object
+            Ok(serde_json::to_value(result).map_err(|e| {
+                log_error!("query_role_data: Failed to serialize result: {}", e);
+                format!("Failed to serialize result: {}", e)
+            })?)
+        }
+        Err(e) => {
+            log_error!("query_role_data: Query failed: {}", e);
+            Err(format!("Query failed: {}", e))
+        }
+    }
 }

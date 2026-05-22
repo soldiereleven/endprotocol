@@ -42,7 +42,7 @@ pub fn run() {
             commands::account::check_and_refresh_cred,
             commands::account::save_selected_char_ids,
             commands::account::get_selected_char_ids,
-            commands::account::get_char_detail,
+            commands::account::query_role_data,
             commands::account::set_lazy_load_enabled,
             commands::account::is_lazy_load_enabled,
             commands::account::set_current_role_id,
