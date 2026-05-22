@@ -14,6 +14,7 @@ import {
 } from "@/utils/dashboardConfig";
 import { logDebug, logError } from "@/utils/logger";
 import { roleDetailService } from "@/utils/roleDetailService";
+import { CardConfigService } from "@/utils/cardConfigService";
 
 export default function DashboardPage() {
   const { t } = useTranslation();
@@ -237,9 +238,18 @@ export default function DashboardPage() {
     if (!currentRoleId) return;
 
     try {
+      // 1. 删除卡片配置
+      await CardConfigService.removeCardSettings(cardId);
+      logDebug(`Removed settings for card ${cardId}`);
+
+      // 2. 从 Dashboard 配置中移除卡片
       await removeCard(currentRoleId, cardId);
+
+      // 3. 更新 UI
       const config = await getDashboardConfig(currentRoleId);
       setDashboardConfig(config);
+
+      logDebug(`Successfully removed card ${cardId}`);
     } catch (error) {
       logError("Failed to remove card:", error);
     }

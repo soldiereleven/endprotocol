@@ -40,8 +40,10 @@ pub fn run() {
             commands::account::get_selected_account,
             commands::account::set_selected_account,
             commands::account::check_and_refresh_cred,
-            commands::account::save_selected_char_ids,
-            commands::account::get_selected_char_ids,
+            // Card config commands
+            commands::card_config::get_card_settings,
+            commands::card_config::save_card_settings,
+            commands::card_config::remove_card_settings,
             commands::account::query_role_data,
             commands::account::set_lazy_load_enabled,
             commands::account::is_lazy_load_enabled,

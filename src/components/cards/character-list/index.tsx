@@ -5,9 +5,9 @@ import { CharSelectModal } from "@/components/char-select-modal";
 import { logDebug, logError } from "@/utils/logger";
 import { useTranslation } from "react-i18next";
 import { roleDataService } from "@/utils/roleDataService";
-import { invoke } from "@tauri-apps/api/core";
 import { BaseCardProps } from "../registry/types";
-import { CardWrapper } from "../base/card-wrapper";
+import { CardConfigService } from "@/utils/cardConfigService";
+import type { CharacterListCardSettings } from "@/types/card-settings";
 import { useCardData } from "../base/use-card-data";
 
 export default function CharacterListCard({
@@ -29,14 +29,19 @@ export default function CharacterListCard({
   useEffect(() => {
     const loadSelectedIds = async () => {
       try {
-        // 使用 cardId 而不是 roleId 来获取配置
-        const ids = await invoke<string[]>("get_selected_char_ids", { cardId });
+        // 使用统一的卡片配置服务
+        const settings =
+          await CardConfigService.getCardSettings<CharacterListCardSettings>(
+            cardId,
+          );
 
-        logDebug("Loaded selected char IDs for card:", cardId, ids);
+        logDebug(`Loaded settings for card ${cardId}:`, settings);
 
-        if (ids && ids.length > 0) {
+        if (settings.selectedCharIds && settings.selectedCharIds.length > 0) {
           // Filter out empty strings
-          const validIds = ids.filter((id) => id && id.trim() !== "");
+          const validIds = settings.selectedCharIds.filter(
+            (id) => id && id.trim() !== "",
+          );
           setSelectedCharIds(validIds);
           logDebug("Filtered valid IDs:", validIds);
         } else if (charDetail) {
@@ -45,11 +50,12 @@ export default function CharacterListCard({
           setSelectedCharIds(defaultIds);
           logDebug("Using default IDs:", defaultIds);
 
-          // Save defaults to config using cardId
-          await invoke("save_selected_char_ids", {
+          // Save defaults using unified config service
+          await CardConfigService.updateCardSetting(
             cardId,
-            selectedIds: defaultIds,
-          });
+            "selectedCharIds",
+            defaultIds,
+          );
         }
       } catch (error) {
         logError("Failed to load selected character IDs:", error);
@@ -208,12 +214,16 @@ export default function CharacterListCard({
         onSave={async (newIds: string[]) => {
           setSelectedCharIds(newIds);
           try {
-            // 使用 cardId 保存配置
-            await invoke("save_selected_char_ids", {
+            // 使用统一的卡片配置服务
+            await CardConfigService.updateCardSetting(
               cardId,
-              selectedIds: newIds,
-            });
-            logDebug("Saved selected character IDs for card:", cardId, newIds);
+              "selectedCharIds",
+              newIds,
+            );
+            logDebug(
+              `Saved selected character IDs for card ${cardId}:`,
+              newIds,
+            );
           } catch (error) {
             logError("Failed to save selected character IDs:", error);
           }
