@@ -1,0 +1,15 @@
+{
+  "id": "character_list",
+  "name": {
+    "zh": "干员列表",
+    "en": "Character List"
+  },
+  "description": {
+    "zh": "显示收藏的干员头像和信息",
+    "en": "Display pinned characters with avatars and info"
+  },
+  "icon": "👥",
+  "defaultSize": { "w": 3, "h": 2 },
+  "version": "1.0.0",
+  "allowMultiple": true
+}

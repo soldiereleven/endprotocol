@@ -1,0 +1,15 @@
+{
+  "id": "_template",
+  "name": {
+    "zh": "卡片模板",
+    "en": "Card Template"
+  },
+  "description": {
+    "zh": "这是一个开发模板，复制此目录创建新卡片",
+    "en": "This is a development template, copy this directory to create new cards"
+  },
+  "icon": "📋",
+  "defaultSize": { "w": 3, "h": 2 },
+  "version": "1.0.0",
+  "allowMultiple": true
+}

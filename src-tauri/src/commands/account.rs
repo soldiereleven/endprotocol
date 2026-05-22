@@ -184,18 +184,19 @@ pub async fn check_and_refresh_cred(
         .map_err(|e| e.to_string())
 }
 
-/// 保存选中的干员 ID
+/// 保存选中的干员 ID（基于卡片ID）
 #[tauri::command]
 pub async fn save_selected_char_ids(
     state: State<'_, Arc<Mutex<AccountService>>>,
-    role_id: String,
+    card_id: String,
     selected_ids: Vec<String>,
 ) -> Result<bool, String> {
     let service = state.lock().await;
     let config = service.get_config_service();
     let mut config_guard = config.lock().unwrap();
 
-    let config_key = format!("selected_char_ids_{}", role_id);
+    // 使用 card_id 作为配置键，而不是 role_id
+    let config_key = format!("selected_char_ids_{}", card_id);
     config_guard
         .set(config_key, serde_json::json!(selected_ids))
         .map_err(|e| e.to_string())?;
@@ -203,17 +204,18 @@ pub async fn save_selected_char_ids(
     Ok(true)
 }
 
-/// 获取选中的干员 ID
+/// 获取选中的干员 ID（基于卡片ID）
 #[tauri::command]
 pub async fn get_selected_char_ids(
     state: State<'_, Arc<Mutex<AccountService>>>,
-    role_id: String,
+    card_id: String,
 ) -> Result<Vec<String>, String> {
     let service = state.lock().await;
     let config = service.get_config_service();
     let config_guard = config.lock().unwrap();
 
-    let config_key = format!("selected_char_ids_{}", role_id);
+    // 使用 card_id 作为配置键，而不是 role_id
+    let config_key = format!("selected_char_ids_{}", card_id);
     let selected_ids: Option<Vec<String>> = config_guard.get(&config_key);
 
     Ok(selected_ids.unwrap_or_default())

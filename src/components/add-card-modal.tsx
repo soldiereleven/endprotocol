@@ -6,14 +6,14 @@ import {
   CustomModalBody,
   CustomModalFooter,
 } from "./custom-modal";
-import { CardType } from "@/types/dashboard";
 import { useTranslation } from "react-i18next";
+import { getAvailableCards } from "./cards/registry/loader";
 
 interface AddCardModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (cardType: CardType) => void;
-  existingTypes: CardType[];
+  onAdd: (cardType: string) => void;
+  existingTypes: string[];
 }
 
 export function AddCardModal({
@@ -22,20 +22,20 @@ export function AddCardModal({
   onAdd,
   existingTypes,
 }: AddCardModalProps) {
-  const { t } = useTranslation();
-  const [selectedType, setSelectedType] = useState<CardType | null>(null);
+  const { t, i18n } = useTranslation();
+  const [selectedType, setSelectedType] = useState<string | null>(null);
 
-  // Define available card types with metadata
-  const availableCards = [
-    {
-      type: CardType.CHARACTER_LIST,
-      name: t("dashboard.cards.character_list") || "Character List",
-      description:
-        t("dashboard.cards.character_list_desc") || "Display pinned characters",
-      icon: "👥",
-    },
-    // Future card types can be added here
-  ];
+  // Get available cards from registry
+  const availableCards = getAvailableCards();
+
+  // Filter cards based on allowMultiple setting
+  const displayCards = availableCards.filter((card) => {
+    // If allowMultiple is true or not set, always show
+    if (card.allowMultiple !== false) return true;
+
+    // If allowMultiple is false, only show if not already added
+    return !existingTypes.includes(card.id);
+  });
 
   const handleConfirm = () => {
     if (selectedType) {
@@ -57,37 +57,40 @@ export function AddCardModal({
       </CustomModalHeader>
       <CustomModalBody>
         <div className="space-y-3">
-          {availableCards.map((card) => {
-            const isDisabled = existingTypes.includes(card.type);
-            const isSelected = selectedType === card.type;
+          {displayCards.length === 0 ? (
+            <div className="text-center py-8 text-muted">
+              {t("dashboard.add_card.no_available_cards") ||
+                "No available cards"}
+            </div>
+          ) : (
+            displayCards.map((card) => {
+              const isSelected = selectedType === card.id;
 
-            return (
-              <Card
-                key={card.type}
-                className={`p-4 cursor-pointer transition-all ${
-                  isDisabled
-                    ? "opacity-50 cursor-not-allowed bg-default-100"
-                    : isSelected
+              return (
+                <Card
+                  key={card.id}
+                  className={`p-4 cursor-pointer transition-all ${
+                    isSelected
                       ? "border-[3px] border-blue-500 bg-blue-50 dark:bg-blue-900/40 shadow-md scale-[1.02]"
                       : "hover:border-blue-400/50 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-2 border-transparent"
-                }`}
-                onClick={() => !isDisabled && setSelectedType(card.type)}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{card.icon}</span>
-                  <div className="flex-1">
-                    <h3 className="font-semibold">{card.name}</h3>
-                    <p className="text-sm text-muted">{card.description}</p>
+                  }`}
+                  onClick={() => setSelectedType(card.id)}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{card.icon}</span>
+                    <div className="flex-1">
+                      <h3 className="font-semibold">
+                        {card.name[i18n.language] || card.name.en}
+                      </h3>
+                      <p className="text-sm text-muted">
+                        {card.description[i18n.language] || card.description.en}
+                      </p>
+                    </div>
                   </div>
-                  {isDisabled && (
-                    <span className="px-2 py-1 bg-default-200 rounded text-xs">
-                      {t("dashboard.add_card.already_added") || "Added"}
-                    </span>
-                  )}
-                </div>
-              </Card>
-            );
-          })}
+                </Card>
+              );
+            })
+          )}
         </div>
       </CustomModalBody>
       <CustomModalFooter>

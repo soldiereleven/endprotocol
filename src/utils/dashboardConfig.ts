@@ -1,6 +1,7 @@
 import { getConfig, setConfig } from './configService';
-import { CardConfig, CardType, DashboardConfig } from '@/types/dashboard';
+import { CardConfig, CardTypeId, DashboardConfig } from '@/types/dashboard';
 import { v4 as uuidv4 } from 'uuid';
+import { loadAllCards } from '@/components/cards/registry/loader';
 
 /**
  * 获取 Dashboard 配置
@@ -15,7 +16,7 @@ export async function getDashboardConfig(roleId: string): Promise<DashboardConfi
       cards: [
         {
           id: uuidv4(),
-          type: CardType.CHARACTER_LIST,
+          type: 'character_list',
           position: 0,
           settings: {}
         }
@@ -42,15 +43,95 @@ export async function saveDashboardConfig(
 }
 
 /**
+ * 寻找最佳的卡片位置（最小 x+y 且不重叠）
+ */
+function findBestPosition(
+  cards: CardConfig[],
+  cardW: number,
+  cardH: number
+): { x: number; y: number } {
+  const GRID_SIZE = 100;
+  
+  // 从 (0, 0) 开始尝试所有可能的位置
+  let bestX = 0;
+  let bestY = 0;
+  let bestScore = Infinity;
+  
+  // 找到当前最大范围
+  let maxX = 0;
+  let maxY = 0;
+  for (const card of cards) {
+    const cardRight = (card.x ?? 0) + (card.w ?? 3);
+    const cardBottom = (card.y ?? 0) + (card.h ?? 2);
+    maxX = Math.max(maxX, cardRight);
+    maxY = Math.max(maxY, cardBottom);
+  }
+  
+  // 扩大搜索范围，留出一些空间
+  const searchRangeX = maxX + cardW + 2;
+  const searchRangeY = maxY + cardH + 2;
+  
+  // 遍历所有可能的位置
+  for (let y = 0; y < searchRangeY; y++) {
+    for (let x = 0; x < searchRangeX; x++) {
+      // 检查是否与现有卡片重叠
+      const hasCollision = cards.some((otherCard) => {
+        const otherX = otherCard.x ?? 0;
+        const otherY = otherCard.y ?? 0;
+        const otherW = otherCard.w ?? 3;
+        const otherH = otherCard.h ?? 2;
+        
+        return (
+          x < otherX + otherW &&
+          x + cardW > otherX &&
+          y < otherY + otherH &&
+          y + cardH > otherY
+        );
+      });
+      
+      // 如果没有碰撞，计算分数（x + y 越小越好）
+      if (!hasCollision) {
+        const score = x + y;
+        if (score < bestScore) {
+          bestScore = score;
+          bestX = x;
+          bestY = y;
+          
+          // 如果找到 (0, 0) 位置，直接返回（最优解）
+          if (bestScore === 0) {
+            return { x: 0, y: 0 };
+          }
+        }
+      }
+    }
+  }
+  
+  return { x: bestX, y: bestY };
+}
+
+/**
  * 添加卡片
  */
-export async function addCard(roleId: string, cardType: CardType): Promise<void> {
+export async function addCard(roleId: string, cardType: CardTypeId): Promise<void> {
   const config = await getDashboardConfig(roleId);
+  
+  // 获取卡片元数据以确定默认尺寸
+  const cardRegistry = loadAllCards();
+  const cardMeta = cardRegistry.get(cardType)?.meta;
+  const defaultW = cardMeta?.defaultSize.w ?? 3;
+  const defaultH = cardMeta?.defaultSize.h ?? 2;
+  
+  // 寻找最佳位置
+  const position = findBestPosition(config.cards, defaultW, defaultH);
   
   const newCard: CardConfig = {
     id: uuidv4(),
     type: cardType,
     position: config.cards.length,
+    x: position.x,
+    y: position.y,
+    w: defaultW,
+    h: defaultH,
     settings: {}
   };
   

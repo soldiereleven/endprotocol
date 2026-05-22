@@ -5,7 +5,7 @@ import { getSelectedAccount, refreshAccountData } from "@/utils/accountService";
 import { CardContainer } from "@/components/cards/card-container";
 import { DashboardFAB } from "@/components/dashboard-fab";
 import { AddCardModal } from "@/components/add-card-modal";
-import { CardType, DashboardConfig } from "@/types/dashboard";
+import { CardTypeId, DashboardConfig } from "@/types/dashboard";
 import {
   getDashboardConfig,
   addCard,
@@ -220,7 +220,7 @@ export default function DashboardPage() {
   };
 
   // Handle adding a card
-  const handleAddCard = async (cardType: CardType) => {
+  const handleAddCard = async (cardType: CardTypeId) => {
     if (!currentRoleId) return;
 
     try {

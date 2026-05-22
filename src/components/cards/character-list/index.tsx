@@ -6,53 +6,33 @@ import { logDebug, logError } from "@/utils/logger";
 import { useTranslation } from "react-i18next";
 import { roleDataService } from "@/utils/roleDataService";
 import { invoke } from "@tauri-apps/api/core";
+import { BaseCardProps } from "../registry/types";
+import { CardWrapper } from "../base/card-wrapper";
+import { useCardData } from "../base/use-card-data";
 
-interface CharacterListCardProps {
-  roleId: string;
-  cardId: string;
-  settings: any;
-  isEditMode?: boolean;
-}
-
-export function CharacterListCard({
+export default function CharacterListCard({
   roleId,
   cardId,
   settings,
   isEditMode = false,
-}: CharacterListCardProps) {
+}: BaseCardProps) {
   const { t, i18n } = useTranslation();
-  const [charDetail, setCharDetail] = useState<CharDetailData | null>(null);
   const [selectedCharIds, setSelectedCharIds] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Load character detail data
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        logDebug("Fetching character detail from backend...");
-
-        // 使用新的统一查询接口获取完整数据
-        const result = await roleDataService.getFullCharDetail(roleId);
-        setCharDetail(result || null);
-      } catch (error) {
-        logError("Failed to load character detail:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, [roleId]);
+  // 使用通用 Hook 加载角色详情数据
+  const { data: charDetail, isLoading } = useCardData<CharDetailData>({
+    fetchData: () => roleDataService.getFullCharDetail(roleId),
+  });
 
   // Load selected character IDs
   useEffect(() => {
     const loadSelectedIds = async () => {
       try {
-        const ids = await invoke<string[]>("get_selected_char_ids", { roleId });
+        // 使用 cardId 而不是 roleId 来获取配置
+        const ids = await invoke<string[]>("get_selected_char_ids", { cardId });
 
-        logDebug("Loaded selected char IDs:", ids);
+        logDebug("Loaded selected char IDs for card:", cardId, ids);
 
         if (ids && ids.length > 0) {
           // Filter out empty strings
@@ -65,9 +45,9 @@ export function CharacterListCard({
           setSelectedCharIds(defaultIds);
           logDebug("Using default IDs:", defaultIds);
 
-          // Save defaults to config
+          // Save defaults to config using cardId
           await invoke("save_selected_char_ids", {
-            roleId,
+            cardId,
             selectedIds: defaultIds,
           });
         }
@@ -79,7 +59,7 @@ export function CharacterListCard({
     if (charDetail) {
       loadSelectedIds();
     }
-  }, [charDetail, roleId]);
+  }, [charDetail, cardId]);
 
   // Helper: Get default selected characters
   const getDefaultSelectedChars = (chars: CharacterItem[]): string[] => {
@@ -228,11 +208,12 @@ export function CharacterListCard({
         onSave={async (newIds: string[]) => {
           setSelectedCharIds(newIds);
           try {
+            // 使用 cardId 保存配置
             await invoke("save_selected_char_ids", {
-              roleId,
+              cardId,
               selectedIds: newIds,
             });
-            logDebug("Saved selected character IDs:", newIds);
+            logDebug("Saved selected character IDs for card:", cardId, newIds);
           } catch (error) {
             logError("Failed to save selected character IDs:", error);
           }

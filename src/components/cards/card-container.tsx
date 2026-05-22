@@ -14,9 +14,9 @@ import {
 import { ProgressCircle } from "@heroui/react";
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { CardConfig } from "@/types/dashboard";
-import { CharacterListCard } from "./character-list-card";
 import { updateCardLayout } from "@/utils/dashboardConfig";
 import { useLongPressDrag } from "@/hooks/useLongPressDrag";
+import { loadAllCards } from "./registry/loader";
 
 // Grid configuration
 const GRID_SIZE = 100; // Each grid cell is 100x100 pixels
@@ -221,6 +221,14 @@ function FreeDragCard({
             e.stopPropagation();
             onRemoveCard(card.id);
           }}
+          onPointerDown={(e) => {
+            // 阻止指针事件传播，避免触发父元素的 onPointerUp
+            e.stopPropagation();
+          }}
+          onPointerUp={(e) => {
+            // 阻止指针事件传播，避免触发父元素的 onPointerUp
+            e.stopPropagation();
+          }}
           className="absolute -top-2 -right-2 z-20 p-1 bg-content1 rounded-full shadow-md hover:bg-danger/10 text-danger"
           aria-label="Delete card"
         >
@@ -242,12 +250,29 @@ function FreeDragCard({
 
       {/* Card Content */}
       <div className="h-full w-full">
-        <CharacterListCard
-          roleId={roleId}
-          cardId={card.id}
-          settings={card.settings}
-          isEditMode={isEditMode}
-        />
+        {(() => {
+          const cardRegistry = loadAllCards();
+          const CardComponent = cardRegistry.get(card.type)?.component;
+
+          if (!CardComponent) {
+            return (
+              <div className="p-6 bg-content1 shadow-sm border border-separator">
+                <p className="text-danger text-center">
+                  Unknown card type: {card.type}
+                </p>
+              </div>
+            );
+          }
+
+          return (
+            <CardComponent
+              roleId={roleId}
+              cardId={card.id}
+              settings={card.settings}
+              isEditMode={isEditMode}
+            />
+          );
+        })()}
       </div>
     </div>
   );
@@ -283,6 +308,7 @@ export function CardContainer({
     w: number;
     h: number;
   } | null>(null);
+  const [hasCollision, setHasCollision] = useState(false);
 
   // Sort and initialize cards
   useEffect(() => {
@@ -437,18 +463,42 @@ export function CardContainer({
       const newGridX = Math.max(0, currentGridX + offsetX);
       const newGridY = Math.max(0, currentGridY + offsetY);
 
+      const cardW = card.w ?? 3;
+      const cardH = card.h ?? 2;
+
+      // Check for collision with other cards
+      const collision = sortedCards.some((otherCard) => {
+        if (otherCard.id === card.id) return false; // Skip self
+
+        const otherX = otherCard.x ?? 0;
+        const otherY = otherCard.y ?? 0;
+        const otherW = otherCard.w ?? 3;
+        const otherH = otherCard.h ?? 2;
+
+        // Check if rectangles overlap
+        return (
+          newGridX < otherX + otherW &&
+          newGridX + cardW > otherX &&
+          newGridY < otherY + otherH &&
+          newGridY + cardH > otherY
+        );
+      });
+
+      setHasCollision(collision);
+
       console.log("Highlight update:", {
         currentGrid: { x: currentGridX, y: currentGridY },
         delta: { x: event.delta.x, y: event.delta.y },
         offset: { x: offsetX, y: offsetY },
         newGrid: { x: newGridX, y: newGridY },
+        hasCollision: collision,
       });
 
       setHighlightGrid({
         x: newGridX,
         y: newGridY,
-        w: card.w ?? 3,
-        h: card.h ?? 2,
+        w: cardW,
+        h: cardH,
       });
     }
   };
@@ -465,6 +515,7 @@ export function CardContainer({
     setIsDragging(false);
     setExtraHeight(0); // Reset extra height after drag
     setHighlightGrid(null); // Clear highlight
+    setHasCollision(false); // Reset collision state
     console.log("States cleared");
 
     // Exit edit mode if entered via long press (even without dragging)
@@ -568,8 +619,6 @@ export function CardContainer({
           backgroundImage:
             isEditMode || isDragging ? generateGridSVG(isDragging) : "none",
           backgroundSize: `${GRID_SIZE}px ${GRID_SIZE}px`,
-          // Debug border to see container bounds
-          border: isDragging ? "2px solid red" : "none",
         }}
       >
         {/* Highlight Grid Cell - Fill the entire grid area */}
@@ -581,19 +630,28 @@ export function CardContainer({
               top: highlightGrid.y * GRID_SIZE,
               width: highlightGrid.w * GRID_SIZE,
               height: highlightGrid.h * GRID_SIZE,
-              backgroundColor: "rgba(59, 130, 246, 0.3)", // Bright blue with 30% opacity
-              border: "3px solid rgba(59, 130, 246, 1)", // Solid bright blue border
+              backgroundColor: hasCollision
+                ? "rgba(239, 68, 68, 0.3)" // Red when collision
+                : "rgba(59, 130, 246, 0.3)", // Blue when no collision
+              border: hasCollision
+                ? "3px solid rgba(239, 68, 68, 1)" // Red border when collision
+                : "3px solid rgba(59, 130, 246, 1)", // Blue border when no collision
               borderRadius: "8px",
-              boxShadow:
-                "0 0 30px rgba(59, 130, 246, 0.6), inset 0 0 40px rgba(59, 130, 246, 0.2)",
+              boxShadow: hasCollision
+                ? "0 0 30px rgba(239, 68, 68, 0.6), inset 0 0 40px rgba(239, 68, 68, 0.2)" // Red glow when collision
+                : "0 0 30px rgba(59, 130, 246, 0.6), inset 0 0 40px rgba(59, 130, 246, 0.2)", // Blue glow when no collision
               zIndex: 100, // Very high z-index to ensure visibility
             }}
             data-testid="highlight-grid"
           >
-            {/* Debug info */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm font-bold text-blue-600 bg-white/90 px-3 py-2 rounded shadow-lg whitespace-nowrap">
+            {/* Position indicator */}
+            <div
+              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm font-bold bg-white/90 px-3 py-2 rounded shadow-lg whitespace-nowrap"
+              style={{ color: hasCollision ? "#ef4444" : "#3b82f6" }}
+            >
               📍 ({highlightGrid.x}, {highlightGrid.y}) {highlightGrid.w}x
               {highlightGrid.h}
+              {hasCollision && " ⚠️"}
             </div>
           </div>
         )}
@@ -659,12 +717,25 @@ export function CardContainer({
               height: (activeCard.h ?? 2) * GRID_SIZE, // Default 3x2
             }}
           >
-            <CharacterListCard
-              roleId={roleId}
-              cardId={activeCard.id}
-              settings={activeCard.settings}
-              isEditMode={isEditMode}
-            />
+            {(() => {
+              const cardRegistry = loadAllCards();
+              const CardComponent = cardRegistry.get(
+                activeCard.type,
+              )?.component;
+
+              if (!CardComponent) {
+                return null;
+              }
+
+              return (
+                <CardComponent
+                  roleId={roleId}
+                  cardId={activeCard.id}
+                  settings={activeCard.settings}
+                  isEditMode={isEditMode}
+                />
+              );
+            })()}
           </div>
         ) : null}
       </DragOverlay>

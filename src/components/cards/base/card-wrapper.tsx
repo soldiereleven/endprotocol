@@ -1,0 +1,56 @@
+import React, { Suspense } from "react";
+import { Card, Skeleton } from "@heroui/react";
+
+interface CardWrapperProps {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
+// Error Boundary 组件
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback?: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || <ErrorState />;
+    }
+    return this.props.children;
+  }
+}
+
+export function CardWrapper({ children, fallback }: CardWrapperProps) {
+  return (
+    <ErrorBoundary fallback={fallback}>
+      <Suspense fallback={<LoadingSkeleton />}>{children}</Suspense>
+    </ErrorBoundary>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full">
+      <div className="space-y-4">
+        <Skeleton className="w-1/2 h-5 rounded-lg" />
+        <Skeleton className="w-full h-[140px] rounded-lg" />
+      </div>
+    </Card>
+  );
+}
+
+function ErrorState() {
+  return (
+    <Card className="p-6 bg-content1 shadow-sm border border-separator">
+      <p className="text-danger text-center">加载失败</p>
+    </Card>
+  );
+}

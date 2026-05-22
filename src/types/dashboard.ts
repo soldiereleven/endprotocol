@@ -1,13 +1,17 @@
 // Dashboard 卡片类型定义
 
+// 保留枚举用于向后兼容，但标记为 deprecated
 export enum CardType {
   CHARACTER_LIST = 'character_list',
-  // 未来可扩展其他卡片类型
+  // 未来新卡片无需在此添加
 }
+
+// 新增类型别名，实际使用字符串联合类型
+export type CardTypeId = string;
 
 export interface CardConfig {
   id: string;              // 唯一卡片实例 ID（UUID）
-  type: CardType;          // 卡片类型
+  type: CardTypeId;        // 卡片类型（字符串）
   position: number;        // 显示顺序（从 0 开始）
   x?: number;              // 网格 X 坐标（列）
   y?: number;              // 网格 Y 坐标（行）
