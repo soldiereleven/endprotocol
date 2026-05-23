@@ -1,19 +1,103 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@heroui/react";
 import { CharDetailData, CharacterItem } from "@/types/charDetail";
 import { CharSelectModal } from "@/components/char-select-modal";
 import { logDebug, logError } from "@/utils/logger";
 import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/core";
 import { roleDataService } from "@/utils/roleDataService";
 import { BaseCardProps } from "../registry/types";
 import { CardConfigService } from "@/utils/cardConfigService";
 import type { CharacterListCardSettings } from "@/types/card-settings";
 import { useCardData } from "../base/use-card-data";
 
+// ── 数据处理（原 processor.ts） ──────────────────────────────
+
+/** 按稀有度降序→名称升序排序，前端专属处理 */
+function sortCharsByRarity(chars: CharacterItem[]): CharacterItem[] {
+  return [...chars].sort((a, b) => {
+    const rarityA = parseInt(a.charData.rarity.value, 10) || 0;
+    const rarityB = parseInt(b.charData.rarity.value, 10) || 0;
+    if (rarityB !== rarityA) return rarityB - rarityA;
+    return a.charData.name.localeCompare(b.charData.name);
+  });
+}
+
+function getDefaultSelectedCharIds(chars: CharacterItem[]): string[] {
+  return chars.slice(0, 3).map((c) => c.charData.id);
+}
+
+function getSelectedCharacters(
+  charDetail: CharDetailData | null,
+  ids: string[],
+): CharacterItem[] {
+  if (!charDetail) return [];
+  return ids
+    .map((id) => charDetail.chars.find((c) => c.charData.id === id))
+    .filter((c): c is CharacterItem => c !== undefined)
+    .slice(0, 3);
+}
+
+// ── 图片常驻内存管理 ────────────────────────────────────────
+
+/** 提取一组 CharacterItem 中需要常驻的图片 URL */
+function extractImageUrls(chars: CharacterItem[]): string[] {
+  return chars.flatMap((c) => {
+    const urls: string[] = [];
+    if (c.charData.avatarRtUrl) urls.push(c.charData.avatarRtUrl);
+    if (c.charData.avatarSqUrl) urls.push(c.charData.avatarSqUrl);
+    return urls;
+  });
+}
+
+/**
+ * Hook：在选中角色变化时自动 pin/unpin 图片到后端内存
+ */
+function usePinImages(cardId: string, characters: CharacterItem[]) {
+  const prevUrlsRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    const newUrls = extractImageUrls(characters);
+
+    // 需要 unpin 的 = 之前有但现在没有
+    const toUnpin = prevUrlsRef.current.filter(
+      (url) => !newUrls.includes(url),
+    );
+    // 需要 pin 的 = 现在有但之前没有
+    const toPin = newUrls.filter(
+      (url) => !prevUrlsRef.current.includes(url),
+    );
+
+    const run = async () => {
+      try {
+        if (toUnpin.length > 0) {
+          await invoke("unpin_images", { cardId, urls: toUnpin });
+          logDebug("[PinImages] Unpinned:", toUnpin);
+        }
+        if (toPin.length > 0) {
+          await invoke("pin_images", { cardId, urls: toPin });
+          logDebug("[PinImages] Pinned:", toPin);
+        }
+      } catch (err) {
+        logError("[PinImages] Failed:", err);
+      }
+    };
+
+    run();
+    prevUrlsRef.current = newUrls;
+
+    // 组件卸载时 unpin 当前所有
+    return () => {
+      if (newUrls.length > 0) {
+        invoke("unpin_images", { cardId, urls: newUrls }).catch(() => {});
+      }
+    };
+  }, [cardId, characters]);
+}
+
 export default function CharacterListCard({
   roleId,
   cardId,
-  settings,
   isEditMode = false,
 }: BaseCardProps) {
   const { t, i18n } = useTranslation();
@@ -24,6 +108,11 @@ export default function CharacterListCard({
   const { data: charDetail, isLoading } = useCardData<CharDetailData>({
     fetchData: () => roleDataService.getFullCharDetail(roleId),
   });
+
+  const processedCharDetail = useMemo(() => {
+    if (!charDetail) return null;
+    return { ...charDetail, chars: sortCharsByRarity(charDetail.chars) };
+  }, [charDetail]);
 
   // Load selected character IDs
   useEffect(() => {
@@ -44,9 +133,10 @@ export default function CharacterListCard({
           );
           setSelectedCharIds(validIds);
           logDebug("Filtered valid IDs:", validIds);
-        } else if (charDetail) {
-          // Default: top 3 characters by rarity (desc) then name (asc)
-          const defaultIds = getDefaultSelectedChars(charDetail.chars);
+        } else if (processedCharDetail) {
+          const defaultIds = getDefaultSelectedCharIds(
+            processedCharDetail.chars,
+          );
           setSelectedCharIds(defaultIds);
           logDebug("Using default IDs:", defaultIds);
 
@@ -62,34 +152,19 @@ export default function CharacterListCard({
       }
     };
 
-    if (charDetail) {
+    if (processedCharDetail) {
       loadSelectedIds();
     }
-  }, [charDetail, cardId]);
-
-  // Helper: Get default selected characters
-  const getDefaultSelectedChars = (chars: CharacterItem[]): string[] => {
-    // Sort by rarity (desc), then name (asc)
-    const sorted = [...chars].sort((a, b) => {
-      const rarityA = parseInt(a.charData.rarity.value) || 0;
-      const rarityB = parseInt(b.charData.rarity.value) || 0;
-
-      if (rarityB !== rarityA) {
-        return rarityB - rarityA;
-      }
-
-      return a.charData.name.localeCompare(b.charData.name);
-    });
-
-    // Take top 3
-    return sorted.slice(0, 3).map((c) => c.charData.id);
-  };
+  }, [processedCharDetail, cardId]);
 
   // Get selected character data - maintain the order of selectedCharIds
-  const selectedCharacters = selectedCharIds
-    .map((id) => charDetail?.chars.find((c) => c.charData.id === id))
-    .filter((c): c is CharacterItem => c !== undefined)
-    .slice(0, 3);
+  const selectedCharacters = getSelectedCharacters(
+    processedCharDetail,
+    selectedCharIds,
+  );
+
+  // 常驻选中角色的展示图片到后端内存
+  usePinImages(cardId, selectedCharacters);
 
   // Clear long press timer when modal opens
   useEffect(() => {
@@ -127,7 +202,7 @@ export default function CharacterListCard({
     );
   }
 
-  if (!charDetail) {
+  if (!processedCharDetail) {
     return (
       <Card className="p-6 bg-content1 shadow-sm border border-separator">
         <p className="text-muted text-center">
@@ -155,7 +230,7 @@ export default function CharacterListCard({
 
           {/* Character Avatars Grid - Larger size with rectangular portraits */}
           <div className="grid grid-cols-3 gap-2 h-[140px]">
-            {selectedCharacters.map((char, index) => (
+            {selectedCharacters.map((char) => (
               <div key={char.charData.id} className="relative group h-full">
                 <img
                   src={char.charData.avatarRtUrl || char.charData.avatarSqUrl}
@@ -209,7 +284,7 @@ export default function CharacterListCard({
       <CharSelectModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        charDetail={charDetail}
+        charDetail={processedCharDetail}
         selectedCharIds={selectedCharIds}
         onSave={async (newIds: string[]) => {
           setSelectedCharIds(newIds);

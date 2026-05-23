@@ -1,20 +1,23 @@
 import { invoke } from '@tauri-apps/api/core';
-import { CharDetailData } from '@/types/charDetail';
 import { logDebug, logInfo, logError } from './logger';
 
 /**
- * 简化的角色详情服务
- * 前端不再管理缓存,所有数据由后端统一管理
+ * 角色详情服务
+ * 所有数据统一通过 query_role_data 获取，前端自行处理
  */
 export class RoleDetailService {
   /**
-   * 获取角色详情(后端会自动处理缓存)
+   * 获取角色详情（通过统一查询接口 query_role_data）
    */
-  async getCharDetail(roleId: string): Promise<CharDetailData | null> {
+  async getCharDetail(roleId: string): Promise<any | null> {
     try {
       logInfo(`[RoleDetailService] Requesting char detail for: ${roleId}`);
-      const result = await invoke<CharDetailData | null>('get_char_detail', { roleId });
-      return result;
+      const result = await invoke<Record<string, any>>('query_role_data', {
+        roleId,
+        apiName: 'char_detail',
+        paths: [],
+      });
+      return result?.__full__ ?? null;
     } catch (error) {
       logError(`[RoleDetailService] Failed to get char detail:`, error);
       return null;
