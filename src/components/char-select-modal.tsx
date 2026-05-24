@@ -31,6 +31,36 @@ export function CharSelectModal({
     "list",
   );
   const [detailCharId, setDetailCharId] = useState<string | null>(null);
+  const [selectedDetailItem, setSelectedDetailItem] = useState<{
+    type: "skill" | "combatTalent" | "abilityTalent" | "cultivationTalent";
+    id: string;
+  } | null>(null);
+  const [detailActive, setDetailActive] = useState(false);
+  const detailRafRef = useRef<number>(0);
+  const detailTimerRef = useRef<number>(0);
+
+  /** 打开详情面板：先渲染内容，下一帧再触发宽度动画 */
+  const openDetailPanel = (item: {
+    type: "skill" | "combatTalent" | "abilityTalent" | "cultivationTalent";
+    id: string;
+  }) => {
+    if (detailTimerRef.current) clearTimeout(detailTimerRef.current);
+    if (detailRafRef.current) cancelAnimationFrame(detailRafRef.current);
+    setSelectedDetailItem(item);
+    detailRafRef.current = requestAnimationFrame(() => {
+      setDetailActive(true);
+    });
+  };
+
+  /** 关闭详情面板：先关宽度动画，动画完成后再清除内容 */
+  const closeDetailPanel = () => {
+    if (detailRafRef.current) cancelAnimationFrame(detailRafRef.current);
+    setDetailActive(false);
+    detailTimerRef.current = window.setTimeout(() => {
+      setSelectedDetailItem(null);
+    }, 300);
+  };
+
   const [selectingCharId, setSelectingCharId] = useState<string | null>(null);
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(
     null,
@@ -55,12 +85,30 @@ export function CharSelectModal({
       setSelectingCharId(null);
       setSelectedSlotIndex(null);
       setSuccessMessage(null); // Clear success message
+      setSelectedDetailItem(null);
+      setDetailActive(false);
       setFilterProfession("all"); // Reset filters
       setFilterProperty("all");
       setFilterRarity("all");
       setShowFilters(false); // Hide filter panel
     }
   }, [isOpen]);
+
+  // Reset detail selection when entering detail view
+  useEffect(() => {
+    if (viewMode === "detail" && detailCharId) {
+      setSelectedDetailItem(null);
+      setDetailActive(false);
+    }
+  }, [viewMode, detailCharId]);
+
+  // Cleanup animation refs
+  useEffect(() => {
+    return () => {
+      if (detailRafRef.current) cancelAnimationFrame(detailRafRef.current);
+      if (detailTimerRef.current) clearTimeout(detailTimerRef.current);
+    };
+  }, []);
 
   const MAX_SELECTION = 3;
 
@@ -211,89 +259,343 @@ export function CharSelectModal({
         </div>
       )}
 
-      {/* Header */}
-      <CustomModalHeader
-        onClose={() => {
-          if (viewMode === "detail" || viewMode === "select-slot") {
-            setViewMode("list");
-            setDetailCharId(null);
-            setSelectingCharId(null);
-          } else {
-            onClose();
-          }
-        }}
-      >
-        {viewMode === "list" ? (
-          <div className="flex items-center justify-between w-full">
-            <h2>
-              {t("settings.characters.pin_characters", { max: MAX_SELECTION })}
-            </h2>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted">
-                {t("settings.characters.pinned_count", {
-                  count: tempSelectedIds.filter((id) => id).length,
-                  max: MAX_SELECTION,
-                })}
-              </span>
-              <Button
-                size="sm"
-                variant={showFilters ? "primary" : "outline"}
-                onPress={() => setShowFilters(!showFilters)}
-              >
-                {showFilters
-                  ? t("common.hide_filters")
-                  : t("common.show_filters")}
-              </Button>
-            </div>
-          </div>
-        ) : viewMode === "detail" ? (
-          <div className="flex items-center gap-3">
-            {detailCharId && (
-              <>
-                <img
-                  src={getCharById(detailCharId)?.avatarSqUrl}
-                  alt={getCharById(detailCharId)?.name}
-                  className="w-16 h-16 rounded-lg object-cover"
-                />
-                <div>
-                  <h2 className="text-xl font-bold">
-                    {getCharById(detailCharId)?.name}
-                  </h2>
-                  <p className="text-sm text-muted">
-                    {getCharById(detailCharId)?.rarity.value}★{" "}
-                    {getCharById(detailCharId)?.profession.value}
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-        ) : viewMode === "select-slot" ? (
-          <div className="flex items-center gap-3">
-            {selectingCharId && (
-              <>
-                <img
-                  src={getCharById(selectingCharId)?.avatarSqUrl}
-                  alt={getCharById(selectingCharId)?.name}
-                  className="w-16 h-16 rounded-lg object-cover"
-                />
-                <div>
-                  <h2 className="text-xl font-bold">
-                    {t("settings.characters.select_slot", {
-                      name: getCharById(selectingCharId)?.name,
-                    })}
-                  </h2>
-                  <p className="text-sm text-muted">
-                    {t("settings.characters.choose_slot")}
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-        ) : null}
-      </CustomModalHeader>
+      {viewMode === "detail" ? (
+        detailCharId && (() => {
+          const char = getCharById(detailCharId);
+          const charItem = getCharItemById(detailCharId);
+          if (!char) return null;
 
-      {/* Body */}
-      <CustomModalBody ref={modalBodyRef} onScroll={handleScroll}>
+          const sel = selectedDetailItem;
+          const activeCombatNodes = charItem?.talent?.latestPassiveSkillNodes || [];
+          const activeAbilityNodes = charItem?.talent?.attrNodes || [];
+          const activeCultivationNodes = charItem?.talent?.latestSpaceshipSkillNodes || [];
+          const hasSelection = detailActive;
+
+          const groupChains = (talents: typeof char.combatTalents) => {
+            const groups = new Map<string, typeof char.combatTalents>();
+            talents.forEach((t) => {
+              const baseId = t.id.replace(/_\d+$/, "");
+              if (!groups.has(baseId)) groups.set(baseId, []);
+              groups.get(baseId)!.push(t);
+            });
+            groups.forEach((g) => g.sort((a, b) => {
+              const aL = parseInt(a.id.match(/_(\d+)$/)?.[1] || "0");
+              const bL = parseInt(b.id.match(/_(\d+)$/)?.[1] || "0");
+              return aL - bL;
+            }));
+            return Array.from(groups.values());
+          };
+
+          const findItem = () => {
+            if (!sel) return null;
+            if (sel.type === "skill") {
+              const s = char.skills.find((x) => x.id === sel.id);
+              return s ? { ...s, _type: "skill" as const } : null;
+            }
+            const pool =
+              sel.type === "combatTalent" ? char.combatTalents :
+              sel.type === "abilityTalent" ? char.abilityTalents :
+              char.cultivationTalents || [];
+            const t = pool.find((x) => x.id === sel.id);
+            return t ? { ...t, _type: sel.type } : null;
+          };
+          const selectedItem = findItem();
+
+          const isNodeUnlocked = (chain: typeof char.combatTalents, index: number, type: string) => {
+            const activeNodes = type === "combatTalent" ? activeCombatNodes :
+              type === "abilityTalent" ? activeAbilityNodes :
+              activeCultivationNodes;
+            if (type === "skill") return true;
+            if (type === "abilityTalent") return activeNodes.includes(chain[index].id);
+            for (let i = index; i < chain.length; i++) {
+              if (activeNodes.includes(chain[i].id)) return true;
+            }
+            return false;
+          };
+
+          const talentIcon = (iconUrl: string, name: string, unlocked: boolean) => {
+            return unlocked ? (
+              <img src={iconUrl} alt={name} className="w-full h-full object-contain" />
+            ) : (
+              <div className="relative w-full h-full">
+                <img src={iconUrl} alt={name} className="w-full h-full object-contain opacity-30" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white drop-shadow" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm8 14H7c-.55 0-1-.45-1-1v-8c0-.55.45-1 1-1h10c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1z"/>
+                  </svg>
+                </div>
+              </div>
+            );
+          };
+
+          const btnBase = (isFirstThree: boolean, active: boolean, unlocked: boolean) =>
+            `w-12 h-12 border-2 p-1 transition-all cursor-pointer flex-shrink-0
+            ${isFirstThree ? "rounded-full" : "rounded-lg"}
+            ${unlocked ? "border-yellow-300" : "border-neutral-500"}
+            ${active ? "ring-2 ring-blue-500/40 scale-110" : "hover:scale-105"}
+            ${unlocked ? "shadow-[0_0_14px_rgba(0,0,0,0.35)]" : ""}`;
+
+          const pasCombatChains = groupChains(char.combatTalents);
+          const cultChains = groupChains(char.cultivationTalents || []);
+
+          return (
+            <div className="h-[70vh] relative overflow-hidden" style={{ border: "none" }}>
+              {/* Close button at top-right corner */}
+              <button
+                onClick={() => { setViewMode("list"); setDetailCharId(null); }}
+                className="absolute top-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full text-white/70 hover:text-white transition-colors cursor-pointer"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+
+              <div style={{
+                display: "flex",
+                height: "100%",
+                overflow: "hidden",
+              }}>
+              {/* Left column - pushed out when detail selected */}
+              <div style={{
+                width: hasSelection ? "0%" : "35%",
+                minWidth: 0,
+                flexShrink: 0,
+                transition: "width 300ms ease",
+                overflow: "hidden",
+                backgroundColor: "#404040",
+              }}>
+                <div className="h-full p-3 flex flex-col items-center justify-center">
+                  <img src={char.illustrationUrl} alt={char.name} className="w-full h-full object-contain" />
+                </div>
+              </div>
+
+              {/* Middle column - pushes left, pulls right */}
+              <div style={{
+                width: hasSelection ? "48%" : "65%",
+                minWidth: 0,
+                flexShrink: 0,
+                transition: "width 300ms ease",
+                overflow: "hidden",
+                backgroundColor: "#ddc236",
+              }}>
+                <div className="h-full p-4 overflow-y-auto space-y-6">
+                  {/* Skills */}
+                  <div>
+                    <div className="flex flex-wrap gap-5">
+                      {char.skills.map((skill) => {
+                        const isSel = sel?.type === "skill" && sel.id === skill.id;
+                        return (
+                          <button key={skill.id}
+                            onClick={() => openDetailPanel({ type: "skill", id: skill.id })}
+                            className={btnBase(true, isSel, true)}
+                            style={{ backgroundColor: "#e9d72c" }}
+                            title={skill.name}>
+                            <img src={skill.iconUrl} alt={skill.name} className="w-full h-full object-contain" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Ability Talents */}
+                  <div>
+                    <div className="flex flex-wrap gap-5">
+                      {[...char.abilityTalents].sort((a, b) => {
+                        const numA = parseInt(a.id.match(/_(\d+)$/)?.[1] || "0");
+                        const numB = parseInt(b.id.match(/_(\d+)$/)?.[1] || "0");
+                        return numA - numB;
+                      }).map((talent) => {
+                        const isSel = sel?.type === "abilityTalent" && sel.id === talent.id;
+                        const unlocked = activeAbilityNodes.includes(talent.id);
+                        return (
+                          <button key={talent.id}
+                            onClick={() => openDetailPanel({ type: "abilityTalent", id: talent.id })}
+                            className={`${btnBase(true, isSel, unlocked)} relative`}
+                            style={{ backgroundColor: unlocked ? "#e9d72c" : "#404040" }}
+                            title={talent.name}>
+                            {talentIcon(talent.iconUrl, talent.name, unlocked)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Passive Skills */}
+                  {pasCombatChains.length > 0 && (
+                    <div>
+                      <div className="flex flex-col gap-4">
+                        {pasCombatChains.map((chain, ci) => (
+                          <div key={ci} className="flex items-center gap-1">
+                            {chain.map((talent, ti) => {
+                              const isSel = sel?.type === "combatTalent" && sel.id === talent.id;
+                              const unlocked = isNodeUnlocked(chain, ti, "combatTalent");
+                              return (
+                                <div key={talent.id} className="flex items-center gap-1">
+                                  {ti > 0 && (
+                                    <div className={`w-10 border-t-2 rounded-none ${unlocked ? "border-white" : "border-dashed border-neutral-400"}`} />
+                                  )}
+                                  <button
+                                    onClick={() => openDetailPanel({ type: "combatTalent", id: talent.id })}
+                                    className={`${btnBase(true, isSel, unlocked)} relative`}
+                                    style={{ backgroundColor: unlocked ? "#e9d72c" : "#404040" }}
+                                    title={talent.name}>
+                                    {talentIcon(talent.iconUrl, talent.name, unlocked)}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cultivation Talents */}
+                  {cultChains.length > 0 && (
+                    <div>
+                      <div className="flex flex-col gap-4">
+                        {cultChains.map((chain, ci) => (
+                          <div key={ci} className="flex items-center gap-1">
+                            {chain.map((talent, ti) => {
+                              const isSel = sel?.type === "cultivationTalent" && sel.id === talent.id;
+                              const unlocked = isNodeUnlocked(chain, ti, "cultivationTalent");
+                              return (
+                                <div key={talent.id} className="flex items-center gap-1">
+                                  {ti > 0 && (
+                                    <div className={`w-10 border-t-2 rounded-none ${unlocked ? "border-white" : "border-dashed border-neutral-400"}`} />
+                                  )}
+                                  <button
+                                    onClick={() => openDetailPanel({ type: "cultivationTalent", id: talent.id })}
+                                    className={`${btnBase(false, isSel, unlocked)} relative`}
+                                    style={{ backgroundColor: unlocked ? "#e9d72c" : "#404040" }}
+                                    title={talent.name}>
+                                    {talentIcon(talent.iconUrl, talent.name, unlocked)}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right column - pulls in when detail selected */}
+              <div style={{
+                width: hasSelection ? "52%" : "0%",
+                minWidth: 0,
+                flexShrink: 0,
+                transition: "width 300ms ease",
+                overflow: "hidden",
+                backgroundColor: "#404040",
+              }}>
+                <div className="h-full relative">
+                  <button
+                    onClick={closeDetailPanel}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-8 flex items-center justify-center text-white/60 hover:text-white transition-colors cursor-pointer"
+                    title="Collapse detail"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
+                    </svg>
+                  </button>
+                  <div className="h-full overflow-y-auto" style={{ backgroundColor: "#404040" }}>
+                    {selectedItem && (
+                      <div className="pl-10 p-5">
+                        <div className="flex items-center gap-4 mb-4">
+                          <img src={selectedItem.iconUrl} alt={selectedItem.name}
+                            className={`w-16 h-16 object-contain p-1.5 ${selectedItem._type === "cultivationTalent" ? "rounded-lg" : "rounded-full"}`}
+                            style={{ backgroundColor: "#e9d72c", boxShadow: "0 0 14px rgba(0,0,0,0.35)" }} />
+                          <div>
+                            <h4 className="font-semibold text-lg">{selectedItem.name}</h4>
+                            {"type" in selectedItem && selectedItem.type && (
+                              <p className="text-sm text-muted">
+                                {selectedItem.type.value}
+                                {"property" in selectedItem && selectedItem.property && (
+                                  <> • {selectedItem.property.value}</>
+                                )}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <SkillDescription
+                          description={selectedItem.desc}
+                          params={selectedItem.descParams as Record<string, string> | undefined}
+                          className="text-sm leading-relaxed" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            </div>
+          );
+        })()
+      ) : (
+        <>
+          <CustomModalHeader
+            onClose={() => {
+              if (viewMode === "select-slot") {
+                setViewMode("list");
+                setDetailCharId(null);
+                setSelectingCharId(null);
+              } else {
+                onClose();
+              }
+            }}
+          >
+            {viewMode === "list" ? (
+              <div className="flex items-center justify-between w-full">
+                <h2>
+                  {t("settings.characters.pin_characters", { max: MAX_SELECTION })}
+                </h2>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-muted">
+                    {t("settings.characters.pinned_count", {
+                      count: tempSelectedIds.filter((id) => id).length,
+                      max: MAX_SELECTION,
+                    })}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant={showFilters ? "primary" : "outline"}
+                    onPress={() => setShowFilters(!showFilters)}
+                  >
+                    {showFilters
+                      ? t("common.hide_filters")
+                      : t("common.show_filters")}
+                  </Button>
+                </div>
+              </div>
+            ) : viewMode === "select-slot" ? (
+              <div className="flex items-center gap-3">
+                {selectingCharId && (
+                  <>
+                    <img
+                      src={getCharById(selectingCharId)?.avatarSqUrl}
+                      alt={getCharById(selectingCharId)?.name}
+                      className="w-16 h-16 rounded-lg object-cover"
+                    />
+                    <div>
+                      <h2 className="text-xl font-bold">
+                        {t("settings.characters.select_slot", {
+                          name: getCharById(selectingCharId)?.name,
+                        })}
+                      </h2>
+                      <p className="text-sm text-muted">
+                        {t("settings.characters.choose_slot")}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : null}
+          </CustomModalHeader>
+
+          {/* Body */}
+          <CustomModalBody ref={modalBodyRef} onScroll={handleScroll}>
         {viewMode === "list" ? (
           <div className="space-y-4">
             {/* Filter Section */}
@@ -526,298 +828,6 @@ export function CharSelectModal({
               </div>
             )}
           </div>
-        ) : viewMode === "detail" ? (
-          detailCharId && (
-            <div className="space-y-6">
-              {/* Skills Section */}
-              <div>
-                <h3 className="text-lg font-semibold mb-3">
-                  {t("character_detail.skills")}
-                </h3>
-                <div className="space-y-3">
-                  {getCharById(detailCharId)?.skills.map((skill) => (
-                    <div
-                      key={skill.id}
-                      className="p-4 bg-content1 rounded-lg border border-separator"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-12 h-12 rounded-full bg-gray-500/40 dark:bg-transparent flex items-center justify-center flex-shrink-0">
-                          <img
-                            src={skill.iconUrl}
-                            alt={skill.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-semibold">{skill.name}</h4>
-                          <p className="text-xs text-muted mb-2">
-                            {skill.type.value} • {skill.property.value}
-                          </p>
-                          <SkillDescription
-                            description={skill.desc}
-                            params={skill.descParams}
-                            className="text-sm"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Talents Section */}
-              <div>
-                <h3 className="text-lg font-semibold mb-3">
-                  {t("settings.characters.passive_skills") || "Passive Skills"}
-                </h3>
-                <div className="space-y-3">
-                  {(() => {
-                    const characterItem = getCharItemById(detailCharId);
-                    const allCombatTalents =
-                      getCharById(detailCharId)?.combatTalents || [];
-                    const activeNodes =
-                      characterItem?.talent?.latestPassiveSkillNodes || [];
-
-                    // Group talents by base ID (without the level suffix)
-                    const talentGroups = new Map<string, any[]>();
-                    allCombatTalents.forEach((talent) => {
-                      if (activeNodes.includes(talent.id)) {
-                        // Extract base ID: e.g., "chr_0027_tangtang_passive_skill_0_2" -> "chr_0027_tangtang_passive_skill_0"
-                        const baseId = talent.id.replace(/_\d+$/, "");
-                        if (!talentGroups.has(baseId)) {
-                          talentGroups.set(baseId, []);
-                        }
-                        talentGroups.get(baseId)!.push(talent);
-                      }
-                    });
-
-                    // For each group, select the one with highest level number
-                    const activeCombatTalents: any[] = [];
-                    talentGroups.forEach((talents) => {
-                      // Sort by the level number at the end of ID
-                      talents.sort((a, b) => {
-                        const aLevel = parseInt(
-                          a.id.match(/_(\d+)$/)?.[1] || "0",
-                        );
-                        const bLevel = parseInt(
-                          b.id.match(/_(\d+)$/)?.[1] || "0",
-                        );
-                        return bLevel - aLevel; // Descending order
-                      });
-                      // Take the highest level
-                      activeCombatTalents.push(talents[0]);
-                    });
-
-                    console.log(
-                      "Active combat talents after filtering:",
-                      activeCombatTalents.length,
-                    );
-
-                    if (activeCombatTalents.length === 0) {
-                      return (
-                        <p className="text-muted text-center py-4">
-                          {t("character_detail.no_active_talents")}
-                        </p>
-                      );
-                    }
-
-                    return activeCombatTalents.map((talent) => (
-                      <div
-                        key={talent.id}
-                        className="p-4 bg-content1 rounded-lg border border-separator"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="w-12 h-12 rounded-full bg-gray-500/40 dark:bg-transparent flex items-center justify-center flex-shrink-0">
-                            <img
-                              src={talent.iconUrl}
-                              alt={talent.name}
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold">{talent.name}</h4>
-                            <SkillDescription
-                              description={talent.desc}
-                              params={talent.descParams}
-                              className="text-sm mt-1"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ));
-                  })()}
-                </div>
-              </div>
-
-              {/* Ability Talents Section */}
-              <div>
-                <h3 className="text-lg font-semibold mb-3">
-                  {t("settings.characters.ability_talents") ||
-                    "Ability Talents"}
-                </h3>
-                <div className="space-y-3">
-                  {(() => {
-                    const characterItem = getCharItemById(detailCharId);
-                    const allAbilityTalents =
-                      getCharById(detailCharId)?.abilityTalents || [];
-                    const activeNodes = characterItem?.talent?.attrNodes || [];
-
-                    // Group talents by base ID
-                    const talentGroups = new Map<string, any[]>();
-                    allAbilityTalents.forEach((talent) => {
-                      if (activeNodes.includes(talent.id)) {
-                        const baseId = talent.id.replace(/_\d+$/, "");
-                        if (!talentGroups.has(baseId)) {
-                          talentGroups.set(baseId, []);
-                        }
-                        talentGroups.get(baseId)!.push(talent);
-                      }
-                    });
-
-                    // Select highest level for each group
-                    const activeAbilityTalents: any[] = [];
-                    talentGroups.forEach((talents) => {
-                      talents.sort((a, b) => {
-                        const aLevel = parseInt(
-                          a.id.match(/_(\d+)$/)?.[1] || "0",
-                        );
-                        const bLevel = parseInt(
-                          b.id.match(/_(\d+)$/)?.[1] || "0",
-                        );
-                        return bLevel - aLevel;
-                      });
-                      activeAbilityTalents.push(talents[0]);
-                    });
-
-                    if (activeAbilityTalents.length === 0) {
-                      return (
-                        <p className="text-muted text-center py-4">
-                          {t("character_detail.no_active_ability_talents")}
-                        </p>
-                      );
-                    }
-
-                    return activeAbilityTalents.map((talent) => (
-                      <div
-                        key={talent.id}
-                        className="p-4 bg-content1 rounded-lg border border-separator"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="w-12 h-12 rounded-full bg-gray-500/40 dark:bg-transparent flex items-center justify-center flex-shrink-0">
-                            <img
-                              src={talent.iconUrl}
-                              alt={talent.name}
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold">{talent.name}</h4>
-                            <SkillDescription
-                              description={talent.desc}
-                              params={talent.descParams}
-                              className="text-sm mt-1"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ));
-                  })()}
-                </div>
-              </div>
-
-              {/* Cultivation Talents Section */}
-              <div>
-                <h3 className="text-lg font-semibold mb-3">
-                  {t("settings.characters.cultivation_talents") ||
-                    "O.M.V. Dijiang Skills"}
-                </h3>
-                <div className="space-y-3">
-                  {(() => {
-                    const characterItem = getCharItemById(detailCharId);
-                    const allCultivationTalents =
-                      getCharById(detailCharId)?.cultivationTalents || [];
-                    const activeNodes =
-                      characterItem?.talent?.latestSpaceshipSkillNodes || [];
-
-                    // Simply filter by active nodes, no grouping needed
-                    const activeCultivationTalents =
-                      allCultivationTalents.filter((talent) =>
-                        activeNodes.includes(talent.id),
-                      );
-
-                    if (activeCultivationTalents.length === 0) {
-                      return (
-                        <p className="text-muted text-center py-4">
-                          {t("character_detail.no_active_cultivation_talents")}
-                        </p>
-                      );
-                    }
-
-                    return activeCultivationTalents.map((talent) => (
-                      <div
-                        key={talent.id}
-                        className="p-4 bg-content1 rounded-lg border border-separator"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="w-12 h-12 rounded-full bg-gray-500/40 dark:bg-transparent flex items-center justify-center flex-shrink-0">
-                            <img
-                              src={talent.iconUrl}
-                              alt={talent.name}
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold">{talent.name}</h4>
-                            <SkillDescription
-                              description={talent.desc}
-                              params={talent.descParams}
-                              className="text-sm mt-1"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ));
-                  })()}
-                </div>
-              </div>
-
-              {/* Info Section */}
-              <div>
-                <h3 className="text-lg font-semibold mb-3">
-                  {t("character_detail.info")}
-                </h3>
-                <div className="space-y-3 p-4 bg-content1 rounded-lg border border-separator">
-                  <div className="flex justify-between">
-                    <span className="text-muted">
-                      {t("character_detail.property")}:
-                    </span>
-                    <span>{getCharById(detailCharId)?.property.value}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted">
-                      {t("character_detail.weapon_type")}:
-                    </span>
-                    <span>{getCharById(detailCharId)?.weaponType.value}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted">
-                      {t("character_detail.tags")}:
-                    </span>
-                    <span>{getCharById(detailCharId)?.tags.join(", ")}</span>
-                  </div>
-                </div>
-
-                {/* Illustration */}
-                <div className="mt-4">
-                  <img
-                    src={getCharById(detailCharId)?.illustrationUrl}
-                    alt={`${getCharById(detailCharId)?.name} Illustration`}
-                    className="w-full rounded-lg"
-                  />
-                </div>
-              </div>
-            </div>
-          )
         ) : (
           // Slot Selection View
           selectingCharId && (
@@ -942,6 +952,8 @@ export function CharSelectModal({
           )
         )}
       </CustomModalBody>
+      </>
+    )}
 
       {/* Back to Top Button */}
       {viewMode === "list" && showBackToTop && (

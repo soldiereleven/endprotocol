@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use crate::log_debug;
 use crate::services::avatar_cache_service::{ImageCacheService, ImageType};
 use crate::utils::AppError;
-use crate::{log_debug};
 
 /// 图片常驻内存管理服务
 ///
@@ -39,10 +39,7 @@ impl ImagePinService {
         // 先获取已有的 pin 记录
         let old_pinned = {
             let card_pins = self.card_pins.lock().unwrap();
-            card_pins
-                .get(card_id)
-                .cloned()
-                .unwrap_or_default()
+            card_pins.get(card_id).cloned().unwrap_or_default()
         };
 
         let mut new_pinned = old_pinned.clone();

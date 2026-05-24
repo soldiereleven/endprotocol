@@ -199,6 +199,8 @@
     "illustration": "插画",
     "no_active_talents": "无激活的天赋可显示",
     "no_active_ability_talents": "无激活的能力天赋可显示",
-    "no_active_cultivation_talents": "无激活的培养天赋可显示"
+    "no_active_cultivation_talents": "无激活的培养天赋可显示",
+    "skill_detail": "技能详情",
+    "no_data": "暂无数据"
   }
 }

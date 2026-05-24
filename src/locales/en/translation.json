@@ -199,6 +199,8 @@
     "illustration": "Illustration",
     "no_active_talents": "No active talents to display",
     "no_active_ability_talents": "No active ability talents to display",
-    "no_active_cultivation_talents": "No active cultivation talents to display"
+    "no_active_cultivation_talents": "No active cultivation talents to display",
+    "skill_detail": "Skill Detail",
+    "no_data": "No data"
   }
 }

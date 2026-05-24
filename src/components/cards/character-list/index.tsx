@@ -60,13 +60,9 @@ function usePinImages(cardId: string, characters: CharacterItem[]) {
     const newUrls = extractImageUrls(characters);
 
     // 需要 unpin 的 = 之前有但现在没有
-    const toUnpin = prevUrlsRef.current.filter(
-      (url) => !newUrls.includes(url),
-    );
+    const toUnpin = prevUrlsRef.current.filter((url) => !newUrls.includes(url));
     // 需要 pin 的 = 现在有但之前没有
-    const toPin = newUrls.filter(
-      (url) => !prevUrlsRef.current.includes(url),
-    );
+    const toPin = newUrls.filter((url) => !prevUrlsRef.current.includes(url));
 
     const run = async () => {
       try {

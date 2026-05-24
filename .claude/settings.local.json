@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(python3 -c ' *)",
+      "Bash(npx vite *)"
+    ]
+  }
+}

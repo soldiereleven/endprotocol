@@ -8,6 +8,7 @@ interface ModalProps {
   size?: "sm" | "md" | "lg" | "xl";
   height?: "auto" | "fixed";
   disableBackdropClick?: boolean; // 禁用点击背景关闭
+  bgClass?: string; // 背景颜色类，默认为 bg-background
 }
 
 export const CustomModal: React.FC<ModalProps> = ({
@@ -17,6 +18,7 @@ export const CustomModal: React.FC<ModalProps> = ({
   size = "md",
   height = "fixed",
   disableBackdropClick = false,
+  bgClass = "bg-background",
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -54,7 +56,6 @@ export const CustomModal: React.FC<ModalProps> = ({
     lg: "max-w-2xl",
     xl: "max-w-4xl",
   };
-
   return (
     <>
       {/* Backdrop - 覆盖整个屏幕，让背景模糊 */}
@@ -86,8 +87,9 @@ export const CustomModal: React.FC<ModalProps> = ({
         <div
           ref={modalRef}
           className={clsx(
-            "relative w-full rounded-xl shadow-2xl border border-separator pointer-events-auto transform transition-all duration-300 ease-out",
+            "relative w-full rounded-xl shadow-2xl border border-separator pointer-events-auto transform transition-all duration-300 ease-out overflow-hidden",
             "bg-background",
+            bgClass,
             sizeClasses[size],
             height === "auto" ? "max-h-[90vh]" : "max-h-[85vh]",
             isOpen
@@ -114,32 +116,30 @@ export const CustomModalHeader: React.FC<ModalHeaderProps> = ({
   rightContent,
 }) => {
   return (
-    <div className="flex items-center justify-between px-6 py-4 border-b border-separator">
+    <div className="relative flex items-center justify-between px-6 py-4 border-b border-separator">
       <div className="text-lg font-semibold text-foreground">{children}</div>
-      <div className="flex items-center gap-2">
-        {rightContent}
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg hover:bg-default-100 transition-colors text-muted hover:text-foreground"
-            aria-label="Close"
+      <div className="flex items-center gap-2">{rightContent}</div>
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 p-1 rounded-full bg-default-50 hover:bg-default-100 transition-colors text-muted hover:text-foreground shadow-sm"
+          aria-label="Close"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        )}
-      </div>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      )}
     </div>
   );
 };
@@ -147,13 +147,15 @@ export const CustomModalHeader: React.FC<ModalHeaderProps> = ({
 interface ModalBodyProps {
   children: React.ReactNode;
   className?: string;
+  onScroll?: React.UIEventHandler<HTMLDivElement>;
 }
 
 export const CustomModalBody = forwardRef<HTMLDivElement, ModalBodyProps>(
-  ({ children, className = "" }, ref) => {
+  ({ children, className = "", onScroll }, ref) => {
     return (
       <div
         ref={ref}
+        onScroll={onScroll}
         className={clsx(
           "px-6 py-4 max-h-[70vh] overflow-y-auto relative",
           className,
