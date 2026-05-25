@@ -339,7 +339,7 @@ export function CharSelectModal({
           const cultChains = groupChains(char.cultivationTalents || []);
 
           return (
-            <div className="h-[70vh] relative overflow-hidden" style={{ border: "none" }}>
+            <div className="h-[78vh] relative overflow-hidden" style={{ border: "none" }}>
               {/* Close button at top-right corner */}
               <button
                 onClick={() => { setViewMode("list"); setDetailCharId(null); }}
@@ -379,6 +379,51 @@ export function CharSelectModal({
                 backgroundColor: "#ddc236",
               }}>
                 <div className="h-full p-4 overflow-y-auto space-y-6">
+                  {/* Character Info Header */}
+                  <div className="flex items-start gap-3 pb-3 border-b border-black/10">
+                    <img
+                      src={char.avatarSqUrl}
+                      alt={char.name}
+                      className="w-12 h-12 rounded-lg object-cover shadow-sm shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-base font-bold text-black truncate">{char.name}</h3>
+                        <span className={`text-sm font-bold shrink-0 ${
+                          char.rarity.value === "6" ? "text-red-700" :
+                          char.rarity.value === "5" ? "text-yellow-700" :
+                          char.rarity.value === "4" ? "text-purple-700" :
+                          "text-blue-700"
+                        }`}>
+                          {char.rarity.value}★
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-black/70 mt-0.5 flex-wrap">
+                        <span>{char.profession.value}</span>
+                        <span className="text-black/40">·</span>
+                        <span>{char.property.value}</span>
+                        <span className="text-black/40">·</span>
+                        <span>{char.weaponType.value}</span>
+                        {charItem?.level != null && (
+                          <>
+                            <span className="text-black/40">·</span>
+                            <span>Lv.{charItem.level}</span>
+                          </>
+                        )}
+                        {charItem?.evolvePhase != null && charItem.evolvePhase > 0 && (
+                          <>
+                            <span className="text-black/40">·</span>
+                            <span className="flex items-center gap-0.5">
+                              {Array.from({ length: charItem.evolvePhase }).map((_, i) => (
+                                <span key={i} className="w-1.5 h-1.5 rounded-full bg-yellow-600 inline-block" />
+                              ))}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Skills */}
                   <div>
                     <div className="flex flex-wrap gap-5">
@@ -503,15 +548,15 @@ export function CharSelectModal({
                   </button>
                   <div className="h-full overflow-y-auto" style={{ backgroundColor: "#404040" }}>
                     {selectedItem && (
-                      <div className="pl-10 p-5">
+                      <div className="pl-10 p-5 text-[#f0e8d8]">
                         <div className="flex items-center gap-4 mb-4">
                           <img src={selectedItem.iconUrl} alt={selectedItem.name}
                             className={`w-16 h-16 object-contain p-1.5 ${selectedItem._type === "cultivationTalent" ? "rounded-lg" : "rounded-full"}`}
                             style={{ backgroundColor: "#e9d72c", boxShadow: "0 0 14px rgba(0,0,0,0.35)" }} />
                           <div>
-                            <h4 className="font-semibold text-lg">{selectedItem.name}</h4>
+                            <h4 className="font-semibold text-lg text-[#f0e8d8]">{selectedItem.name}</h4>
                             {"type" in selectedItem && selectedItem.type && (
-                              <p className="text-sm text-muted">
+                              <p className="text-sm text-[#c0b8a8]">
                                 {selectedItem.type.value}
                                 {"property" in selectedItem && selectedItem.property && (
                                   <> • {selectedItem.property.value}</>
