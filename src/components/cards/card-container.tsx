@@ -16,6 +16,7 @@ import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { CardConfig } from "@/types/dashboard";
 import { updateCardLayout } from "@/utils/dashboardConfig";
 import { useLongPressDrag } from "@/hooks/useLongPressDrag";
+import logger from "@/utils/logger";
 import { loadAllCards } from "./registry/loader";
 
 // Grid configuration
@@ -91,26 +92,18 @@ function FreeDragCard({
 
   // Wrap handlePointerUp to check if we should exit edit mode
   const handlePointerUp = () => {
-    console.log("[FreeDragCard] handlePointerUp called", {
-      isEditMode,
-      isDragging,
-    });
+    logger.info("handlePointerUp called, isEditMode: " + isEditMode + " isDragging: " + isDragging, "CardContainer");
 
     // If in edit mode and not dragging, it means user long-pressed but didn't drag
     // In this case, we should exit edit mode
     if (isEditMode && !isDragging) {
-      console.log(
-        "Pointer up in edit mode without dragging, exiting edit mode",
-      );
+      logger.info("Pointer up in edit mode without dragging, exiting edit mode", "CardContainer");
       // Delay slightly to allow dnd-kit to process the event
       setTimeout(() => {
         // Use the ref to get the latest value
-        console.log(
-          "[FreeDragCard] Checking isDraggingRef after delay:",
-          isDraggingRef.current,
-        );
+        logger.info("Checking isDraggingRef after delay: " + isDraggingRef.current, "CardContainer");
         if (!isDraggingRef.current) {
-          console.log("[FreeDragCard] Calling onExitEditMode");
+          logger.info("Calling onExitEditMode", "CardContainer");
           onExitEditMode?.();
         }
       }, 50);
@@ -120,12 +113,9 @@ function FreeDragCard({
 
   // After entering edit mode, trigger drag start if user is still holding
   useEffect(() => {
-    console.log("[FreeDragCard] useEffect triggered", {
-      isEditMode,
-      hasListeners: !!listeners?.onPointerDown,
-    });
+    logger.info("useEffect triggered, isEditMode: " + isEditMode + " hasListeners: " + !!listeners?.onPointerDown, "CardContainer");
     if (isEditMode && listeners?.onPointerDown) {
-      console.log("[FreeDragCard] Calling triggerDragStart");
+      logger.info("Calling triggerDragStart", "CardContainer");
       triggerDragStart(listeners.onPointerDown as any);
     }
   }, [isEditMode, listeners, triggerDragStart]);
@@ -367,7 +357,7 @@ export function CardContainer({
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
     setIsDragging(true);
-    console.log("Drag started:", event.active.id);
+    logger.info("Drag started: " + event.active.id, "CardContainer");
   };
 
   // Track mouse position during drag
@@ -486,13 +476,7 @@ export function CardContainer({
 
       setHasCollision(collision);
 
-      console.log("Highlight update:", {
-        currentGrid: { x: currentGridX, y: currentGridY },
-        delta: { x: event.delta.x, y: event.delta.y },
-        offset: { x: offsetX, y: offsetY },
-        newGrid: { x: newGridX, y: newGridY },
-        hasCollision: collision,
-      });
+      logger.info("Highlight update: currentGrid=(" + currentGridX + "," + currentGridY + ") delta=(" + event.delta.x + "," + event.delta.y + ") newGrid=(" + newGridX + "," + newGridY + ") collision=" + collision, "CardContainer");
 
       setHighlightGrid({
         x: newGridX,
@@ -505,29 +489,25 @@ export function CardContainer({
 
   // Handle drag end - snap to grid
   const handleDragEnd = async (event: DragEndEvent) => {
-    console.log("[CardContainer] handleDragEnd called", {
-      draggedViaLongPress,
-      delta: event.delta,
-      activeId: event.active.id,
-    });
+    logger.info("handleDragEnd called: draggedViaLongPress=" + draggedViaLongPress + " activeId=" + event.active.id + " delta=" + JSON.stringify(event.delta), "CardContainer");
     const { active, delta } = event;
     setActiveId(null);
     setIsDragging(false);
     setExtraHeight(0); // Reset extra height after drag
     setHighlightGrid(null); // Clear highlight
     setHasCollision(false); // Reset collision state
-    console.log("States cleared");
+    logger.info("States cleared", "CardContainer");
 
     // Exit edit mode if entered via long press (even without dragging)
     if (draggedViaLongPress && onExitEditMode) {
-      console.log("Exiting edit mode after long press (with or without drag)");
+      logger.info("Exiting edit mode after long press (with or without drag)", "CardContainer");
       onExitEditMode();
       setDraggedViaLongPress(false);
     }
 
     // If no delta, exit early (no position update needed)
     if (!delta) {
-      console.log("No delta, exiting early");
+      logger.info("No delta, exiting early", "CardContainer");
       return;
     }
 
@@ -568,7 +548,7 @@ export function CardContainer({
 
     if (hasCollision) {
       // Collision detected - card will snap back to original position (no update)
-      console.log("Collision detected, reverting to original position");
+      logger.info("Collision detected, reverting to original position", "CardContainer");
       return;
     }
 
@@ -595,7 +575,7 @@ export function CardContainer({
 
   // Debug: Log rendering state
   useEffect(() => {
-    console.log("Render state:", { isDragging, highlightGrid, activeId });
+    logger.info("Render state: " + JSON.stringify({ isDragging, highlightGrid, activeId }), "CardContainer");
   }, [isDragging, highlightGrid, activeId]);
 
   if (cards.length === 0) {

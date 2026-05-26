@@ -12,6 +12,7 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
 import { Img } from "@/utils/imageLoader";
+import logger from "@/utils/logger";
 
 interface RoleDisplayInfo {
   roleId: string;
@@ -88,7 +89,7 @@ export default function RoleSelectModal({
       onSuccess();
       onClose();
     } catch (error) {
-      console.error("Failed to save roles:", error);
+      logger.error("Failed to save roles: " + error, "RoleSelect");
       alert(`${i18n.language === "zh" ? "保存失败" : "Save failed"}: ${error}`);
     } finally {
       setIsLoading(false);

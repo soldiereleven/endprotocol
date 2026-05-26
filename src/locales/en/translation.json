@@ -159,6 +159,20 @@
       "open_file_location": "Open file location",
       "no_cached": "No cached resources"
     },
+    "logs": {
+      "title": "Log Viewer",
+      "filter_all": "All",
+      "filter_frontend": "Frontend",
+      "filter_backend": "Backend",
+      "level_debug": "DEBUG",
+      "level_info": "INFO",
+      "level_warn": "WARN",
+      "level_error": "ERROR",
+      "clear": "Clear",
+      "no_logs": "No logs",
+      "source_frontend": "FE",
+      "source_backend": "BE"
+    },
     "characters": {
       "pin_characters": "Pin Characters (Max {{max}})",
       "pinned_count": "{{count}} / {{max}} pinned",

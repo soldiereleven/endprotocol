@@ -181,7 +181,7 @@ export async function addAccountByCode(loginRequest: CodeLoginRequest): Promise<
   try {
     return await invoke('add_account_by_code', { loginRequest });
   } catch (error) {
-    console.error('Failed to add account by code:', error);
+    logger.error('Failed to add account by code: ' + error, "AccountService");
     return {
       success: false,
       errorMessage: String(error),
@@ -207,7 +207,7 @@ export async function saveSelectedRoles(
   try {
     return await invoke('save_selected_roles', { cred, token, userId, selectedRoles });
   } catch (error) {
-    console.error('Failed to save selected roles:', error);
+    logger.error('Failed to save selected roles: ' + error, "AccountService");
     throw error;
   }
 }
@@ -220,7 +220,7 @@ export async function getSelectedAccount(): Promise<string | null> {
   try {
     return await invoke('get_selected_account');
   } catch (error) {
-    console.error('Failed to get selected account:', error);
+    logger.error('Failed to get selected account: ' + error, "AccountService");
     return null;
   }
 }
@@ -234,7 +234,7 @@ export async function setSelectedAccount(accountId: string): Promise<boolean> {
   try {
     return await invoke('set_selected_account', { accountId });
   } catch (error) {
-    console.error('Failed to set selected account:', error);
+    logger.error('Failed to set selected account: ' + error, "AccountService");
     return false;
   }
 }
@@ -248,7 +248,7 @@ export async function checkAndRefreshCred(userId: string): Promise<[string, stri
   try {
     return await invoke('check_and_refresh_cred', { userId });
   } catch (error) {
-    console.error('Failed to check and refresh cred:', error);
+    logger.error('Failed to check and refresh cred: ' + error, "AccountService");
     throw error;
   }
 }

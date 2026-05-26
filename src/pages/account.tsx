@@ -141,7 +141,7 @@ export default function AccountPage() {
   // 当账户数据加载完成后，重新计算 itemsPerPage
   useEffect(() => {
     if (accounts.length > 0 && containerRef.current) {
-      console.log("[Account] Accounts loaded, recalculating itemsPerPage");
+      logger.info("Accounts loaded, recalculating itemsPerPage", "Account");
       // 延迟一下确保 DOM 已渲染
       setTimeout(() => {
         const calculateItemsPerPage = () => {
@@ -153,12 +153,7 @@ export default function AccountPage() {
           const windowHeight = window.innerHeight;
           const availableHeight = windowHeight - topOffset;
 
-          console.log(
-            "[Account] Window height:",
-            windowHeight,
-            "Available height:",
-            availableHeight,
-          );
+          logger.info("Window height: " + windowHeight + " Available height: " + availableHeight, "Account");
 
           if (availableHeight <= 0) {
             setItemsPerPage(1);
@@ -187,7 +182,7 @@ export default function AccountPage() {
           }
 
           const newCount = Math.max(1, count);
-          console.log("[Account] Recalculated items per page:", newCount);
+          logger.info("Recalculated items per page: " + newCount, "Account");
           setItemsPerPage(newCount);
         };
 
@@ -208,17 +203,12 @@ export default function AccountPage() {
         const shouldRefresh = await getConfig<boolean>(
           "refresh_on_account_switch",
         );
-        console.log(
-          "[Account] Should refresh on switch (from sidebar):",
-          shouldRefresh,
-        );
+        logger.info("Should refresh on switch (from sidebar): " + shouldRefresh, "Account");
 
         let accountsData;
         if (shouldRefresh) {
           // 如果需要刷新，调用API获取最新数据
-          console.log(
-            "[Account] Refreshing account data from API (sidebar)...",
-          );
+          logger.info("Refreshing account data from API (sidebar)...", "Account");
           const result = await refreshAccountData();
           if (result.success && result.accounts) {
             accountsData = result.accounts;
@@ -282,7 +272,7 @@ export default function AccountPage() {
       // 默认显示3个
       return 3;
     } catch (error) {
-      console.error("Failed to get expected account count:", error);
+      logger.error("Failed to get expected account count: " + error, "Account");
       return 3; // 出错时默认显示3个
     }
   };
@@ -550,10 +540,7 @@ export default function AccountPage() {
       }
 
       // 调试：打印完整结果
-      console.log("Login result:", result);
-      console.log("result.success:", result.success);
-      console.log("result.account:", result.account);
-      console.log("result.availableRoles:", result.availableRoles);
+      logger.info("Login result: " + JSON.stringify(result), "Account");
 
       if (result.success && result.account) {
         // 登录成功
@@ -609,7 +596,7 @@ export default function AccountPage() {
         }
       }
     } catch (error) {
-      console.error("Login error:", error);
+      logger.error("Login error: " + error, "Account");
       setLoginError(
         i18n.language === "zh" ? "登录过程中发生错误" : "Error during login",
       );
@@ -658,7 +645,7 @@ export default function AccountPage() {
       });
       setTimeout(() => setGlobalAlert(null), 5000);
     } catch (error) {
-      console.error("Failed to save roles:", error);
+      logger.error("Failed to save roles: " + error, "Account");
       setLoginError(
         i18n.language === "zh" ? `保存失败: ${error}` : `Save failed: ${error}`,
       );
@@ -680,7 +667,7 @@ export default function AccountPage() {
   const handleSelectAccount = async (accountId: string) => {
     if (accountId === currentAccountId) return; // 如果点击的是当前选中的，不做任何操作
 
-    console.log("[Account] Selecting account:", accountId);
+    logger.info("Selecting account: " + accountId, "Account");
     setPreviousAccountId(currentAccountId); // 记录上一个选中的账户
     setIsAnimating(true); // 开始动画
     setCurrentAccountId(accountId);
@@ -688,10 +675,10 @@ export default function AccountPage() {
     // 调用API保存选中的账户
     try {
       const success = await apiSetSelectedAccount(accountId);
-      console.log("[Account] Set selected account result:", success);
+      logger.info("Set selected account result: " + success, "Account");
 
       if (!success) {
-        console.error("[Account] Failed to set selected account in backend");
+        logger.error("Failed to set selected account in backend", "Account");
         return;
       }
 
@@ -699,18 +686,18 @@ export default function AccountPage() {
       const shouldRefresh = await getConfig<boolean>(
         "refresh_on_account_switch",
       );
-      console.log("[Account] Should refresh on switch:", shouldRefresh);
+      logger.info("Should refresh on switch: " + shouldRefresh, "Account");
 
       if (shouldRefresh) {
         // 如果需要刷新，调用API获取最新数据
-        console.log("[Account] Refreshing account data from API...");
+        logger.info("Refreshing account data from API...", "Account");
         const result = await refreshAccountData();
         if (result.success && result.accounts) {
           setAccounts(result.accounts);
         }
       } else {
         // 如果不需要刷新，直接从后端获取
-        console.log("[Account] Fetching account data from backend");
+        logger.info("Fetching account data from backend", "Account");
         const accountsData = await getAccounts();
         if (accountsData && accountsData.length > 0) {
           setAccounts(accountsData);
@@ -718,10 +705,10 @@ export default function AccountPage() {
       }
 
       // 确保后端保存成功后，再触发自定义事件通知侧边栏更新
-      console.log("[Account] Dispatching accountChanged event");
+      logger.info("Dispatching accountChanged event", "Account");
       window.dispatchEvent(new CustomEvent("accountChanged"));
     } catch (error) {
-      console.error("Failed to set selected account:", error);
+      logger.error("Failed to set selected account: " + error, "Account");
     }
 
     // 动画结束后重置状态
@@ -772,7 +759,7 @@ export default function AccountPage() {
   useEffect(() => {
     const calculateItemsPerPage = () => {
       if (!containerRef.current) {
-        console.log("[Account] containerRef not ready");
+        logger.info("containerRef not ready", "Account");
         return;
       }
 
@@ -781,15 +768,10 @@ export default function AccountPage() {
       const windowHeight = window.innerHeight;
       const availableHeight = windowHeight - topOffset;
 
-      console.log(
-        "[Account] Window height:",
-        windowHeight,
-        "Available height:",
-        availableHeight,
-      );
+      logger.info("Window height: " + windowHeight + " Available height: " + availableHeight, "Account");
 
       if (availableHeight <= 0) {
-        console.log("[Account] Available height is 0 or negative");
+        logger.info("Available height is 0 or negative", "Account");
         return;
       }
 
@@ -797,15 +779,10 @@ export default function AccountPage() {
       const paginationHeight = 60;
       const contentAvailableHeight = availableHeight - paginationHeight;
 
-      console.log(
-        "[Account] Content available height:",
-        contentAvailableHeight,
-      );
+      logger.info("Content available height: " + contentAvailableHeight, "Account");
 
       if (contentAvailableHeight <= 0) {
-        console.log(
-          "[Account] Content available height is 0 or negative, setting to 1",
-        );
+        logger.info("Content available height is 0 or negative, setting to 1", "Account");
         setItemsPerPage(1);
         return;
       }
@@ -817,14 +794,7 @@ export default function AccountPage() {
       while (count < 100) {
         const cardHeight = CARD_HEIGHT + (count > 0 ? GAP_SIZE : 0);
         if (usedHeight + cardHeight > contentAvailableHeight) {
-          console.log(
-            "[Account] Break at count:",
-            count,
-            "usedHeight:",
-            usedHeight,
-            "cardHeight:",
-            cardHeight,
-          );
+          logger.info("Break at count: " + count + " usedHeight: " + usedHeight + " cardHeight: " + cardHeight, "Account");
           break;
         }
         usedHeight += cardHeight;
@@ -833,12 +803,7 @@ export default function AccountPage() {
 
       // 至少显示1个
       const newCount = Math.max(1, count);
-      console.log(
-        "[Account] Calculated items per page:",
-        newCount,
-        "current:",
-        itemsPerPage,
-      );
+      logger.info("Calculated items per page: " + newCount + " current: " + itemsPerPage, "Account");
 
       if (newCount !== itemsPerPage) {
         setItemsPerPage(newCount);
@@ -871,25 +836,12 @@ export default function AccountPage() {
 
   // 获取当前页的账户
   const getCurrentPageAccounts = (): Account[] => {
-    console.log(
-      "[Account] getCurrentPageAccounts - total:",
-      accounts.length,
-      "sorted:",
-      sortedAccounts.length,
-      "currentPage:",
-      currentPage,
-      "itemsPerPage:",
-      itemsPerPage,
-    );
+    logger.info("getCurrentPageAccounts - total: " + accounts.length + " sorted: " + sortedAccounts.length + " currentPage: " + currentPage + " itemsPerPage: " + itemsPerPage, "Account");
     if (accounts.length === 0) return [];
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const result = sortedAccounts.slice(startIndex, endIndex);
-    console.log(
-      "[Account] getCurrentPageAccounts - returning:",
-      result.length,
-      "accounts",
-    );
+    logger.info("getCurrentPageAccounts - returning: " + result.length + " accounts", "Account");
     return result;
   };
 
@@ -1875,7 +1827,7 @@ export default function AccountPage() {
                     maxLength={6}
                     value={verificationCode}
                     onComplete={async (code) => {
-                      console.log("Code complete:", code);
+                      logger.info("Code complete: " + code, "Account");
                       // 自动提交验证码
                       await handleLogin();
                     }}

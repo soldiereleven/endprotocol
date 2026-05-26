@@ -7,13 +7,14 @@ import { Provider } from "./provider.tsx";
 import "@/styles/globals.css";
 import { setInitialLanguage } from "./i18n";
 import { getConfig } from "./utils/configService";
+import logger from "@/utils/logger";
 
 // Initialize language from config service before rendering
 getConfig<string>("app.language").then((savedLang) => {
   const lng = savedLang || "en";
   setInitialLanguage(lng);
 
-  console.log("Tauri interop ready");
+  logger.info("Tauri interop ready", "Main");
 
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>

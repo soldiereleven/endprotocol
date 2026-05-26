@@ -12,6 +12,7 @@ import {
   setSelectedAccount as apiSetSelectedAccount,
   Account,
 } from "@/utils/accountService";
+import logger from "@/utils/logger";
 
 interface AccountSwitchModalProps {
   isOpen: boolean;
@@ -55,11 +56,11 @@ export default function AccountSwitchModal({
     setIsLoading(true);
     try {
       // 直接从后端获取（后端会处理缓存）
-      console.log("[AccountSwitchModal] Fetching accounts from backend...");
+      logger.info("Fetching accounts from backend...", "AccountSwitch");
       const accountsData = await getAccounts();
       setAccounts(accountsData || []);
     } catch (error) {
-      console.error("Failed to load accounts:", error);
+      logger.error("Failed to load accounts: " + error, "AccountSwitch");
     } finally {
       setIsLoading(false);
     }
@@ -106,7 +107,7 @@ export default function AccountSwitchModal({
         onClose();
       }
     } catch (error) {
-      console.error("Failed to switch account:", error);
+      logger.error("Failed to switch account: " + error, "AccountSwitch");
     } finally {
       setSwitchingId(null);
     }

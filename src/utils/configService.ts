@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import logger from "@/utils/logger";
 
 /**
  * 获取配置值
@@ -10,7 +11,7 @@ export async function getConfig<T = any>(key: string): Promise<T | null> {
     const value = await invoke<any>('get_config', { key });
     return value ?? null;
   } catch (error) {
-    console.warn('Failed to get config from Tauri, using localStorage fallback:', error);
+    logger.warn('Failed to get config from Tauri, using localStorage fallback: ' + error, "ConfigService");
     // Fallback to localStorage for development
     const value = localStorage.getItem(`config_${key}`);
     return value ? JSON.parse(value) : null;
@@ -26,7 +27,7 @@ export async function setConfig(key: string, value: any): Promise<void> {
   try {
     await invoke('set_config', { key, value });
   } catch (error) {
-    console.warn('Failed to set config via Tauri, using localStorage fallback:', error);
+    logger.warn('Failed to set config via Tauri, using localStorage fallback: ' + error, "ConfigService");
     // Fallback to localStorage for development
     localStorage.setItem(`config_${key}`, JSON.stringify(value));
   }
@@ -41,7 +42,7 @@ export async function removeConfig(key: string): Promise<boolean> {
   try {
     return await invoke('remove_config', { key });
   } catch (error) {
-    console.warn('Failed to remove config via Tauri, using localStorage fallback:', error);
+    logger.warn('Failed to remove config via Tauri, using localStorage fallback: ' + error, "ConfigService");
     localStorage.removeItem(`config_${key}`);
     return true;
   }
@@ -55,7 +56,7 @@ export async function getAllConfigs(): Promise<Record<string, any>> {
   try {
     return await invoke('get_all_configs');
   } catch (error) {
-    console.warn('Failed to get all configs from Tauri, using localStorage fallback:', error);
+    logger.warn('Failed to get all configs from Tauri, using localStorage fallback: ' + error, "ConfigService");
     // Fallback to localStorage
     const configs: Record<string, any> = {};
     for (let i = 0; i < localStorage.length; i++) {

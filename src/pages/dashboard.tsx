@@ -12,7 +12,7 @@ import {
   removeCard,
   moveCard,
 } from "@/utils/dashboardConfig";
-import { logDebug, logError } from "@/utils/logger";
+import logger, { logDebug, logError } from "@/utils/logger";
 import { roleDetailService } from "@/utils/roleDetailService";
 import { CardConfigService } from "@/utils/cardConfigService";
 
@@ -134,13 +134,7 @@ export default function DashboardPage() {
     }
     const containerHeight = maxY + BASE_PADDING;
 
-    console.log("[renderSkeleton] Debug:", {
-      cardCount,
-      maxY,
-      BASE_PADDING,
-      containerHeight,
-      cards: cards.map((c) => ({ x: c.x, y: c.y, w: c.w, h: c.h })),
-    });
+    logger.info("renderSkeleton: cardCount=" + cardCount + " maxY=" + maxY + " containerHeight=" + containerHeight, "Dashboard");
 
     return (
       <div className="relative w-full">

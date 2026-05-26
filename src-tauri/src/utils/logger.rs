@@ -1,11 +1,13 @@
 use chrono::Local;
+use serde::Serialize;
+use std::collections::VecDeque;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
 /// 日志级别
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub enum LogLevel {
     Debug,
     Info,
@@ -25,12 +27,22 @@ impl LogLevel {
 
     fn color_code(&self) -> &'static str {
         match self {
-            LogLevel::Debug => "\x1b[36m", // Cyan
-            LogLevel::Info => "\x1b[32m",  // Green
-            LogLevel::Warn => "\x1b[33m",  // Yellow
-            LogLevel::Error => "\x1b[31m", // Red
+            LogLevel::Debug => "\x1b[36m",
+            LogLevel::Info => "\x1b[32m",
+            LogLevel::Warn => "\x1b[33m",
+            LogLevel::Error => "\x1b[31m",
         }
     }
+}
+
+/// 统一的日志条目（可序列化给前端）
+#[derive(Debug, Clone, Serialize)]
+pub struct LogEntry {
+    pub timestamp: String,
+    pub level: LogLevel,
+    pub module: String,
+    pub message: String,
+    pub source: String,
 }
 
 /// 日志配置
@@ -39,6 +51,7 @@ pub struct LoggerConfig {
     pub log_to_file: bool,
     pub log_level: LogLevel,
     pub log_dir: PathBuf,
+    pub max_memory_entries: usize,
 }
 
 impl Default for LoggerConfig {
@@ -46,11 +59,12 @@ impl Default for LoggerConfig {
         Self {
             log_to_console: true,
             log_to_file: true,
-            log_level: LogLevel::Info,
+            log_level: LogLevel::Debug,
             log_dir: dirs::data_local_dir()
                 .unwrap_or_else(|| std::env::current_dir().unwrap())
                 .join("cn.msk-network.endprotocol")
                 .join("logs"),
+            max_memory_entries: 5000,
         }
     }
 }
@@ -59,17 +73,17 @@ impl Default for LoggerConfig {
 pub struct Logger {
     config: LoggerConfig,
     log_file: Mutex<Option<File>>,
+    memory_buffer: Mutex<VecDeque<LogEntry>>,
 }
 
 impl Logger {
-    /// 创建新的日志管理器实例
     pub fn new(config: LoggerConfig) -> Result<Self, Box<dyn std::error::Error>> {
         let mut logger = Self {
             config,
             log_file: Mutex::new(None),
+            memory_buffer: Mutex::new(VecDeque::new()),
         };
 
-        // 如果启用文件日志，初始化日志文件
         if logger.config.log_to_file {
             logger.init_log_file()?;
         }
@@ -77,44 +91,55 @@ impl Logger {
         Ok(logger)
     }
 
-    /// 初始化日志文件
     fn init_log_file(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        // 确保日志目录存在
         std::fs::create_dir_all(&self.config.log_dir)?;
-
-        // 生成日志文件名（按日期）
         let date = Local::now().format("%Y-%m-%d");
         let log_file_path = self.config.log_dir.join(format!("app-{}.log", date));
-
-        // 以追加模式打开日志文件
         let file = OpenOptions::new()
             .create(true)
             .append(true)
             .open(&log_file_path)?;
-
         *self.log_file.lock().unwrap() = Some(file);
-
         Ok(())
     }
 
-    /// 格式化日志消息
-    fn format_message(&self, level: LogLevel, message: &str) -> String {
-        let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
-        format!("[{}] [{}] {}", timestamp, level.as_str(), message)
+    fn format_timestamp() -> String {
+        Local::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string()
     }
 
-    /// 写入日志
-    fn write_log(&self, level: LogLevel, message: &str) {
-        let formatted = self.format_message(level, message);
+    fn format_message(level: LogLevel, module: &str, message: &str) -> String {
+        let ts = Self::format_timestamp();
+        format!("[{}] [{}] [{}] {}", ts, level.as_str(), module, message)
+    }
 
-        // 控制台输出
+    fn write_log(&self, level: LogLevel, module: &str, message: &str) {
+        let entry = LogEntry {
+            timestamp: Self::format_timestamp(),
+            level,
+            module: module.to_string(),
+            message: message.to_string(),
+            source: "backend".to_string(),
+        };
+
+        // 内存缓冲区
+        {
+            let mut buf = self.memory_buffer.lock().unwrap();
+            buf.push_back(entry.clone());
+            if buf.len() > self.config.max_memory_entries {
+                buf.pop_front();
+            }
+        }
+
+        let formatted = format!("[{}] [{}] [{}] {}", entry.timestamp, level.as_str(), module, message);
+
+        // 控制台输出（带颜色）
         if self.config.log_to_console && level >= self.config.log_level {
             let color = level.color_code();
             let reset = "\x1b[0m";
             eprintln!("{}{}{}", color, formatted, reset);
         }
 
-        // 文件输出
+        // 文件输出（无颜色）
         if self.config.log_to_file {
             if let Ok(mut file_guard) = self.log_file.lock() {
                 if let Some(ref mut file) = *file_guard {
@@ -125,64 +150,75 @@ impl Logger {
         }
     }
 
-    /// 调试日志
+    /// 获取当前内存中的所有日志
+    pub fn get_recent_logs(&self) -> Vec<LogEntry> {
+        let buf = self.memory_buffer.lock().unwrap();
+        buf.iter().cloned().collect()
+    }
+
     pub fn debug(&self, message: &str) {
-        self.write_log(LogLevel::Debug, message);
+        self.write_log(LogLevel::Debug, "backend", message);
     }
 
-    /// 信息日志
     pub fn info(&self, message: &str) {
-        self.write_log(LogLevel::Info, message);
+        self.write_log(LogLevel::Info, "backend", message);
     }
 
-    /// 警告日志
     pub fn warn(&self, message: &str) {
-        self.write_log(LogLevel::Warn, message);
+        self.write_log(LogLevel::Warn, "backend", message);
     }
 
-    /// 错误日志
     pub fn error(&self, message: &str) {
-        self.write_log(LogLevel::Error, message);
+        self.write_log(LogLevel::Error, "backend", message);
     }
 
-    /// 带格式的调试日志
     pub fn debug_fmt(&self, fmt: std::fmt::Arguments) {
-        self.write_log(LogLevel::Debug, &fmt.to_string());
+        self.write_log(LogLevel::Debug, "backend", &fmt.to_string());
     }
 
-    /// 带格式的信息日志
     pub fn info_fmt(&self, fmt: std::fmt::Arguments) {
-        self.write_log(LogLevel::Info, &fmt.to_string());
+        self.write_log(LogLevel::Info, "backend", &fmt.to_string());
     }
 
-    /// 带格式的警告日志
     pub fn warn_fmt(&self, fmt: std::fmt::Arguments) {
-        self.write_log(LogLevel::Warn, &fmt.to_string());
+        self.write_log(LogLevel::Warn, "backend", &fmt.to_string());
     }
 
-    /// 带格式的错误日志
     pub fn error_fmt(&self, fmt: std::fmt::Arguments) {
-        self.write_log(LogLevel::Error, &fmt.to_string());
+        self.write_log(LogLevel::Error, "backend", &fmt.to_string());
+    }
+
+    /// 带模块名的调试日志
+    pub fn debug_with_module(&self, module: &str, message: &str) {
+        self.write_log(LogLevel::Debug, module, message);
+    }
+
+    pub fn info_with_module(&self, module: &str, message: &str) {
+        self.write_log(LogLevel::Info, module, message);
+    }
+
+    pub fn warn_with_module(&self, module: &str, message: &str) {
+        self.write_log(LogLevel::Warn, module, message);
+    }
+
+    pub fn error_with_module(&self, module: &str, message: &str) {
+        self.write_log(LogLevel::Error, module, message);
     }
 }
 
-/// 全局日志实例（懒加载）
+/// 全局日志实例
 static mut GLOBAL_LOGGER: Option<Logger> = None;
 
-/// 初始化全局日志器
 pub fn init_logger() -> Result<(), Box<dyn std::error::Error>> {
     let config = LoggerConfig::default();
     let logger = Logger::new(config)?;
-
     unsafe {
         GLOBAL_LOGGER = Some(logger);
     }
-
     get_logger().info("Logger initialized successfully");
     Ok(())
 }
 
-/// 获取全局日志器实例
 pub fn get_logger() -> &'static Logger {
     unsafe {
         GLOBAL_LOGGER
@@ -191,7 +227,7 @@ pub fn get_logger() -> &'static Logger {
     }
 }
 
-/// 便捷的宏，用于简化日志调用
+/// 便捷宏
 #[macro_export]
 macro_rules! log_debug {
     ($($arg:tt)*) => {
@@ -217,5 +253,34 @@ macro_rules! log_warn {
 macro_rules! log_error {
     ($($arg:tt)*) => {
         $crate::utils::logger::get_logger().error_fmt(format_args!($($arg)*))
+    };
+}
+
+/// 带模块名的宏
+#[macro_export]
+macro_rules! log_debug_module {
+    ($module:expr, $($arg:tt)*) => {
+        $crate::utils::logger::get_logger().debug_with_module($module, &format_args!($($arg)*).to_string())
+    };
+}
+
+#[macro_export]
+macro_rules! log_info_module {
+    ($module:expr, $($arg:tt)*) => {
+        $crate::utils::logger::get_logger().info_with_module($module, &format_args!($($arg)*).to_string())
+    };
+}
+
+#[macro_export]
+macro_rules! log_warn_module {
+    ($module:expr, $($arg:tt)*) => {
+        $crate::utils::logger::get_logger().warn_with_module($module, &format_args!($($arg)*).to_string())
+    };
+}
+
+#[macro_export]
+macro_rules! log_error_module {
+    ($module:expr, $($arg:tt)*) => {
+        $crate::utils::logger::get_logger().error_with_module($module, &format_args!($($arg)*).to_string())
     };
 }

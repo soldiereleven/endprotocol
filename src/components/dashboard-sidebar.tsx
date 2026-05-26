@@ -24,6 +24,7 @@ import {
   Account,
 } from "@/utils/accountService";
 import { getConfig } from "@/utils/configService";
+import logger from "@/utils/logger";
 
 interface SearchResult {
   id: string;
@@ -88,22 +89,22 @@ export const Sidebar = () => {
       try {
         setIsLoadingAccount(true);
         const selectedId = await getSelectedAccount();
-        console.log("[Sidebar] Selected account ID:", selectedId);
+        logger.info("Selected account ID: " + selectedId, "Sidebar");
 
         if (selectedId) {
           // 直接从后端获取账户数据（后端会处理缓存）
           const accounts = await getAccounts();
 
-          console.log("[Sidebar] Loaded accounts:", accounts.length);
+          logger.info("Loaded accounts: " + accounts.length, "Sidebar");
           const account = accounts.find((acc) => acc.id === selectedId);
-          console.log("[Sidebar] Found account:", account?.nickname);
+          logger.info("Found account: " + account?.nickname, "Sidebar");
           setSelectedAccount(account || null);
         } else {
-          console.log("[Sidebar] No selected account ID");
+          logger.info("No selected account ID", "Sidebar");
           setSelectedAccount(null);
         }
       } catch (error) {
-        console.error("Failed to load selected account:", error);
+        logger.error("Failed to load selected account: " + error, "Sidebar");
       } finally {
         setIsLoadingAccount(false);
       }
@@ -113,30 +114,30 @@ export const Sidebar = () => {
 
     // 监听账户变化事件(从Account页面切换时触发)
     const handleAccountChange = async () => {
-      console.log("[Sidebar] Account changed event received");
+      logger.info("Account changed event received", "Sidebar");
 
       // 检查是否需要刷新数据
       const shouldRefresh = await getConfig<boolean>(
         "refresh_on_account_switch",
       );
-      console.log("[Sidebar] Should refresh on switch:", shouldRefresh);
+      logger.info("Should refresh on switch: " + shouldRefresh, "Sidebar");
 
       let accounts;
       // 直接从后端获取（后端会处理缓存）
-      console.log("[Sidebar] Fetching accounts from backend...");
+      logger.info("Fetching accounts from backend...", "Sidebar");
       accounts = await getAccounts();
 
       // 重新加载选中账户
       const selectedId = await getSelectedAccount();
-      console.log("[Sidebar] New selected account ID:", selectedId);
+      logger.info("New selected account ID: " + selectedId, "Sidebar");
 
       if (selectedId && accounts && accounts.length > 0) {
         const account = accounts.find((acc) => acc.id === selectedId);
-        console.log("[Sidebar] Found account:", account?.nickname);
+        logger.info("Found account: " + account?.nickname, "Sidebar");
         // 强制更新状态,确保UI同步
         setSelectedAccount(account || null);
       } else {
-        console.log("[Sidebar] No account found or no selected ID");
+        logger.info("No account found or no selected ID", "Sidebar");
         setSelectedAccount(null);
       }
     };
@@ -145,7 +146,7 @@ export const Sidebar = () => {
 
     // 监听手动刷新事件
     const handleManualRefresh = (event: Event) => {
-      console.log("[Sidebar] Manual refresh event received");
+      logger.info("Manual refresh event received", "Sidebar");
 
       // 从事件中获取账户数量
       const customEvent = event as CustomEvent;

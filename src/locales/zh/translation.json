@@ -159,6 +159,20 @@
       "open_file_location": "打开文件位置",
       "no_cached": "暂无缓存资源"
     },
+    "logs": {
+      "title": "日志查看器",
+      "filter_all": "全部",
+      "filter_frontend": "前端",
+      "filter_backend": "后端",
+      "level_debug": "调试",
+      "level_info": "信息",
+      "level_warn": "警告",
+      "level_error": "错误",
+      "clear": "清除",
+      "no_logs": "暂无日志",
+      "source_frontend": "前端",
+      "source_backend": "后端"
+    },
     "characters": {
       "pin_characters": "固定角色（最多 {{max}} 个）",
       "pinned_count": "{{count}} / {{max}} 已固定",

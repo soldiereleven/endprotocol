@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { Img } from "@/utils/imageLoader";
 import { useImageRequest } from "@/utils/imageCacheManager";
 import { useMemo } from "react";
+import logger from "@/utils/logger";
 
 interface CharacterDetailModalProps {
   isOpen: boolean;
@@ -26,26 +27,18 @@ export function CharacterDetailModal({
   const { t } = useTranslation();
 
   // 调试日志
-  console.log("CharacterDetailModal - characterItem:", characterItem);
-  console.log("CharacterDetailModal - talent:", characterItem?.talent);
-  console.log(
-    "CharacterDetailModal - combatTalents count:",
-    character.combatTalents.length,
-  );
+  logger.info("characterItem: " + JSON.stringify(characterItem), "CharacterDetail");
+  logger.info("talent: " + JSON.stringify(characterItem?.talent), "CharacterDetail");
+  logger.info("combatTalents count: " + character.combatTalents.length, "CharacterDetail");
 
   // 过滤出当前激活的战斗天赋
   const activeCombatTalents = character.combatTalents.filter((talent) => {
     const activeNodes = characterItem?.talent?.latestPassiveSkillNodes || [];
-    console.log(
-      `Talent ${talent.name} (${talent.id}) - Active nodes:`,
-      activeNodes,
-      "- Match:",
-      activeNodes.includes(talent.id),
-    );
+    logger.info("Talent " + talent.name + " (" + talent.id + ") - Active nodes: " + JSON.stringify(activeNodes) + " - Match: " + activeNodes.includes(talent.id), "CharacterDetail");
     return activeNodes.includes(talent.id);
   });
 
-  console.log("Active combat talents:", activeCombatTalents.length);
+  logger.info("Active combat talents: " + activeCombatTalents.length, "CharacterDetail");
 
   // 过滤出当前激活的能力天赋
   const activeAbilityTalents = character.abilityTalents.filter((talent) => {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import logger from "@/utils/logger";
 
 interface UseLongPressDragOptions {
   isEditMode: boolean;
@@ -57,7 +58,7 @@ export function useLongPressDrag({
     
     // Set timer to trigger edit mode
     const timer = setTimeout(() => {
-      console.log("[useLongPressDrag] Long press completed, calling onLongPress");
+      logger.info("Long press completed, calling onLongPress", "useLongPressDrag");
       // Enter edit mode
       onLongPress?.();
       
@@ -66,7 +67,7 @@ export function useLongPressDrag({
       
       // Signal that we should start dragging
       setShouldStartDrag(true);
-      console.log("[useLongPressDrag] Set shouldStartDrag to true");
+      logger.info("Set shouldStartDrag to true", "useLongPressDrag");
       
       // Hide progress bar after a short delay
       setTimeout(() => {
@@ -80,13 +81,9 @@ export function useLongPressDrag({
 
   // Trigger drag start after entering edit mode
   const triggerDragStart = (onPointerDown: ((e: React.PointerEvent) => void) | undefined) => {
-    console.log("[useLongPressDrag] triggerDragStart called", { 
-      shouldStartDrag, 
-      hasEvent: !!pointerDownEventRef.current,
-      hasOnPointerDown: !!onPointerDown 
-    });
+    logger.info("triggerDragStart called", { shouldStartDrag, hasEvent: !!pointerDownEventRef.current, hasOnPointerDown: !!onPointerDown }, "useLongPressDrag");
     if (shouldStartDrag && pointerDownEventRef.current && onPointerDown) {
-      console.log("[useLongPressDrag] Simulating pointerdown event");
+      logger.info("Simulating pointerdown event", "useLongPressDrag");
       // Simulate a new pointerdown event to start dragging
       setTimeout(() => {
         onPointerDown(pointerDownEventRef.current as any);
@@ -94,16 +91,12 @@ export function useLongPressDrag({
         pointerDownEventRef.current = null;
       }, 50);
     } else {
-      console.log("[useLongPressDrag] Not triggering drag start (conditions not met)");
+      logger.info("Not triggering drag start (conditions not met)", "useLongPressDrag");
     }
   };
 
   const handlePointerUp = () => {
-    console.log("[useLongPressDrag] handlePointerUp called", { 
-      hasTimer: !!longPressTimer, 
-      hasInterval: !!progressInterval,
-      shouldStartDrag 
-    });
+    logger.info("handlePointerUp called", { hasTimer: !!longPressTimer, hasInterval: !!progressInterval, shouldStartDrag }, "useLongPressDrag");
     if (longPressTimer) {
       clearTimeout(longPressTimer);
       setLongPressTimer(null);
@@ -124,7 +117,7 @@ export function useLongPressDrag({
   // Listen for global clear event (e.g., when modal opens)
   useEffect(() => {
     const handleClearEvent = () => {
-      console.log("[useLongPressDrag] Received clearLongPressTimers event, clearing timers");
+      logger.info("Received clearLongPressTimers event, clearing timers", "useLongPressDrag");
       handlePointerUp();
     };
     

@@ -3,6 +3,7 @@ import { CardWrapper } from "../base/card-wrapper";
 import { useCardData } from "../base/use-card-data";
 import { useTranslation } from "react-i18next";
 import { Card } from "@heroui/react";
+import logger from "@/utils/logger";
 
 /**
  * 示例卡片组件
@@ -28,7 +29,7 @@ export default function TemplateCard({
   const { data, isLoading, error } = useCardData({
     fetchData: async () => {
       // TODO: 替换为你的数据获取逻辑
-      console.log("Loading data for role:", roleId);
+      logger.info("Loading data for role: " + roleId, "TemplateCard");
 
       // 模拟 API 调用
       return new Promise((resolve) => {

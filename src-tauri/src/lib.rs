@@ -54,6 +54,8 @@ pub fn run() {
             commands::window::minimize_window,
             commands::window::toggle_maximize_window,
             commands::window::close_window,
+            // Logger commands
+            commands::logs::get_backend_logs,
         ])
         .setup(|app| {
             // 初始化配置服务（使用 std::sync::Mutex，因为它是同步的）

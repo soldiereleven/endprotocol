@@ -3,6 +3,7 @@ import { Button } from "@heroui/react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import logger from "@/utils/logger";
 
 export const CustomTitlebar = () => {
   const [isMaximized, setIsMaximized] = useState(false);
@@ -14,7 +15,7 @@ export const CustomTitlebar = () => {
       const maximized = await window.isMaximized();
       setIsMaximized(maximized);
     } catch (error) {
-      console.error("Failed to check maximized state:", error);
+      logger.error("Failed to check maximized state: " + error, "Titlebar");
     }
   };
 
@@ -51,9 +52,9 @@ export const CustomTitlebar = () => {
   const handleMinimize = async () => {
     try {
       await invoke("minimize_window");
-      console.log("Window minimized");
+      logger.info("Window minimized", "Titlebar");
     } catch (error) {
-      console.error("Failed to minimize window:", error);
+      logger.error("Failed to minimize window: " + error, "Titlebar");
     }
   };
 
@@ -65,9 +66,9 @@ export const CustomTitlebar = () => {
       setTimeout(() => {
         checkMaximizedState();
       }, 100);
-      console.log("Window toggle maximize called");
+      logger.info("Window toggle maximize called", "Titlebar");
     } catch (error) {
-      console.error("Failed to toggle maximize:", error);
+      logger.error("Failed to toggle maximize: " + error, "Titlebar");
     }
   };
 
@@ -75,9 +76,9 @@ export const CustomTitlebar = () => {
   const handleClose = async () => {
     try {
       await invoke("close_window");
-      console.log("Window closed");
+      logger.info("Window closed", "Titlebar");
     } catch (error) {
-      console.error("Failed to close window:", error);
+      logger.error("Failed to close window: " + error, "Titlebar");
     }
   };
 

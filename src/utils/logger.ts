@@ -1,6 +1,3 @@
-/**
- * 日志级别枚举
- */
 export enum LogLevel {
   DEBUG = 0,
   INFO = 1,
@@ -8,200 +5,169 @@ export enum LogLevel {
   ERROR = 3,
 }
 
-/**
- * 日志配置接口
- */
+const LOG_LEVEL_NAMES: Record<LogLevel, string> = {
+  [LogLevel.DEBUG]: "DEBUG",
+  [LogLevel.INFO]: "INFO",
+  [LogLevel.WARN]: "WARN",
+  [LogLevel.ERROR]: "ERROR",
+};
+
 export interface LoggerConfig {
-  /** 是否输出到控制台 */
   enableConsole: boolean;
-  /** 是否保存到本地存储 */
   enableLocalStorage: boolean;
-  /** 最小日志级别 */
   minLevel: LogLevel;
-  /** 最大保存的日志条数 */
   maxStorageSize: number;
 }
 
-/**
- * 日志条目接口
- */
 export interface LogEntry {
   timestamp: string;
   level: LogLevel;
   message: string;
-  data?: any;
+  module: string;
+  source: "frontend" | "backend";
+  data?: unknown;
 }
 
-/**
- * 默认配置
- */
 const DEFAULT_CONFIG: LoggerConfig = {
   enableConsole: true,
   enableLocalStorage: true,
-  minLevel: LogLevel.INFO,
+  minLevel: LogLevel.DEBUG,
   maxStorageSize: 1000,
 };
 
-/**
- * 统一的日志工具类
- */
 class Logger {
   private config: LoggerConfig;
   private storageKey = "app_logs";
+  private memoryBuffer: LogEntry[] = [];
+  private maxMemorySize = 5000;
 
   constructor(config: Partial<LoggerConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
-  /**
-   * 获取当前时间戳字符串
-   */
   private getTimestamp(): string {
     const now = new Date();
-    return now.toISOString();
+    const pad = (n: number, len = 2) => n.toString().padStart(len, "0");
+    const ms = pad(now.getMilliseconds(), 3);
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}.${ms}`;
   }
 
-  /**
-   * 格式化日志消息
-   */
-  private formatMessage(level: LogLevel, message: string): string {
-    const timestamp = this.getTimestamp();
-    const levelStr = LogLevel[level];
-    return `[${timestamp}] [${levelStr}] ${message}`;
-  }
-
-  /**
-   * 写入日志
-   */
-  private writeLog(level: LogLevel, message: string, data?: any): void {
-    // 检查日志级别
-    if (level < this.config.minLevel) {
-      return;
+  private getLevelColor(level: LogLevel): string {
+    switch (level) {
+      case LogLevel.DEBUG: return "#00BCD4";
+      case LogLevel.INFO: return "#4CAF50";
+      case LogLevel.WARN: return "#FF9800";
+      case LogLevel.ERROR: return "#F44336";
     }
+  }
 
-    const formattedMessage = this.formatMessage(level, message);
-    const logEntry: LogEntry = {
-      timestamp: this.getTimestamp(),
+  private writeLog(level: LogLevel, message: string, module: string, data?: unknown): void {
+    if (level < this.config.minLevel) return;
+
+    const timestamp = this.getTimestamp();
+    const entry: LogEntry = {
+      timestamp,
       level,
       message,
+      module,
+      source: "frontend",
       data,
     };
 
-    // 控制台输出
+    this.memoryBuffer.push(entry);
+    if (this.memoryBuffer.length > this.maxMemorySize) {
+      this.memoryBuffer.splice(0, this.memoryBuffer.length - this.maxMemorySize);
+    }
+
     if (this.config.enableConsole) {
+      const levelName = LOG_LEVEL_NAMES[level];
+      const color = this.getLevelColor(level);
+      const prefix = `%c[${timestamp}] [${levelName}] [${module}]`;
+      const style = `color:${color};font-weight:bold`;
       switch (level) {
         case LogLevel.DEBUG:
-          console.debug(formattedMessage, data || "");
+          console.debug(prefix, style, message, data ?? "");
           break;
         case LogLevel.INFO:
-          console.info(formattedMessage, data || "");
+          console.info(prefix, style, message, data ?? "");
           break;
         case LogLevel.WARN:
-          console.warn(formattedMessage, data || "");
+          console.warn(prefix, style, message, data ?? "");
           break;
         case LogLevel.ERROR:
-          console.error(formattedMessage, data || "");
+          console.error(prefix, style, message, data ?? "");
           break;
       }
     }
 
-    // 本地存储
     if (this.config.enableLocalStorage && typeof window !== "undefined") {
-      this.saveToLocalStorage(logEntry);
+      this.saveToLocalStorage(entry);
     }
   }
 
-  /**
-   * 保存日志到本地存储
-   */
   private saveToLocalStorage(entry: LogEntry): void {
     try {
       const logs = this.getLogsFromStorage();
       logs.push(entry);
-
-      // 限制日志数量
       if (logs.length > this.config.maxStorageSize) {
         logs.splice(0, logs.length - this.config.maxStorageSize);
       }
-
       localStorage.setItem(this.storageKey, JSON.stringify(logs));
-    } catch (error) {
-      // 如果localStorage失败，静默处理
-      console.error("Failed to save log to localStorage:", error);
+    } catch {
+      // ignore localStorage errors
     }
   }
 
-  /**
-   * 从本地存储获取日志
-   */
   private getLogsFromStorage(): LogEntry[] {
     try {
       const logsStr = localStorage.getItem(this.storageKey);
       return logsStr ? JSON.parse(logsStr) : [];
-    } catch (error) {
-      console.error("Failed to read logs from localStorage:", error);
+    } catch {
       return [];
     }
   }
 
-  /**
-   * 调试日志
-   */
-  debug(message: string, data?: any): void {
-    this.writeLog(LogLevel.DEBUG, message, data);
+  debug(message: string, data?: unknown, module?: string): void {
+    this.writeLog(LogLevel.DEBUG, message, module ?? "frontend", data);
   }
 
-  /**
-   * 信息日志
-   */
-  info(message: string, data?: any): void {
-    this.writeLog(LogLevel.INFO, message, data);
+  info(message: string, data?: unknown, module?: string): void {
+    this.writeLog(LogLevel.INFO, message, module ?? "frontend", data);
   }
 
-  /**
-   * 警告日志
-   */
-  warn(message: string, data?: any): void {
-    this.writeLog(LogLevel.WARN, message, data);
+  warn(message: string, data?: unknown, module?: string): void {
+    this.writeLog(LogLevel.WARN, message, module ?? "frontend", data);
   }
 
-  /**
-   * 错误日志
-   */
-  error(message: string, data?: any): void {
-    this.writeLog(LogLevel.ERROR, message, data);
+  error(message: string, data?: unknown, module?: string): void {
+    this.writeLog(LogLevel.ERROR, message, module ?? "frontend", data);
   }
 
-  /**
-   * 获取所有保存的日志
-   */
   getLogs(): LogEntry[] {
-    return this.getLogsFromStorage();
+    return [...this.memoryBuffer];
   }
 
-  /**
-   * 清除所有保存的日志
-   */
+  getAllLogs(backendLogs: LogEntry[] = []): LogEntry[] {
+    const merged = [...backendLogs, ...this.memoryBuffer];
+    merged.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    return merged;
+  }
+
   clearLogs(): void {
+    this.memoryBuffer = [];
     localStorage.removeItem(this.storageKey);
   }
 
-  /**
-   * 更新配置
-   */
   updateConfig(config: Partial<LoggerConfig>): void {
     this.config = { ...this.config, ...config };
   }
 }
 
-// 创建全局日志实例
 const logger = new Logger();
 
-// 导出单例实例
 export default logger;
 
-// 导出便捷的日志函数
-export const logDebug = (message: string, data?: any) => logger.debug(message, data);
-export const logInfo = (message: string, data?: any) => logger.info(message, data);
-export const logWarn = (message: string, data?: any) => logger.warn(message, data);
-export const logError = (message: string, data?: any) => logger.error(message, data);
+export const logDebug = (message: string, data?: unknown, module?: string) => logger.debug(message, data, module);
+export const logInfo = (message: string, data?: unknown, module?: string) => logger.info(message, data, module);
+export const logWarn = (message: string, data?: unknown, module?: string) => logger.warn(message, data, module);
+export const logError = (message: string, data?: unknown, module?: string) => logger.error(message, data, module);
