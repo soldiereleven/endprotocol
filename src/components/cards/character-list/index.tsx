@@ -10,7 +10,7 @@ import { CardConfigService } from "@/utils/cardConfigService";
 import type { CharacterListCardSettings } from "@/types/card-settings";
 import { useCardData } from "../base/use-card-data";
 import { Img } from "@/utils/imageLoader";
-import { useImageRequest } from "@/utils/imageCacheManager";
+import { useImageRequest, usePinImages } from "@/utils/imageCacheManager";
 
 // ── 数据处理（原 processor.ts） ──────────────────────────────
 
@@ -117,6 +117,7 @@ export default function CharacterListCard({
   );
 
   useImageRequest(avatarPaths, [avatarPaths]);
+  usePinImages(avatarPaths);
 
   // Clear long press timer when modal opens
   useEffect(() => {

@@ -1,9 +1,11 @@
 import { useTranslation } from "react-i18next";
-import { Card, Button, Switch, Label } from "@heroui/react";
+import { Card, Button, Switch, NumberField, Label, Meter, Table } from "@heroui/react";
 import { ThemeSwitch } from "@/components/theme-switch";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { getConfig, setConfig } from "@/utils/configService";
 import { roleDetailService } from "@/utils/roleDetailService";
+import { cacheManager, CacheMode } from "@/utils/imageCacheManager";
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -12,6 +14,13 @@ export default function SettingsPage() {
   const [refreshOnSwitch, setRefreshOnSwitch] = useState(false);
   const [lazyLoadEnabled, setLazyLoadEnabled] = useState(true);
   const [themeChangeKey, setThemeChangeKey] = useState(0);
+  const [cacheMode, setCacheMode] = useState<CacheMode>("smart");
+  const [cacheMaxEntries, setCacheMaxEntries] = useState(200);
+  const [cacheMaxSizeMB, setCacheMaxSizeMB] = useState(100);
+  const [cacheStats, setCacheStats] = useState(cacheManager.getStats());
+  const [showCacheTable, setShowCacheTable] = useState(false);
+
+  const cacheEntries = useMemo(() => cacheManager.getEntries(), [cacheStats]);
 
   const languages = [
     { key: "en", label: "English" },
@@ -22,11 +31,26 @@ export default function SettingsPage() {
   useEffect(() => {
     const loadConfig = async () => {
       const value = await getConfig<boolean>("refresh_on_account_switch");
-      setRefreshOnSwitch(value ?? false); // 默认为false
+      setRefreshOnSwitch(value ?? false);
 
-      // 加载懒加载配置
       const lazyLoadValue = await roleDetailService.isLazyLoadEnabled();
       setLazyLoadEnabled(lazyLoadValue);
+
+      const mode = await getConfig<CacheMode>("cache_mode");
+      const maxEntries = await getConfig<number>("cache_max_entries");
+      const maxSizeMB = await getConfig<number>("cache_max_size_mb");
+      const resolvedMode = mode ?? "smart";
+      const resolvedEntries = maxEntries ?? 200;
+      const resolvedSize = maxSizeMB ?? 100;
+      setCacheMode(resolvedMode);
+      setCacheMaxEntries(resolvedEntries);
+      setCacheMaxSizeMB(resolvedSize);
+      cacheManager.configure({
+        mode: resolvedMode,
+        maxEntries: resolvedEntries,
+        maxSizeMB: resolvedSize,
+      });
+      setCacheStats(cacheManager.getStats());
     };
     loadConfig();
   }, []);
@@ -76,9 +100,40 @@ export default function SettingsPage() {
       await roleDetailService.setLazyLoadEnabled(value);
     } catch (error) {
       console.error("Failed to set lazy load:", error);
-      // 回滚状态
       setLazyLoadEnabled(!value);
     }
+  };
+
+  const handleCacheModeChange = async (value: CacheMode) => {
+    setCacheMode(value);
+    cacheManager.configure({ mode: value });
+    await setConfig("cache_mode", value);
+    setCacheStats(cacheManager.getStats());
+  };
+
+  const handleCacheMaxEntriesChange = async (value: number) => {
+    const clamped = Math.max(10, Math.min(5000, value));
+    setCacheMaxEntries(clamped);
+    cacheManager.configure({ maxEntries: clamped });
+    await setConfig("cache_max_entries", clamped);
+    setCacheStats(cacheManager.getStats());
+  };
+
+  const handleCacheMaxSizeMBChange = async (value: number) => {
+    const clamped = Math.max(10, Math.min(10000, value));
+    setCacheMaxSizeMB(clamped);
+    cacheManager.configure({ maxSizeMB: clamped });
+    await setConfig("cache_max_size_mb", clamped);
+    setCacheStats(cacheManager.getStats());
+  };
+
+  const refreshCacheStats = () => {
+    setCacheStats(cacheManager.getStats());
+  };
+
+  const cleanInactive = () => {
+    cacheManager.evictInactive();
+    setCacheStats(cacheManager.getStats());
   };
 
   return (
@@ -241,6 +296,197 @@ export default function SettingsPage() {
                 </Switch.Control>
               </Switch>
             </div>
+          </div>
+        </Card>
+
+        {/* Image Cache Settings */}
+        <Card id="settings-cache" className="p-6 bg-content1 shadow-sm overflow-hidden">
+          <h2 className="text-lg font-semibold mb-6">
+            {t("settings.cache.title")}
+          </h2>
+          <div className="space-y-6">
+            {/* Smart mode Switch — ON = smart, OFF = manual */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-foreground">
+                  {t("settings.cache.mode")}
+                </p>
+                <p className="text-sm text-muted mt-0.5">
+                  {cacheMode === "smart"
+                    ? t("settings.cache.mode_smart_desc")
+                    : t("settings.cache.mode_manual_desc")}
+                </p>
+              </div>
+              <Switch
+                isSelected={cacheMode === "smart"}
+                onChange={(v) => handleCacheModeChange(v ? "smart" : "manual")}
+                className="shrink-0"
+              >
+                <Switch.Control>
+                  <Switch.Thumb />
+                </Switch.Control>
+              </Switch>
+            </div>
+
+            {/* Manual mode options — only visible when Switch is OFF */}
+            {cacheMode === "manual" && (
+              <>
+                <div className="h-px bg-separator w-full" />
+
+                {/* Max Entries */}
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-foreground">
+                      {t("settings.cache.max_entries")}
+                    </p>
+                    <p className="text-sm text-muted mt-0.5">
+                      {t("settings.cache.max_entries_desc")}
+                    </p>
+                  </div>
+                    <NumberField
+                      value={cacheMaxEntries}
+                      onChange={(v) => handleCacheMaxEntriesChange(v)}
+                      minValue={10}
+                      maxValue={5000}
+                      aria-label={t("settings.cache.max_entries")}
+                      className="shrink-0"
+                    >
+                      <NumberField.Group className="text-foreground">
+                        <NumberField.DecrementButton aria-label="Decrease" className="text-foreground" />
+                        <NumberField.Input className="w-[120px]" />
+                        <NumberField.IncrementButton aria-label="Increase" className="text-foreground" />
+                      </NumberField.Group>
+                    </NumberField>
+                </div>
+
+                {/* Max Size MB */}
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-foreground">
+                      {t("settings.cache.max_size_mb")}
+                    </p>
+                    <p className="text-sm text-muted mt-0.5">
+                      {t("settings.cache.max_size_mb_desc")}
+                    </p>
+                  </div>
+                    <NumberField
+                      value={cacheMaxSizeMB}
+                      onChange={(v) => handleCacheMaxSizeMBChange(v)}
+                      minValue={10}
+                      maxValue={10000}
+                      aria-label={t("settings.cache.max_size_mb")}
+                      className="shrink-0"
+                    >
+                      <NumberField.Group className="text-foreground">
+                        <NumberField.DecrementButton aria-label="Decrease" className="text-foreground" />
+                        <NumberField.Input className="w-[120px]" />
+                        <NumberField.IncrementButton aria-label="Increase" className="text-foreground" />
+                      </NumberField.Group>
+                    </NumberField>
+                </div>
+              </>
+            )}
+
+            {/* Cache details — only visible in manual mode */}
+            {cacheMode === "manual" && (
+              <>
+                <div className="h-px bg-separator w-full" />
+
+                {/* Two Meter bars */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium text-foreground">
+                        {t("settings.cache.current_cache")}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onPress={cleanInactive}>
+                          {t("settings.cache.clean_inactive")}
+                        </Button>
+                        <Button variant="outline" size="sm" onPress={refreshCacheStats} className="shrink-0">
+                          {t("common.refresh")}
+                        </Button>
+                      </div>
+                    </div>
+
+                  <Meter aria-label="entries-usage" value={Math.round((cacheStats.entries / Math.max(cacheStats.maxEntries, 1)) * 100)} className="w-full">
+                    <Label>
+                      {t("settings.cache.entries_count")}: {cacheStats.entries} / {cacheStats.maxEntries}
+                    </Label>
+                    <Meter.Output />
+                    <Meter.Track>
+                      <Meter.Fill />
+                    </Meter.Track>
+                  </Meter>
+
+                  <Meter aria-label="size-usage" value={cacheStats.maxSizeMB > 0 ? Math.round((cacheStats.totalSizeMB / cacheStats.maxSizeMB) * 100) : 0} className="w-full">
+                    <Label>
+                      {t("settings.cache.size_usage")}: {cacheStats.totalSizeMB} MB / {cacheStats.maxSizeMB} MB
+                    </Label>
+                    <Meter.Output />
+                    <Meter.Track>
+                      <Meter.Fill />
+                    </Meter.Track>
+                  </Meter>
+                </div>
+
+                {/* Collapsible cached resources table */}
+                <div className="space-y-2">
+                  <button
+                    className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors"
+                    onClick={() => setShowCacheTable(!showCacheTable)}
+                  >
+                    <svg
+                      className={`w-4 h-4 transition-transform ${showCacheTable ? "rotate-90" : ""}`}
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                    {t("settings.cache.cached_resources")} ({cacheEntries.length})
+                  </button>
+
+                  {showCacheTable && cacheEntries.length > 0 && (
+                    <Table>
+                      <Table.ScrollContainer>
+                        <Table.Content aria-label="Cached images" className="min-w-[400px]">
+                          <Table.Header>
+                            <Table.Column isRowHeader>{t("settings.cache.filename")}</Table.Column>
+                            <Table.Column>{t("settings.cache.size")}</Table.Column>
+                            <Table.Column>{t("settings.cache.status")}</Table.Column>
+                          </Table.Header>
+                          <Table.Body>
+                            {cacheEntries.map((entry) => (
+                              <Table.Row key={entry.path}>
+                                <Table.Cell className="font-mono text-xs truncate max-w-[200px]">
+                                  <button
+                                    className="hover:text-primary transition-colors truncate block w-full text-left"
+                                    onClick={() => revealItemInDir(entry.path)}
+                                    title={t("settings.cache.open_file_location")}
+                                  >
+                                    {entry.path.split(/[\\/]/).pop()}
+                                  </button>
+                                </Table.Cell>
+                                <Table.Cell>{entry.sizeKB} KB</Table.Cell>
+                                <Table.Cell>
+                                  {entry.pinned
+                                    ? t("settings.cache.status_pinned")
+                                    : entry.refCount > 0
+                                      ? t("settings.cache.status_active")
+                                      : t("settings.cache.status_inactive")}
+                                </Table.Cell>
+                              </Table.Row>
+                            ))}
+                          </Table.Body>
+                        </Table.Content>
+                      </Table.ScrollContainer>
+                    </Table>
+                  )}
+
+                  {showCacheTable && cacheEntries.length === 0 && (
+                    <p className="text-sm text-muted">{t("settings.cache.no_cached")}</p>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </Card>
       </div>
