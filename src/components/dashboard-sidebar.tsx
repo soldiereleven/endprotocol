@@ -1,3 +1,4 @@
+import { Img } from "@/utils/imageLoader";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -753,7 +754,7 @@ export const Sidebar = () => {
                 <div className="relative flex-shrink-0">
                   <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-sm font-bold text-primary overflow-hidden">
                     {selectedAccount.avatar ? (
-                      <img
+                      <Img
                         src={selectedAccount.avatar}
                         alt={selectedAccount.nickname}
                         className="w-full h-full object-cover"

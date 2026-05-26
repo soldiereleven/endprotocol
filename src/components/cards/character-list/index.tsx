@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@heroui/react";
 import { CharDetailData, CharacterItem } from "@/types/charDetail";
 import { CharSelectModal } from "@/components/char-select-modal";
 import { logDebug, logError } from "@/utils/logger";
 import { useTranslation } from "react-i18next";
-import { invoke } from "@tauri-apps/api/core";
 import { roleDataService } from "@/utils/roleDataService";
 import { BaseCardProps } from "../registry/types";
 import { CardConfigService } from "@/utils/cardConfigService";
 import type { CharacterListCardSettings } from "@/types/card-settings";
 import { useCardData } from "../base/use-card-data";
+import { Img } from "@/utils/imageLoader";
 
 // ── 数据处理（原 processor.ts） ──────────────────────────────
 
@@ -36,59 +36,6 @@ function getSelectedCharacters(
     .map((id) => charDetail.chars.find((c) => c.charData.id === id))
     .filter((c): c is CharacterItem => c !== undefined)
     .slice(0, 3);
-}
-
-// ── 图片常驻内存管理 ────────────────────────────────────────
-
-/** 提取一组 CharacterItem 中需要常驻的图片 URL */
-function extractImageUrls(chars: CharacterItem[]): string[] {
-  return chars.flatMap((c) => {
-    const urls: string[] = [];
-    if (c.charData.avatarRtUrl) urls.push(c.charData.avatarRtUrl);
-    if (c.charData.avatarSqUrl) urls.push(c.charData.avatarSqUrl);
-    return urls;
-  });
-}
-
-/**
- * Hook：在选中角色变化时自动 pin/unpin 图片到后端内存
- */
-function usePinImages(cardId: string, characters: CharacterItem[]) {
-  const prevUrlsRef = useRef<string[]>([]);
-
-  useEffect(() => {
-    const newUrls = extractImageUrls(characters);
-
-    // 需要 unpin 的 = 之前有但现在没有
-    const toUnpin = prevUrlsRef.current.filter((url) => !newUrls.includes(url));
-    // 需要 pin 的 = 现在有但之前没有
-    const toPin = newUrls.filter((url) => !prevUrlsRef.current.includes(url));
-
-    const run = async () => {
-      try {
-        if (toUnpin.length > 0) {
-          await invoke("unpin_images", { cardId, urls: toUnpin });
-          logDebug("[PinImages] Unpinned:", toUnpin);
-        }
-        if (toPin.length > 0) {
-          await invoke("pin_images", { cardId, urls: toPin });
-          logDebug("[PinImages] Pinned:", toPin);
-        }
-      } catch (err) {
-        logError("[PinImages] Failed:", err);
-      }
-    };
-
-    run();
-    prevUrlsRef.current = newUrls;
-
-    // 组件卸载时 unpin 当前所有
-    return () => {
-      if (newUrls.length > 0) {
-        invoke("unpin_images", { cardId, urls: newUrls }).catch(() => {});
-      }
-    };
-  }, [cardId, characters]);
 }
 
 export default function CharacterListCard({
@@ -159,9 +106,6 @@ export default function CharacterListCard({
     selectedCharIds,
   );
 
-  // 常驻选中角色的展示图片到后端内存
-  usePinImages(cardId, selectedCharacters);
-
   // Clear long press timer when modal opens
   useEffect(() => {
     if (isModalOpen) {
@@ -186,7 +130,7 @@ export default function CharacterListCard({
     const hasEvolve = char.evolvePhase != null && char.evolvePhase > 0;
     return (
       <div key={char.charData.id} className="relative group h-full min-h-0">
-        <img
+        <Img
           src={char.charData.avatarRtUrl || char.charData.avatarSqUrl}
           alt={char.charData.name}
           className="w-full h-full object-cover rounded-lg shadow-sm"

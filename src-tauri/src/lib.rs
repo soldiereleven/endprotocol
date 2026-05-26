@@ -10,7 +10,6 @@ mod utils;
 use services::account_service::AccountService;
 use services::avatar_cache_service::AvatarCacheService;
 use services::config_service::ConfigService;
-use services::image_pin_service::ImagePinService;
 use services::skland_service::SklandService;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -49,9 +48,8 @@ pub fn run() {
             commands::account::set_lazy_load_enabled,
             commands::account::is_lazy_load_enabled,
             commands::account::set_current_role_id,
-            // Image pin commands
-            commands::image_pin::pin_images,
-            commands::image_pin::unpin_images,
+            // Image commands
+            commands::image::read_image_file,
             // Window commands
             commands::window::minimize_window,
             commands::window::toggle_maximize_window,
@@ -70,10 +68,6 @@ pub fn run() {
             // 初始化头像缓存服务
             let avatar_cache_service =
                 Arc::new(AvatarCacheService::new().map_err(|e| e.to_string())?);
-
-            // 初始化图片常驻服务
-            let image_pin_service = Arc::new(ImagePinService::new(avatar_cache_service.clone()));
-            app.manage(image_pin_service);
 
             // 初始化账户服务（使用 tokio::sync::Mutex，因为它包含异步方法）
             let account_service =

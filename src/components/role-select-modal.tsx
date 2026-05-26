@@ -11,6 +11,7 @@ import { Skeleton } from "@heroui/react";
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
+import { Img } from "@/utils/imageLoader";
 
 interface RoleDisplayInfo {
   roleId: string;
@@ -126,7 +127,7 @@ export default function RoleSelectModal({
                       <div className="flex items-center gap-3 mb-2">
                         <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200">
                           {role.avatarUrl ? (
-                            <img
+                            <Img
                               src={role.avatarUrl}
                               alt={role.nickname}
                               className="w-full h-full object-cover"

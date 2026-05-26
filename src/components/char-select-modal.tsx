@@ -8,6 +8,7 @@ import {
 import { CharDetailData } from "@/types/charDetail";
 import { SkillDescription } from "@/utils/skillDescParser";
 import { useTranslation } from "react-i18next";
+import { Img } from "@/utils/imageLoader";
 
 interface CharSelectModalProps {
   isOpen: boolean;
@@ -315,10 +316,10 @@ export function CharSelectModal({
 
           const talentIcon = (iconUrl: string, name: string, unlocked: boolean) => {
             return unlocked ? (
-              <img src={iconUrl} alt={name} className="w-full h-full object-contain" />
+              <Img src={iconUrl} alt={name} className="w-full h-full object-contain" />
             ) : (
               <div className="relative w-full h-full">
-                <img src={iconUrl} alt={name} className="w-full h-full object-contain opacity-30" />
+                <Img src={iconUrl} alt={name} className="w-full h-full object-contain opacity-30" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <svg className="w-4 h-4 text-white drop-shadow" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm8 14H7c-.55 0-1-.45-1-1v-8c0-.55.45-1 1-1h10c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1z"/>
@@ -365,7 +366,7 @@ export function CharSelectModal({
                 backgroundColor: "#404040",
               }}>
                 <div className="h-full p-3 flex flex-col items-center justify-center">
-                  <img src={char.illustrationUrl} alt={char.name} className="w-full h-full object-contain" />
+                  <Img src={char.illustrationUrl} alt={char.name} className="w-full h-full object-contain" />
                 </div>
               </div>
 
@@ -381,7 +382,7 @@ export function CharSelectModal({
                 <div className="h-full p-4 overflow-y-auto space-y-6">
                   {/* Character Info Header */}
                   <div className="flex items-start gap-3 pb-3 border-b border-black/10">
-                    <img
+                    <Img
                       src={char.avatarSqUrl}
                       alt={char.name}
                       className="w-12 h-12 rounded-lg object-cover shadow-sm shrink-0"
@@ -435,7 +436,7 @@ export function CharSelectModal({
                             className={btnBase(true, isSel, true)}
                             style={{ backgroundColor: "#e9d72c" }}
                             title={skill.name}>
-                            <img src={skill.iconUrl} alt={skill.name} className="w-full h-full object-contain" />
+                            <Img src={skill.iconUrl} alt={skill.name} className="w-full h-full object-contain" />
                           </button>
                         );
                       })}
@@ -550,7 +551,7 @@ export function CharSelectModal({
                     {selectedItem && (
                       <div className="pl-10 p-5 text-[#f0e8d8]">
                         <div className="flex items-center gap-4 mb-4">
-                          <img src={selectedItem.iconUrl} alt={selectedItem.name}
+                          <Img src={selectedItem.iconUrl} alt={selectedItem.name}
                             className={`w-16 h-16 object-contain p-1.5 ${selectedItem._type === "cultivationTalent" ? "rounded-lg" : "rounded-full"}`}
                             style={{ backgroundColor: "#e9d72c", boxShadow: "0 0 14px rgba(0,0,0,0.35)" }} />
                           <div>
@@ -618,8 +619,8 @@ export function CharSelectModal({
               <div className="flex items-center gap-3">
                 {selectingCharId && (
                   <>
-                    <img
-                      src={getCharById(selectingCharId)?.avatarSqUrl}
+                    <Img
+                      src={getCharById(selectingCharId)?.avatarSqUrl || ""}
                       alt={getCharById(selectingCharId)?.name}
                       className="w-16 h-16 rounded-lg object-cover"
                     />
@@ -815,7 +816,7 @@ export function CharSelectModal({
 
                       {/* Character Avatar and Info */}
                       <div className="flex items-start gap-3">
-                        <img
+                        <Img
                           src={charData.avatarRtUrl || charData.avatarSqUrl}
                           alt={charData.name}
                           className="w-16 h-20 rounded-lg object-cover flex-shrink-0"
@@ -917,10 +918,8 @@ export function CharSelectModal({
                       {/* Character or Empty */}
                       {currentChar ? (
                         <div className="mt-6 flex flex-col items-center">
-                          <img
-                            src={
-                              currentChar.avatarRtUrl || currentChar.avatarSqUrl
-                            }
+                          <Img
+                            src={currentChar.avatarRtUrl || currentChar.avatarSqUrl}
                             alt={currentChar.name}
                             className="w-16 h-20 rounded-lg object-cover mb-2"
                           />

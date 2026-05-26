@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Img } from "@/utils/imageLoader";
 import {
   Card,
   Button,
@@ -1193,9 +1194,9 @@ export default function AccountPage() {
 
                           {/* Avatar */}
                           <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-base font-bold text-primary flex-shrink-0 overflow-hidden">
-                            {account.avatar ? (
-                              <img
-                                src={account.avatar}
+                                {account.avatar ? (
+                                <Img
+                                  src={account.avatar}
                                 alt={account.nickname}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
@@ -1437,9 +1438,9 @@ export default function AccountPage() {
                 <>
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-2xl font-bold text-primary overflow-hidden">
-                      {selectedAccount.avatar ? (
-                        <img
-                          src={selectedAccount.avatar}
+                        {selectedAccount.avatar ? (
+                          <Img
+                            src={selectedAccount.avatar}
                           alt={selectedAccount.nickname}
                           className="w-full h-full object-cover"
                           onError={(e) => {
@@ -1562,8 +1563,8 @@ export default function AccountPage() {
                             onChange={() => handleRoleToggle(role.roleId)}
                           />
                           <div className="w-16 h-16 rounded-full overflow-hidden bg-default-200 flex-shrink-0">
-                            {avatarSrc ? (
-                              <img
+                              {avatarSrc ? (
+                              <Img
                                 src={avatarSrc}
                                 alt={role.nickname}
                                 className="w-full h-full object-cover"

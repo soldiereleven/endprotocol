@@ -6,6 +6,7 @@ import {
 import { CharacterData, CharacterItem } from "@/types/charDetail";
 import { SkillDescription } from "@/utils/skillDescParser";
 import { useTranslation } from "react-i18next";
+import { Img } from "@/utils/imageLoader";
 
 interface CharacterDetailModalProps {
   isOpen: boolean;
@@ -62,7 +63,7 @@ export function CharacterDetailModal({
     <CustomModal isOpen={isOpen} onClose={onClose} size="xl" height="fixed">
       <CustomModalHeader onClose={onClose}>
         <div className="flex items-center gap-3">
-          <img
+          <Img
             src={character.avatarSqUrl}
             alt={character.name}
             className="w-16 h-16 rounded-lg object-cover"
@@ -90,7 +91,7 @@ export function CharacterDetailModal({
                   className="p-4 bg-content1 rounded-lg border border-separator"
                 >
                   <div className="flex items-start gap-3">
-                    <img
+                    <Img
                       src={skill.iconUrl}
                       alt={skill.name}
                       className="w-12 h-12 rounded object-cover flex-shrink-0"
@@ -124,7 +125,7 @@ export function CharacterDetailModal({
                   className="p-4 bg-content1 rounded-lg border border-separator"
                 >
                   <div className="flex items-start gap-3">
-                    <img
+                    <Img
                       src={talent.iconUrl}
                       alt={talent.name}
                       className="w-12 h-12 rounded object-cover flex-shrink-0"
@@ -171,7 +172,7 @@ export function CharacterDetailModal({
 
             {/* Illustration */}
             <div className="mt-4">
-              <img
+              <Img
                 src={character.illustrationUrl}
                 alt={`${character.name} ${t("character_detail.illustration")}`}
                 className="w-full rounded-lg"

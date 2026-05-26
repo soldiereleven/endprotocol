@@ -3,7 +3,6 @@ use std::path::PathBuf;
 
 use crate::utils::AppError;
 use crate::{log_debug, log_info};
-use base64::{engine::general_purpose, Engine as _};
 
 /// 图片缓存类型
 #[derive(Debug, Clone, Copy)]
@@ -35,8 +34,8 @@ pub struct ImageCacheService {
 
 impl ImageCacheService {
     pub fn new() -> Result<Self, AppError> {
-        let app_data_dir = dirs::data_local_dir().ok_or_else(|| AppError::ConfigError {
-            message: "Failed to get local app data directory".to_string(),
+        let app_data_dir = dirs::data_dir().ok_or_else(|| AppError::ConfigError {
+            message: "Failed to get app data directory".to_string(),
         })?;
 
         let cache_dir = app_data_dir
@@ -73,37 +72,28 @@ impl ImageCacheService {
         })
     }
 
-    /// 获取或下载图片（返回 base64 编码）
-    pub async fn get_or_download_image_base64(
+    /// 获取或下载图片，返回本地文件路径
+    pub async fn get_or_download_image(
         &self,
         url: &str,
         image_type: ImageType,
     ) -> Result<String, AppError> {
+        if url.starts_with("file://") || url.starts_with("http://asset.localhost") {
+            return Ok(url.to_string());
+        }
+
         let filename =
             self.extract_filename_from_url(url)
                 .ok_or_else(|| AppError::ConfigError {
                     message: "Invalid image URL".to_string(),
                 })?;
 
-        // 构建特定类型的缓存路径
         let type_dir = self.cache_dir.join(image_type.dir_name());
         let file_path = type_dir.join(&filename);
 
-        // 如果文件已存在，读取并转换为 base64
+        // 已缓存 → 返回路径
         if file_path.exists() {
-            let bytes = fs::read(&file_path)?;
-            let base64_str = general_purpose::STANDARD.encode(&bytes);
-
-            // 检测图片格式
-            let mime_type = if filename.ends_with(".png") {
-                "image/png"
-            } else if filename.ends_with(".jpg") || filename.ends_with(".jpeg") {
-                "image/jpeg"
-            } else {
-                "image/png" // 默认
-            };
-
-            return Ok(format!("data:{};base64,{}", mime_type, base64_str));
+            return Ok(file_path.to_string_lossy().to_string());
         }
 
         // 下载图片
@@ -136,25 +126,12 @@ impl ImageCacheService {
         // 保存到本地
         fs::write(&file_path, &bytes)?;
 
-        // 转换为 base64
-        let base64_str = general_purpose::STANDARD.encode(&bytes);
-
-        // 检测图片格式
-        let mime_type = if filename.ends_with(".png") {
-            "image/png"
-        } else if filename.ends_with(".jpg") || filename.ends_with(".jpeg") {
-            "image/jpeg"
-        } else {
-            "image/png" // 默认
-        };
-
-        Ok(format!("data:{};base64,{}", mime_type, base64_str))
+        Ok(file_path.to_string_lossy().to_string())
     }
 
-    /// 向后兼容方法：获取或下载头像
-    pub async fn get_or_download_avatar_base64(&self, url: &str) -> Result<String, AppError> {
-        self.get_or_download_image_base64(url, ImageType::Avatar)
-            .await
+    /// 获取或下载头像，返回本地路径
+    pub async fn get_or_download_avatar(&self, url: &str) -> Result<String, AppError> {
+        self.get_or_download_image(url, ImageType::Avatar).await
     }
 
     /// 清除所有缓存的图片
