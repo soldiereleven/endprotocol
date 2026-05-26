@@ -7,6 +7,8 @@ import { CharacterData, CharacterItem } from "@/types/charDetail";
 import { SkillDescription } from "@/utils/skillDescParser";
 import { useTranslation } from "react-i18next";
 import { Img } from "@/utils/imageLoader";
+import { useImageRequest } from "@/utils/imageCacheManager";
+import { useMemo } from "react";
 
 interface CharacterDetailModalProps {
   isOpen: boolean;
@@ -59,6 +61,23 @@ export function CharacterDetailModal({
       return activeNodes.includes(talent.id);
     },
   );
+
+  // Request cache priority for all images in this modal
+  const cachePaths = useMemo(() => {
+    const paths: string[] = [];
+    if (character.avatarSqUrl) paths.push(character.avatarSqUrl);
+    if (character.illustrationUrl) paths.push(character.illustrationUrl);
+    character.skills.forEach((s) => { if (s.iconUrl) paths.push(s.iconUrl); });
+    character.abilityTalents.forEach((t) => { if (t.iconUrl) paths.push(t.iconUrl); });
+    character.combatTalents.forEach((t) => { if (t.iconUrl) paths.push(t.iconUrl); });
+    (character.cultivationTalents || []).forEach((t) => {
+      if (t.iconUrl) paths.push(t.iconUrl);
+    });
+    return paths;
+  }, [character]);
+
+  useImageRequest(cachePaths, [cachePaths]);
+
   return (
     <CustomModal isOpen={isOpen} onClose={onClose} size="xl" height="fixed">
       <CustomModalHeader onClose={onClose}>

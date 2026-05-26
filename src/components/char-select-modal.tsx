@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Button, Alert, RadioGroup, Radio } from "@heroui/react";
 import {
   CustomModal,
@@ -9,6 +9,7 @@ import { CharDetailData } from "@/types/charDetail";
 import { SkillDescription } from "@/utils/skillDescParser";
 import { useTranslation } from "react-i18next";
 import { Img } from "@/utils/imageLoader";
+import { useImageRequest } from "@/utils/imageCacheManager";
 
 interface CharSelectModalProps {
   isOpen: boolean;
@@ -186,6 +187,41 @@ export function CharSelectModal({
   const getCharItemById = (id: string) => {
     return charDetail.chars.find((c) => c.charData.id === id);
   };
+
+  // Compute image paths for cache requests
+  const gridAvatarPaths = useMemo(
+    () =>
+      charDetail.chars
+        .map((c) => c.charData.avatarRtUrl || c.charData.avatarSqUrl)
+        .filter(Boolean),
+    [charDetail.chars],
+  );
+
+  const detailImagePaths = useMemo(() => {
+    if (viewMode !== "detail" || !detailCharId) return [];
+    const item = charDetail.chars.find(
+      (c) => c.charData.id === detailCharId,
+    );
+    if (!item) return [];
+    const char = item.charData;
+    const paths: string[] = [];
+    if (char.illustrationUrl) paths.push(char.illustrationUrl);
+    if (char.avatarSqUrl) paths.push(char.avatarSqUrl);
+    char.skills.forEach((s) => { if (s.iconUrl) paths.push(s.iconUrl); });
+    char.abilityTalents.forEach((t) => { if (t.iconUrl) paths.push(t.iconUrl); });
+    char.combatTalents.forEach((t) => { if (t.iconUrl) paths.push(t.iconUrl); });
+    (char.cultivationTalents || []).forEach((t) => {
+      if (t.iconUrl) paths.push(t.iconUrl);
+    });
+    return paths;
+  }, [viewMode, detailCharId, charDetail.chars]);
+
+  const allCachePaths = useMemo(
+    () => [...gridAvatarPaths, ...detailImagePaths],
+    [gridAvatarPaths, detailImagePaths],
+  );
+
+  useImageRequest(allCachePaths, [allCachePaths]);
 
   // Handle slot selection
   const handleSlotSelect = (slotIndex: number) => {

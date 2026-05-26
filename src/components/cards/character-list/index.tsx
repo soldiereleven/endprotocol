@@ -10,6 +10,7 @@ import { CardConfigService } from "@/utils/cardConfigService";
 import type { CharacterListCardSettings } from "@/types/card-settings";
 import { useCardData } from "../base/use-card-data";
 import { Img } from "@/utils/imageLoader";
+import { useImageRequest } from "@/utils/imageCacheManager";
 
 // ── 数据处理（原 processor.ts） ──────────────────────────────
 
@@ -105,6 +106,17 @@ export default function CharacterListCard({
     processedCharDetail,
     selectedCharIds,
   );
+
+  // Request cache priority for displayed character avatars
+  const avatarPaths = useMemo(
+    () =>
+      selectedCharacters
+        .map((c) => c.charData.avatarRtUrl || c.charData.avatarSqUrl)
+        .filter(Boolean),
+    [selectedCharacters],
+  );
+
+  useImageRequest(avatarPaths, [avatarPaths]);
 
   // Clear long press timer when modal opens
   useEffect(() => {

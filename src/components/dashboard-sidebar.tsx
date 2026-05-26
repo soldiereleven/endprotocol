@@ -1,4 +1,5 @@
 import { Img } from "@/utils/imageLoader";
+import { usePinImages } from "@/utils/imageCacheManager";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -58,6 +59,12 @@ export const Sidebar = () => {
 
   // 选中账户状态
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  usePinImages(
+    useMemo(
+      () => (selectedAccount?.avatar ? [selectedAccount.avatar] : []),
+      [selectedAccount?.avatar],
+    ),
+  );
   const [isLoadingAccount, setIsLoadingAccount] = useState(true);
   const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false); // 手动刷新状态
