@@ -1,10 +1,13 @@
 // 卡片配置类型定义
 
+export type SortOrder = "rarity" | "name" | "level";
+
 /**
  * CharacterList 卡片配置
  */
 export interface CharacterListCardSettings {
   selectedCharIds?: string[];  // 选中的角色ID列表
+  sortOrder?: SortOrder;       // 排列顺序
 }
 
 /**

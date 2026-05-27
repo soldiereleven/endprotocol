@@ -199,6 +199,10 @@
       "pin": "Pin",
       "unpin": "Unpin",
       "characters_count": "Characters ({{count}}/3)",
+      "sort_order": "Sort Order",
+      "sort_rarity": "By Rarity",
+      "sort_name": "By Name",
+      "sort_level": "By Level",
       "passive_skills": "Passive Skills",
       "ability_talents": "Ability Talents",
       "cultivation_talents": "O.M.V. Dijiang Skills"
