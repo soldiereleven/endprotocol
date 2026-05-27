@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 
 import DashboardPage from "@/pages/dashboard";
 import SettingsPage from "@/pages/settings";
+import DeveloperPage from "@/pages/developer";
 import AccountPage from "@/pages/account";
 import DashboardLayout from "@/layouts/dashboard";
 
@@ -31,6 +32,14 @@ function App() {
           </DashboardLayout>
         }
         path="/account"
+      />
+      <Route
+        element={
+          <DashboardLayout>
+            <DeveloperPage />
+          </DashboardLayout>
+        }
+        path="/developer"
       />
     </Routes>
   );

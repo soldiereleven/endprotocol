@@ -9,6 +9,7 @@ import {
   HomeIcon,
   SettingsIcon,
   AccountIcon,
+  DeveloperIcon,
   GithubIcon,
   HeartFilledIcon,
   SearchIcon,
@@ -70,6 +71,7 @@ export const Sidebar = () => {
   const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false); // 手动刷新状态
   const [expectedAccountCount, setExpectedAccountCount] = useState<number>(3); // 预期的账户数量
+  const [developerMode, setDeveloperMode] = useState(false);
 
   // 监听主题变化，强制重新渲染
   useEffect(() => {
@@ -81,6 +83,25 @@ export const Sidebar = () => {
     return () => {
       window.removeEventListener("themeChange", handleThemeChange);
     };
+  }, []);
+
+  // 加载开发者模式配置
+  useEffect(() => {
+    const loadDevMode = async () => {
+      const value = await getConfig<boolean>("developer_mode");
+      setDeveloperMode(value ?? false);
+    };
+    loadDevMode();
+  }, []);
+
+  // 监听开发者模式变化
+  useEffect(() => {
+    const handleDevModeChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setDeveloperMode(detail.enabled);
+    };
+    window.addEventListener("developerModeChange", handleDevModeChange);
+    return () => window.removeEventListener("developerModeChange", handleDevModeChange);
   }, []);
 
   // 加载选中的账户
@@ -466,6 +487,22 @@ export const Sidebar = () => {
           categoryEn: "Settings",
           categoryZh: "设置",
         },
+        {
+          id: "nav-developer",
+          title: t("sidebar.developer"),
+          titleEn: "Developer",
+          titleZh: "开发者",
+          description:
+            i18n.language === "zh"
+              ? "调试工具和高级设置"
+              : "Debugging tools and advanced settings",
+          descriptionEn: "Debugging tools and advanced settings",
+          descriptionZh: "调试工具和高级设置",
+          path: "/developer",
+          category: i18n.language === "zh" ? "导航" : "Navigation",
+          categoryEn: "Navigation",
+          categoryZh: "导航",
+        },
       ];
     };
   }, [t, i18n.language]);
@@ -688,18 +725,31 @@ export const Sidebar = () => {
     },
   ];
 
-  const bottomItems = [
-    {
-      label: t("sidebar.account"),
-      href: "/account",
-      icon: AccountIcon,
-    },
-    {
+  const bottomItems = useMemo(() => {
+    const items = [
+      {
+        label: t("sidebar.account"),
+        href: "/account",
+        icon: AccountIcon,
+      },
+    ];
+
+    if (developerMode) {
+      items.push({
+        label: t("sidebar.developer"),
+        href: "/developer",
+        icon: DeveloperIcon,
+      });
+    }
+
+    items.push({
       label: t("sidebar.settings"),
       href: "/settings",
       icon: SettingsIcon,
-    },
-  ];
+    });
+
+    return items;
+  }, [t, developerMode]);
 
   return (
     <>

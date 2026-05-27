@@ -20,6 +20,7 @@
     "calendar": "日历",
     "account": "账户",
     "settings": "设置",
+    "developer": "开发者",
     "help": "帮助与反馈"
   },
   "common": {
@@ -83,6 +84,15 @@
       "theme_light": "浅色",
       "theme_dark": "深色",
       "theme_system": "跟随系统"
+    },
+    "developer": {
+      "title": "开发者模式",
+      "enable": "启用开发者模式",
+      "enable_desc": "在侧边栏显示开发者工具和高级设置",
+      "warning_title": "启用开发者模式？",
+      "warning_body": "开发者模式提供高级调试工具和配置功能。这些功能仅用于故障排查和开发目的。请谨慎操作。",
+      "warning_confirm": "启用",
+      "warning_cancel": "取消"
     },
     "account": {
       "title": "账户管理",

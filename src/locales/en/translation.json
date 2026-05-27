@@ -20,6 +20,7 @@
     "calendar": "Calendar",
     "account": "Account",
     "settings": "Settings",
+    "developer": "Developer",
     "help": "Help & Feedback"
   },
   "common": {
@@ -83,6 +84,15 @@
       "theme_light": "Light",
       "theme_dark": "Dark",
       "theme_system": "System"
+    },
+    "developer": {
+      "title": "Developer Mode",
+      "enable": "Enable Developer Mode",
+      "enable_desc": "Show developer tools and advanced settings in sidebar",
+      "warning_title": "Enable Developer Mode?",
+      "warning_body": "Developer mode provides access to advanced debugging tools and configuration. These features are intended for troubleshooting and development purposes. Please proceed with caution.",
+      "warning_confirm": "Enable",
+      "warning_cancel": "Cancel"
     },
     "account": {
       "title": "Account Management",
