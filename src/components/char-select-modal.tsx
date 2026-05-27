@@ -447,16 +447,6 @@ export function CharSelectModal({
                             <span>Lv.{charItem.level}</span>
                           </>
                         )}
-                        {charItem?.evolvePhase != null && charItem.evolvePhase > 0 && (
-                          <>
-                            <span className="text-black/40">·</span>
-                            <span className="flex items-center gap-0.5">
-                              {Array.from({ length: charItem.evolvePhase }).map((_, i) => (
-                                <span key={i} className="w-1.5 h-1.5 rounded-full bg-yellow-600 inline-block" />
-                              ))}
-                            </span>
-                          </>
-                        )}
                       </div>
                     </div>
                   </div>

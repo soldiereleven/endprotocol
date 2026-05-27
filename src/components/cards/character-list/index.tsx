@@ -140,7 +140,6 @@ export default function CharacterListCard({
 
   function renderCharSlot(char: CharacterItem) {
     const hasLevel = char.level != null;
-    const hasEvolve = char.evolvePhase != null && char.evolvePhase > 0;
     return (
       <div key={char.charData.id} className="relative group h-full min-h-0">
         <Img
@@ -148,22 +147,15 @@ export default function CharacterListCard({
           alt={char.charData.name}
           className="w-full h-full object-cover rounded-lg shadow-sm"
         />
-        {/* Level badge */}
-        {hasLevel && (
-          <div className="absolute top-1 right-1 px-1.5 py-0.5 bg-black/70 rounded text-[10px] text-white font-bold leading-tight shadow-sm">
-            Lv.{char.level}
-          </div>
-        )}
-        {/* Evolve phase dots */}
-        {hasEvolve && (
-          <div className="absolute top-1 left-1 flex gap-0.5">
-            {Array.from({ length: char.evolvePhase! }).map((_, i) => (
-              <div key={i} className="w-1.5 h-1.5 rounded-full bg-yellow-400 shadow-sm" />
-            ))}
-          </div>
-        )}
         {/* Character info overlay */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 via-black/70 to-transparent px-1.5 py-2 rounded-b-lg">
+          {hasLevel && (
+            <div className="absolute top-1 right-1">
+              <span className="text-[10px] text-white font-bold leading-tight drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+                Lv.{char.level}
+              </span>
+            </div>
+          )}
           <p className="text-white text-xs font-bold truncate leading-tight">
             {char.charData.name}
           </p>
