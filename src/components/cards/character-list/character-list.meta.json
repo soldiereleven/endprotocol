@@ -11,5 +11,10 @@
   "icon": "👥",
   "defaultSize": { "w": 3, "h": 3 },
   "version": "1.0.0",
-  "allowMultiple": true
+  "allowMultiple": true,
+  "tags": [
+    { "id": "character", "label": { "zh": "角色", "en": "Character" } },
+    { "id": "display", "label": { "zh": "显示", "en": "Display" } },
+    { "id": "data", "label": { "zh": "数据", "en": "Data" } }
+  ]
 }

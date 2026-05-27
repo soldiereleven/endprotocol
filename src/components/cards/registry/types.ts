@@ -1,3 +1,9 @@
+// 卡片标签接口（支持多语言）
+export interface CardTag {
+  id: string;
+  label: Record<string, string>;
+}
+
 // 卡片元数据接口
 export interface CardMeta {
   id: string;              // 卡片类型唯一标识
@@ -7,6 +13,7 @@ export interface CardMeta {
   defaultSize: { w: number; h: number };  // 默认网格尺寸
   version: string;         // 卡片版本
   allowMultiple?: boolean; // 是否允许多个实例（默认 false）
+  tags?: CardTag[];         // 卡片标签（多语言），用于搜索和筛选
 }
 
 // 卡片组件 Props 标准接口
