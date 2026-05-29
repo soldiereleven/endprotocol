@@ -199,10 +199,6 @@
       "pin": "固定",
       "unpin": "取消固定",
       "characters_count": "角色（{{count}}/3）",
-      "sort_order": "排列顺序",
-      "sort_rarity": "按星级",
-      "sort_name": "按名称",
-      "sort_level": "按等级",
       "passive_skills": "被动技能",
       "ability_talents": "能力天赋",
       "cultivation_talents": "基建技能"
@@ -222,10 +218,6 @@
     "add_card": {
       "title": "添加卡片",
       "already_added": "已添加"
-    },
-    "cards": {
-      "character_list": "角色列表",
-      "character_list_desc": "显示已固定的角色"
     }
   },
   "role_select": {

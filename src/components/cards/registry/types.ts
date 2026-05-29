@@ -24,8 +24,14 @@ export interface BaseCardProps {
   isEditMode?: boolean;    // 编辑模式标志
 }
 
+// 卡片翻译资源（每个语言一个对象）
+export interface CardLocales {
+  [language: string]: Record<string, string>;
+}
+
 // 卡片模块导出接口
 export interface CardModule {
   meta: CardMeta;
   component: React.ComponentType<BaseCardProps>;
+  locales?: CardLocales;   // 卡片本地化翻译资源
 }

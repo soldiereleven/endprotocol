@@ -25,7 +25,13 @@
    - 删除模板代码和注释
    - 实现你的业务逻辑
 
-5. **测试**
+5. **添加卡片本地化翻译**
+   - 在卡片目录下创建 `locales/` 文件夹
+   - 添加 `zh.json` 和 `en.json` 翻译文件
+   - 翻译键会自动注册到 i18n 的 `card` 命名空间下
+   - 在组件中使用 `t("card:key_name")` 访问翻译
+
+6. **测试**
    - 重启开发服务器
    - 在"添加卡片"对话框中查看新卡片
 
@@ -33,7 +39,33 @@
 
 - `_template.meta.json`: 卡片元数据配置
 - `index.tsx`: 卡片组件实现
+- `locales/`: 卡片本地化翻译文件（可选）
+  - `zh.json`: 中文翻译
+  - `en.json`: 英文翻译
 - `README.md`: 本说明文件（可选保留或删除）
+
+## 本地化翻译
+
+卡片的 UI 文本应放在卡片自己的 `locales/` 目录中，而非全局 `translation.json`。
+
+**locales/zh.json 示例：**
+```json
+{
+  "title": "我的卡片",
+  "description": "卡片描述"
+}
+```
+
+**在组件中使用：**
+```tsx
+const { t } = useTranslation();
+
+// 使用 card: 前缀访问卡片本地化
+<h3>{t("card:title")}</h3>
+<p>{t("card:description")}</p>
+```
+
+翻译键在 `card` 命名空间下，使用 `t("card:key")` 访问。
 
 ## 注意事项
 

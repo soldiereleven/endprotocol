@@ -114,6 +114,32 @@ export function CharSelectModal({
 
   const MAX_SELECTION = 3;
 
+  function rarityLineColor(value: string): string {
+    switch (value) {
+      case "6": return "#ff7100";
+      case "5": return "#ffcc00";
+      case "4": return "#b380ff";
+      default: return "transparent";
+    }
+  }
+
+  function renderRarityIcons(value: string, size: number = 14) {
+    const count = parseInt(value, 10) || 0;
+    return (
+      <span className="inline-flex items-center gap-px">
+        {Array.from({ length: count }).map((_, i) => (
+          <img
+            key={i}
+            src="/src/assets/rarity.svg"
+            alt=""
+            className="inline-block"
+            style={{ width: `${size}px`, height: `${size}px` }}
+          />
+        ))}
+      </span>
+    );
+  }
+
   // Sort characters: pinned first, then by rarity (desc), then name (asc)
   const sortedCharacters = [...charDetail.chars].sort((a, b) => {
     const aPinned = tempSelectedIds.includes(a.charData.id);
@@ -426,14 +452,9 @@ export function CharSelectModal({
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-base font-bold text-black truncate">{char.name}</h3>
-                        <span className={`text-sm font-bold shrink-0 ${
-                          char.rarity.value === "6" ? "text-red-700" :
-                          char.rarity.value === "5" ? "text-yellow-700" :
-                          char.rarity.value === "4" ? "text-purple-700" :
-                          "text-blue-700"
-                        }`}>
-                          {char.rarity.value}★
-                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        {renderRarityIcons(char.rarity.value, 14)}
                       </div>
                       <div className="flex items-center gap-1.5 text-xs text-black/70 mt-0.5 flex-wrap">
                         <span>{char.profession.value}</span>
@@ -645,11 +666,14 @@ export function CharSelectModal({
               <div className="flex items-center gap-3">
                 {selectingCharId && (
                   <>
-                    <Img
-                      src={getCharById(selectingCharId)?.avatarSqUrl || ""}
-                      alt={getCharById(selectingCharId)?.name}
-                      className="w-16 h-16 rounded-lg object-cover"
-                    />
+                    <div className="flex flex-col">
+                      <Img
+                        src={getCharById(selectingCharId)?.avatarSqUrl || ""}
+                        alt={getCharById(selectingCharId)?.name}
+                        className="w-16 h-16 rounded-t-lg object-cover"
+                      />
+                      <div className="w-full h-[3px] shrink-0 rounded-b-lg" style={{ backgroundColor: rarityLineColor(getCharById(selectingCharId)?.rarity.value || "3") }} />
+                    </div>
                     <div>
                       <h2 className="text-xl font-bold">
                         {t("settings.characters.select_slot", {
@@ -842,29 +866,22 @@ export function CharSelectModal({
 
                       {/* Character Avatar and Info */}
                       <div className="flex items-start gap-3">
-                        <Img
-                          src={charData.avatarRtUrl || charData.avatarSqUrl}
-                          alt={charData.name}
-                          className="w-16 h-20 rounded-lg object-cover flex-shrink-0"
-                        />
+                        <div className="flex flex-col flex-shrink-0">
+                          <Img
+                            src={charData.avatarRtUrl || charData.avatarSqUrl}
+                            alt={charData.name}
+                            className="w-16 h-20 rounded-t-lg object-cover"
+                          />
+                           <div className="w-full h-[3px] shrink-0 rounded-b-lg" style={{ backgroundColor: rarityLineColor(charData.rarity.value) }} />
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <h3 className="font-semibold truncate text-sm min-w-[80px]">
                               {charData.name}
                             </h3>
-                            <span
-                              className={`text-xs font-bold flex-shrink-0 w-12 text-center ${
-                                charData.rarity.value === "6"
-                                  ? "text-red-500"
-                                  : charData.rarity.value === "5"
-                                    ? "text-yellow-500"
-                                    : charData.rarity.value === "4"
-                                      ? "text-purple-500"
-                                      : "text-blue-500"
-                              }`}
-                            >
-                              {charData.rarity.value}★
-                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 mb-1">
+                            {renderRarityIcons(charData.rarity.value, 14)}
                           </div>
                           <p className="text-xs text-muted mb-2">
                             {charData.profession.value} •{" "}
@@ -944,16 +961,21 @@ export function CharSelectModal({
                       {/* Character or Empty */}
                       {currentChar ? (
                         <div className="mt-6 flex flex-col items-center">
-                          <Img
-                            src={currentChar.avatarRtUrl || currentChar.avatarSqUrl}
-                            alt={currentChar.name}
-                            className="w-16 h-20 rounded-lg object-cover mb-2"
-                          />
-                          <h4 className="font-semibold text-sm text-center">
+                          <div className="flex flex-col">
+                            <Img
+                              src={currentChar.avatarRtUrl || currentChar.avatarSqUrl}
+                              alt={currentChar.name}
+                              className="w-16 h-20 rounded-t-lg object-cover"
+                            />
+                             <div className="w-full h-[3px] shrink-0 rounded-b-lg" style={{ backgroundColor: rarityLineColor(currentChar.rarity.value) }} />
+                          </div>
+                          <h4 className="font-semibold text-sm text-center mt-2">
                             {currentChar.name}
                           </h4>
-                          <p className="text-xs text-muted">
-                            {currentChar.rarity.value}★{" "}
+                          <div className="flex items-center gap-1 mt-1">
+                            {renderRarityIcons(currentChar.rarity.value, 10)}
+                          </div>
+                          <p className="text-xs text-muted mt-1">
                             {currentChar.profession.value}
                           </p>
                           {isCurrentCharSlot && !isSelected && (

@@ -61,7 +61,7 @@ export default function CharacterListCard({
   cardId,
   isEditMode = false,
 }: BaseCardProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [selectedCharIds, setSelectedCharIds] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<SortOrder>("rarity");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -150,47 +150,38 @@ export default function CharacterListCard({
     }
   }, [isModalOpen]);
 
-  function rarityColor(value: string): string {
+  function rarityLineColor(value: string): string {
     switch (value) {
-      case "6": return "text-red-400";
-      case "5": return "text-yellow-400";
-      case "4": return "text-purple-400";
-      case "3": return "text-blue-400";
-      default: return "text-blue-400";
+      case "6": return "#ff7100";
+      case "5": return "#ffcc00";
+      case "4": return "#b380ff";
+      default: return "transparent";
     }
   }
 
   function renderCharSlot(char: CharacterItem) {
     const hasLevel = char.level != null;
+    const rarityValue = char.charData.rarity.value;
     return (
-      <div key={char.charData.id} className="relative group h-full min-h-0">
-        <Img
-          src={char.charData.avatarRtUrl || char.charData.avatarSqUrl}
-          alt={char.charData.name}
-          className="w-full h-full object-cover rounded-lg shadow-sm"
-        />
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 via-black/70 to-transparent px-1.5 py-2 rounded-b-lg">
-          {hasLevel && (
-            <div className="absolute top-1 right-1">
-              <span className="text-[10px] text-white font-bold leading-tight drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+      <div key={char.charData.id} className="relative group h-full min-h-0 flex flex-col">
+        <div className="relative flex-1 min-h-0">
+          <Img
+            src={char.charData.avatarRtUrl || char.charData.avatarSqUrl}
+            alt={char.charData.name}
+            className="w-full h-full object-cover rounded-t-lg shadow-sm"
+          />
+          <div className="absolute top-1 left-1 right-1 flex items-center justify-between">
+            <span className="text-white text-[10px] font-bold truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+              {char.charData.name}
+            </span>
+            {hasLevel && (
+              <span className="text-white text-[10px] font-bold shrink-0 ml-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
                 Lv.{char.level}
               </span>
-            </div>
-          )}
-          <p className="text-white text-xs font-bold truncate leading-tight">
-            {char.charData.name}
-          </p>
-          <p className="text-white text-[10px] mt-1 leading-tight">
-            <span className={rarityColor(char.charData.rarity.value)}>
-              {char.charData.rarity.value}★
-            </span>
-            <span className="text-white/60 mx-0.5">·</span>
-            {char.charData.profession.value}
-          </p>
-          <p className="text-white/50 text-[9px] mt-0.5 leading-tight truncate">
-            {char.charData.property.value}·{char.charData.weaponType.value}
-          </p>
+            )}
+          </div>
         </div>
+        <div className="w-full h-[3px] shrink-0 rounded-b-lg" style={{ backgroundColor: rarityLineColor(rarityValue) }} />
       </div>
     );
   }
@@ -212,7 +203,7 @@ export default function CharacterListCard({
     return (
       <Card className="p-6 bg-content1 shadow-sm border border-separator">
         <p className="text-muted text-center">
-          {i18n.language === "zh" ? "无可用数据" : "No data available"}
+          {t("card:no_data")}
         </p>
       </Card>
     );
@@ -227,17 +218,17 @@ export default function CharacterListCard({
         <div className="flex flex-col h-full gap-3">
           <div className="flex items-center justify-between shrink-0">
             <h3 className="font-semibold text-foreground text-sm">
-              {t("dashboard.cards.character_list") || "Character List"}
+              {t("card:title")}
             </h3>
           </div>
 
           {isEditMode && (
             <div className="flex flex-wrap items-center gap-1.5 shrink-0">
               <span className="text-[11px] text-muted mr-0.5">
-                {t("settings.characters.sort_order") || "Sort"}:
+                {t("card:sort_order")}:
               </span>
               {SORT_OPTIONS.map((opt) => {
-                const labelKey = `settings.characters.sort_${opt}`;
+                const labelKey = `card:sort_${opt}`;
                 const isActive = sortOrder === opt;
                 return (
                   <button
@@ -281,7 +272,7 @@ export default function CharacterListCard({
                   />
                 </svg>
                 <span className="text-muted text-xs">
-                  {t("settings.characters.empty_slot")}
+                  {t("card:empty_slot")}
                 </span>
               </div>
             ))}
