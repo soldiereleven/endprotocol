@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Card, Button, Switch, AlertDialog } from "@heroui/react";
+import { Card, Button, Switch, AlertDialog, Skeleton } from "@heroui/react";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { useState, useEffect, useRef } from "react";
 import { getConfig, setConfig } from "@/utils/configService";
@@ -15,6 +15,7 @@ export default function SettingsPage() {
 
   const [developerMode, setDeveloperMode] = useState(false);
   const [showDevWarning, setShowDevWarning] = useState(false);
+  const [isConfigLoading, setIsConfigLoading] = useState(true);
 
   const languages = [
     { key: "en", label: "English" },
@@ -23,14 +24,16 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const loadConfig = async () => {
-      const value = await getConfig<boolean>("refresh_on_account_switch");
+      setIsConfigLoading(true);
+      const [value, lazyLoadValue, devMode] = await Promise.all([
+        getConfig<boolean>("refresh_on_account_switch"),
+        roleDetailService.isLazyLoadEnabled(),
+        getConfig<boolean>("developer_mode"),
+      ]);
       setRefreshOnSwitch(value ?? false);
-
-      const lazyLoadValue = await roleDetailService.isLazyLoadEnabled();
       setLazyLoadEnabled(lazyLoadValue);
-
-      const devMode = await getConfig<boolean>("developer_mode");
       setDeveloperMode(devMode ?? false);
+      setIsConfigLoading(false);
     };
     loadConfig();
   }, []);
@@ -117,6 +120,41 @@ export default function SettingsPage() {
           <h2 className="text-lg font-semibold mb-6">
             {t("settings.general.title")}
           </h2>
+          {isConfigLoading ? (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="w-32 h-4 rounded-lg" />
+                  <Skeleton className="w-48 h-3 rounded-lg" />
+                </div>
+                <Skeleton className="w-40 h-10 rounded-lg" />
+              </div>
+              <div className="h-px bg-separator w-full" />
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="w-24 h-4 rounded-lg" />
+                  <Skeleton className="w-40 h-3 rounded-lg" />
+                </div>
+                <Skeleton className="w-12 h-6 rounded-full" />
+              </div>
+              <div className="h-px bg-separator w-full" />
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="w-36 h-4 rounded-lg" />
+                  <Skeleton className="w-56 h-3 rounded-lg" />
+                </div>
+                <Skeleton className="w-12 h-6 rounded-full" />
+              </div>
+              <div className="h-px bg-separator w-full" />
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="w-28 h-4 rounded-lg" />
+                  <Skeleton className="w-44 h-3 rounded-lg" />
+                </div>
+                <Skeleton className="w-12 h-6 rounded-full" />
+              </div>
+            </div>
+          ) : (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div id="settings-language">
@@ -262,10 +300,23 @@ export default function SettingsPage() {
               </Switch>
             </div>
           </div>
+          )}
         </Card>
 
         {/* Developer Mode */}
         <Card id="settings-developer" className="p-6 bg-content1 shadow-sm">
+          {isConfigLoading ? (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="w-32 h-4 rounded-lg" />
+                  <Skeleton className="w-48 h-3 rounded-lg" />
+                </div>
+                <Skeleton className="w-12 h-6 rounded-full" />
+              </div>
+            </div>
+          ) : (
+          <>
           <h2 className="text-lg font-semibold mb-6">
             {t("settings.developer.title")}
           </h2>
@@ -289,6 +340,8 @@ export default function SettingsPage() {
               </Switch>
             </div>
           </div>
+          </>
+          )}
         </Card>
       </div>
 

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Card, Button, Switch, NumberField, Label, Meter, Table } from "@heroui/react";
+import { Card, Button, Switch, NumberField, Label, Meter, Table, Skeleton } from "@heroui/react";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { getConfig, setConfig } from "@/utils/configService";
 import { cacheManager, CacheMode } from "@/utils/imageCacheManager";
@@ -52,11 +52,16 @@ export default function DeveloperPage() {
 
   const cacheEntries = useMemo(() => cacheManager.getEntries(), [cacheStats]);
 
+  const [isConfigLoading, setIsConfigLoading] = useState(true);
+
   useEffect(() => {
     const loadConfig = async () => {
-      const mode = await getConfig<CacheMode>("cache_mode");
-      const maxEntries = await getConfig<number>("cache_max_entries");
-      const maxSizeMB = await getConfig<number>("cache_max_size_mb");
+      setIsConfigLoading(true);
+      const [mode, maxEntries, maxSizeMB] = await Promise.all([
+        getConfig<CacheMode>("cache_mode"),
+        getConfig<number>("cache_max_entries"),
+        getConfig<number>("cache_max_size_mb"),
+      ]);
       const resolvedMode = mode ?? "smart";
       const resolvedEntries = maxEntries ?? 200;
       const resolvedSize = maxSizeMB ?? 100;
@@ -69,6 +74,7 @@ export default function DeveloperPage() {
         maxSizeMB: resolvedSize,
       });
       setCacheStats(cacheManager.getStats());
+      setIsConfigLoading(false);
     };
     loadConfig();
   }, []);
@@ -211,6 +217,17 @@ export default function DeveloperPage() {
           <h2 className="text-lg font-semibold mb-6">
             {t("settings.cache.title")}
           </h2>
+          {isConfigLoading ? (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="w-32 h-4 rounded-lg" />
+                  <Skeleton className="w-48 h-3 rounded-lg" />
+                </div>
+                <Skeleton className="w-12 h-6 rounded-full" />
+              </div>
+            </div>
+          ) : (
           <div className="space-y-6">
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0 flex-1">
@@ -388,6 +405,7 @@ export default function DeveloperPage() {
               </>
             )}
           </div>
+          )}
         </Card>
 
         {/* Log Viewer */}

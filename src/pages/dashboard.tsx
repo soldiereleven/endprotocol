@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Card, Button, Tooltip, Skeleton, ProgressCircle } from "@heroui/react";
+import { Card, Button, Tooltip, ProgressCircle } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 import { getSelectedAccount, refreshAccountData } from "@/utils/accountService";
 import { CardContainer } from "@/components/cards/card-container";
@@ -12,7 +12,7 @@ import {
   removeCard,
   moveCard,
 } from "@/utils/dashboardConfig";
-import logger, { logDebug, logError } from "@/utils/logger";
+import { logDebug, logError } from "@/utils/logger";
 import { roleDetailService } from "@/utils/roleDetailService";
 import { CardConfigService } from "@/utils/cardConfigService";
 
@@ -41,15 +41,15 @@ export default function DashboardPage() {
 
       setCurrentRoleId(selectedAccountId);
 
-      // 通知后端当前激活的角色ID(用于懒加载)
-      await roleDetailService.setCurrentRoleId(selectedAccountId);
-
-      // Load dashboard config for this role
-      const config = await getDashboardConfig(selectedAccountId);
+      // 并行加载：通知后端当前的角色ID + 获取仪表盘配置
+      const [, config] = await Promise.all([
+        roleDetailService.setCurrentRoleId(selectedAccountId),
+        getDashboardConfig(selectedAccountId),
+      ]);
       setDashboardConfig(config);
+      setIsLoading(false);
     } catch (error) {
       logError("Failed to load dashboard:", error);
-    } finally {
       setIsLoading(false);
     }
   };
@@ -104,116 +104,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Render skeleton for dashboard cards
-  const renderSkeleton = () => {
-    const GRID_SIZE = 100; // Match CardContainer grid size
-    const BASE_PADDING = 100; // Match CardContainer's basePadding
-
-    // Use the actual cards array
-    const cards = dashboardConfig?.cards || [];
-    const cardCount = cards.length || 3; // Fallback to 3 if empty
-
-    // Calculate container height the same way CardContainer does
-    let maxY = 0;
-    for (let i = 0; i < cardCount; i++) {
-      const card = cards[i];
-      let y, h;
-
-      if (card && card.x !== undefined && card.y !== undefined) {
-        y = card.y ?? 0;
-        h = card.h ?? 2;
-      } else {
-        // Default layout: 3 cards per row, each card is 2 grid units high
-        const row = Math.floor(i / 3);
-        y = row * 2;
-        h = 2;
-      }
-
-      const cardBottom = (y + h) * GRID_SIZE;
-      maxY = Math.max(maxY, cardBottom);
-    }
-    const containerHeight = maxY + BASE_PADDING;
-
-    logger.info("renderSkeleton: cardCount=" + cardCount + " maxY=" + maxY + " containerHeight=" + containerHeight, "Dashboard");
-
-    return (
-      <div className="relative w-full">
-        {/* Inner container with dynamic height - matches CardContainer exactly */}
-        <div
-          className="relative w-full"
-          style={{
-            minHeight: containerHeight,
-          }}
-        >
-          {/* Invisible spacer to ensure container height is respected */}
-          <div
-            style={{
-              width: "100%",
-              height: containerHeight,
-              visibility: "hidden",
-              pointerEvents: "none",
-            }}
-            aria-hidden="true"
-          />
-
-          {/* Cards */}
-          {[...Array(cardCount)].map((_, index) => {
-            // Calculate position based on card config or default layout
-            const card = dashboardConfig?.cards[index];
-
-            // Use card's x,y if available, otherwise calculate based on index
-            let x, y, w, h;
-            if (card && card.x !== undefined && card.y !== undefined) {
-              // Use card's actual position
-              x = card.x * GRID_SIZE;
-              y = card.y * GRID_SIZE;
-              w = (card.w ?? 3) * GRID_SIZE;
-              h = (card.h ?? 2) * GRID_SIZE;
-            } else {
-              // Default layout: 3 cards per row, each card is 2 grid units high
-              const col = index % 3;
-              const row = Math.floor(index / 3);
-              x = col * GRID_SIZE;
-              y = row * GRID_SIZE * 2; // Each row is 2 grid units high
-              w = 3 * GRID_SIZE;
-              h = 2 * GRID_SIZE;
-            }
-
-            return (
-              <div
-                key={index}
-                className="absolute"
-                style={{
-                  left: x,
-                  top: y,
-                  width: w,
-                  height: h,
-                }}
-              >
-                <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full">
-                  <div className="space-y-4">
-                    {/* Title skeleton */}
-                    <Skeleton className="w-1/2 h-5 rounded-lg" />
-
-                    {/* Content skeleton */}
-                    <div className="grid grid-cols-3 gap-2">
-                      {[1, 2, 3].map((i) => (
-                        <Skeleton
-                          key={i}
-                          className="w-full h-[140px] rounded-lg"
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
   // Handle adding a card
   const handleAddCard = async (cardType: CardTypeId) => {
     if (!currentRoleId) return;
@@ -232,14 +122,14 @@ export default function DashboardPage() {
     if (!currentRoleId) return;
 
     try {
-      // 1. 删除卡片配置
-      await CardConfigService.removeCardSettings(cardId);
+      // 并行删除：卡片配置 + 从 Dashboard 配置中移除卡片
+      await Promise.all([
+        CardConfigService.removeCardSettings(cardId),
+        removeCard(currentRoleId, cardId),
+      ]);
       logDebug(`Removed settings for card ${cardId}`);
 
-      // 2. 从 Dashboard 配置中移除卡片
-      await removeCard(currentRoleId, cardId);
-
-      // 3. 更新 UI
+      // 更新 UI
       const config = await getDashboardConfig(currentRoleId);
       setDashboardConfig(config);
 
@@ -276,15 +166,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (!currentRoleId) {
+  if (!currentRoleId && !isLoading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -363,7 +245,7 @@ export default function DashboardPage() {
         </Tooltip>
       </div>
 
-      {/* Card Container */}
+      {/* Card Container - always renders when config is available */}
       {isRefreshing ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">
           <ProgressCircle isIndeterminate size="lg" aria-label="Loading">
@@ -378,13 +260,22 @@ export default function DashboardPage() {
         </div>
       ) : dashboardConfig ? (
         <CardContainer
-          roleId={currentRoleId}
+          roleId={currentRoleId!}
           cards={dashboardConfig.cards}
           onRemoveCard={handleRemoveCard}
           isEditMode={isEditMode}
           onEnterEditMode={() => setIsEditMode(true)}
           onExitEditMode={() => setIsEditMode(false)}
         />
+      ) : isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <ProgressCircle isIndeterminate size="lg" aria-label="Loading">
+            <ProgressCircle.Track>
+              <ProgressCircle.TrackCircle />
+              <ProgressCircle.FillCircle />
+            </ProgressCircle.Track>
+          </ProgressCircle>
+        </div>
       ) : null}
 
       {/* Floating Action Button */}

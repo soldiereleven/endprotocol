@@ -5,6 +5,7 @@ interface UseCardDataOptions<T> {
   fetchData: () => Promise<T>;
   defaultValue?: T;
   lazy?: boolean;  // 是否懒加载
+  concurrent?: boolean; // 是否支持并发请求（默认false）
 }
 
 export function useCardData<T>({

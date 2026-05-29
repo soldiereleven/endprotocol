@@ -210,6 +210,10 @@ class ImageCacheManager {
     }
   }
 
+  async loadMultiple(paths: string[]): Promise<string[]> {
+    return Promise.all(paths.map((p) => this.load(p)));
+  }
+
   evictInactive() {
     for (const [path] of this.evictionTimers) {
       this.cancelEviction(path);

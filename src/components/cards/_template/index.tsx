@@ -2,7 +2,7 @@ import { BaseCardProps } from "../registry/types";
 import { CardWrapper } from "../base/card-wrapper";
 import { useCardData } from "../base/use-card-data";
 import { useTranslation } from "react-i18next";
-import { Card } from "@heroui/react";
+import { Card, ProgressCircle } from "@heroui/react";
 import logger from "@/utils/logger";
 
 /**
@@ -50,11 +50,13 @@ export default function TemplateCard({
   // 加载状态
   if (isLoading) {
     return (
-      <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full">
-        <div className="space-y-4">
-          <div className="h-5 bg-default-200 rounded w-1/2 animate-pulse"></div>
-          <div className="h-20 bg-default-200 rounded animate-pulse"></div>
-        </div>
+      <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full flex items-center justify-center">
+        <ProgressCircle isIndeterminate size="md" aria-label="Loading">
+          <ProgressCircle.Track>
+            <ProgressCircle.TrackCircle />
+            <ProgressCircle.FillCircle />
+          </ProgressCircle.Track>
+        </ProgressCircle>
       </Card>
     );
   }

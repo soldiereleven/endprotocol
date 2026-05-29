@@ -1,5 +1,5 @@
 import React, { Suspense } from "react";
-import { Card, Skeleton } from "@heroui/react";
+import { Card, ProgressCircle } from "@heroui/react";
 
 interface CardWrapperProps {
   children: React.ReactNode;
@@ -38,11 +38,13 @@ export function CardWrapper({ children, fallback }: CardWrapperProps) {
 
 function LoadingSkeleton() {
   return (
-    <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full">
-      <div className="space-y-4">
-        <Skeleton className="w-1/2 h-5 rounded-lg" />
-        <Skeleton className="w-full h-[140px] rounded-lg" />
-      </div>
+    <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full flex items-center justify-center">
+      <ProgressCircle isIndeterminate size="md" aria-label="Loading">
+        <ProgressCircle.Track>
+          <ProgressCircle.TrackCircle />
+          <ProgressCircle.FillCircle />
+        </ProgressCircle.Track>
+      </ProgressCircle>
     </Card>
   );
 }

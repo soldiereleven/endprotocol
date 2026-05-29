@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card } from "@heroui/react";
+import { Card, ProgressCircle } from "@heroui/react";
 import { CharDetailData, CharacterItem } from "@/types/charDetail";
 import { CharSelectModal } from "@/components/char-select-modal";
 import { logDebug, logError } from "@/utils/logger";
@@ -197,18 +197,13 @@ export default function CharacterListCard({
 
   if (isLoading) {
     return (
-      <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full">
-        <div className="flex flex-col h-full gap-4">
-          <div className="h-5 bg-default-200 rounded w-1/2 animate-pulse shrink-0"></div>
-          <div className="grid grid-cols-3 gap-2 flex-1 min-h-0">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="w-full h-full bg-default-200 rounded-lg animate-pulse"
-              ></div>
-            ))}
-          </div>
-        </div>
+      <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full flex items-center justify-center">
+        <ProgressCircle isIndeterminate size="md" aria-label="Loading">
+          <ProgressCircle.Track>
+            <ProgressCircle.TrackCircle />
+            <ProgressCircle.FillCircle />
+          </ProgressCircle.Track>
+        </ProgressCircle>
       </Card>
     );
   }

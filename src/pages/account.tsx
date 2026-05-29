@@ -199,11 +199,13 @@ export default function AccountPage() {
       // 重新加载账户数据
       setIsLoading(true);
       try {
-        // 检查是否需要刷新数据
-        const shouldRefresh = await getConfig<boolean>(
-          "refresh_on_account_switch",
-        );
+        // 并行获取配置和新的选中账户ID
+        const [shouldRefresh, selectedId] = await Promise.all([
+          getConfig<boolean>("refresh_on_account_switch"),
+          getSelectedAccount(),
+        ]);
         logger.info("Should refresh on switch (from sidebar): " + shouldRefresh, "Account");
+        logDebug("[Account] New selected account ID:", selectedId);
 
         let accountsData;
         if (shouldRefresh) {
@@ -220,10 +222,6 @@ export default function AccountPage() {
         }
 
         setAccounts(accountsData || []);
-
-        // 获取新的选中账户
-        const selectedId = await getSelectedAccount();
-        logDebug("[Account] New selected account ID:", selectedId);
 
         // 只更新当前选中的账户，不修改 previousAccountId
         // previousAccountId 应该由 handleSelectAccount 设置
@@ -672,21 +670,19 @@ export default function AccountPage() {
     setIsAnimating(true); // 开始动画
     setCurrentAccountId(accountId);
 
-    // 调用API保存选中的账户
+    // 调用API保存选中的账户，同时获取配置
     try {
-      const success = await apiSetSelectedAccount(accountId);
+      const [success, shouldRefresh] = await Promise.all([
+        apiSetSelectedAccount(accountId),
+        getConfig<boolean>("refresh_on_account_switch"),
+      ]);
       logger.info("Set selected account result: " + success, "Account");
+      logger.info("Should refresh on switch: " + shouldRefresh, "Account");
 
       if (!success) {
         logger.error("Failed to set selected account in backend", "Account");
         return;
       }
-
-      // 检查是否需要刷新数据
-      const shouldRefresh = await getConfig<boolean>(
-        "refresh_on_account_switch",
-      );
-      logger.info("Should refresh on switch: " + shouldRefresh, "Account");
 
       if (shouldRefresh) {
         // 如果需要刷新，调用API获取最新数据

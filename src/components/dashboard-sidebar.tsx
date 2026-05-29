@@ -109,19 +109,20 @@ export const Sidebar = () => {
     const loadSelectedAccount = async () => {
       try {
         setIsLoadingAccount(true);
-        const selectedId = await getSelectedAccount();
+        // 并行获取选中账户ID和账户列表
+        const [selectedId, accounts] = await Promise.all([
+          getSelectedAccount(),
+          getAccounts(),
+        ]);
         logger.info("Selected account ID: " + selectedId, "Sidebar");
+        logger.info("Loaded accounts: " + accounts.length, "Sidebar");
 
-        if (selectedId) {
-          // 直接从后端获取账户数据（后端会处理缓存）
-          const accounts = await getAccounts();
-
-          logger.info("Loaded accounts: " + accounts.length, "Sidebar");
+        if (selectedId && accounts.length > 0) {
           const account = accounts.find((acc) => acc.id === selectedId);
           logger.info("Found account: " + account?.nickname, "Sidebar");
           setSelectedAccount(account || null);
         } else {
-          logger.info("No selected account ID", "Sidebar");
+          logger.info("No selected account ID or no accounts", "Sidebar");
           setSelectedAccount(null);
         }
       } catch (error) {
@@ -137,19 +138,13 @@ export const Sidebar = () => {
     const handleAccountChange = async () => {
       logger.info("Account changed event received", "Sidebar");
 
-      // 检查是否需要刷新数据
-      const shouldRefresh = await getConfig<boolean>(
-        "refresh_on_account_switch",
-      );
+      // 并行获取配置、账户列表和选中账户ID
+      const [shouldRefresh, accounts, selectedId] = await Promise.all([
+        getConfig<boolean>("refresh_on_account_switch"),
+        getAccounts(),
+        getSelectedAccount(),
+      ]);
       logger.info("Should refresh on switch: " + shouldRefresh, "Sidebar");
-
-      let accounts;
-      // 直接从后端获取（后端会处理缓存）
-      logger.info("Fetching accounts from backend...", "Sidebar");
-      accounts = await getAccounts();
-
-      // 重新加载选中账户
-      const selectedId = await getSelectedAccount();
       logger.info("New selected account ID: " + selectedId, "Sidebar");
 
       if (selectedId && accounts && accounts.length > 0) {
