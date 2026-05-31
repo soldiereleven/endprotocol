@@ -874,6 +874,14 @@ impl AccountService {
                         .char_wiki_service()
                         .initialize(cred, token)
                         .await;
+
+                    // Wiki 列表初始化成功后，自动拉取所有物品详情
+                    if let Some(catalog) = self.network_service.char_wiki_service().get_catalog() {
+                        self.network_service
+                            .char_wiki_detail_service()
+                            .initialize(&catalog, cred, token)
+                            .await;
+                    }
                 }
             }
         }

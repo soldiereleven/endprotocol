@@ -32,6 +32,13 @@ impl CharWikiService {
         self.initialized.load(Ordering::Relaxed)
     }
 
+    /// 获取缓存的 catalog 数据，供 detail 服务初始化使用
+    pub fn get_catalog(&self) -> Option<serde_json::Value> {
+        let cache_key = self.init_key.lock().unwrap().clone();
+        let cache = self.cache.lock().unwrap();
+        cache.get(&cache_key).cloned()
+    }
+
     /// 初始化 wiki 数据（应用启动时自动调用一次，后续不再刷新）
     pub async fn initialize(&self, cred: &str, token: &str) {
         if self.initialized.swap(true, Ordering::Relaxed) {

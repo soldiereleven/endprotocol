@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::services::avatar_cache_service::AvatarCacheService;
 use crate::services::char_detail_service::CharDetailService;
+use crate::services::char_wiki_detail_service::CharWikiDetailService;
 use crate::services::char_wiki_service::CharWikiService;
 use crate::services::data_query::{self, DataApi};
 use crate::services::skland_service::SklandService;
@@ -17,6 +18,7 @@ pub struct NetworkService {
     skland_service: Arc<SklandService>,
     char_detail_service: CharDetailService,
     char_wiki_service: CharWikiService,
+    char_wiki_detail_service: CharWikiDetailService,
     current_role_id: Arc<Mutex<Option<String>>>,
 }
 
@@ -31,6 +33,7 @@ impl NetworkService {
                 avatar_cache_service,
             ),
             char_wiki_service: CharWikiService::new(skland_service.clone()),
+            char_wiki_detail_service: CharWikiDetailService::new(skland_service.clone()),
             skland_service,
             current_role_id: Arc::new(Mutex::new(None)),
         }
@@ -46,6 +49,10 @@ impl NetworkService {
 
     pub fn char_wiki_service(&self) -> &CharWikiService {
         &self.char_wiki_service
+    }
+
+    pub fn char_wiki_detail_service(&self) -> &CharWikiDetailService {
+        &self.char_wiki_detail_service
     }
 
     pub fn get_current_role_id(&self) -> Option<String> {
@@ -115,6 +122,9 @@ impl NetworkService {
                 self.char_wiki_service
                     .get_processed("1", "1", cred, token)
                     .await?
+            }
+            DataApi::CharWikiDetail => {
+                self.char_wiki_detail_service.get_processed()?
             }
         };
 
