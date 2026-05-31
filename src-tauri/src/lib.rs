@@ -10,6 +10,7 @@ mod utils;
 use services::account_service::AccountService;
 use services::avatar_cache_service::AvatarCacheService;
 use services::config_service::ConfigService;
+use services::network_service::NetworkService;
 use services::skland_service::SklandService;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -71,9 +72,17 @@ pub fn run() {
             let avatar_cache_service =
                 Arc::new(AvatarCacheService::new().map_err(|e| e.to_string())?);
 
+            // 初始化网络数据服务
+            let network_service =
+                Arc::new(NetworkService::new(skland_service.clone(), avatar_cache_service.clone()));
+
             // 初始化账户服务（使用 tokio::sync::Mutex，因为它包含异步方法）
-            let account_service =
-                AccountService::new(config_service.clone(), skland_service, avatar_cache_service);
+            let account_service = AccountService::new(
+                config_service.clone(),
+                skland_service,
+                avatar_cache_service,
+                network_service,
+            );
             app.manage(Arc::new(Mutex::new(account_service)));
 
             // 启动自动刷新定时器（此时 tokio runtime 已启动）
