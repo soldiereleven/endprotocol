@@ -1978,8 +1978,10 @@ impl AccountService {
         }
     }
 
-    /// 预加载全部 wiki 详情（当用户打开 preload 开关时调用）
+    /// 预加载全部 wiki 详情（当用户打开 preload 开关时调用）。
+    /// 先清空缓存以取消任何正在进行的拉取，再从头拉取。
     pub async fn preload_wiki_detail(&self) {
+        self.clear_wiki_detail_cache();
         let accounts = self.get_accounts().await;
         let first = match accounts.iter().find(|a| a.cred.is_some() && a.token.is_some()) {
             Some(a) => a,

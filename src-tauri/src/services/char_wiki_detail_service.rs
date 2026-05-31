@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::services::skland_service::SklandService;
@@ -15,6 +15,7 @@ pub struct CharWikiDetailService {
     cache: Arc<Mutex<HashMap<String, serde_json::Value>>>,
     merged: Arc<Mutex<serde_json::Value>>,
     initialized: AtomicBool,
+    preload_epoch: AtomicU64,
 }
 
 impl CharWikiDetailService {
@@ -24,6 +25,7 @@ impl CharWikiDetailService {
             cache: Arc::new(Mutex::new(HashMap::new())),
             merged: Arc::new(Mutex::new(serde_json::Value::Object(serde_json::Map::new()))),
             initialized: AtomicBool::new(false),
+            preload_epoch: AtomicU64::new(0),
         }
     }
 
@@ -73,8 +75,9 @@ impl CharWikiDetailService {
         self.fetch_all(catalog, cred, token).await;
     }
 
-    /// 清空 wiki 详情缓存，重置 initialized 状态。
+    /// 清空 wiki 详情缓存，重置 initialized 状态，取消正在进行的拉取。
     pub fn clear(&self) {
+        self.preload_epoch.fetch_add(1, Ordering::Relaxed);
         self.cache.lock().unwrap().clear();
         *self.merged.lock().unwrap() = serde_json::Value::Object(serde_json::Map::new());
         self.initialized.store(false, Ordering::Relaxed);
@@ -132,6 +135,8 @@ impl CharWikiDetailService {
     }
 
     /// 遍历 itemIds 逐个拉取详情，写入 cache + merged。
+    /// 每次 fetch 前和 fetch 后检查 preload_epoch 是否变化，
+    /// 检测到变化（clear() 被调用）时立即中止并丢弃部分结果。
     async fn fetch_all(
         &self,
         catalog: &serde_json::Value,
@@ -144,11 +149,17 @@ impl CharWikiDetailService {
             return;
         }
 
+        let epoch = self.preload_epoch.load(Ordering::Relaxed);
         let path = "/web/v1/wiki/item/info";
         let mut details = serde_json::Map::new();
         let mut failed = 0usize;
 
         for item_id in &item_ids {
+            if self.preload_epoch.load(Ordering::Relaxed) != epoch {
+                log_info!("Preload cancelled, stopping");
+                return;
+            }
+
             let query = format!("id={}", item_id);
             match self
                 .skland_service
@@ -156,6 +167,10 @@ impl CharWikiDetailService {
                 .await
             {
                 Ok(json) => {
+                    if self.preload_epoch.load(Ordering::Relaxed) != epoch {
+                        log_info!("Preload cancelled, discarding partial result");
+                        return;
+                    }
                     let mut cache = self.cache.lock().unwrap();
                     cache.insert(item_id.clone(), json.clone());
                     drop(cache);
