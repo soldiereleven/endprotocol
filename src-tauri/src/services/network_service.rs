@@ -124,7 +124,27 @@ impl NetworkService {
                     .await?
             }
             DataApi::CharWikiDetail => {
-                self.char_wiki_detail_service.get_processed()?
+                if paths.is_empty() {
+                    self.char_wiki_detail_service.get_processed()?
+                } else {
+                    let mut result = HashMap::new();
+                    for item_id in paths {
+                        match self
+                            .char_wiki_detail_service
+                            .get_item(item_id, cred, token)
+                            .await
+                        {
+                            Ok(val) => {
+                                result.insert(item_id.clone(), val);
+                            }
+                            Err(e) => {
+                                log_error!("Failed to fetch wiki detail for item {}: {}", item_id, e);
+                                result.insert(item_id.clone(), serde_json::Value::Null);
+                            }
+                        }
+                    }
+                    return Ok(result);
+                }
             }
         };
 

@@ -11,6 +11,7 @@ export default function SettingsPage() {
   const langDropdownRef = useRef<HTMLDivElement>(null);
   const [refreshOnSwitch, setRefreshOnSwitch] = useState(false);
   const [lazyLoadEnabled, setLazyLoadEnabled] = useState(true);
+  const [wikiDetailPreload, setWikiDetailPreload] = useState(true);
   const [themeChangeKey, setThemeChangeKey] = useState(0);
 
   const [developerMode, setDeveloperMode] = useState(false);
@@ -25,13 +26,15 @@ export default function SettingsPage() {
   useEffect(() => {
     const loadConfig = async () => {
       setIsConfigLoading(true);
-      const [value, lazyLoadValue, devMode] = await Promise.all([
+      const [value, lazyLoadValue, devMode, wikiPreload] = await Promise.all([
         getConfig<boolean>("refresh_on_account_switch"),
         roleDetailService.isLazyLoadEnabled(),
         getConfig<boolean>("developer_mode"),
+        getConfig<boolean>("wiki_detail_preload"),
       ]);
       setRefreshOnSwitch(value ?? false);
       setLazyLoadEnabled(lazyLoadValue);
+      setWikiDetailPreload(wikiPreload ?? true);
       setDeveloperMode(devMode ?? false);
       setIsConfigLoading(false);
     };
@@ -82,6 +85,11 @@ export default function SettingsPage() {
     } catch {
       setLazyLoadEnabled(!value);
     }
+  };
+
+  const handleWikiDetailPreloadChange = async (value: boolean) => {
+    setWikiDetailPreload(value);
+    await setConfig("wiki_detail_preload", value);
   };
 
   const handleDevModeToggle = (value: boolean) => {
@@ -150,6 +158,14 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Skeleton className="w-28 h-4 rounded-lg" />
                   <Skeleton className="w-44 h-3 rounded-lg" />
+                </div>
+                <Skeleton className="w-12 h-6 rounded-full" />
+              </div>
+              <div className="h-px bg-separator w-full" />
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="w-36 h-4 rounded-lg" />
+                  <Skeleton className="w-56 h-3 rounded-lg" />
                 </div>
                 <Skeleton className="w-12 h-6 rounded-full" />
               </div>
@@ -293,6 +309,34 @@ export default function SettingsPage() {
               <Switch
                 isSelected={lazyLoadEnabled}
                 onChange={handleLazyLoadChange}
+              >
+                <Switch.Control>
+                  <Switch.Thumb />
+                </Switch.Control>
+              </Switch>
+            </div>
+
+            <div className="h-px bg-separator w-full" />
+
+            <div
+              id="settings-wiki-detail-preload"
+              className="flex items-center justify-between"
+            >
+              <div>
+                <p className="font-medium text-foreground">
+                  {i18n.language === "zh"
+                    ? "启动时预加载 Wiki 详情"
+                    : "Preload Wiki Details on Startup"}
+                </p>
+                <p className="text-sm text-muted mt-0.5">
+                  {i18n.language === "zh"
+                    ? "关闭后将按需逐个加载角色 Wiki 详情，加快启动速度"
+                    : "When disabled, wiki details load on demand per character"}
+                </p>
+              </div>
+              <Switch
+                isSelected={wikiDetailPreload}
+                onChange={handleWikiDetailPreloadChange}
               >
                 <Switch.Control>
                   <Switch.Thumb />

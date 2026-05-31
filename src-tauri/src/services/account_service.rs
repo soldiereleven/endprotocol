@@ -875,11 +875,17 @@ impl AccountService {
                         .initialize(cred, token)
                         .await;
 
-                    // Wiki 列表初始化成功后，自动拉取所有物品详情
+                    // Wiki 列表初始化成功后，查询是否预加载所有 detail
+                    let preload = self
+                        .config_service
+                        .lock()
+                        .unwrap()
+                        .get::<bool>("wiki_detail_preload")
+                        .unwrap_or(true);
                     if let Some(catalog) = self.network_service.char_wiki_service().get_catalog() {
                         self.network_service
                             .char_wiki_detail_service()
-                            .initialize(&catalog, cred, token)
+                            .initialize(&catalog, cred, token, preload)
                             .await;
                     }
                 }
