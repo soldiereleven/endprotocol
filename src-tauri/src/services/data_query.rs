@@ -6,16 +6,15 @@ use std::fmt;
 pub enum DataApi {
     /// 角色详情
     CharDetail,
-    // 未来扩展
-    // Equipment,
-    // Inventory,
-    // Mission,
+    /// 角色 Wiki 列表
+    CharWikiList,
 }
 
 impl fmt::Display for DataApi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             DataApi::CharDetail => write!(f, "char_detail"),
+            DataApi::CharWikiList => write!(f, "char_wiki_list"),
         }
     }
 }
@@ -26,6 +25,7 @@ impl std::str::FromStr for DataApi {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "char_detail" => Ok(DataApi::CharDetail),
+            "char_wiki_list" => Ok(DataApi::CharWikiList),
             _ => Err(format!("Unknown API: {}", s)),
         }
     }

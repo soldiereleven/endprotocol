@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Img } from "@/utils/imageLoader";
 import {
   CustomModal,
   CustomModalHeader,
@@ -201,19 +202,10 @@ export default function AccountSwitchModal({
                     <div className="relative flex-shrink-0">
                       <div className="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-base font-bold text-primary overflow-hidden">
                         {account.avatar ? (
-                          <img
+                          <Img
                             src={account.avatar}
                             alt={account.nickname}
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display =
-                                "none";
-                              (
-                                e.target as HTMLImageElement
-                              ).parentElement!.textContent = account.nickname
-                                .charAt(0)
-                                .toUpperCase();
-                            }}
                           />
                         ) : (
                           account.nickname.charAt(0).toUpperCase()

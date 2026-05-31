@@ -866,6 +866,18 @@ impl AccountService {
             }
         }
 
+        // Wiki 数据初始化（只执行一次，常驻整个应用生命周期）
+        if !self.network_service.char_wiki_service().is_initialized() {
+            if let Some(first) = accounts.iter().find(|a| a.cred.is_some() && a.token.is_some()) {
+                if let (Some(cred), Some(token)) = (&first.cred, &first.token) {
+                    self.network_service
+                        .char_wiki_service()
+                        .initialize(cred, token)
+                        .await;
+                }
+            }
+        }
+
         // 根据懒加载状态缓存不同版本
         let lazy_load = self.is_lazy_load_enabled();
         for (user_id, user_accounts) in &accounts_by_user {
@@ -1405,10 +1417,7 @@ impl AccountService {
         log_info!("=== HTTP REQUEST: 发送验证码 ===");
         log_info!("Method: POST");
         log_info!("URL: https://as.hypergryph.com/general/v1/send_phone_code");
-        log_debug!(
-            "Request Body: {}",
-            serde_json::to_string(&payload).unwrap_or_default()
-        );
+
 
         let response = client
             .post("https://as.hypergryph.com/general/v1/send_phone_code")
@@ -1431,10 +1440,7 @@ impl AccountService {
                 log_debug!("  {}: {}", name, value_str);
             }
         }
-        log_debug!(
-            "Response Body: {}",
-            serde_json::to_string(&json).unwrap_or_default()
-        );
+
 
         if json.get("status").and_then(|v| v.as_i64()) == Some(0) {
             Ok(true)
@@ -1465,10 +1471,7 @@ impl AccountService {
         log_info!("=== HTTP REQUEST: 验证码登录 ===");
         log_info!("Method: POST");
         log_info!("URL: https://as.hypergryph.com/user/auth/v2/token_by_phone_code");
-        log_debug!(
-            "Request Body: {}",
-            serde_json::to_string(&payload).unwrap_or_default()
-        );
+
 
         let response = client
             .post("https://as.hypergryph.com/user/auth/v2/token_by_phone_code")
@@ -1491,10 +1494,7 @@ impl AccountService {
                 log_debug!("  {}: {}", name, value_str);
             }
         }
-        log_debug!(
-            "Response Body: {}",
-            serde_json::to_string(&json).unwrap_or_default()
-        );
+
 
         if json.get("status").and_then(|v| v.as_i64()) == Some(0) {
             json.get("data")
@@ -1789,10 +1789,6 @@ impl AccountService {
         log_info!("=== HTTP REQUEST: 密码登录 ===");
         log_info!("Method: POST");
         log_info!("URL: https://as.hypergryph.com/user/auth/v1/token_by_phone_password");
-        log_debug!(
-            "Request Body: {{\"phone\": \"{}\", \"password\": \"***\"}}",
-            phone
-        );
 
         let response = client
             .post("https://as.hypergryph.com/user/auth/v1/token_by_phone_password")
@@ -1815,10 +1811,7 @@ impl AccountService {
                 log_debug!("  {}: {}", name, value_str);
             }
         }
-        log_debug!(
-            "Response Body: {}",
-            serde_json::to_string(&json).unwrap_or_default()
-        );
+
 
         if json.get("status").and_then(|v| v.as_i64()) == Some(0) {
             json.get("data")
@@ -1852,10 +1845,7 @@ impl AccountService {
         log_info!("=== HTTP REQUEST: OAuth授权 ===");
         log_info!("Method: POST");
         log_info!("URL: https://as.hypergryph.com/user/oauth2/v2/grant");
-        log_debug!(
-            "Request Body: {}",
-            serde_json::to_string(&payload).unwrap_or_default()
-        );
+
 
         let response = client
             .post("https://as.hypergryph.com/user/oauth2/v2/grant")
@@ -1878,10 +1868,7 @@ impl AccountService {
                 log_debug!("  {}: {}", name, value_str);
             }
         }
-        log_debug!(
-            "Response Body: {}",
-            serde_json::to_string(&json).unwrap_or_default()
-        );
+
 
         if json.get("status").and_then(|v| v.as_i64()) == Some(0) {
             json.get("data")
@@ -1914,10 +1901,7 @@ impl AccountService {
         log_info!("=== HTTP REQUEST: 获取Cred ===");
         log_info!("Method: POST");
         log_info!("URL: https://zonai.skland.com/api/v1/user/auth/generate_cred_by_code");
-        log_debug!(
-            "Request Body: {}",
-            serde_json::to_string(&payload).unwrap_or_default()
-        );
+
 
         let response = client
             .post("https://zonai.skland.com/api/v1/user/auth/generate_cred_by_code")
@@ -1940,10 +1924,7 @@ impl AccountService {
                 log_debug!("  {}: {}", name, value_str);
             }
         }
-        log_debug!(
-            "Response Body: {}",
-            serde_json::to_string(&json).unwrap_or_default()
-        );
+
 
         if json.get("code").and_then(|v| v.as_i64()) == Some(0) {
             let data = json.get("data").ok_or_else(|| AppError::AuthError {

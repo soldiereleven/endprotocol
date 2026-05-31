@@ -1,27 +1,22 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use crate::models::char_detail::CharDetailData;
-use crate::services::avatar_cache_service::{AvatarCacheService, ImageCacheService, ImageType};
+use crate::services::avatar_cache_service::AvatarCacheService;
+use crate::services::char_detail_service::CharDetailService;
+use crate::services::char_wiki_service::CharWikiService;
 use crate::services::data_query::{self, DataApi};
 use crate::services::skland_service::SklandService;
 use crate::utils::AppError;
-use crate::{log_debug, log_error, log_info, log_warn};
+use crate::{log_debug, log_error};
 
-/// 用于预加载的角色信息
-pub struct PreloadRoleInfo {
-    pub role_id: String,
-    pub server_id: String,
-    pub user_id: String,
-    pub cred: String,
-    pub token: String,
-}
+// 重新导出，保持向后兼容
+pub use crate::services::char_detail_service::PreloadRoleInfo;
 
-/// 网络数据服务 —— 负责角色数据查询、详情缓存、图片处理
+/// 网络数据服务 —— 统一数据查询入口，持有各子服务
 pub struct NetworkService {
     skland_service: Arc<SklandService>,
-    avatar_cache_service: Arc<AvatarCacheService>,
-    char_detail_cache: Arc<Mutex<HashMap<String, CharDetailData>>>,
+    char_detail_service: CharDetailService,
+    char_wiki_service: CharWikiService,
     current_role_id: Arc<Mutex<Option<String>>>,
 }
 
@@ -31,9 +26,12 @@ impl NetworkService {
         avatar_cache_service: Arc<AvatarCacheService>,
     ) -> Self {
         Self {
+            char_detail_service: CharDetailService::new(
+                skland_service.clone(),
+                avatar_cache_service,
+            ),
+            char_wiki_service: CharWikiService::new(skland_service.clone()),
             skland_service,
-            avatar_cache_service,
-            char_detail_cache: Arc::new(Mutex::new(HashMap::new())),
             current_role_id: Arc::new(Mutex::new(None)),
         }
     }
@@ -42,8 +40,12 @@ impl NetworkService {
         &self.skland_service
     }
 
-    pub fn avatar_cache_service(&self) -> &Arc<AvatarCacheService> {
-        &self.avatar_cache_service
+    pub fn char_detail_service(&self) -> &CharDetailService {
+        &self.char_detail_service
+    }
+
+    pub fn char_wiki_service(&self) -> &CharWikiService {
+        &self.char_wiki_service
     }
 
     pub fn get_current_role_id(&self) -> Option<String> {
@@ -58,9 +60,7 @@ impl NetworkService {
         if lazy_load_enabled {
             if let (Some(old_id), Some(new_id)) = (old_role_id, role_id) {
                 if old_id != new_id {
-                    let mut cache = self.char_detail_cache.lock().unwrap();
-                    cache.remove(&old_id);
-                    log_debug!("Released char detail cache for role: {}", old_id);
+                    self.char_detail_service.remove(&old_id);
                 }
             }
         }
@@ -68,58 +68,7 @@ impl NetworkService {
 
     /// 保留指定角色的详情缓存，清除其他所有
     pub fn retain_only_char_detail(&self, role_id: Option<String>) {
-        let mut cache = self.char_detail_cache.lock().unwrap();
-        if let Some(id) = role_id {
-            let retained = cache.remove(&id);
-            cache.clear();
-            if let Some(detail) = retained {
-                cache.insert(id, detail);
-            }
-        } else {
-            cache.clear();
-        }
-        log_info!(
-            "Cleared char detail cache (lazy load enabled), remaining: {}",
-            cache.len()
-        );
-    }
-
-    /// 获取角色详情（带缓存）
-    pub async fn get_char_detail_with_cache(
-        &self,
-        role_id: &str,
-        cred: &str,
-        token: &str,
-        server_id: &str,
-        user_id: &str,
-    ) -> Result<Option<CharDetailData>, AppError> {
-        {
-            let cache = self.char_detail_cache.lock().unwrap();
-            if let Some(detail) = cache.get(role_id) {
-                log_debug!("Cache hit for role detail: {}", role_id);
-                return Ok(Some(detail.clone()));
-            }
-        }
-
-        log_info!("Loading char detail from API: {}", role_id);
-
-        match self
-            .skland_service
-            .get_role_detail(cred, token, role_id, server_id, user_id)
-            .await
-        {
-            Ok(response) => {
-                let detail = response.data.detail;
-                let mut cache = self.char_detail_cache.lock().unwrap();
-                cache.insert(role_id.to_string(), detail.clone());
-                log_info!("Cached char detail for role: {}", role_id);
-                Ok(Some(detail))
-            }
-            Err(e) => {
-                log_error!("Failed to fetch char detail: {}", e);
-                Err(e)
-            }
-        }
+        self.char_detail_service.retain_only(role_id);
     }
 
     /// 预加载所有角色详情
@@ -127,185 +76,7 @@ impl NetworkService {
         &self,
         role_infos: &[PreloadRoleInfo],
     ) -> Result<(), AppError> {
-        log_info!("Preloading all character details...");
-
-        for info in role_infos {
-            {
-                let cache = self.char_detail_cache.lock().unwrap();
-                if cache.contains_key(&info.role_id) {
-                    continue;
-                }
-            }
-
-            match self
-                .skland_service
-                .get_role_detail(
-                    &info.cred,
-                    &info.token,
-                    &info.role_id,
-                    &info.server_id,
-                    &info.user_id,
-                )
-                .await
-            {
-                Ok(response) => {
-                    let detail = response.data.detail;
-                    let mut cache = self.char_detail_cache.lock().unwrap();
-                    cache.insert(info.role_id.clone(), detail);
-                    log_debug!("Preloaded char detail for: {}", info.role_id);
-                }
-                Err(e) => {
-                    log_warn!("Failed to preload char detail for {}: {}", info.role_id, e);
-                }
-            }
-        }
-
-        log_info!(
-            "Preload completed, cached {} roles",
-            self.char_detail_cache.lock().unwrap().len()
-        );
-        Ok(())
-    }
-
-    /// 获取处理后的角色详情（包含图片本地缓存替换）
-    async fn get_char_detail_processed(
-        &self,
-        role_id: &str,
-        cred: &str,
-        token: &str,
-        server_id: &str,
-        user_id: &str,
-    ) -> Result<serde_json::Value, AppError> {
-        log_debug!("get_char_detail_processed: role_id={}", role_id);
-
-        let detail = match self
-            .get_char_detail_with_cache(role_id, cred, token, server_id, user_id)
-            .await?
-        {
-            Some(d) => d,
-            None => {
-                log_warn!("No detail found for role_id={}", role_id);
-                return Err(AppError::ConfigError {
-                    message: format!("Character detail not found for role_id: {}", role_id),
-                });
-            }
-        };
-
-        let mut detail = detail.clone();
-        self.process_char_detail_images(&mut detail).await?;
-
-        let json_value = serde_json::to_value(&detail).map_err(|e| {
-            log_error!("Failed to serialize: {}", e);
-            AppError::ConfigError {
-                message: format!("Failed to serialize character detail: {}", e),
-            }
-        })?;
-
-        Ok(json_value)
-    }
-
-    /// 处理角色详情中的所有图片URL，替换为本地缓存路径
-    async fn process_char_detail_images(
-        &self,
-        detail: &mut CharDetailData,
-    ) -> Result<(), AppError> {
-        log_debug!("Processing images for {} chars", detail.chars.len());
-
-        let image_cache = ImageCacheService::new().map_err(|e| {
-            log_error!("Failed to create image cache: {}", e);
-            AppError::ConfigError {
-                message: format!("Failed to create image cache: {}", e),
-            }
-        })?;
-
-        for char in detail.chars.iter_mut() {
-            if let Some(char_data) = &mut char.char_data {
-                let char_name = char_data.name.as_deref().unwrap_or("unknown");
-
-                if let Some(ref mut url) = char_data.avatar_sq_url {
-                    if !url.is_empty() && !url.starts_with("http://asset.localhost") {
-                        let url_clone = url.clone();
-                        match image_cache.get_or_download_image(&url_clone, ImageType::Avatar).await {
-                            Ok(p) => { *url = p; }
-                            Err(e) => { log_warn!("Failed to cache square avatar for {}: {}", char_name, e); }
-                        }
-                    }
-                }
-                if let Some(ref mut url) = char_data.avatar_rt_url {
-                    if !url.is_empty() && !url.starts_with("http://asset.localhost") {
-                        let url_clone = url.clone();
-                        match image_cache.get_or_download_image(&url_clone, ImageType::Avatar).await {
-                            Ok(p) => { *url = p; }
-                            Err(e) => { log_warn!("Failed to cache rectangular avatar for {}: {}", char_name, e); }
-                        }
-                    }
-                }
-                if let Some(ref mut url) = char_data.illustration_url {
-                    if !url.is_empty() && !url.starts_with("http://asset.localhost") {
-                        let url_clone = url.clone();
-                        match image_cache.get_or_download_image(&url_clone, ImageType::Illustration).await {
-                            Ok(p) => { *url = p; }
-                            Err(e) => { log_warn!("Failed to cache illustration for {}: {}", char_name, e); }
-                        }
-                    }
-                }
-
-                if let Some(ref mut skills) = char_data.skills {
-                    for skill in skills.iter_mut() {
-                        if !skill.icon_url.is_empty() && !skill.icon_url.starts_with("http://asset.localhost") {
-                            let url_clone = skill.icon_url.clone();
-                            match image_cache.get_or_download_image(&url_clone, ImageType::SkillIcon).await {
-                                Ok(p) => { skill.icon_url = p; }
-                                Err(e) => { log_warn!("Failed to cache skill icon for {}: {}", char_name, e); }
-                            }
-                        }
-                    }
-                }
-
-                for talents in [&mut char_data.ability_talents, &mut char_data.combat_talents] {
-                    if let Some(ref mut list) = talents {
-                        for t in list.iter_mut() {
-                            if !t.icon_url.is_empty() && !t.icon_url.starts_with("http://asset.localhost") {
-                                let url_clone = t.icon_url.clone();
-                                match image_cache.get_or_download_image(&url_clone, ImageType::SkillIcon).await {
-                                    Ok(p) => { t.icon_url = p; }
-                                    Err(e) => { log_warn!("Failed to cache talent icon for {}: {}", char_name, e); }
-                                }
-                            }
-                            if !t.locked_icon_url.is_empty() && !t.locked_icon_url.starts_with("http://asset.localhost") {
-                                let url_clone = t.locked_icon_url.clone();
-                                match image_cache.get_or_download_image(&url_clone, ImageType::SkillIcon).await {
-                                    Ok(p) => { t.locked_icon_url = p; }
-                                    Err(e) => { log_warn!("Failed to cache locked talent icon for {}: {}", char_name, e); }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if let Some(ref mut list) = char_data.cultivation_talents {
-                    for t in list.iter_mut() {
-                        if !t.icon_url.is_empty() && !t.icon_url.starts_with("http://asset.localhost") {
-                            let url_clone = t.icon_url.clone();
-                            match image_cache.get_or_download_image(&url_clone, ImageType::SkillIcon).await {
-                                Ok(p) => { t.icon_url = p; }
-                                Err(e) => { log_warn!("Failed to cache cultivation talent icon for {}: {}", char_name, e); }
-                            }
-                        }
-                        if !t.locked_icon_url.is_empty() && !t.locked_icon_url.starts_with("http://asset.localhost") {
-                            let url_clone = t.locked_icon_url.clone();
-                            match image_cache.get_or_download_image(&url_clone, ImageType::SkillIcon).await {
-                                Ok(p) => { t.locked_icon_url = p; }
-                                Err(e) => { log_warn!("Failed to cache locked cultivation talent icon for {}: {}", char_name, e); }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        log_debug!("Completed image processing");
-        Ok(())
+        self.char_detail_service.preload_all(role_infos).await
     }
 
     /// 统一数据查询入口
@@ -335,7 +106,14 @@ impl NetworkService {
 
         let data_value = match api {
             DataApi::CharDetail => {
-                self.get_char_detail_processed(role_id, cred, token, server_id, user_id)
+                self.char_detail_service
+                    .get_processed(role_id, cred, token, server_id, user_id)
+                    .await?
+            }
+            DataApi::CharWikiList => {
+                // wiki 列表不依赖 role_id，typeMainId/typeSubId 固定为 1
+                self.char_wiki_service
+                    .get_processed("1", "1", cred, token)
                     .await?
             }
         };

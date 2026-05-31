@@ -45,3 +45,9 @@ hex = "0.4"
 rand = "0.8"
 indexmap = { version = "2.0", features = ["serde"] }
 
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[profile.dev]
+debug = "line-tables-only"
+incremental = true

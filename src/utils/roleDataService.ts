@@ -1,6 +1,7 @@
 /**
  * 统一数据查询服务
  * 提供松耦合的数据访问接口，支持精确到JSON叶节点的查询
+ * 内置内存缓存，同一查询在组件重新挂载时不会重复发起 IPC 调用
  */
 
 import { invoke } from '@tauri-apps/api/core';
@@ -13,10 +14,30 @@ import { logDebug, logInfo, logError } from './logger';
  */
 export type QueryResult = Record<string, any>;
 
+const queryCache = new Map<string, Promise<QueryResult | null>>();
+
+function cacheKey(roleId: string, apiName: string, paths: string[]): string {
+  return `${roleId}|${apiName}|${paths.join(",")}`;
+}
+
 /**
  * 角色数据服务
  */
 export class RoleDataService {
+  /**
+   * 清除指定查询的缓存
+   */
+  clearCache(roleId: string, apiName: string, paths: string[] = []): void {
+    queryCache.delete(cacheKey(roleId, apiName, paths));
+  }
+
+  /**
+   * 清除所有缓存
+   */
+  clearAllCache(): void {
+    queryCache.clear();
+  }
+
   /**
    * 统一数据查询接口
    * 
@@ -45,23 +66,37 @@ export class RoleDataService {
     apiName: string,
     paths: string[] = []
   ): Promise<QueryResult | null> {
-    try {
-      logInfo(
-        `[RoleDataService] Querying: roleId=${roleId}, apiName=${apiName}, paths=${paths.length}`
-      );
+    const key = cacheKey(roleId, apiName, paths);
 
-      const result = await invoke<Record<string, any>>('query_role_data', {
-        roleId,
-        apiName,
-        paths,
-      });
-
-      logDebug(`[RoleDataService] Query successful, received ${Object.keys(result).length} paths`);
-      return result;
-    } catch (error) {
-      logError(`[RoleDataService] Query failed:`, error);
-      return null;
+    const pending = queryCache.get(key);
+    if (pending) {
+      logDebug(`[RoleDataService] Cache hit: ${key}`);
+      return pending;
     }
+
+    logInfo(
+      `[RoleDataService] Querying: roleId=${roleId}, apiName=${apiName}, paths=${paths.length}`
+    );
+
+    const promise = (async (): Promise<QueryResult | null> => {
+      try {
+        const result = await invoke<Record<string, any>>('query_role_data', {
+          roleId,
+          apiName,
+          paths,
+        });
+
+        logDebug(`[RoleDataService] Query successful, received ${Object.keys(result).length} paths`);
+        return result;
+      } catch (error) {
+        queryCache.delete(key);
+        logError(`[RoleDataService] Query failed:`, error);
+        return null;
+      }
+    })();
+
+    queryCache.set(key, promise);
+    return promise;
   }
 
   /**

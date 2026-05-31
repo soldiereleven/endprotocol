@@ -325,7 +325,6 @@ impl SklandService {
         log_info!("=== HTTP REQUEST: 数美设备指纹 ===");
         log_info!("Method: POST");
         log_info!("URL: https://fp-it.portal101.cn/deviceprofile/v4");
-        log_debug!("Request Body: {}", serde_json::to_string(&payload).unwrap_or_default());
 
         let start_time = std::time::Instant::now();
         let resp = client
@@ -470,23 +469,40 @@ impl SklandService {
             )
     }
 
-    /// 获取玩家绑定列表
-    pub async fn get_player_binding(
+    /// 统一的 Skland API 调用入口
+    ///
+    /// 自动处理：
+    /// - dId 获取/缓存/失效重试（最多 2 次）
+    /// - timestamp 生成
+    /// - sign 计算（HMAC-SHA256 + MD5）
+    /// - 认证 header 注入（cred、dId、sign、timestamp、User-Agent 等）
+    /// - 请求日志记录
+    /// - JSON 解析 + code != 0 错误检查
+    ///
+    /// # 参数
+    /// - `method` - "GET" 或 "POST"
+    /// - `path` - API 路径（如 `/api/v1/game/endfield/card/detail`）
+    /// - `query` - GET 请求的 query string（如 `"roleId=xxx&serverId=yyy"`），POST 传 `None`
+    /// - `body` - POST 请求的 JSON body，GET 传 `None`
+    /// - `cred` - 认证凭证
+    /// - `token` - 签名 token
+    ///
+    /// # 返回
+    /// 解析后的完整 JSON 响应（已校验 code == 0）
+    pub async fn call_skland_api(
         &self,
+        method: &str,
+        path: &str,
+        query: Option<&str>,
+        body: Option<serde_json::Value>,
         cred: &str,
         token: &str,
-    ) -> Result<Vec<GameBinding>, AppError> {
-        let path = "/api/v1/game/player/binding";
-        let body = "";
-        let url = format!("https://zonai.skland.com{}", path);
-
+    ) -> Result<serde_json::Value, AppError> {
         let client = http_client::create_client();
-
-        // Try up to two attempts: first use cached did; on failure clear cache and fetch new did once.
         let mut last_err: Option<AppError> = None;
+
         for attempt in 0..2 {
             let did = if attempt == 0 {
-                // use cached or fetch
                 match self.get_or_refresh_did().await {
                     Ok(d) => d,
                     Err(e) => {
@@ -495,12 +511,13 @@ impl SklandService {
                     }
                 }
             } else {
-                // clear cache and fetch fresh did
                 {
                     let mut config = self
                         .config_service
                         .lock()
-                        .map_err(|e| AppError::ConfigError { message: format!("Lock failed: {}", e) })?;
+                        .map_err(|e| AppError::ConfigError {
+                            message: format!("Lock failed: {}", e),
+                        })?;
                     config.remove("did_cache");
                 }
                 match self.fetch_new_did().await {
@@ -512,35 +529,35 @@ impl SklandService {
                 }
             };
 
-            let ts = (Utc::now().timestamp()).to_string();
-            let sign = self.calculate_sign(path, body, &ts, &did, token);
+            let ts = Utc::now().timestamp().to_string();
+            let body_str = body
+                .as_ref()
+                .map(|b| b.to_string())
+                .unwrap_or_default();
+            let sign_input = query.unwrap_or(&body_str);
+            let sign = self.calculate_sign(path, sign_input, &ts, &did, token);
 
-            // 调试：打印认证信息
-            log_debug!("=== Binding List Request Debug (attempt {}) ===", attempt + 1);
-            log_debug!("cred length: {}", cred.len());
-            log_debug!(
-                "cred first 20 chars: {}",
-                if cred.len() >= 20 { &cred[..20] } else { cred }
-            );
-            log_debug!("dId: {}", did);
-            log_debug!("sign: {}", sign);
-            log_debug!("timestamp: {}", ts);
+            let url = if let Some(q) = query {
+                format!("https://zonai.skland.com{}?{}", path, q)
+            } else {
+                format!("https://zonai.skland.com{}", path)
+            };
+
+            log_info!("=== Skland API Request (attempt {}) ===", attempt + 1);
+            log_info!("Method: {}, URL: {}", method, url);
+
+            let mut req = self.build_skland_request(&client, method, &url, cred, &did, &sign, &ts);
+            if let Some(ref b) = body {
+                req = req.json(b);
+            }
 
             let start_time = std::time::Instant::now();
-            log_info!("=== HTTP REQUEST: 获取绑定列表 ===");
-            log_info!("Method: GET");
-            log_info!("URL: {}", url);
-            log_debug!("Request Headers: cred=***, dId={}, sign={}, timestamp={}", did, sign, ts);
-
-            let response = self
-                .build_skland_request(&client, "GET", &url, cred, &did, &sign, &ts)
-                .send()
-                .await;
-
-            let response = match response {
+            let response = match req.send().await {
                 Ok(r) => r,
                 Err(e) => {
-                    last_err = Some(AppError::AuthError { message: format!("HTTP request failed: {}", e) });
+                    last_err = Some(AppError::AuthError {
+                        message: format!("HTTP request failed: {}", e),
+                    });
                     continue;
                 }
             };
@@ -548,53 +565,65 @@ impl SklandService {
             let elapsed = start_time.elapsed();
             let status = response.status();
             let resp_headers = response.headers().clone();
-
-            // 调试：打印原始响应
             let resp_text = response.text().await.map_err(|e| AppError::AuthError {
                 message: format!("Failed to read response text: {}", e),
             })?;
 
-            log_info!("=== HTTP RESPONSE: 获取绑定列表 ===");
-            log_info!("Status: {}", status);
-            log_info!("Time: {:?}", elapsed);
-            log_debug!("Response Headers:");
-            for (name, value) in resp_headers.iter() {
-                if let Ok(value_str) = value.to_str() {
-                    log_debug!("  {}: {}", name, value_str);
-                }
-            }
-            log_debug!("Response Body: {}", resp_text);
+            log_info!("=== Skland API Response ===");
+            log_info!("Status: {}, Time: {:?}", status, elapsed);
 
-            // 解析JSON
-            match serde_json::from_str::<BindingResponse>(&resp_text) {
+            match serde_json::from_str::<serde_json::Value>(&resp_text) {
                 Ok(json) => {
-                    log_debug!("JSON parsed successfully, code: {}", json.code);
-                    if json.code == 0 {
-                        log_debug!("Binding list parsed, returning {} games", json.data.list.len());
-                        for game in &json.data.list {
-                            log_debug!("  Game: app_code={}, binding_list count={}", game.app_code, game.binding_list.len());
-                            for binding in &game.binding_list {
-                                log_debug!("    Binding: uid={}, roles count={}", binding.uid, binding.roles.len());
-                            }
-                        }
-                        return Ok(json.data.list);
-                    } else {
-                        // If server returned auth-related code, try next attempt (fresh did)
-                        last_err = Some(AppError::AuthError { message: format!("Failed to get binding list: {}", json.message) });
-                        continue;
+                    let code = json
+                        .get("code")
+                        .and_then(|c| c.as_i64())
+                        .unwrap_or(-1);
+                    if code == 0 {
+                        return Ok(json);
                     }
+                    last_err = Some(AppError::AuthError {
+                        message: format!(
+                            "API error: code={}, message={}",
+                            code,
+                            json.get("message")
+                                .and_then(|m| m.as_str())
+                                .unwrap_or("unknown")
+                        ),
+                    });
+                    continue;
                 }
                 Err(e) => {
-                    last_err = Some(AppError::AuthError { message: format!("Failed to parse JSON: {}. Response: {}", e, resp_text) });
+                    last_err = Some(AppError::AuthError {
+                        message: format!("Failed to parse JSON: {}. Response: {}", e, resp_text),
+                    });
                     continue;
                 }
             }
         }
 
-        Err(last_err.unwrap_or(AppError::AuthError { message: "Unknown error getting binding list".to_string() }))
+        Err(last_err.unwrap_or(AppError::AuthError {
+            message: "Unknown error in call_skland_api".to_string(),
+        }))
     }
 
-    /// 获取角色详情（带自动重试机制）
+    /// 获取玩家绑定列表
+    pub async fn get_player_binding(
+        &self,
+        cred: &str,
+        token: &str,
+    ) -> Result<Vec<GameBinding>, AppError> {
+        let path = "/api/v1/game/player/binding";
+        let json = self.call_skland_api("GET", path, None, None, cred, token).await?;
+        let response: BindingResponse = serde_json::from_value(json).map_err(|e| {
+            AppError::AuthError {
+                message: format!("Failed to parse BindingResponse: {}", e),
+            }
+        })?;
+        log_info!("Binding list parsed, returning {} games", response.data.list.len());
+        Ok(response.data.list)
+    }
+
+    /// 获取角色详情
     pub async fn get_role_detail(
         &self,
         cred: &str,
@@ -603,89 +632,17 @@ impl SklandService {
         server_id: &str,
         user_id: &str,
     ) -> Result<CharDetailResponse, AppError> {
-        let did = self.get_or_refresh_did().await?;
         let path = "/api/v1/game/endfield/card/detail";
-        let query_string = format!("roleId={}&serverId={}&userId={}", role_id, server_id, user_id);
-        let url = format!("https://zonai.skland.com{}?{}", path, query_string);
-        
-        let client = http_client::create_client();
-        
-        // 时间戳：直接使用当前时间，不做偏移
-        let ts = Utc::now().timestamp().to_string();
-        
-        // 签名：对于 GET 请求，path 不包含 query 参数，query 作为 body
-        let sign = self.calculate_sign(path, &query_string, &ts, &did, token);
-        
-        // 构建请求
-        let start_time = std::time::Instant::now();
-        log_info!("=== HTTP REQUEST: 获取角色详情 ===");
-        log_info!("Method: GET");
-        log_info!("URL: {}", url);
-        log_debug!("Request Headers: cred=***, dId={}, sign={}, timestamp={}", did, sign, ts);
-        
-        let response = client
-            .get(&url)
-            .header("cred", cred)
-            .header("dId", did)
-            .header("sign", sign)
-            .header("timestamp", ts)
-            .header("platform", "1")
-            .header("vName", "1.45.1")
-            .header("Content-Type", "application/json")
-            .header("Origin", "https://game.skland.com")
-            .header("Referer", "https://game.skland.com/")
-            .header("X-Requested-With", "com.hypergryph.skland")
-            .header(
-                "User-Agent",
-                "Mozilla/5.0 (Linux; Android 12; PHY110 Build/V417IR; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/110.0.5481.154 Safari/537.36; SKLand/1.54.0",
-            )
-            .send()
-            .await
-            .map_err(|e| AppError::AuthError { message: format!("HTTP request failed: {}", e) })?;
-        
-        let elapsed = start_time.elapsed();
-        let status = response.status();
-        let resp_headers = response.headers().clone();
-        let resp_text = response.text().await.map_err(|e| AppError::AuthError {
-            message: format!("Failed to read response text: {}", e),
+        let query = format!("roleId={}&serverId={}&userId={}", role_id, server_id, user_id);
+        let json = self.call_skland_api("GET", path, Some(&query), None, cred, token).await?;
+        let response: CharDetailResponse = serde_json::from_value(json).map_err(|e| {
+            AppError::AuthError {
+                message: format!("Failed to parse CharDetailResponse: {}", e),
+            }
         })?;
-        
-        log_info!("=== HTTP RESPONSE: 获取角色详情 ===");
-        log_info!("Status: {}", status);
-        log_info!("Time: {:?}", elapsed);
-        log_debug!("Response Headers:");
-        for (name, value) in resp_headers.iter() {
-            if let Ok(value_str) = value.to_str() {
-                log_debug!("  {}: {}", name, value_str);
-            }
-        }
-        log_debug!("Response Body: {}", resp_text);
-        
-        // 解析响应
-        log_debug!("Attempting to parse JSON response...");
-        match serde_json::from_str::<CharDetailResponse>(&resp_text) {
-            Ok(json) =>  {
-                log_info!("JSON parsing successful! code={}, message={}", json.code, json.message);
-                if json.code == 0 {
-                    log_info!("API returned success. Role name: {}, level: {}", 
-                        json.data.detail.base.name, json.data.detail.base.level);
-                    Ok(json)  // 直接返回完整响应
-                } else {
-                    log_warn!("API returned error code {}: {}", json.code, json.message);
-                    Err(AppError::AuthError { message: format!("API error: {}", json.message) })
-                }
-            }
-            Err(e) => {
-                log_error!("JSON parsing failed: {}", e);
-                let preview = if resp_text.len() > 500 {
-                    &resp_text[..500]
-                } else {
-                    &resp_text
-                };
-                log_error!("Response text (first 500 bytes): {}", preview);
-                Err(AppError::AuthError { message: format!("Failed to parse JSON: {}. Response: {}", e, resp_text) })
-            }
-        }
+        log_info!("Char detail loaded: name={}, level={}",
+            response.data.detail.base.name, response.data.detail.base.level);
+        Ok(response)
     }
 
     /// 检查 cred 是否有效
@@ -725,8 +682,6 @@ impl SklandService {
                 log_debug!("  {}: {}", name, value_str);
             }
         }
-        log_debug!("Response Body: {}", serde_json::to_string(&json).unwrap_or_default());
-        
         // code 为 0 表示 cred 有效
         let is_valid = json.get("code").and_then(|c| c.as_i64()) == Some(0);
         Ok(is_valid)
@@ -749,8 +704,7 @@ impl SklandService {
         log_info!("=== HTTP REQUEST: OAuth Grant (Step 1) ===");
         log_info!("Method: POST");
         log_info!("URL: https://as.hypergryph.com/user/oauth2/v2/grant");
-        log_debug!("Request Body: {}", serde_json::to_string(&payload1).unwrap_or_default());
-        
+
         let response = client
             .post("https://as.hypergryph.com/user/oauth2/v2/grant")
             .json(&payload1)
@@ -777,8 +731,6 @@ impl SklandService {
                 log_debug!("  {}: {}", name, value_str);
             }
         }
-        log_debug!("Response Body: {}", serde_json::to_string(&json).unwrap_or_default());
-        
         if json.get("status").and_then(|v| v.as_i64()) != Some(0) {
             let msg = json
                 .get("msg")
@@ -807,8 +759,7 @@ impl SklandService {
         log_info!("=== HTTP REQUEST: Generate Cred (Step 2) ===");
         log_info!("Method: POST");
         log_info!("URL: https://zonai.skland.com/api/v1/user/auth/generate_cred_by_code");
-        log_debug!("Request Body: {}", serde_json::to_string(&payload2).unwrap_or_default());
-        
+
         let response = client
             .post("https://zonai.skland.com/api/v1/user/auth/generate_cred_by_code")
             .json(&payload2)
@@ -835,8 +786,6 @@ impl SklandService {
                 log_debug!("  {}: {}", name, value_str);
             }
         }
-        log_debug!("Response Body: {}", serde_json::to_string(&json).unwrap_or_default());
-        
         if json.get("code").and_then(|v| v.as_i64()) != Some(0) {
             let msg = json
                 .get("message")
