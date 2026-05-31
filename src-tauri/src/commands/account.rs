@@ -207,6 +207,26 @@ pub async fn is_lazy_load_enabled(
     Ok(service.is_lazy_load_enabled())
 }
 
+/// 预加载全部 wiki 详情
+#[tauri::command]
+pub async fn preload_wiki_detail(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+) -> Result<(), String> {
+    let service = state.lock().await;
+    service.preload_wiki_detail().await;
+    Ok(())
+}
+
+/// 清空 wiki 详情缓存
+#[tauri::command]
+pub async fn clear_wiki_detail_cache(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+) -> Result<(), String> {
+    let service = state.lock().await;
+    service.clear_wiki_detail_cache();
+    Ok(())
+}
+
 /// 设置当前激活的角色ID
 #[tauri::command]
 pub async fn set_current_role_id(

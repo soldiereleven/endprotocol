@@ -49,6 +49,8 @@ pub fn run() {
             commands::account::set_lazy_load_enabled,
             commands::account::is_lazy_load_enabled,
             commands::account::set_current_role_id,
+            commands::account::preload_wiki_detail,
+            commands::account::clear_wiki_detail_cache,
             // Image commands
             commands::image::read_image_file,
             // Window commands

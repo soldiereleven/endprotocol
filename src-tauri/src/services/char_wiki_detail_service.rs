@@ -58,46 +58,27 @@ impl CharWikiDetailService {
         }
 
         log_info!("Initializing char wiki details (once)");
+        self.fetch_all(catalog, cred, token).await;
+    }
 
-        let item_ids = self.extract_item_ids(catalog);
-        if item_ids.is_empty() {
-            log_warn!("No items found in wiki catalog");
-            return;
-        }
+    /// 强制拉取全部 wiki 详情，可随时调用（不受 initialized 限制）。
+    /// 成功时**覆盖**现有 merged 缓存。
+    pub async fn preload_all(
+        &self,
+        catalog: &serde_json::Value,
+        cred: &str,
+        token: &str,
+    ) {
+        log_info!("Preloading all wiki details ...");
+        self.fetch_all(catalog, cred, token).await;
+    }
 
-        log_info!("Found {} items in wiki catalog, fetching details...", item_ids.len());
-
-        let path = "/web/v1/wiki/item/info";
-        let mut details = serde_json::Map::new();
-        let mut failed = 0usize;
-
-        for item_id in &item_ids {
-            let query = format!("id={}", item_id);
-            match self
-                .skland_service
-                .call_skland_api("GET", path, Some(&query), None, cred, token)
-                .await
-            {
-                Ok(json) => {
-                    let mut cache = self.cache.lock().unwrap();
-                    cache.insert(item_id.clone(), json.clone());
-                    drop(cache);
-                    details.insert(item_id.clone(), json);
-                }
-                Err(e) => {
-                    log_warn!("Failed to fetch wiki detail for item {}: {}", item_id, e);
-                    failed += 1;
-                }
-            }
-        }
-
-        *self.merged.lock().unwrap() = serde_json::Value::Object(details);
-
-        log_info!(
-            "Char wiki details initialized: {} succeeded, {} failed",
-            item_ids.len() - failed,
-            failed
-        );
+    /// 清空 wiki 详情缓存，重置 initialized 状态。
+    pub fn clear(&self) {
+        self.cache.lock().unwrap().clear();
+        *self.merged.lock().unwrap() = serde_json::Value::Object(serde_json::Map::new());
+        self.initialized.store(false, Ordering::Relaxed);
+        log_info!("Char wiki detail cache cleared");
     }
 
     /// 返回合并后的全部详情 JSON `{"itemId": {...}, ...}`（可能为空对象）
@@ -148,6 +129,52 @@ impl CharWikiDetailService {
         }
 
         self.fetch_item(item_id, cred, token).await
+    }
+
+    /// 遍历 itemIds 逐个拉取详情，写入 cache + merged。
+    async fn fetch_all(
+        &self,
+        catalog: &serde_json::Value,
+        cred: &str,
+        token: &str,
+    ) {
+        let item_ids = self.extract_item_ids(catalog);
+        if item_ids.is_empty() {
+            log_warn!("No items found in wiki catalog");
+            return;
+        }
+
+        let path = "/web/v1/wiki/item/info";
+        let mut details = serde_json::Map::new();
+        let mut failed = 0usize;
+
+        for item_id in &item_ids {
+            let query = format!("id={}", item_id);
+            match self
+                .skland_service
+                .call_skland_api("GET", path, Some(&query), None, cred, token)
+                .await
+            {
+                Ok(json) => {
+                    let mut cache = self.cache.lock().unwrap();
+                    cache.insert(item_id.clone(), json.clone());
+                    drop(cache);
+                    details.insert(item_id.clone(), json);
+                }
+                Err(e) => {
+                    log_warn!("Failed to fetch wiki detail for item {}: {}", item_id, e);
+                    failed += 1;
+                }
+            }
+        }
+
+        *self.merged.lock().unwrap() = serde_json::Value::Object(details);
+
+        log_info!(
+            "Wiki details fetched: {} succeeded, {} failed",
+            item_ids.len() - failed,
+            failed
+        );
     }
 
     /// 提取 itemId 列表（支持多 catalog × 多 typeSub）

@@ -86,6 +86,23 @@ impl NetworkService {
         self.char_detail_service.preload_all(role_infos).await
     }
 
+    /// 预加载全部 wiki 详情
+    pub async fn preload_wiki_detail(
+        &self,
+        catalog: &serde_json::Value,
+        cred: &str,
+        token: &str,
+    ) {
+        self.char_wiki_detail_service
+            .preload_all(catalog, cred, token)
+            .await;
+    }
+
+    /// 清空 wiki 详情缓存
+    pub fn clear_wiki_detail_cache(&self) {
+        self.char_wiki_detail_service.clear();
+    }
+
     /// 统一数据查询入口
     pub async fn query_role_data(
         &self,

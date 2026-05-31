@@ -4,6 +4,7 @@ import { ThemeSwitch } from "@/components/theme-switch";
 import { useState, useEffect, useRef } from "react";
 import { getConfig, setConfig } from "@/utils/configService";
 import { roleDetailService } from "@/utils/roleDetailService";
+import { invoke } from "@tauri-apps/api/core";
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -90,6 +91,11 @@ export default function SettingsPage() {
   const handleWikiDetailPreloadChange = async (value: boolean) => {
     setWikiDetailPreload(value);
     await setConfig("wiki_detail_preload", value);
+    if (value) {
+      await invoke("preload_wiki_detail");
+    } else {
+      await invoke("clear_wiki_detail_cache");
+    }
   };
 
   const handleDevModeToggle = (value: boolean) => {

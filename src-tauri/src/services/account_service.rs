@@ -1978,6 +1978,47 @@ impl AccountService {
         }
     }
 
+    /// 预加载全部 wiki 详情（当用户打开 preload 开关时调用）
+    pub async fn preload_wiki_detail(&self) {
+        let accounts = self.get_accounts().await;
+        let first = match accounts.iter().find(|a| a.cred.is_some() && a.token.is_some()) {
+            Some(a) => a,
+            None => {
+                log_warn!("No account with cred/token found, cannot preload wiki detail");
+                return;
+            }
+        };
+        let (cred, token) = match (&first.cred, &first.token) {
+            (Some(c), Some(t)) => (c.clone(), t.clone()),
+            _ => return,
+        };
+
+        // 确保 wiki 列表已初始化
+        if !self.network_service.char_wiki_service().is_initialized() {
+            self.network_service
+                .char_wiki_service()
+                .initialize(&cred, &token)
+                .await;
+        }
+
+        let catalog = match self.network_service.char_wiki_service().get_catalog() {
+            Some(c) => c,
+            None => {
+                log_warn!("Wiki catalog not available, cannot preload details");
+                return;
+            }
+        };
+
+        self.network_service
+            .preload_wiki_detail(&catalog, &cred, &token)
+            .await;
+    }
+
+    /// 清空 wiki 详情缓存（当用户关闭 preload 开关时调用）
+    pub fn clear_wiki_detail_cache(&self) {
+        self.network_service.clear_wiki_detail_cache();
+    }
+
     /// 统一数据查询入口
     pub async fn query_role_data(
         &self,
