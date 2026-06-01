@@ -12,7 +12,7 @@ export default function SettingsPage() {
   const langDropdownRef = useRef<HTMLDivElement>(null);
   const [refreshOnSwitch, setRefreshOnSwitch] = useState(false);
   const [lazyLoadEnabled, setLazyLoadEnabled] = useState(true);
-  const [wikiDetailPreload, setWikiDetailPreload] = useState(true);
+  const [wikiDetailPreload, setWikiDetailPreload] = useState(false);
   const [themeChangeKey, setThemeChangeKey] = useState(0);
 
   const [developerMode, setDeveloperMode] = useState(false);
@@ -35,7 +35,7 @@ export default function SettingsPage() {
       ]);
       setRefreshOnSwitch(value ?? false);
       setLazyLoadEnabled(lazyLoadValue);
-      setWikiDetailPreload(wikiPreload ?? true);
+      setWikiDetailPreload(wikiPreload ?? false);
       setDeveloperMode(devMode ?? false);
       setIsConfigLoading(false);
     };

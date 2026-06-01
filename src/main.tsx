@@ -11,7 +11,7 @@ import logger from "@/utils/logger";
 
 // Initialize language from config service before rendering
 getConfig<string>("app.language").then((savedLang) => {
-  const lng = savedLang || "en";
+  const lng = savedLang || (navigator.language.startsWith("zh") ? "zh" : "en");
   setInitialLanguage(lng);
 
   logger.info("Tauri interop ready", "Main");

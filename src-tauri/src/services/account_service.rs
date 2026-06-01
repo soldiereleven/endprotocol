@@ -881,7 +881,7 @@ impl AccountService {
                         .lock()
                         .unwrap()
                         .get::<bool>("wiki_detail_preload")
-                        .unwrap_or(true);
+                        .unwrap_or(false);
                     if let Some(catalog) = self.network_service.char_wiki_service().get_catalog() {
                         self.network_service
                             .char_wiki_detail_service()
