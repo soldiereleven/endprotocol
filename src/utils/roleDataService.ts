@@ -192,6 +192,73 @@ export class RoleDataService {
   async batchQuery(roleId: string, paths: string[]): Promise<QueryResult | null> {
     return this.queryData(roleId, 'char_detail', paths);
   }
+
+  // ====== Wiki 相关方法 ======
+
+  /**
+   * 获取 Wiki 分类目录（char_list_wiki）
+   * 
+   * @param roleId - 角色ID
+   * @returns Wiki 目录数据
+   */
+  async getWikiCatalog(roleId: string): Promise<any | null> {
+    const result = await this.queryData(roleId, 'char_wiki_list', []);
+    if (result && result.__full__) {
+      return result.__full__;
+    }
+    return null;
+  }
+
+  /**
+   * 在 Wiki 目录中按角色名查找 itemId
+   * 
+   * 目录结构: data.catalog[].typeSub[].items[].itemId / name
+   * 
+   * @param roleId - 角色ID
+   * @param charName - 角色名称
+   * @returns 匹配的 itemId，未找到返回 null
+   */
+  async lookupCharItemId(roleId: string, charName: string): Promise<string | null> {
+    const catalog = await this.getWikiCatalog(roleId);
+    if (!catalog) return null;
+
+    const items: any[] = [];
+    const data = catalog.data || catalog;
+    const catalogArr = data.catalog;
+    if (!Array.isArray(catalogArr)) return null;
+
+    for (const entry of catalogArr) {
+      const subs = entry.typeSub;
+      if (!Array.isArray(subs)) continue;
+      for (const sub of subs) {
+        const list = sub.items;
+        if (!Array.isArray(list)) continue;
+        for (const item of list) {
+          if (item.name === charName) {
+            return item.itemId;
+          }
+          items.push(item);
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 获取单个角色的 Wiki 详情（char_wiki_detail）
+   * 
+   * @param roleId - 角色ID
+   * @param itemId - Wiki 物品 ID
+   * @returns Wiki 详情数据
+   */
+  async getWikiItemDetail(roleId: string, itemId: string): Promise<any | null> {
+    const result = await this.queryData(roleId, 'char_wiki_detail', [itemId]);
+    if (result && result[itemId]) {
+      return result[itemId];
+    }
+    return null;
+  }
 }
 
 // 导出单例

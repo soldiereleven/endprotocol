@@ -285,6 +285,7 @@ export default function CharacterListCard({
         onClose={() => setIsModalOpen(false)}
         charDetail={processedCharDetail}
         selectedCharIds={selectedCharIds}
+        roleId={roleId}
         onSave={async (newIds: string[]) => {
           setSelectedCharIds(newIds);
           try {

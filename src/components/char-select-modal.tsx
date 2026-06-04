@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from "react";
-import { Button, Alert, RadioGroup, Radio } from "@heroui/react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { Button, Alert, RadioGroup, Radio, ProgressCircle } from "@heroui/react";
 import {
   CustomModal,
   CustomModalHeader,
@@ -10,6 +10,10 @@ import { SkillDescription } from "@/utils/skillDescParser";
 import { useTranslation } from "react-i18next";
 import { Img } from "@/utils/imageLoader";
 import { useImageRequest } from "@/utils/imageCacheManager";
+import { roleDataService } from "@/utils/roleDataService";
+import { getConfig } from "@/utils/configService";
+import { invoke } from "@tauri-apps/api/core";
+import { logError } from "@/utils/logger";
 
 interface CharSelectModalProps {
   isOpen: boolean;
@@ -17,6 +21,7 @@ interface CharSelectModalProps {
   charDetail: CharDetailData;
   selectedCharIds: string[];
   onSave: (selectedIds: string[]) => void;
+  roleId: string;
 }
 
 export function CharSelectModal({
@@ -25,6 +30,7 @@ export function CharSelectModal({
   charDetail,
   selectedCharIds,
   onSave,
+  roleId,
 }: CharSelectModalProps) {
   const { t } = useTranslation();
   const [tempSelectedIds, setTempSelectedIds] =
@@ -40,6 +46,12 @@ export function CharSelectModal({
   const [detailActive, setDetailActive] = useState(false);
   const detailRafRef = useRef<number>(0);
   const detailTimerRef = useRef<number>(0);
+
+  // Wiki 详情相关（仅非预加载时: 显示加载指示 + 关闭时清理后端缓存）
+  const [wikiLoading, setWikiLoading] = useState(false);
+  const wikiCleanupRef = useRef(false);
+  const wikiItemIdRef = useRef<string | null>(null);
+  const wikiPreloadRef = useRef(false);
 
   /** 打开详情面板：先渲染内容，下一帧再触发宽度动画 */
   const openDetailPanel = (item: {
@@ -78,6 +90,12 @@ export function CharSelectModal({
     useState<boolean>(false);
   const modalBodyRef = useRef<HTMLDivElement>(null);
 
+  // 重置 Wiki 状态
+  const resetWikiState = useCallback(() => {
+    setWikiLoading(false);
+    wikiItemIdRef.current = null;
+  }, []);
+
   // Reset all state when modal opens to ensure fresh data
   useEffect(() => {
     if (isOpen) {
@@ -93,6 +111,16 @@ export function CharSelectModal({
       setFilterProperty("all");
       setFilterRarity("all");
       setShowFilters(false); // Hide filter panel
+      wikiCleanupRef.current = false;
+      resetWikiState();
+    } else {
+      // 模态框关闭时：如果预加载未开启，清空 BE 端 wiki 缓存
+      if (wikiCleanupRef.current) {
+        invoke("clear_wiki_detail_cache").catch((e) =>
+          logError("[Wiki] Failed to clear cache on close:", e)
+        );
+      }
+      resetWikiState();
     }
   }, [isOpen]);
 
@@ -103,6 +131,81 @@ export function CharSelectModal({
       setDetailActive(false);
     }
   }, [viewMode, detailCharId]);
+
+  // 进入 detail view 时加载 Wiki 详情
+  useEffect(() => {
+    if (viewMode !== "detail" || !detailCharId || !roleId) {
+      return;
+    }
+
+    const charName = getCharById(detailCharId)?.name;
+    if (!charName) return;
+
+    let cancelled = false;
+
+    const loadWikiDetail = async () => {
+      setWikiLoading(true);
+
+      try {
+        // 检查预加载设置
+        const preload = (await getConfig<boolean>("wiki_detail_preload")) ?? false;
+        wikiPreloadRef.current = preload;
+        if (cancelled) return;
+
+        // 在 wiki 目录中按名称查找 itemId
+        let itemId = wikiItemIdRef.current;
+        if (!itemId) {
+          itemId = await roleDataService.lookupCharItemId(roleId, charName);
+          wikiItemIdRef.current = itemId;
+        }
+
+        if (cancelled || !itemId) {
+          if (!itemId) {
+            logError(`[Wiki] Character "${charName}" not found in wiki catalog`);
+          }
+          return;
+        }
+
+        // 加载 Wiki 详情（数据缓存在后端，仅用于触发按需加载 + 关闭时清理）
+        await roleDataService.getWikiItemDetail(roleId, itemId);
+        if (cancelled) return;
+
+        // 仅当预加载未开启时，标记后续关闭时需要清理缓存
+        if (!preload) {
+          wikiCleanupRef.current = true;
+        }
+      } catch (e) {
+        if (!cancelled) {
+          logError("[Wiki] Failed to load wiki detail:", e);
+        }
+      } finally {
+        if (!cancelled) {
+          setWikiLoading(false);
+        }
+      }
+    };
+
+    loadWikiDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [viewMode, detailCharId, roleId]);
+
+  // 离开 detail view 时重置 Wiki 状态，若未预加载则清理 BE 缓存
+  const prevViewMode = useRef(viewMode);
+  useEffect(() => {
+    if (prevViewMode.current === "detail" && viewMode !== "detail") {
+      resetWikiState();
+      if (!wikiPreloadRef.current && wikiCleanupRef.current) {
+        invoke("clear_wiki_detail_cache").catch((e) =>
+          logError("[Wiki] Failed to clear cache on detail close:", e)
+        );
+        wikiCleanupRef.current = false;
+      }
+    }
+    prevViewMode.current = viewMode;
+  }, [viewMode, resetWikiState]);
 
   // Cleanup animation refs
   useEffect(() => {
@@ -401,6 +504,8 @@ export function CharSelectModal({
           const pasCombatChains = groupChains(char.combatTalents);
           const cultChains = groupChains(char.cultivationTalents || []);
 
+          const showLoading = wikiLoading && !wikiPreloadRef.current;
+
           return (
             <div className="h-[78vh] relative overflow-hidden" style={{ border: "none" }}>
               {/* Close button at top-right corner */}
@@ -413,6 +518,16 @@ export function CharSelectModal({
                 </svg>
               </button>
 
+              {showLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <ProgressCircle isIndeterminate size="lg" aria-label="Loading wiki">
+                    <ProgressCircle.Track>
+                      <ProgressCircle.TrackCircle />
+                      <ProgressCircle.FillCircle />
+                    </ProgressCircle.Track>
+                  </ProgressCircle>
+                </div>
+              ) : (
               <div style={{
                 display: "flex",
                 height: "100%",
@@ -623,6 +738,7 @@ export function CharSelectModal({
                 </div>
               </div>
             </div>
+            )}
             </div>
           );
         })()
