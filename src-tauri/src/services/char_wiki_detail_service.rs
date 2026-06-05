@@ -2,9 +2,20 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
+use serde::Serialize;
+
 use crate::services::skland_service::SklandService;
 use crate::utils::AppError;
 use crate::{log_info, log_warn};
+
+/// Preload progress snapshot exposed to the frontend.
+#[derive(Debug, Clone, Serialize)]
+pub struct PreloadProgress {
+    pub in_progress: bool,
+    pub completed: usize,
+    pub failed: usize,
+    pub total: usize,
+}
 
 /// Wiki 物品详情缓存，应用整个生命周期只加载一次。
 ///
@@ -16,6 +27,10 @@ pub struct CharWikiDetailService {
     merged: Arc<Mutex<serde_json::Value>>,
     initialized: AtomicBool,
     preload_epoch: AtomicU64,
+    /// True while a background preload task is actively fetching items.
+    preload_in_progress: AtomicBool,
+    /// (completed, failed, total) updated incrementally during preload.
+    preload_progress: Arc<Mutex<(usize, usize, usize)>>,
 }
 
 impl CharWikiDetailService {
@@ -26,6 +41,8 @@ impl CharWikiDetailService {
             merged: Arc::new(Mutex::new(serde_json::Value::Object(serde_json::Map::new()))),
             initialized: AtomicBool::new(false),
             preload_epoch: AtomicU64::new(0),
+            preload_in_progress: AtomicBool::new(false),
+            preload_progress: Arc::new(Mutex::new((0, 0, 0))),
         }
     }
 
@@ -36,6 +53,23 @@ impl CharWikiDetailService {
     pub fn has_data(&self) -> bool {
         let guard = self.merged.lock().unwrap();
         guard.as_object().map_or(false, |m| !m.is_empty())
+    }
+
+    /// Whether a background preload task is currently fetching items.
+    pub fn is_preload_in_progress(&self) -> bool {
+        self.preload_in_progress.load(Ordering::Relaxed)
+    }
+
+    /// Snapshot of (completed, failed, total). Total may be 0 before the
+    /// task has discovered all itemIds.
+    pub fn get_preload_progress(&self) -> PreloadProgress {
+        let (completed, failed, total) = *self.preload_progress.lock().unwrap();
+        PreloadProgress {
+            in_progress: self.preload_in_progress.load(Ordering::Relaxed),
+            completed,
+            failed,
+            total,
+        }
     }
 
     /// 从 catalog JSON 中提取所有 itemId 并逐个获取详情。
@@ -78,6 +112,8 @@ impl CharWikiDetailService {
     /// 清空 wiki 详情缓存，重置 initialized 状态，取消正在进行的拉取。
     pub fn clear(&self) {
         self.preload_epoch.fetch_add(1, Ordering::Relaxed);
+        self.preload_in_progress.store(false, Ordering::Relaxed);
+        *self.preload_progress.lock().unwrap() = (0, 0, 0);
         self.cache.lock().unwrap().clear();
         *self.merged.lock().unwrap() = serde_json::Value::Object(serde_json::Map::new());
         self.initialized.store(false, Ordering::Relaxed);
@@ -137,6 +173,9 @@ impl CharWikiDetailService {
     /// 遍历 itemIds 逐个拉取详情，写入 cache + merged。
     /// 每次 fetch 前和 fetch 后检查 preload_epoch 是否变化，
     /// 检测到变化（clear() 被调用）时立即中止并丢弃部分结果。
+    ///
+    /// 增量更新 `merged`：每成功拉取一个 item 立即写入，让前端能在
+    /// 后台预加载进行中看到部分数据。
     async fn fetch_all(
         &self,
         catalog: &serde_json::Value,
@@ -151,12 +190,20 @@ impl CharWikiDetailService {
 
         let epoch = self.preload_epoch.load(Ordering::Relaxed);
         let path = "/web/v1/wiki/item/info";
-        let mut details = serde_json::Map::new();
+        let total = item_ids.len();
+
+        // 进入新一轮预加载前清空 merged，初始化进度
+        *self.merged.lock().unwrap() = serde_json::Value::Object(serde_json::Map::new());
+        *self.preload_progress.lock().unwrap() = (0, 0, total);
+        self.preload_in_progress.store(true, Ordering::Relaxed);
+
         let mut failed = 0usize;
+        let mut completed = 0usize;
 
         for item_id in &item_ids {
             if self.preload_epoch.load(Ordering::Relaxed) != epoch {
                 log_info!("Preload cancelled, stopping");
+                self.preload_in_progress.store(false, Ordering::Relaxed);
                 return;
             }
 
@@ -169,25 +216,34 @@ impl CharWikiDetailService {
                 Ok(json) => {
                     if self.preload_epoch.load(Ordering::Relaxed) != epoch {
                         log_info!("Preload cancelled, discarding partial result");
+                        self.preload_in_progress.store(false, Ordering::Relaxed);
                         return;
                     }
                     let mut cache = self.cache.lock().unwrap();
                     cache.insert(item_id.clone(), json.clone());
                     drop(cache);
-                    details.insert(item_id.clone(), json);
+                    // 增量写入 merged，让前端能看到部分数据
+                    let mut guard = self.merged.lock().unwrap();
+                    if let serde_json::Value::Object(ref mut map) = *guard {
+                        map.insert(item_id.clone(), json);
+                    }
+                    drop(guard);
+                    completed += 1;
+                    *self.preload_progress.lock().unwrap() = (completed, failed, total);
                 }
                 Err(e) => {
                     log_warn!("Failed to fetch wiki detail for item {}: {}", item_id, e);
                     failed += 1;
+                    *self.preload_progress.lock().unwrap() = (completed, failed, total);
                 }
             }
         }
 
-        *self.merged.lock().unwrap() = serde_json::Value::Object(details);
+        self.preload_in_progress.store(false, Ordering::Relaxed);
 
         log_info!(
             "Wiki details fetched: {} succeeded, {} failed",
-            item_ids.len() - failed,
+            completed,
             failed
         );
     }

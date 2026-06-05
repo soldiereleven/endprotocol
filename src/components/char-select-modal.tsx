@@ -504,7 +504,7 @@ export function CharSelectModal({
           const pasCombatChains = groupChains(char.combatTalents);
           const cultChains = groupChains(char.cultivationTalents || []);
 
-          const showLoading = wikiLoading && !wikiPreloadRef.current;
+          const showLoading = wikiLoading;
 
           return (
             <div className="h-[78vh] relative overflow-hidden" style={{ border: "none" }}>

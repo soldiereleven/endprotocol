@@ -18,7 +18,7 @@ pub struct NetworkService {
     skland_service: Arc<SklandService>,
     char_detail_service: CharDetailService,
     char_wiki_service: CharWikiService,
-    char_wiki_detail_service: CharWikiDetailService,
+    char_wiki_detail_service: Arc<CharWikiDetailService>,
     current_role_id: Arc<Mutex<Option<String>>>,
 }
 
@@ -33,7 +33,7 @@ impl NetworkService {
                 avatar_cache_service,
             ),
             char_wiki_service: CharWikiService::new(skland_service.clone()),
-            char_wiki_detail_service: CharWikiDetailService::new(skland_service.clone()),
+            char_wiki_detail_service: Arc::new(CharWikiDetailService::new(skland_service.clone())),
             skland_service,
             current_role_id: Arc::new(Mutex::new(None)),
         }
@@ -51,7 +51,7 @@ impl NetworkService {
         &self.char_wiki_service
     }
 
-    pub fn char_wiki_detail_service(&self) -> &CharWikiDetailService {
+    pub fn char_wiki_detail_service(&self) -> &Arc<CharWikiDetailService> {
         &self.char_wiki_detail_service
     }
 

@@ -883,10 +883,27 @@ impl AccountService {
                         .get::<bool>("wiki_detail_preload")
                         .unwrap_or(false);
                     if let Some(catalog) = self.network_service.char_wiki_service().get_catalog() {
-                        self.network_service
-                            .char_wiki_detail_service()
-                            .initialize(&catalog, cred, token, preload)
-                            .await;
+                        if preload {
+                            // 后台拉取，避免阻塞 get_accounts / 应用启动
+                            let detail_svc = self
+                                .network_service
+                                .char_wiki_detail_service()
+                                .clone();
+                            let catalog_value = catalog.clone();
+                            let cred_owned = cred.clone();
+                            let token_owned = token.clone();
+                            async_runtime::spawn(async move {
+                                detail_svc
+                                    .initialize(&catalog_value, &cred_owned, &token_owned, true)
+                                    .await;
+                            });
+                            log_info!("Wiki detail preload started in background");
+                        } else {
+                            self.network_service
+                                .char_wiki_detail_service()
+                                .initialize(&catalog, cred, token, false)
+                                .await;
+                        }
                     }
                 }
             }
@@ -1979,7 +1996,8 @@ impl AccountService {
     }
 
     /// 预加载全部 wiki 详情（当用户打开 preload 开关时调用）。
-    /// 先清空缓存以取消任何正在进行的拉取，再从头拉取。
+    /// 先清空缓存以取消任何正在进行的拉取，再在后台拉取。
+    /// 此方法本身在清理完缓存后立即返回，不阻塞调用方。
     pub async fn preload_wiki_detail(&self) {
         self.clear_wiki_detail_cache();
         let accounts = self.get_accounts().await;
@@ -2011,9 +2029,12 @@ impl AccountService {
             }
         };
 
-        self.network_service
-            .preload_wiki_detail(&catalog, &cred, &token)
-            .await;
+        // 后台拉取，立即返回
+        let detail_svc = self.network_service.char_wiki_detail_service().clone();
+        async_runtime::spawn(async move {
+            detail_svc.preload_all(&catalog, &cred, &token).await;
+        });
+        log_info!("Wiki detail preload started in background");
     }
 
     /// 清空 wiki 详情缓存（当用户关闭 preload 开关时调用）
