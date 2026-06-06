@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import { Button, Alert, RadioGroup, Radio, ProgressCircle } from "@heroui/react";
 import {
   CustomModal,
@@ -133,7 +133,7 @@ export function CharSelectModal({
   }, [viewMode, detailCharId]);
 
   // 进入 detail view 时加载 Wiki 详情
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (viewMode !== "detail" || !detailCharId || !roleId) {
       return;
     }
@@ -143,14 +143,22 @@ export function CharSelectModal({
 
     let cancelled = false;
 
-    const loadWikiDetail = async () => {
-      setWikiLoading(true);
+    // 同步设置加载状态，配合 useLayoutEffect 在浏览器绘制前完成重渲染，
+    // 避免在异步检查预加载设置期间闪烁一次详情页面
+    setWikiLoading(true);
 
+    const loadWikiDetail = async () => {
       try {
         // 检查预加载设置
         const preload = (await getConfig<boolean>("wiki_detail_preload")) ?? false;
         wikiPreloadRef.current = preload;
         if (cancelled) return;
+
+        // 预加载开启时，数据已（即将）在后端缓存中，
+        // 无需主动查询目录 / 触发按需加载，关闭时也不需要清理缓存
+        if (preload) {
+          return;
+        }
 
         // 在 wiki 目录中按名称查找 itemId
         let itemId = wikiItemIdRef.current;
@@ -166,14 +174,11 @@ export function CharSelectModal({
           return;
         }
 
-        // 加载 Wiki 详情（数据缓存在后端，仅用于触发按需加载 + 关闭时清理）
+        // 加载 Wiki 详情（按需加载 + 关闭时清理）
         await roleDataService.getWikiItemDetail(roleId, itemId);
         if (cancelled) return;
 
-        // 仅当预加载未开启时，标记后续关闭时需要清理缓存
-        if (!preload) {
-          wikiCleanupRef.current = true;
-        }
+        wikiCleanupRef.current = true;
       } catch (e) {
         if (!cancelled) {
           logError("[Wiki] Failed to load wiki detail:", e);
