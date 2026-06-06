@@ -507,7 +507,7 @@ export function CharSelectModal({
           const showLoading = wikiLoading;
 
           return (
-            <div className="h-[78vh] relative overflow-hidden" style={{ border: "none" }}>
+            <div className="h-full w-full relative overflow-hidden rounded-2xl" style={{ border: "none" }}>
               {/* Close button at top-right corner */}
               <button
                 onClick={() => { setViewMode("list"); setDetailCharId(null); }}
@@ -807,7 +807,7 @@ export function CharSelectModal({
           </CustomModalHeader>
 
           {/* Body */}
-          <CustomModalBody ref={modalBodyRef} onScroll={handleScroll}>
+          <CustomModalBody ref={modalBodyRef} onScroll={handleScroll} className="!p-0">
         {viewMode === "list" ? (
           <div className="space-y-4">
             {/* Filter Section */}
