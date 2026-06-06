@@ -15,18 +15,32 @@ const LOG_LEVEL_NAMES: Record<LogLevel, string> = {
   [LogLevel.ERROR]: "ERROR",
 };
 
-const LEVEL_COLORS: Record<LogLevel, string> = {
-  [LogLevel.DEBUG]: "#00BCD4",
-  [LogLevel.INFO]: "#4CAF50",
-  [LogLevel.WARN]: "#FF9800",
-  [LogLevel.ERROR]: "#F44336",
+const LEVEL_BADGE_BG: Record<LogLevel, string> = {
+  [LogLevel.DEBUG]: "bg-secondary",
+  [LogLevel.INFO]: "bg-success",
+  [LogLevel.WARN]: "bg-warning",
+  [LogLevel.ERROR]: "bg-danger",
 };
 
-const LEVEL_BGS: Record<LogLevel, string> = {
-  [LogLevel.DEBUG]: "rgba(0, 188, 212, 0.12)",
-  [LogLevel.INFO]: "rgba(76, 175, 80, 0.12)",
-  [LogLevel.WARN]: "rgba(255, 152, 0, 0.12)",
-  [LogLevel.ERROR]: "rgba(244, 67, 54, 0.12)",
+const LEVEL_TEXT: Record<LogLevel, string> = {
+  [LogLevel.DEBUG]: "text-secondary",
+  [LogLevel.INFO]: "text-success",
+  [LogLevel.WARN]: "text-warning",
+  [LogLevel.ERROR]: "text-danger",
+};
+
+const LEVEL_BG_SOFT: Record<LogLevel, string> = {
+  [LogLevel.DEBUG]: "bg-secondary/15",
+  [LogLevel.INFO]: "bg-success/15",
+  [LogLevel.WARN]: "bg-warning/15",
+  [LogLevel.ERROR]: "bg-danger/15",
+};
+
+const LEVEL_BORDER: Record<LogLevel, string> = {
+  [LogLevel.DEBUG]: "border-secondary",
+  [LogLevel.INFO]: "border-success",
+  [LogLevel.WARN]: "border-warning",
+  [LogLevel.ERROR]: "border-danger",
 };
 
 const MAX_VISIBLE_LOGS = 500;
@@ -458,18 +472,11 @@ export default function DeveloperPage() {
           <div className="flex flex-wrap items-center gap-1.5 mb-3">
             {(["all" as const, LogLevel.DEBUG, LogLevel.INFO, LogLevel.WARN, LogLevel.ERROR] as const).map((l) => {
               const isActive = logLevelFilter === l;
-              const color = l !== "all" ? LEVEL_COLORS[l] : undefined;
-              const bg = l !== "all" ? LEVEL_BGS[l] : undefined;
               return (
                 <button
                   key={String(l)}
                   onClick={() => setLogLevelFilter(l)}
-                  className="px-2.5 py-1 text-xs rounded-md border transition-all font-medium"
-                  style={{
-                    color: isActive && color ? color : undefined,
-                    backgroundColor: isActive && bg ? bg : undefined,
-                    borderColor: isActive ? (color ?? "var(--heroui-separator)") : "var(--heroui-separator)",
-                  }}
+                  className={`px-2.5 py-1 text-xs rounded-md border transition-all font-medium border-separator ${isActive && l !== "all" ? `${LEVEL_TEXT[l]} ${LEVEL_BG_SOFT[l]} ${LEVEL_BORDER[l]}` : ""}`}
                 >
                   {l === "all"
                     ? (i18n.language === "zh" ? "全部级别" : "All Levels")
@@ -496,16 +503,13 @@ export default function DeveloperPage() {
               <div className="p-1 space-y-px">
                 {filteredLogs.map((entry, idx) => {
                   const levelName = LOG_LEVEL_NAMES[entry.level];
-                  const color = LEVEL_COLORS[entry.level];
                   return (
                     <div
                       key={`${entry.timestamp}-${idx}`}
-                      className="flex items-start gap-1.5 px-2 py-1 rounded hover:bg-default-50 transition-colors"
-                      style={{ backgroundColor: entry.source === "backend" ? "rgba(99,102,241,0.04)" : "rgba(34,197,94,0.04)" }}
+                      className={`flex items-start gap-1.5 px-2 py-1 rounded transition-colors ${entry.source === "backend" ? "bg-secondary/5 hover:bg-secondary/10" : "bg-success/5 hover:bg-success/10"}`}
                     >
                       <span
-                        className="shrink-0 font-bold text-[10px] leading-5 px-1.5 rounded-sm text-white text-center min-w-[44px]"
-                        style={{ backgroundColor: color }}
+                        className={`shrink-0 font-bold text-[10px] leading-5 px-1.5 rounded-sm text-white text-center min-w-[44px] ${LEVEL_BADGE_BG[entry.level]}`}
                       >
                         {levelName}
                       </span>
@@ -513,10 +517,7 @@ export default function DeveloperPage() {
                         {entry.timestamp}
                       </span>
                       <span
-                        className="shrink-0 leading-5 font-semibold"
-                        style={{
-                          color: entry.source === "backend" ? "#818CF8" : "#4ADE80",
-                        }}
+                        className={`shrink-0 leading-5 font-semibold ${entry.source === "backend" ? "text-secondary" : "text-success"}`}
                       >
                         {entry.source === "backend" ? "Backend" : "Frontend"}
                       </span>
@@ -524,8 +525,7 @@ export default function DeveloperPage() {
                         {entry.module}
                       </span>
                       <span
-                        className="leading-5 break-all flex-1 min-w-0 font-normal"
-                        style={{ color }}
+                        className={`leading-5 break-all flex-1 min-w-0 font-normal ${LEVEL_TEXT[entry.level]}`}
                         title={entry.message.length > MAX_MESSAGE_LENGTH ? entry.message : undefined}
                       >
                         {truncateMessage(entry.message)}

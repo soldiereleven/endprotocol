@@ -10,11 +10,11 @@ import {
   getDashboardConfig,
   addCard,
   removeCard,
-  moveCard,
 } from "@/utils/dashboardConfig";
 import { logDebug, logError } from "@/utils/logger";
 import { roleDetailService } from "@/utils/roleDetailService";
 import { CardConfigService } from "@/utils/cardConfigService";
+import { RefreshIcon } from "@/components/ui/app-icon";
 
 export default function DashboardPage() {
   const { t } = useTranslation();
@@ -139,33 +139,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Handle moving a card
-  const handleMoveCard = async (cardId: string, direction: "up" | "down") => {
-    if (!currentRoleId || !dashboardConfig) return;
-
-    const currentIndex = dashboardConfig.cards.findIndex(
-      (c) => c.id === cardId,
-    );
-    if (currentIndex === -1) return;
-
-    let newIndex: number;
-    if (direction === "up") {
-      newIndex = Math.max(0, currentIndex - 1);
-    } else {
-      newIndex = Math.min(dashboardConfig.cards.length - 1, currentIndex + 1);
-    }
-
-    if (newIndex === currentIndex) return;
-
-    try {
-      await moveCard(currentRoleId, cardId, newIndex);
-      const config = await getDashboardConfig(currentRoleId);
-      setDashboardConfig(config);
-    } catch (error) {
-      logError("Failed to move card:", error);
-    }
-  };
-
   if (!currentRoleId && !isLoading) {
     return (
       <div className="space-y-6">
@@ -218,30 +191,21 @@ export default function DashboardPage() {
               "Customize your dashboard with cards"}
           </p>
         </div>
-        <Tooltip content={t("common.refresh") || "Refresh"}>
+        <Tooltip>
           <Button
             isIconOnly
             variant="ghost"
             size="sm"
             onPress={handleRefresh}
-            isLoading={isRefreshing}
+            isDisabled={isRefreshing}
             className="text-muted hover:text-foreground"
             aria-label={t("common.refresh") || "Refresh"}
           >
-            <svg
-              className={`w-5 h-5 ${isRefreshing ? "animate-spin" : ""}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
+            <RefreshIcon size={20} className={isRefreshing ? "animate-spin" : ""} />
           </Button>
+          <Tooltip.Content>
+            {t("common.refresh") || "Refresh"}
+          </Tooltip.Content>
         </Tooltip>
       </div>
 

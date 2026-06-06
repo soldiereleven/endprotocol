@@ -6,13 +6,15 @@ import {
   Skeleton,
   Alert,
   Checkbox,
-  Pagination,
   InputOTP,
   Label,
   Link,
   Spinner,
 } from "@heroui/react";
 import { SimplePagination } from "@/components/simple-pagination";
+import { CONTAINER_HEIGHT } from "@/components/cards/card-container";
+import { StatusDot, type StatusDotTone } from "@/components/ui/status-dot";
+import { StatusBadge, SYNC_STATUS_META, type StatusConfig } from "@/components/ui/status-badge";
 import { useState, useEffect, useRef } from "react";
 import {
   CustomModal,
@@ -747,7 +749,6 @@ export default function AccountPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(1); // 初始为1，等待计算
   const CARD_HEIGHT = 80; // 固定卡片高度（像素）
-  const CONTAINER_PADDING = 15; // 上下间隙
   const GAP_SIZE = 5; // 卡片间距（像素）
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -983,16 +984,9 @@ export default function AccountPage() {
                     onChange={() => {}}
                     showControls={false}
                   />
-                  {/* keep HeroUI Pagination for compatibility (visually hidden) */}
-                  <div className="sr-only">
-                    <Pagination
-                      total={1}
-                      page={1}
-                      onChange={() => {}}
-                      size="sm"
-                      isDisabled={true}
-                      showControls={true}
-                    />
+                  {/* keep pagination for screen reader compatibility (visually hidden) */}
+                  <div className="sr-only" aria-hidden="true">
+                    <span>{totalPages} {i18n.language === "zh" ? "页" : "pages"}</span>
                   </div>
                 </div>
 
@@ -1058,7 +1052,7 @@ export default function AccountPage() {
               ref={containerRef}
               className="relative px-[15px] py-[15px] space-y-[5px]"
             >
-              {currentPageAccounts.map((account, index) => {
+              {currentPageAccounts.map((account) => {
                 const isSelected = account.id === currentAccountId;
                 const isPreviousActive = account.id === previousAccountId;
 
@@ -1087,16 +1081,34 @@ export default function AccountPage() {
                 let borderColorClass =
                   "border-separator hover:border-content3/50";
                 let shadowClass = "shadow-md hover:shadow-lg";
+                let statusDotTone: StatusDotTone | null = null;
                 if (isSelected && !hasErrorStatus) {
-                  borderColorClass = "border-green-400 dark:border-green-300";
+                  borderColorClass = "border-success";
                   shadowClass = "shadow-xl";
-                } else if (hasErrorStatus) {
+                  statusDotTone = "success";
+                } else if (isSelected && hasErrorStatus) {
+                  statusDotTone =
+                    account.syncStatus === "HYTOKEN_EXPIRED"
+                      ? "danger"
+                      : "warning";
                   borderColorClass =
                     account.syncStatus === "HYTOKEN_EXPIRED"
-                      ? "border-red-400 dark:border-red-300"
-                      : "border-orange-400 dark:border-orange-300";
+                      ? "border-danger"
+                      : "border-warning";
                   shadowClass = "shadow-xl";
+                } else if (!isSelected && !hasErrorStatus) {
+                  statusDotTone = "default";
                 }
+
+                // 状态徽章 - 错误状态优先级高于 ACTIVE/AVAILABLE
+                const statusBadgeConfig: StatusConfig | null =
+                  account.syncStatus === "HYTOKEN_EXPIRED"
+                    ? SYNC_STATUS_META.HYTOKEN_EXPIRED
+                    : account.syncStatus === "FAILED"
+                      ? SYNC_STATUS_META.FAILED
+                      : isSelected
+                        ? { tone: "success", label: "ACTIVE" }
+                        : { tone: "default", label: "AVAILABLE" };
 
                 return (
                   <Card
@@ -1114,30 +1126,11 @@ export default function AccountPage() {
                       <div className="flex items-center justify-between w-full">
                         <div className="flex items-center gap-3 flex-1">
                           {/* LED 指示灯 - 根据状态显示不同颜色 */}
-                          {isSelected && !hasErrorStatus && (
-                            <div className="relative flex-shrink-0">
-                              <div className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] dark:shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
-                              <div className="absolute inset-0 w-3 h-3 rounded-full bg-green-400 animate-ping opacity-20" />
-                            </div>
-                          )}
-                          {isSelected &&
-                            account.syncStatus === "HYTOKEN_EXPIRED" && (
-                              <div className="relative flex-shrink-0">
-                                <div className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] dark:shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
-                                <div className="absolute inset-0 w-3 h-3 rounded-full bg-red-400 animate-ping opacity-20" />
-                              </div>
-                            )}
-                          {isSelected && account.syncStatus === "FAILED" && (
-                            <div className="relative flex-shrink-0">
-                              <div className="w-3 h-3 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)] dark:shadow-[0_0_10px_rgba(249,115,22,0.8)]" />
-                              <div className="absolute inset-0 w-3 h-3 rounded-full bg-orange-400 animate-ping opacity-20" />
-                            </div>
-                          )}
-                          {/* 灰色指示灯 - 未选中且无错误状态 */}
-                          {!isSelected && !hasErrorStatus && (
-                            <div className="relative flex-shrink-0">
-                              <div className="w-3 h-3 rounded-full bg-gray-400 dark:bg-gray-500" />
-                            </div>
+                          {statusDotTone && (
+                            <StatusDot
+                              tone={statusDotTone}
+                              ping={isSelected}
+                            />
                           )}
 
                           {/* Avatar */}
@@ -1185,28 +1178,8 @@ export default function AccountPage() {
                         </div>
 
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          {/* 状态标签 - 错误状态优先级高于 ACTIVE */}
-                          {account.syncStatus === "HYTOKEN_EXPIRED" && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-red-600 dark:text-red-400 tracking-wider">
-                              EXPIRED
-                            </span>
-                          )}
-                          {account.syncStatus === "FAILED" && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-orange-600 dark:text-orange-400 tracking-wider">
-                              SYNC FAILED
-                            </span>
-                          )}
-                          {/* 只有在没有错误状态时才显示 ACTIVE */}
-                          {isSelected && !account.syncStatus && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-green-600 dark:text-green-400 tracking-wider">
-                              ACTIVE
-                            </span>
-                          )}
-                          {/* 未选中且无错误状态的账户显示 AVAILABLE */}
-                          {!isSelected && !account.syncStatus && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-gray-600 dark:text-gray-400 tracking-wider">
-                              AVAILABLE
-                            </span>
+                          {statusBadgeConfig && (
+                            <StatusBadge config={statusBadgeConfig} />
                           )}
 
                           <Button
@@ -1267,15 +1240,9 @@ export default function AccountPage() {
                     showControls={false}
                   />
                   {/* keep HeroUI Pagination for compatibility (visually hidden) */}
-                  <div className="sr-only">
-                    <Pagination
-                      total={Math.max(1, totalPages)}
-                      page={currentPage}
-                      onChange={setCurrentPage}
-                      size="sm"
-                      isDisabled={false}
-                      showControls={true}
-                    />
+                  {/* keep pagination for screen reader compatibility (visually hidden) */}
+                  <div className="sr-only" aria-hidden="true">
+                    <span>{totalPages} {i18n.language === "zh" ? "页" : "pages"}</span>
                   </div>
                 </div>
 
@@ -1323,20 +1290,20 @@ export default function AccountPage() {
             <div className="space-y-4">
               {/* 凭证失效警告 - 只显示红色警告框 */}
               {selectedAccount.syncStatus === "HYTOKEN_EXPIRED" ? (
-                <div className="text-center py-8 border-2 border-red-500 rounded-lg bg-red-50 dark:bg-red-950/30">
-                  <p className="text-5xl font-black text-red-600 dark:text-red-400 tracking-wider mb-4">
+                <div className="text-center py-8 border-2 border-danger rounded-lg bg-danger/10 dark:bg-danger/20">
+                  <p className="text-5xl font-black text-danger tracking-wider mb-4">
                     EXPIRED
                   </p>
                   <div className="space-y-2 text-left px-4">
                     <div>
                       <p className="text-xs italic text-muted mb-1">Hytoken:</p>
-                      <p className="text-xs font-mono text-red-600 dark:text-red-400 break-all">
+                      <p className="text-xs font-mono text-danger break-all">
                         {selectedAccount.token || "N/A"}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs italic text-muted mb-1">Cred:</p>
-                      <p className="text-xs font-mono text-red-600 dark:text-red-400 break-all">
+                      <p className="text-xs font-mono text-danger break-all">
                         {selectedAccount.cred || "N/A"}
                       </p>
                     </div>
@@ -1351,8 +1318,8 @@ export default function AccountPage() {
                   </div>
                 </div>
               ) : selectedAccount.syncStatus === "FAILED" ? (
-                <div className="text-center py-8 border-2 border-orange-500 rounded-lg bg-orange-50 dark:bg-orange-950/30">
-                  <p className="text-5xl font-black text-orange-600 dark:text-orange-400 tracking-wider mb-4">
+                <div className="text-center py-8 border-2 border-warning rounded-lg bg-warning/10 dark:bg-warning/20">
+                  <p className="text-5xl font-black text-warning tracking-wider mb-4">
                     SYNC FAILED
                   </p>
                   <div className="text-left px-4 mt-2">
@@ -1364,14 +1331,15 @@ export default function AccountPage() {
                     </p>
                   </div>
                   {/* 重试按钮 */}
-                  <button
-                    onClick={() => retrySyncAccount(selectedAccount.id)}
-                    disabled={isRefreshing}
-                    className="mt-4 px-6 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto"
+                  <Button
+                    variant="secondary"
+                    onPress={() => retrySyncAccount(selectedAccount.id)}
+                    isDisabled={isRefreshing}
+                    className="mt-4 text-warning"
                   >
                     {isRefreshing ? (
                       <>
-                        <Spinner size="sm" color="white" />
+                        <Spinner size="sm" color="current" />
                         {i18n.language === "zh" ? "重试中..." : "Retrying..."}
                       </>
                     ) : (
@@ -1379,7 +1347,7 @@ export default function AccountPage() {
                         ↻ {i18n.language === "zh" ? "重试同步" : "Retry Sync"}
                       </>
                     )}
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 /* 正常账户信息 */
@@ -1499,8 +1467,8 @@ export default function AccountPage() {
                       key={role.roleId}
                       className={`cursor-pointer transition-all duration-200 w-full ${
                         selectedRoles.includes(role.roleId)
-                          ? "border-[3px] border-green-400 dark:border-green-300 bg-green-50 dark:bg-green-900/50 shadow-md"
-                          : "border-2 border-separator hover:border-green-400/50 hover:shadow-sm hover:bg-content2 dark:hover:bg-content2/50"
+                          ? "border-[3px] border-success bg-success/10 dark:bg-success/20 shadow-md"
+                          : "border-2 border-separator hover:border-success/50 hover:shadow-sm hover:bg-content2 dark:hover:bg-content2/50"
                       }`}
                       onClick={() => handleRoleToggle(role.roleId)}
                     >
