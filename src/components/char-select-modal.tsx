@@ -1,11 +1,11 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
-import { Button, Alert, RadioGroup, Radio, ProgressCircle } from "@heroui/react";
+import { Button, Alert, ProgressCircle } from "@heroui/react";
 import {
   CustomModal,
   CustomModalHeader,
   CustomModalBody,
 } from "./custom-modal";
-import { CharDetailData } from "@/types/charDetail";
+import { CharDetailData, CharacterItem } from "@/types/charDetail";
 import { SkillDescription } from "@/utils/skillDescParser";
 import { useTranslation } from "react-i18next";
 import { Img } from "@/utils/imageLoader";
@@ -15,6 +15,19 @@ import { getConfig } from "@/utils/configService";
 import { invoke } from "@tauri-apps/api/core";
 import { logError } from "@/utils/logger";
 
+// ====== 图标资源路径（占位，等用户提供资源文件）======
+// 职业图标：/src/assets/icons/profession/<profession.key>.png
+//   已知 key 例子：profession_caster, profession_guard, profession_medic, profession_sniper, ...
+// 属性图标：/src/assets/icons/property/<property.key>.png
+//   已知 key 例子：char_property_cryst, char_property_phys, ...
+// 资源就位后，本组件无需改动，直接可用
+const ICON_BASE = "/src/assets/icons";
+const professionIconUrl = (key: string) => `${ICON_BASE}/profession/${key}.png`;
+const propertyIconUrl = (key: string) => `${ICON_BASE}/property/${key}.png`;
+const RARITY_ICON_URL = "/src/assets/rarity.svg";
+
+type FilterKey = "profession" | "rarity" | "property" | "weapon" | "mainAttr" | "subAttr";
+
 interface CharSelectModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -22,6 +35,236 @@ interface CharSelectModalProps {
   selectedCharIds: string[];
   onSave: (selectedIds: string[]) => void;
   roleId: string;
+}
+
+// ====== 稀有度色阶（WIKI 风格的稀有度 tone）======
+function rarityTone(value: string): "orange" | "gold" | "purple" | "blue" {
+  if (value === "6") return "orange";
+  if (value === "5") return "gold";
+  if (value === "4") return "purple";
+  return "blue";
+}
+const rarityToneClass: Record<ReturnType<typeof rarityTone>, string> = {
+  orange: "text-orange-500",
+  gold: "text-yellow-500",
+  purple: "text-purple-500",
+  blue: "text-blue-500",
+};
+
+// ====== WIKI 风格 FloatSelect ======
+// 仿 WIKI 的 FloatSelect__SelectTrigger：标签 + 下拉箭头
+// 点开后是绝对定位的下拉面板；点击外部自动关闭
+interface FloatSelectOption {
+  value: string;
+  label: string;
+  tone?: ReturnType<typeof rarityTone>;
+}
+function FloatSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: FloatSelectOption[];
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [open]);
+
+  const current = options.find((o) => o.value === value) ?? options[0];
+
+  return (
+    <div ref={wrapRef} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-1.5 h-8 pl-2.5 pr-2 rounded-md border text-xs transition-colors cursor-pointer
+          ${open ? "border-blue-500 bg-white dark:bg-neutral-800" : "border-separator bg-white dark:bg-neutral-800 hover:border-blue-400/60"}`}
+      >
+        <span className="text-muted">{label}</span>
+        <span
+          className={`font-semibold ${current?.tone ? rarityToneClass[current.tone] : "text-foreground"}`}
+        >
+          {current?.label ?? "—"}
+        </span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 12 12"
+          className={`w-3 h-3 text-default-500 transition-transform ${open ? "rotate-180" : ""}`}
+        >
+          <path
+            fill="currentColor"
+            fillRule="evenodd"
+            d="M6 8.617 2.04 4.289h7.92z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </button>
+      {open && (
+        <div
+          className="absolute left-0 top-full mt-1 z-50 min-w-full max-h-64 overflow-y-auto rounded-md border border-separator bg-white dark:bg-neutral-900 shadow-lg"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {options.map((opt) => {
+            const active = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+                className={`w-full text-left px-3 py-1.5 text-xs whitespace-nowrap transition-colors cursor-pointer
+                  ${active ? "bg-blue-500/15 text-blue-500 font-semibold" : "text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-800"}`}
+              >
+                {opt.tone ? (
+                  <span className={rarityToneClass[opt.tone]}>{opt.label}</span>
+                ) : (
+                  opt.label
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ====== WIKI OperatorCard ======
+// 复刻 WIKI 列表卡：全幅立绘背景 + 渐变蒙版 + 顶角稀有度星 + 右上 pin/LED + 底栏图标+名称+稀有度色条
+function OperatorCard({
+  char,
+  isPinned,
+  onOpenDetail,
+  onSelectSlot,
+}: {
+  char: CharacterItem;
+  isPinned: boolean;
+  onOpenDetail: () => void;
+  onSelectSlot: () => void;
+}) {
+  const data = char.charData;
+  const coverUrl = data.illustrationUrl || data.avatarRtUrl || data.avatarSqUrl;
+  const rarityValue = data.rarity.value;
+  const lineColor = rarityLineColorLocal(rarityValue);
+  const subProp = (() => {
+    const tags = data.tags || [];
+    return tags.find((t) => t && t !== data.property.value) ?? null;
+  })();
+
+  return (
+    <div
+      className={`group relative aspect-[3/4] rounded-lg overflow-hidden border bg-content1 cursor-pointer transition-all duration-200
+        ${isPinned ? "border-blue-500 ring-1 ring-blue-500/40" : "border-separator hover:border-blue-400/60 hover:shadow-md"}`}
+      onClick={onOpenDetail}
+    >
+      {/* 全幅立绘（走 imageCacheManager 转 blob URL，object-cover 铺满） */}
+      <Img
+        src={coverUrl}
+        alt={data.name}
+        className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+        loading="lazy"
+        draggable={false}
+      />
+      {/* 顶部轻微渐变（角标可读） */}
+      <div className="absolute inset-x-0 top-0 h-1/5 bg-gradient-to-b from-black/55 to-transparent pointer-events-none" />
+
+      {/* 左上：profession + property 图标，垂直堆叠，无底 */}
+      <div className="absolute top-1.5 left-1.5 z-10 flex flex-col gap-0.5">
+        <img
+          src={professionIconUrl(data.profession.key)}
+          alt={data.profession.value}
+          title={data.profession.value}
+          className="w-6 h-6 object-contain drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+          }}
+        />
+        <img
+          src={propertyIconUrl(data.property.key)}
+          alt={data.property.value}
+          title={data.property.value}
+          className="w-6 h-6 object-contain drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+          }}
+        />
+      </div>
+
+      {/* 右上：pin 按钮（未 pin）或 LED 指示（已 pin） */}
+      <div className="absolute top-1.5 right-1.5 z-10">
+        {isPinned ? (
+          <div
+            className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.85)]"
+            title="Pinned"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectSlot();
+            }}
+            className="w-6 h-6 rounded-full bg-black/40 hover:bg-black/65 backdrop-blur-sm flex items-center justify-center text-white/85 hover:text-white transition-colors cursor-pointer"
+            title="Pin"
+            aria-label="Pin to slot"
+          >
+            <svg
+              className="w-3.5 h-3.5 rotate-45"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M16 9V4l1 0c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1l1 0v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {/* 底栏：白色条带 + 名字 + 稀有度色条（WIKI 风格） */}
+      <div className="absolute inset-x-0 bottom-0 z-10">
+        <div className="bg-white dark:bg-black px-2 py-1 flex items-center gap-1.5">
+          <span className="text-[10px] text-gray-500 dark:text-gray-400 shrink-0">
+            {subProp ?? "OP"}
+          </span>
+          <span className="flex-1 min-w-0 text-sm font-medium text-black dark:text-white truncate text-right">
+            {data.name}
+          </span>
+        </div>
+        <div
+          className="h-[3px] w-full"
+          style={{ backgroundColor: lineColor }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// 模块级稀有度色条（与 OperatorCard 同源；后续可提取共享）
+function rarityLineColorLocal(value: string): string {
+  switch (value) {
+    case "6":
+      return "#ff7100";
+    case "5":
+      return "#ffcc00";
+    case "4":
+      return "#b380ff";
+    default:
+      return "transparent";
+  }
 }
 
 export function CharSelectModal({
@@ -80,10 +323,29 @@ export function CharSelectModal({
     null,
   );
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [filterProfession, setFilterProfession] = useState<string>("all");
-  const [filterProperty, setFilterProperty] = useState<string>("all");
-  const [filterRarity, setFilterRarity] = useState<string>("all");
-  const [showFilters, setShowFilters] = useState<boolean>(false);
+
+  // 6 维筛选：每个维度独立
+  const [filters, setFilters] = useState<Record<FilterKey, string>>({
+    profession: "all",
+    rarity: "all",
+    property: "all",
+    weapon: "all",
+    mainAttr: "all",
+    subAttr: "all",
+  });
+  const setFilter = (key: FilterKey, value: string) =>
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  const resetFilters = () =>
+    setFilters({
+      profession: "all",
+      rarity: "all",
+      property: "all",
+      weapon: "all",
+      mainAttr: "all",
+      subAttr: "all",
+    });
+
+  const [showFilters, setShowFilters] = useState<boolean>(true);
   const [showBackToTop, setShowBackToTop] = useState<boolean>(false);
   const [scrollPercent, setScrollPercent] = useState<number>(0);
   const [isHoveringBackToTop, setIsHoveringBackToTop] =
@@ -107,10 +369,8 @@ export function CharSelectModal({
       setSuccessMessage(null); // Clear success message
       setSelectedDetailItem(null);
       setDetailActive(false);
-      setFilterProfession("all"); // Reset filters
-      setFilterProperty("all");
-      setFilterRarity("all");
-      setShowFilters(false); // Hide filter panel
+      resetFilters();
+      setShowFilters(true); // Keep filter panel visible
       wikiCleanupRef.current = false;
       resetWikiState();
     } else {
@@ -238,7 +498,7 @@ export function CharSelectModal({
         {Array.from({ length: count }).map((_, i) => (
           <img
             key={i}
-            src="/src/assets/rarity.svg"
+            src={RARITY_ICON_URL}
             alt=""
             className="inline-block"
             style={{ width: `${size}px`, height: `${size}px` }}
@@ -248,7 +508,7 @@ export function CharSelectModal({
     );
   }
 
-  // Sort characters: pinned first, then by rarity (desc), then name (asc)
+  // 排序：pinned first → rarity desc → level desc → name asc
   const sortedCharacters = [...charDetail.chars].sort((a, b) => {
     const aPinned = tempSelectedIds.includes(a.charData.id);
     const bPinned = tempSelectedIds.includes(b.charData.id);
@@ -257,58 +517,91 @@ export function CharSelectModal({
     if (aPinned && !bPinned) return -1;
     if (!aPinned && bPinned) return 1;
 
-    // Then sort by rarity (desc)
-    const rarityA = parseInt(a.charData.rarity.value) || 0;
-    const rarityB = parseInt(b.charData.rarity.value) || 0;
+    // 1) 稀有度降序
+    const rA = parseInt(a.charData.rarity.value) || 0;
+    const rB = parseInt(b.charData.rarity.value) || 0;
+    if (rB !== rA) return rB - rA;
 
-    if (rarityB !== rarityA) {
-      return rarityB - rarityA;
-    }
+    // 2) 等级降序
+    const lA = a.level ?? 0;
+    const lB = b.level ?? 0;
+    if (lB !== lA) return lB - lA;
 
-    // Finally by name (asc)
-    return a.charData.name.localeCompare(b.charData.name);
+    // 3) 名称升序
+    return a.charData.name.localeCompare(b.charData.name, "zh-Hans-CN");
   });
 
-  // Get unique professions for filter options
-  const uniqueProfessions = Array.from(
-    new Set(charDetail.chars.map((c) => c.charData.profession.value)),
-  ).sort();
+  // 副能力派生：从 charData.tags 中提取非主属性的 tag 作为 sub-property
+  // （WIKI 中主能力=property，副能力可来自 tags 数组；数据无明确字段时为 null）
+  const getSubProperty = (char: CharacterItem): string | null => {
+    const tags = char.charData.tags || [];
+    const mainValue = char.charData.property.value;
+    for (const tag of tags) {
+      if (tag && tag !== mainValue) return tag;
+    }
+    return null;
+  };
 
-  // Get unique properties for filter options
-  const uniqueProperties = Array.from(
-    new Set(charDetail.chars.map((c) => c.charData.property.value)),
-  ).sort();
+  // 6 维筛选选项
+  const uniqueProfessions = useMemo(
+    () =>
+      Array.from(
+        new Set(charDetail.chars.map((c) => c.charData.profession.value)),
+      ).sort(),
+    [charDetail.chars],
+  );
 
-  // Get unique rarities for filter options
-  const uniqueRarities = Array.from(
-    new Set(charDetail.chars.map((c) => c.charData.rarity.value)),
-  ).sort((a, b) => parseInt(b) - parseInt(a)); // Sort descending
+  const uniqueProperties = useMemo(
+    () =>
+      Array.from(
+        new Set(charDetail.chars.map((c) => c.charData.property.value)),
+      ).sort(),
+    [charDetail.chars],
+  );
 
-  // Filter characters based on selected filters
+  const uniqueRarities = useMemo(
+    () =>
+      Array.from(
+        new Set(charDetail.chars.map((c) => c.charData.rarity.value)),
+      ).sort((a, b) => parseInt(b) - parseInt(a)),
+    [charDetail.chars],
+  );
+
+  const uniqueWeapons = useMemo(
+    () =>
+      Array.from(
+        new Set(charDetail.chars.map((c) => c.charData.weaponType.value)),
+      ).sort(),
+    [charDetail.chars],
+  );
+
+  // 主能力 = property
+  const uniqueMainAttrs = uniqueProperties;
+
+  // 副能力：所有非空 sub-property 去重
+  const uniqueSubAttrs = useMemo(() => {
+    const set = new Set<string>();
+    charDetail.chars.forEach((c) => {
+      const sub = getSubProperty(c);
+      if (sub) set.add(sub);
+    });
+    return Array.from(set).sort();
+  }, [charDetail.chars]);
+
+  // 过滤
   const filteredCharacters = sortedCharacters.filter((char) => {
-    const charData = char.charData;
-
-    // Apply profession filter
-    if (
-      filterProfession !== "all" &&
-      charData.profession.value !== filterProfession
-    ) {
-      return false;
+    const data = char.charData;
+    if (filters.profession !== "all" && data.profession.value !== filters.profession) return false;
+    if (filters.rarity !== "all" && data.rarity.value !== filters.rarity) return false;
+    if (filters.property !== "all" && data.property.value !== filters.property) return false;
+    if (filters.weapon !== "all" && data.weaponType.value !== filters.weapon) return false;
+    // 主能力 = property，等价于单独筛选
+    if (filters.mainAttr !== "all" && data.property.value !== filters.mainAttr) return false;
+    // 副能力：tag 中非主属性的项
+    if (filters.subAttr !== "all") {
+      const sub = getSubProperty(char);
+      if (sub !== filters.subAttr) return false;
     }
-
-    // Apply property filter
-    if (
-      filterProperty !== "all" &&
-      charData.property.value !== filterProperty
-    ) {
-      return false;
-    }
-
-    // Apply rarity filter
-    if (filterRarity !== "all" && charData.rarity.value !== filterRarity) {
-      return false;
-    }
-
     return true;
   });
 
@@ -322,11 +615,16 @@ export function CharSelectModal({
     return charDetail.chars.find((c) => c.charData.id === id);
   };
 
-  // Compute image paths for cache requests
+  // Compute image paths for cache requests（OperatorCard 用 illustrationUrl 作 cover）
   const gridAvatarPaths = useMemo(
     () =>
       charDetail.chars
-        .map((c) => c.charData.avatarRtUrl || c.charData.avatarSqUrl)
+        .map(
+          (c) =>
+            c.charData.illustrationUrl ||
+            c.charData.avatarRtUrl ||
+            c.charData.avatarSqUrl,
+        )
         .filter(Boolean),
     [charDetail.chars],
   );
@@ -765,22 +1063,13 @@ export function CharSelectModal({
                 <h2>
                   {t("settings.characters.pin_characters", { max: MAX_SELECTION })}
                 </h2>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <span className="text-sm text-muted">
                     {t("settings.characters.pinned_count", {
                       count: tempSelectedIds.filter((id) => id).length,
                       max: MAX_SELECTION,
                     })}
                   </span>
-                  <Button
-                    size="sm"
-                    variant={showFilters ? "primary" : "outline"}
-                    onPress={() => setShowFilters(!showFilters)}
-                  >
-                    {showFilters
-                      ? t("common.hide_filters")
-                      : t("common.show_filters")}
-                  </Button>
                 </div>
               </div>
             ) : viewMode === "select-slot" ? (
@@ -815,125 +1104,75 @@ export function CharSelectModal({
           <CustomModalBody ref={modalBodyRef} onScroll={handleScroll} className="!p-0">
         {viewMode === "list" ? (
           <div className="space-y-4">
-            {/* Filter Section */}
+            {/* Filter Section — 6 维 FloatSelect（WIKI 风格） */}
             {showFilters && (
-              <div className="pb-4 border-b border-separator space-y-4">
-                {/* Profession Filter */}
-                <div>
-                  <p className="text-sm font-semibold mb-2">
-                    {t("filters.profession")}
-                  </p>
-                  <RadioGroup
-                    orientation="horizontal"
-                    value={filterProfession}
-                    onChange={(value) => setFilterProfession(value)}
-                    className="gap-2 flex-wrap"
-                  >
-                    <Radio
-                      value="all"
-                      className="px-4 py-2.5 rounded-lg border-2 border-default-300 data-[selected=true]:border-blue-600 data-[selected=true]:bg-blue-500/20 data-[selected=true]:shadow-[0_0_12px_rgba(37,99,235,0.5)] transition-all duration-200 hover:border-default-400"
-                    >
-                      <span className="text-sm font-bold">
-                        {t("filters.all_professions")}
-                      </span>
-                    </Radio>
-                    {uniqueProfessions.map((prof) => (
-                      <Radio
-                        key={prof}
-                        value={prof}
-                        className="px-4 py-2.5 rounded-lg border-2 border-default-300 data-[selected=true]:border-blue-600 data-[selected=true]:bg-blue-500/20 data-[selected=true]:shadow-[0_0_12px_rgba(37,99,235,0.5)] transition-all duration-200 hover:border-default-400"
-                      >
-                        <span className="text-sm font-bold">{prof}</span>
-                      </Radio>
-                    ))}
-                  </RadioGroup>
-                </div>
+              <div className="px-6 pt-4 pb-3 border-b border-separator space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <FloatSelect
+                    label={t("filters.profession")}
+                    value={filters.profession}
+                    options={[
+                      { value: "all", label: t("filters.all_professions") },
+                      ...uniqueProfessions.map((v) => ({ value: v, label: v })),
+                    ]}
+                    onChange={(v) => setFilter("profession", v)}
+                  />
+                  <FloatSelect
+                    label={t("filters.rarity")}
+                    value={filters.rarity}
+                    options={[
+                      { value: "all", label: t("filters.all_rarities") },
+                      ...uniqueRarities.map((v) => ({
+                        value: v,
+                        label: `${v}★`,
+                        tone: rarityTone(v),
+                      })),
+                    ]}
+                    onChange={(v) => setFilter("rarity", v)}
+                  />
+                  <FloatSelect
+                    label={t("filters.property")}
+                    value={filters.property}
+                    options={[
+                      { value: "all", label: t("filters.all_properties") },
+                      ...uniqueProperties.map((v) => ({ value: v, label: v })),
+                    ]}
+                    onChange={(v) => setFilter("property", v)}
+                  />
+                  <FloatSelect
+                    label={t("filters.weapon")}
+                    value={filters.weapon}
+                    options={[
+                      { value: "all", label: t("filters.all_weapons") },
+                      ...uniqueWeapons.map((v) => ({ value: v, label: v })),
+                    ]}
+                    onChange={(v) => setFilter("weapon", v)}
+                  />
+                  <FloatSelect
+                    label={t("filters.mainAttr")}
+                    value={filters.mainAttr}
+                    options={[
+                      { value: "all", label: t("filters.all_mainAttrs") },
+                      ...uniqueMainAttrs.map((v) => ({ value: v, label: v })),
+                    ]}
+                    onChange={(v) => setFilter("mainAttr", v)}
+                  />
+                  <FloatSelect
+                    label={t("filters.subAttr")}
+                    value={filters.subAttr}
+                    options={[
+                      { value: "all", label: t("filters.all_subAttrs") },
+                      ...uniqueSubAttrs.map((v) => ({ value: v, label: v })),
+                    ]}
+                    onChange={(v) => setFilter("subAttr", v)}
+                  />
 
-                {/* Property Filter */}
-                <div>
-                  <p className="text-sm font-semibold mb-2">
-                    {t("filters.property")}
-                  </p>
-                  <RadioGroup
-                    orientation="horizontal"
-                    value={filterProperty}
-                    onChange={(value) => setFilterProperty(value)}
-                    className="gap-2 flex-wrap"
-                  >
-                    <Radio
-                      value="all"
-                      className="px-4 py-2.5 rounded-lg border-2 border-default-300 data-[selected=true]:border-blue-600 data-[selected=true]:bg-blue-500/20 data-[selected=true]:shadow-[0_0_12px_rgba(37,99,235,0.5)] transition-all duration-200 hover:border-default-400"
-                    >
-                      <span className="text-sm font-bold">
-                        {t("filters.all_properties")}
-                      </span>
-                    </Radio>
-                    {uniqueProperties.map((prop) => (
-                      <Radio
-                        key={prop}
-                        value={prop}
-                        className="px-4 py-2.5 rounded-lg border-2 border-default-300 data-[selected=true]:border-blue-600 data-[selected=true]:bg-blue-500/20 data-[selected=true]:shadow-[0_0_12px_rgba(37,99,235,0.5)] transition-all duration-200 hover:border-default-400"
-                      >
-                        <span className="text-sm font-bold">{prop}</span>
-                      </Radio>
-                    ))}
-                  </RadioGroup>
-                </div>
-
-                {/* Rarity Filter */}
-                <div>
-                  <p className="text-sm font-semibold mb-2">
-                    {t("filters.rarity")}
-                  </p>
-                  <RadioGroup
-                    orientation="horizontal"
-                    value={filterRarity}
-                    onChange={(value) => setFilterRarity(value)}
-                    className="gap-2 flex-wrap"
-                  >
-                    <Radio
-                      value="all"
-                      className="px-4 py-2.5 rounded-lg border-2 border-default-300 data-[selected=true]:border-blue-600 data-[selected=true]:bg-blue-500/20 data-[selected=true]:shadow-[0_0_12px_rgba(37,99,235,0.5)] transition-all duration-200 hover:border-default-400"
-                    >
-                      <span className="text-sm font-bold">
-                        {t("filters.all_rarities")}
-                      </span>
-                    </Radio>
-                    {uniqueRarities.map((rar) => (
-                      <Radio
-                        key={rar}
-                        value={rar}
-                        className="px-4 py-2.5 rounded-lg border-2 border-default-300 data-[selected=true]:border-blue-600 data-[selected=true]:bg-blue-500/20 data-[selected=true]:shadow-[0_0_12px_rgba(37,99,235,0.5)] transition-all duration-200 hover:border-default-400"
-                      >
-                        <span
-                          className={`text-sm font-bold ${
-                            rar === "6"
-                              ? "text-red-500"
-                              : rar === "5"
-                                ? "text-yellow-500"
-                                : rar === "4"
-                                  ? "text-purple-500"
-                                  : "text-blue-500"
-                          }`}
-                        >
-                          {rar}★
-                        </span>
-                      </Radio>
-                    ))}
-                  </RadioGroup>
-                </div>
-
-                {/* Reset Filters Button */}
-                <div className="flex justify-center pt-2">
                   <Button
                     size="sm"
                     variant="outline"
-                    className="gap-2"
-                    onPress={() => {
-                      setFilterProfession("all");
-                      setFilterProperty("all");
-                      setFilterRarity("all");
-                    }}
+                    isIconOnly
+                    aria-label={t("common.clear")}
+                    onPress={resetFilters}
                   >
                     <svg
                       className="w-4 h-4"
@@ -948,93 +1187,33 @@ export function CharSelectModal({
                         d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                       />
                     </svg>
-                    {t("common.clear")}
                   </Button>
                 </div>
               </div>
             )}
 
-            {/* Character Grid */}
+            {/* Character Grid — WIKI OperatorCard 风格 */}
             {filteredCharacters.length === 0 ? (
               <div className="text-center py-8 text-muted">
                 <p>{t("common.no_results_found") || "No characters found"}</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filteredCharacters.map((char) => {
-                  const charData = char.charData;
-                  const isPinned = tempSelectedIds.includes(charData.id);
-
-                  return (
-                    <div
-                      key={charData.id}
-                      className={`relative p-3 rounded-lg border transition-all cursor-pointer hover:shadow-md ${
-                        isPinned
-                          ? "border-blue-600"
-                          : "border-separator bg-content1 hover:border-primary/50"
-                      }`}
-                      onClick={() => {
-                        setDetailCharId(charData.id);
-                        setViewMode("detail");
-                      }}
-                    >
-                      {/* LED Indicator for pinned status */}
-                      {isPinned && (
-                        <div className="absolute top-2 right-2 z-10">
-                          <div className="w-2.5 h-2.5 rounded-full bg-blue-600 shadow-[0_0_6px_rgba(37,99,235,0.6)] dark:shadow-[0_0_8px_rgba(37,99,235,0.8)]" />
-                        </div>
-                      )}
-
-                      {/* Character Avatar and Info */}
-                      <div className="flex items-start gap-3">
-                        <div className="flex flex-col flex-shrink-0">
-                          <Img
-                            src={charData.avatarRtUrl || charData.avatarSqUrl}
-                            alt={charData.name}
-                            className="w-16 h-20 rounded-t-lg object-cover"
-                          />
-                           <div className="w-full h-[3px] shrink-0 rounded-b-lg" style={{ backgroundColor: rarityLineColor(charData.rarity.value) }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold truncate text-sm min-w-[80px]">
-                              {charData.name}
-                            </h3>
-                          </div>
-                          <div className="flex items-center gap-1 mb-1">
-                            {renderRarityIcons(charData.rarity.value, 14)}
-                          </div>
-                          <p className="text-xs text-muted mb-2">
-                            {charData.profession.value} •{" "}
-                            {charData.property.value}
-                          </p>
-
-                          {/* Pin Icon for unpinned characters */}
-                          {!isPinned && (
-                            <div className="flex justify-end mt-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectingCharId(charData.id);
-                                  setViewMode("select-slot");
-                                }}
-                                className="p-1 hover:bg-default-100 rounded transition-colors cursor-pointer"
-                              >
-                                <svg
-                                  className="w-5 h-5 text-gray-400 dark:text-gray-600 rotate-45 hover:text-black dark:hover:text-white transition-colors"
-                                  fill="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path d="M16 9V4l1 0c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1l1 0v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z" />
-                                </svg>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2.5 px-6 pb-6">
+                {filteredCharacters.map((char) => (
+                  <OperatorCard
+                    key={char.charData.id}
+                    char={char}
+                    isPinned={tempSelectedIds.includes(char.charData.id)}
+                    onOpenDetail={() => {
+                      setDetailCharId(char.charData.id);
+                      setViewMode("detail");
+                    }}
+                    onSelectSlot={() => {
+                      setSelectingCharId(char.charData.id);
+                      setViewMode("select-slot");
+                    }}
+                  />
+                ))}
               </div>
             )}
           </div>

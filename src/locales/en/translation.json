@@ -71,9 +71,15 @@
     "profession": "Profession",
     "property": "Property",
     "rarity": "Rarity",
+    "weapon": "Weapon",
+    "mainAttr": "Main Attr",
+    "subAttr": "Sub Attr",
     "all_professions": "All Professions",
     "all_properties": "All Properties",
-    "all_rarities": "All Rarities"
+    "all_rarities": "All Rarities",
+    "all_weapons": "All Weapons",
+    "all_mainAttrs": "All Main Attrs",
+    "all_subAttrs": "All Sub Attrs"
   },
   "settings": {
     "title": "Settings",

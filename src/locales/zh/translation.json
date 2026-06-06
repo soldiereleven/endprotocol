@@ -71,9 +71,15 @@
     "profession": "职业",
     "property": "属性",
     "rarity": "星级",
+    "weapon": "武器",
+    "mainAttr": "主能力",
+    "subAttr": "副能力",
     "all_professions": "全部职业",
     "all_properties": "全部属性",
-    "all_rarities": "全部星级"
+    "all_rarities": "全部星级",
+    "all_weapons": "全部武器",
+    "all_mainAttrs": "全部主能力",
+    "all_subAttrs": "全部副能力"
   },
   "settings": {
     "title": "设置",

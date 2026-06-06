@@ -12,8 +12,6 @@ import { useCardData } from "../base/use-card-data";
 import { Img } from "@/utils/imageLoader";
 import { useImageRequest, usePinImages } from "@/utils/imageCacheManager";
 
-const SORT_OPTIONS: SortOrder[] = ["rarity", "name", "level"];
-
 function getDefaultSelectedCharIds(chars: CharacterItem[]): string[] {
   return chars.slice(0, 3).map((c) => c.charData.id);
 }
@@ -118,15 +116,6 @@ export default function CharacterListCard({
     }
   }, [processedCharDetail, loadSettings]);
 
-  const handleSortChange = async (newOrder: SortOrder) => {
-    setSortOrder(newOrder);
-    try {
-      await CardConfigService.updateCardSetting(cardId, "sortOrder", newOrder);
-    } catch (error) {
-      logError("Failed to save sort order:", error);
-    }
-  };
-
   const selectedCharacters = useMemo(() => {
     const chars = getSelectedCharacters(processedCharDetail, selectedCharIds);
     return sortCharacters(chars, sortOrder);
@@ -159,29 +148,70 @@ export default function CharacterListCard({
     }
   }
 
+  const ICON_BASE = "/src/assets/icons";
+  const professionIconUrl = (key: string) => `${ICON_BASE}/profession/${key}.png`;
+  const propertyIconUrl = (key: string) => `${ICON_BASE}/property/${key}.png`;
+
   function renderCharSlot(char: CharacterItem) {
-    const hasLevel = char.level != null;
-    const rarityValue = char.charData.rarity.value;
+    const data = char.charData;
+    const coverUrl = data.illustrationUrl || data.avatarRtUrl || data.avatarSqUrl;
     return (
-      <div key={char.charData.id} className="relative group h-full min-h-0 flex flex-col">
-        <div className="relative flex-1 min-h-0">
-          <Img
-            src={char.charData.avatarRtUrl || char.charData.avatarSqUrl}
-            alt={char.charData.name}
-            className="w-full h-full object-cover rounded-t-lg shadow-sm"
+      <div
+        key={data.id}
+        className="group relative h-full w-full rounded-md overflow-hidden border border-separator bg-content1 transition-all duration-200 hover:border-blue-400/60 hover:shadow-md"
+      >
+        <Img
+          src={coverUrl}
+          alt={data.name}
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+          draggable={false}
+        />
+        <div className="absolute inset-x-0 top-0 h-1/4 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
+
+        {/* 左上：profession + property 图标，无底 */}
+        <div className="absolute top-1.5 left-1.5 z-10 flex flex-col gap-0.5">
+          <img
+            src={professionIconUrl(data.profession.key)}
+            alt={data.profession.value}
+            title={data.profession.value}
+            className="w-6 h-6 object-contain drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+            }}
           />
-          <div className="absolute top-1 left-1 right-1 flex items-center justify-between">
-            <span className="text-white text-[10px] font-bold truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
-              {char.charData.name}
-            </span>
-            {hasLevel && (
-              <span className="text-white text-[10px] font-bold shrink-0 ml-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
-                Lv.{char.level}
-              </span>
-            )}
-          </div>
+          <img
+            src={propertyIconUrl(data.property.key)}
+            alt={data.property.value}
+            title={data.property.value}
+            className="w-6 h-6 object-contain drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+            }}
+          />
         </div>
-        <div className="w-full h-[3px] shrink-0 rounded-b-lg" style={{ backgroundColor: rarityLineColor(rarityValue) }} />
+
+        {/* 右上：Lv. 标签 */}
+        {char.level != null && (
+          <div className="absolute top-1.5 right-1.5 z-10">
+            <span className="text-white text-[10px] font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+              Lv.{char.level}
+            </span>
+          </div>
+        )}
+
+        {/* 底栏：名字 + 稀有度色条（半透明渐变，图片尽量占满） */}
+        <div className="absolute inset-x-0 bottom-0 z-10">
+          <div className="bg-gradient-to-t from-black/85 via-black/55 to-transparent px-1.5 pt-4 pb-1">
+            <span className="block text-xs font-medium text-white truncate drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]">
+              {data.name}
+            </span>
+          </div>
+          <div
+            className="h-[3px] w-full"
+            style={{ backgroundColor: rarityLineColor(data.rarity.value) }}
+          />
+        </div>
       </div>
     );
   }
@@ -223,32 +253,13 @@ export default function CharacterListCard({
           </div>
 
           {isEditMode && (
-            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-              <span className="text-[11px] text-muted mr-0.5">
-                {t("card:sort_order")}:
-              </span>
-              {SORT_OPTIONS.map((opt) => {
-                const labelKey = `card:sort_${opt}`;
-                const isActive = sortOrder === opt;
-                return (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => handleSortChange(opt)}
-                    className={`px-2 py-0.5 text-[11px] rounded border transition-all cursor-pointer ${
-                      isActive
-                        ? "bg-blue-500 text-white border-blue-500"
-                        : "bg-default-50 text-muted border-separator hover:border-blue-400"
-                    }`}
-                  >
-                    {t(labelKey) || opt}
-                  </button>
-                );
-              })}
+            <div className="text-[11px] text-muted shrink-0">
+              {/* 编辑模式不再显示排序控件，排序由 CharacterSelectModal 内 FloatSelect 右侧图标控制 */}
+              {t("card:title")}
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-2 flex-1 min-h-0">
+          <div className="grid grid-cols-3 gap-3 flex-1 min-h-0">
             {selectedCharacters.map(renderCharSlot)}
 
             {Array.from({
@@ -256,7 +267,7 @@ export default function CharacterListCard({
             }).map((_, index) => (
               <div
                 key={`empty-${index}`}
-                className="h-full rounded-lg border-2 border-dashed border-separator flex flex-col items-center justify-center bg-default-50"
+                className="h-full rounded-md border-2 border-dashed border-separator flex flex-col items-center justify-center bg-default-50"
               >
                 <svg
                   className="w-6 h-6 mb-1 text-muted opacity-50"
