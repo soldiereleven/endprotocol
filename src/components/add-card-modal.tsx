@@ -240,7 +240,7 @@ export function AddCardModal({
           {t("common.cancel") || "Cancel"}
         </Button>
         <Button
-          color="primary"
+          variant="primary"
           isDisabled={!selectedType}
           onPress={handleConfirm}
         >

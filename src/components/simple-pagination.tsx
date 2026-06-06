@@ -1,7 +1,6 @@
-import { Button } from "@heroui/react";
-import clsx from "clsx";
+import { Pagination } from "@heroui/react";
 
-interface PaginationProps {
+interface SimplePaginationProps {
   total: number;
   page: number;
   onChange: (page: number) => void;
@@ -9,129 +8,90 @@ interface PaginationProps {
   showControls?: boolean;
 }
 
-export const SimplePagination: React.FC<PaginationProps> = ({
+/**
+ * 统一的分页组件
+ * 基于 HeroUI v3 Pagination compound API 构建
+ */
+export const SimplePagination: React.FC<SimplePaginationProps> = ({
   total,
   page,
   onChange,
   siblingsCount = 1,
   showControls = true,
 }) => {
-  // Always render at least a single-page control so UI remains visible
   if (total < 1) return null;
 
-  const getPageNumbers = () => {
-    const leftSiblingIndex = Math.max(page - siblingsCount, 1);
-    const rightSiblingIndex = Math.min(page + siblingsCount, total);
+  const pages: Array<number | "ellipsis-start" | "ellipsis-end"> = [];
+  const last = total;
+  const first = 1;
 
-    const shouldShowLeftDots = leftSiblingIndex > 2;
-    const shouldShowRightDots = rightSiblingIndex < total - 1;
-
-    if (!shouldShowLeftDots && shouldShowRightDots) {
-      const leftItemCount = 3 + 2 * siblingsCount;
-      const leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1);
-      return [...leftRange, "...", total];
-    }
-
-    if (shouldShowLeftDots && !shouldShowRightDots) {
-      const rightItemCount = 3 + 2 * siblingsCount;
-      const rightRange = Array.from(
-        { length: rightItemCount },
-        (_, i) => total - rightItemCount + i + 1,
-      );
-      return [1, "...", ...rightRange];
-    }
-
-    if (shouldShowLeftDots && shouldShowRightDots) {
-      const middleRange = Array.from(
-        { length: rightSiblingIndex - leftSiblingIndex + 1 },
-        (_, i) => leftSiblingIndex + i,
-      );
-      return [1, "...", ...middleRange, "...", total];
-    }
-
-    return Array.from({ length: total }, (_, i) => i + 1);
+  const range = (start: number, end: number) => {
+    for (let i = start; i <= end; i++) pages.push(i);
   };
 
-  const pageNumbers = getPageNumbers();
+  if (total <= 7) {
+    range(1, total);
+  } else {
+    if (page <= 3) {
+      range(1, 4);
+      pages.push("ellipsis-start");
+      pages.push(last);
+    } else if (page >= total - 2) {
+      pages.push(first);
+      pages.push("ellipsis-end");
+      range(total - 3, total);
+    } else {
+      pages.push(first);
+      pages.push("ellipsis-start");
+      range(page - 1, page + 1);
+      pages.push("ellipsis-end");
+      pages.push(last);
+    }
+  }
 
   return (
-    <div className="flex items-center justify-center gap-2">
-      {/* Previous button */}
-      {showControls && (
-        <Button
-          size="sm"
-          variant="outline"
-          isDisabled={page === 1}
-          onPress={() => onChange(Math.max(1, page - 1))}
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-        </Button>
-      )}
-
-      {/* Page numbers */}
-      <div className="flex items-center gap-1">
-        {pageNumbers.map((pageNum, index) => {
-          if (pageNum === "...") {
+    <Pagination size="sm">
+      <Pagination.Content>
+        {showControls && (
+          <Pagination.Item>
+            <Pagination.Previous
+              isDisabled={page === 1}
+              onPress={() => onChange(Math.max(1, page - 1))}
+            >
+              <Pagination.PreviousIcon />
+            </Pagination.Previous>
+          </Pagination.Item>
+        )}
+        {pages.map((p, idx) => {
+          if (p === "ellipsis-start" || p === "ellipsis-end") {
             return (
-              <span key={`dots-${index}`} className="px-2 py-1 text-muted">
-                ...
-              </span>
+              <Pagination.Item key={`${p}-${idx}`}>
+                <Pagination.Ellipsis />
+              </Pagination.Item>
             );
           }
-
-          const pageNumber = pageNum as number;
           return (
-            <Button
-              key={pageNumber}
-              size="sm"
-              variant={page === pageNumber ? "primary" : "outline"}
-              onPress={() => onChange(pageNumber)}
-              className={clsx(
-                "min-w-[2.5rem]",
-                page === pageNumber && "font-semibold",
-              )}
-            >
-              {pageNumber}
-            </Button>
+            <Pagination.Item key={p}>
+              <Pagination.Link
+                isActive={p === page}
+                onPress={() => onChange(p)}
+              >
+                {p}
+              </Pagination.Link>
+            </Pagination.Item>
           );
         })}
-      </div>
-
-      {/* Next button */}
-      {showControls && (
-        <Button
-          size="sm"
-          variant="outline"
-          isDisabled={page === total}
-          onPress={() => onChange(Math.min(total, page + 1))}
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
-        </Button>
-      )}
-    </div>
+        {showControls && (
+          <Pagination.Item>
+            <Pagination.Next
+              isDisabled={page === last}
+              onPress={() => onChange(Math.min(last, page + 1))}
+            >
+              <Pagination.NextIcon />
+            </Pagination.Next>
+          </Pagination.Item>
+        )}
+      </Pagination.Content>
+    </Pagination>
   );
 };

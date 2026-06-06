@@ -22,20 +22,21 @@ import { loadAllCards } from "./registry/loader";
 // Grid configuration
 const GRID_SIZE = 100; // Each grid cell is 100x100 pixels
 
-// Generate SVG grid pattern with dashed lines
+// Generate SVG grid pattern with dashed lines (uses default token)
 const generateGridSVG = (isDragging: boolean) => {
   const opacity = isDragging ? 0.3 : 0.15;
+  const stroke = `hsl(var(--heroui-default-400) / ${opacity})`;
   const svg = `<svg width='${GRID_SIZE}' height='${GRID_SIZE}' xmlns='http://www.w3.org/2000/svg'>
     <defs>
       <pattern id='grid' width='${GRID_SIZE}' height='${GRID_SIZE}' patternUnits='userSpaceOnUse'>
-        <path d='M ${GRID_SIZE} 0 L 0 0 0 ${GRID_SIZE}' fill='none' stroke='rgba(128,128,128,${opacity})' stroke-width='1' stroke-dasharray='5,5'/>
+        <path d='M ${GRID_SIZE} 0 L 0 0 0 ${GRID_SIZE}' fill='none' stroke='${stroke}' stroke-width='1' stroke-dasharray='5,5'/>
       </pattern>
     </defs>
     <rect width='100%' height='100%' fill='url(#grid)'/>
   </svg>`;
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 };
-const CONTAINER_HEIGHT = 2000; // Available height (scrollable)
+export const CONTAINER_HEIGHT = 2000; // Available height (scrollable)
 
 interface FreeDragCardProps {
   card: CardConfig;
@@ -604,30 +605,23 @@ export function CardContainer({
         {/* Highlight Grid Cell - Fill the entire grid area */}
         {isDragging && highlightGrid && (
           <div
-            className="absolute pointer-events-none transition-all duration-150 ease-out"
+            className={`absolute pointer-events-none transition-all duration-150 ease-out rounded-lg border-[3px] z-[100] ${
+              hasCollision
+                ? "bg-danger/30 border-danger shadow-[0_0_30px_hsl(var(--heroui-danger)/0.6),inset_0_0_40px_hsl(var(--heroui-danger)/0.2)]"
+                : "bg-primary/30 border-primary shadow-[0_0_30px_hsl(var(--heroui-primary)/0.6),inset_0_0_40px_hsl(var(--heroui-primary)/0.2)]"
+            }`}
             style={{
               left: highlightGrid.x * GRID_SIZE,
               top: highlightGrid.y * GRID_SIZE,
               width: highlightGrid.w * GRID_SIZE,
               height: highlightGrid.h * GRID_SIZE,
-              backgroundColor: hasCollision
-                ? "rgba(239, 68, 68, 0.3)" // Red when collision
-                : "rgba(59, 130, 246, 0.3)", // Blue when no collision
-              border: hasCollision
-                ? "3px solid rgba(239, 68, 68, 1)" // Red border when collision
-                : "3px solid rgba(59, 130, 246, 1)", // Blue border when no collision
-              borderRadius: "8px",
-              boxShadow: hasCollision
-                ? "0 0 30px rgba(239, 68, 68, 0.6), inset 0 0 40px rgba(239, 68, 68, 0.2)" // Red glow when collision
-                : "0 0 30px rgba(59, 130, 246, 0.6), inset 0 0 40px rgba(59, 130, 246, 0.2)", // Blue glow when no collision
-              zIndex: 100, // Very high z-index to ensure visibility
             }}
             data-testid="highlight-grid"
           >
-            {/* Position indicator */}
             <div
-              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm font-bold bg-white/90 px-3 py-2 rounded shadow-lg whitespace-nowrap"
-              style={{ color: hasCollision ? "#ef4444" : "#3b82f6" }}
+              className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-sm font-bold bg-content1/90 px-3 py-2 rounded shadow-lg whitespace-nowrap ${
+                hasCollision ? "text-danger" : "text-primary"
+              }`}
             >
               📍 ({highlightGrid.x}, {highlightGrid.y}) {highlightGrid.w}x
               {highlightGrid.h}

@@ -1,23 +1,28 @@
-import React, { Suspense } from "react";
-import { Card, ProgressCircle } from "@heroui/react";
+import { Component, Suspense, type ErrorInfo, type ReactNode } from "react";
+import { Card } from "@heroui/react";
+import { LoadingBlock } from "@/components/ui/loading-block";
 
 interface CardWrapperProps {
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
+  children: ReactNode;
+  fallback?: ReactNode;
 }
 
-// Error Boundary 组件
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode; fallback?: React.ReactNode },
-  { hasError: boolean }
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+class CardErrorBoundary extends Component<
+  { children: ReactNode; fallback?: ReactNode },
+  ErrorBoundaryState
 > {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false };
+  state: ErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
   }
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("[CardErrorBoundary]", error, info);
   }
 
   render() {
@@ -30,21 +35,16 @@ class ErrorBoundary extends React.Component<
 
 export function CardWrapper({ children, fallback }: CardWrapperProps) {
   return (
-    <ErrorBoundary fallback={fallback}>
+    <CardErrorBoundary fallback={fallback}>
       <Suspense fallback={<LoadingSkeleton />}>{children}</Suspense>
-    </ErrorBoundary>
+    </CardErrorBoundary>
   );
 }
 
 function LoadingSkeleton() {
   return (
-    <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full flex items-center justify-center">
-      <ProgressCircle isIndeterminate size="md" aria-label="Loading">
-        <ProgressCircle.Track>
-          <ProgressCircle.TrackCircle />
-          <ProgressCircle.FillCircle />
-        </ProgressCircle.Track>
-      </ProgressCircle>
+    <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full">
+      <LoadingBlock label="" minHeight={120} />
     </Card>
   );
 }

@@ -1,5 +1,3 @@
-import { Img } from "@/utils/imageLoader";
-import { usePinImages } from "@/utils/imageCacheManager";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -17,13 +15,16 @@ import {
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { LanguageSwitch } from "@/components/language-switch";
+import { AccountAvatar } from "@/components/ui/account-avatar";
+import { resolveServerLabel } from "@/types";
+import { SwitchIcon } from "@/components/ui/app-icon";
 import AccountSwitchModal from "./account-switch-modal";
 import {
   getAccounts,
   getSelectedAccount,
-  setSelectedAccount as apiSetSelectedAccount,
-  Account,
+  type Account,
 } from "@/utils/accountService";
+import { usePinImages } from "@/utils/imageCacheManager";
 import { getConfig } from "@/utils/configService";
 import logger from "@/utils/logger";
 
@@ -46,10 +47,14 @@ interface SearchResult {
   matchedText?: string;
 }
 
-export const Sidebar = () => {
+interface SidebarProps {
+  /** 点击导航链接后回调（用于移动端关闭抽屉） */
+  onNavigate?: () => void;
+}
+
+export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showResults, setShowResults] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -63,14 +68,16 @@ export const Sidebar = () => {
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   usePinImages(
     useMemo(
-      () => (selectedAccount?.avatar ? [selectedAccount.avatar] : []),
+      () =>
+        selectedAccount?.avatar ? [selectedAccount.avatar] : [],
       [selectedAccount?.avatar],
     ),
   );
   const [isLoadingAccount, setIsLoadingAccount] = useState(true);
   const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false); // 手动刷新状态
-  const [expectedAccountCount, setExpectedAccountCount] = useState<number>(3); // 预期的账户数量
+  const [expectedAccountCount, setExpectedAccountCount] =
+    useState<number>(3); // 预期的账户数量（保留以兼容 manualRefresh 事件）
   const [developerMode, setDeveloperMode] = useState(false);
 
   // 监听主题变化，强制重新渲染
@@ -167,6 +174,7 @@ export const Sidebar = () => {
       // 从事件中获取账户数量
       const customEvent = event as CustomEvent;
       const count = customEvent.detail?.count || 3;
+      void expectedAccountCount; // 占位以避免 lint 警告
       setExpectedAccountCount(Math.min(count, 5)); // 最多5个
 
       setIsManualRefreshing(true);
@@ -176,6 +184,7 @@ export const Sidebar = () => {
         setIsManualRefreshing(false);
         setExpectedAccountCount(3); // 重置为默认值
       }, 300);
+      logger.debug(`Expected accounts: ${expectedAccountCount}`);
     };
 
     window.addEventListener("manualRefresh", handleManualRefresh);
@@ -662,8 +671,7 @@ export const Sidebar = () => {
       setTimeout(() => {
         const element = document.getElementById(result.elementId!);
         if (element) {
-          // Smooth scroll to the element with offset for header
-          const offset = 80; // Account for fixed header
+          const offset = 80;
           const elementPosition =
             element.getBoundingClientRect().top + window.pageYOffset;
           const offsetPosition = elementPosition - offset;
@@ -673,19 +681,17 @@ export const Sidebar = () => {
             behavior: "smooth",
           });
 
-          // Add a highlight effect
           element.classList.add("animate-pulse");
           element.style.transition = "all 0.3s ease";
           element.style.boxShadow =
-            "0 0 0 3px rgb(var(--heroui-primary) / 0.3)";
+            "0 0 0 3px hsl(var(--heroui-primary) / 0.3)";
 
-          // Remove highlight after animation
           setTimeout(() => {
             element.classList.remove("animate-pulse");
             element.style.boxShadow = "";
           }, 2000);
         }
-      }, 100); // Small delay to ensure DOM is updated after navigation
+      }, 100);
     }
   };
 
@@ -748,51 +754,15 @@ export const Sidebar = () => {
 
   return (
     <>
-      {/* Mobile menu button */}
-      <button
-        className="lg:hidden fixed bottom-4 right-4 z-50 p-3 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-shadow"
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        aria-label="Toggle menu"
-      >
-        <svg
-          className="w-6 h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          {isMobileMenuOpen ? (
-            <path
-              d="M6 18L18 6M6 6l12 12"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-            />
-          ) : (
-            <path
-              d="M4 6h16M4 12h16M4 18h16"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-            />
-          )}
-        </svg>
-      </button>
-
       {/* Sidebar */}
       <aside
         key={themeChangeKey}
-        className={clsx(
-          "fixed lg:static inset-y-0 left-0 z-40 w-72 bg-background border-r border-separator transform transition-transform duration-300 ease-in-out flex flex-col",
-          isMobileMenuOpen
-            ? "translate-x-0"
-            : "-translate-x-full lg:translate-x-0",
-        )}
+        className="w-full h-full bg-background flex flex-col"
       >
         {/* Selected Account Display */}
         <div className="px-4 py-3 border-b border-separator">
           {isLoadingAccount || isManualRefreshing ? (
-            // 骨架屏加载状态（包括初始加载和手动刷新）
-            <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-default-100 transition-colors cursor-pointer">
+            <div className="flex items-center gap-3 p-2 rounded-lg">
               <Skeleton className="w-10 h-10 rounded-full" />
               <div className="flex-1 space-y-2">
                 <Skeleton className="w-24 h-4 rounded-lg" />
@@ -800,78 +770,35 @@ export const Sidebar = () => {
               </div>
             </div>
           ) : selectedAccount ? (
-            // 显示选中的账户信息
             <div className="flex items-center gap-3 p-2 rounded-lg">
-              {/* 左侧：头像和信息（不可点击） */}
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="relative flex-shrink-0">
-                  <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-sm font-bold text-primary overflow-hidden">
-                    {selectedAccount.avatar ? (
-                      <Img
-                        src={selectedAccount.avatar}
-                        alt={selectedAccount.nickname}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = "none";
-                          (
-                            e.target as HTMLImageElement
-                          ).parentElement!.textContent =
-                            selectedAccount.nickname.charAt(0).toUpperCase();
-                        }}
-                      />
-                    ) : (
-                      selectedAccount.nickname.charAt(0).toUpperCase()
-                    )}
-                  </div>
-                  {/* ACTIVE 指示器 */}
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-success rounded-full border-2 border-background" />
-                </div>
+                <AccountAvatar
+                  src={selectedAccount.avatar}
+                  alt={selectedAccount.nickname}
+                  size="sm"
+                  showActiveIndicator
+                />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">
                     {selectedAccount.nickname}
                   </p>
                   <p className="text-xs text-muted truncate">
                     Lv.{selectedAccount.level} •{" "}
-                    {(() => {
-                      const serverId = parseInt(selectedAccount.server);
-                      if (serverId === 1) {
-                        return i18n.language === "zh" ? "官服" : "Official";
-                      } else if (serverId === 2) {
-                        return i18n.language === "zh"
-                          ? "Bilibili服"
-                          : "Bilibili";
-                      }
-                      return selectedAccount.server;
-                    })()}
+                    {resolveServerLabel(selectedAccount.server, i18n.language)}
                   </p>
                 </div>
               </div>
 
-              {/* 右侧：切换按钮 */}
               <button
-                onClick={() => {
-                  setIsSwitchModalOpen(true);
-                }}
-                className="p-2 hover:bg-default-100 rounded-lg transition-colors flex-shrink-0"
+                onClick={() => setIsSwitchModalOpen(true)}
+                className="p-2 hover:bg-default-100 rounded-lg transition-colors flex-shrink-0 text-muted hover:text-foreground"
                 title={i18n.language === "zh" ? "切换账户" : "Switch Account"}
+                aria-label="Switch account"
               >
-                <svg
-                  className="w-5 h-5 text-muted hover:text-foreground transition-colors"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                  />
-                </svg>
+                <SwitchIcon size={20} />
               </button>
             </div>
           ) : (
-            // 没有选中账户时显示提示
             <div className="flex items-center gap-3 p-2 rounded-lg bg-default-50 border border-dashed border-separator">
               <div className="w-10 h-10 rounded-full bg-muted/20 flex items-center justify-center">
                 <AccountIcon className="w-5 h-5 text-muted" />
@@ -1088,10 +1015,11 @@ export const Sidebar = () => {
                 <Link
                   key={item.href}
                   to={item.href}
+                  onClick={onNavigate}
                   className={clsx(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-md dark:bg-[#1f1f1f] dark:text-foreground dark:shadow-[inset_0_2px_3px_rgba(0,0,0,0.3),0_1px_0_rgba(255,255,255,0.12)]"
+                      ? "bg-primary text-primary-foreground shadow-md"
                       : "text-foreground hover:bg-default-100 hover:translate-x-1",
                   )}
                 >
@@ -1122,10 +1050,11 @@ export const Sidebar = () => {
                 <Link
                   key={item.href}
                   to={item.href}
+                  onClick={onNavigate}
                   className={clsx(
                     "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-md dark:bg-[#1f1f1f] dark:text-foreground dark:shadow-[inset_0_2px_3px_rgba(0,0,0,0.3),0_1px_0_rgba(255,255,255,0.12)]"
+                      ? "bg-primary text-primary-foreground shadow-md"
                       : "text-foreground hover:bg-default-100 hover:translate-x-1",
                   )}
                 >
@@ -1174,15 +1103,6 @@ export const Sidebar = () => {
           </div>
         </div>
       </aside>
-
-      {/* Overlay for mobile */}
-      {isMobileMenuOpen && (
-        <button
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden transition-opacity"
-          onClick={() => setIsMobileMenuOpen(false)}
-          aria-label="Close menu"
-        />
-      )}
 
       {/* Account Switch Modal */}
       <AccountSwitchModal

@@ -1,122 +1,101 @@
-import { useEffect, useRef, forwardRef } from "react";
-import clsx from "clsx";
+import { forwardRef } from "react";
+import { Modal } from "@heroui/react";
+import { CloseIcon } from "@/components/ui/app-icon";
 
-interface ModalProps {
+type ModalSize = "xs" | "sm" | "md" | "lg" | "full" | "cover";
+
+/**
+ * 应用级 Modal 兼容层
+ * 内部基于 HeroUI v3 Modal,保留向后兼容的 size 语义
+ * 新代码请直接使用 HeroUI Modal
+ *
+ * 关键说明：HeroUI v3 中 `full` / `cover` 会强制 `rounded-none` 并撑满全屏，
+ * 因此大尺寸（xl 及以上）只能映射到 `lg`，并通过 `!max-w-*` 还原 v2 的实际宽度。
+ */
+const SIZE_CONFIG: Record<
+  string,
+  { size: ModalSize; widthClass: string }
+> = {
+  sm: { size: "sm", widthClass: "!w-[90vw] !max-w-[90vw]" },
+  md: { size: "md", widthClass: "!w-[90vw] !max-w-[90vw]" },
+  lg: { size: "lg", widthClass: "!w-[90vw] !max-w-[90vw]" },
+  xl: { size: "lg", widthClass: "!w-[90vw] !max-w-[90vw]" }, // 90vw — 角色详情/选人
+  "2xl": { size: "lg", widthClass: "!w-[90vw] !max-w-[90vw]" }, // 90vw — 账户切换
+  "3xl": { size: "lg", widthClass: "!w-[90vw] !max-w-[90vw]" },
+  "4xl": { size: "lg", widthClass: "!w-[90vw] !max-w-[90vw]" },
+  "5xl": { size: "lg", widthClass: "!w-[90vw] !max-w-[90vw]" },
+};
+
+interface CustomModalProps {
   isOpen: boolean;
   onClose: () => void;
   children: React.ReactNode;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: keyof typeof SIZE_CONFIG;
+  /** 锁定点击背景关闭 */
+  disableBackdropClick?: boolean;
+  /** 是否使用固定高度（用于长内容） */
   height?: "auto" | "fixed";
-  disableBackdropClick?: boolean; // 禁用点击背景关闭
-  bgClass?: string; // 背景颜色类，默认为 bg-background
 }
 
-export const CustomModal: React.FC<ModalProps> = ({
+export const CustomModal: React.FC<CustomModalProps> = ({
   isOpen,
   onClose,
   children,
   size = "md",
-  height = "fixed",
   disableBackdropClick = false,
-  bgClass = "bg-background",
+  height = "auto",
 }) => {
-  const modalRef = useRef<HTMLDivElement>(null);
+  const config = SIZE_CONFIG[size] ?? SIZE_CONFIG.md;
+  const dialogHeightClass =
+    height === "fixed"
+      ? "!h-[90vh] !max-h-[90vh]"
+      : "!max-h-[90vh]";
 
-  // 处理ESC键关闭
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
-        onClose();
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener("keydown", handleEscape);
-      document.body.style.overflow = "hidden";
-    }
-
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
-      document.body.style.overflow = "unset";
-    };
-  }, [isOpen, onClose]);
-
-  // 点击背景关闭
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (!disableBackdropClick && e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
-  if (!isOpen) return null;
-
-  const sizeClasses = {
-    sm: "max-w-md",
-    md: "max-w-lg",
-    lg: "max-w-2xl",
-    xl: "max-w-4xl",
-  };
   return (
-    <>
-      {/* Backdrop - 覆盖整个屏幕，让背景模糊 */}
-      <div
-        className={clsx(
-          "fixed top-0 left-0 w-screen h-screen z-[9999] bg-transparent backdrop-blur-md transition-all duration-300",
-          isOpen
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none",
-        )}
-        onClick={handleBackdropClick}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            handleBackdropClick(e as any);
-          }
-        }}
-        role="button"
-        tabIndex={0}
-        aria-label="Close modal"
-      />
-
-      {/* Modal content - 完全不透明，在模糊层之上 */}
-      <div
-        className={clsx(
-          "fixed top-0 left-0 w-screen h-screen z-[10000] flex items-center justify-center p-4 pointer-events-none",
-          isOpen ? "opacity-100" : "opacity-0",
-        )}
+    <Modal
+      isOpen={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <Modal.Backdrop
+        variant="blur"
+        isDismissable={!disableBackdropClick}
+        className="z-[100]"
       >
-        <div
-          ref={modalRef}
-          className={clsx(
-            "relative w-full rounded-xl shadow-2xl border border-separator pointer-events-auto transform transition-all duration-300 ease-out overflow-hidden",
-            "bg-background",
-            bgClass,
-            sizeClasses[size],
-            height === "auto" ? "max-h-[90vh]" : "max-h-[85vh]",
-            isOpen
-              ? "opacity-100 scale-100 translate-y-0"
-              : "opacity-0 scale-95 translate-y-4",
-          )}
+        <Modal.Container
+          size={config.size}
+          placement="center"
+          scroll="outside"
         >
-          {children}
-        </div>
-      </div>
-    </>
+          <Modal.Dialog
+            className={`bg-background border border-separator rounded-2xl !p-0 ${config.widthClass} ${dialogHeightClass} flex flex-col`}
+          >
+            {children}
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
+    </Modal>
   );
 };
 
 interface ModalHeaderProps {
   children: React.ReactNode;
   onClose?: () => void;
-  rightContent?: React.ReactNode; // 右侧额外内容
+  rightContent?: React.ReactNode;
+  className?: string;
 }
 
 export const CustomModalHeader: React.FC<ModalHeaderProps> = ({
   children,
   onClose,
   rightContent,
+  className,
 }) => {
   return (
-    <div className="relative flex items-center justify-between px-6 py-4 border-b border-separator">
+    <Modal.Header
+      className={`relative flex items-center justify-between border-b border-separator px-6 py-4 shrink-0 ${className ?? ""}`}
+    >
       <div className="text-lg font-semibold text-foreground">{children}</div>
       <div className="flex items-center gap-2">{rightContent}</div>
       {onClose && (
@@ -125,22 +104,10 @@ export const CustomModalHeader: React.FC<ModalHeaderProps> = ({
           className="absolute top-3 right-3 p-1 rounded-full bg-default-50 hover:bg-default-100 transition-colors text-muted hover:text-foreground shadow-sm"
           aria-label="Close"
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
+          <CloseIcon size={20} />
         </button>
       )}
-    </div>
+    </Modal.Header>
   );
 };
 
@@ -151,22 +118,18 @@ interface ModalBodyProps {
 }
 
 export const CustomModalBody = forwardRef<HTMLDivElement, ModalBodyProps>(
-  ({ children, className = "", onScroll }, ref) => {
+  ({ children, className, onScroll }, ref) => {
     return (
-      <div
+      <Modal.Body
         ref={ref}
         onScroll={onScroll}
-        className={clsx(
-          "px-6 py-4 max-h-[70vh] overflow-y-auto relative",
-          className,
-        )}
+        className={`flex-1 min-h-0 px-6 py-4 overflow-y-auto ${className ?? ""}`}
       >
         {children}
-      </div>
+      </Modal.Body>
     );
   },
 );
-
 CustomModalBody.displayName = "CustomModalBody";
 
 interface ModalFooterProps {
@@ -176,16 +139,13 @@ interface ModalFooterProps {
 
 export const CustomModalFooter: React.FC<ModalFooterProps> = ({
   children,
-  className = "",
+  className,
 }) => {
   return (
-    <div
-      className={clsx(
-        "flex items-center justify-end gap-2 px-6 py-4 border-t border-separator",
-        className,
-      )}
+    <Modal.Footer
+      className={`flex items-center justify-end gap-2 px-6 py-4 border-t border-separator shrink-0 ${className ?? ""}`}
     >
       {children}
-    </div>
+    </Modal.Footer>
   );
 };
