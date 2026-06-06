@@ -1,17 +1,62 @@
-import { Sidebar } from "@/components/dashboard-sidebar";
+import { useState } from "react";
 import { CustomTitlebar } from "@/components/custom-titlebar";
+import { Sidebar } from "@/components/dashboard-sidebar";
 
-export default function DashboardLayout({
-  children,
-}: {
+interface DashboardLayoutProps {
   children: React.ReactNode;
-}) {
+}
+
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
     <div className="flex flex-col h-screen bg-background">
       <CustomTitlebar />
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
+
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Desktop Sidebar - 静态定位 */}
+        <div className="hidden lg:flex w-72 shrink-0 border-r border-separator">
+          <Sidebar />
+        </div>
+
+        {/* Mobile Drawer - fixed 滑入 */}
+        {mobileOpen && (
+          <>
+            <div
+              className="lg:hidden fixed inset-0 z-40 bg-foreground/40 backdrop-blur-sm animate-fade-in"
+              onClick={() => setMobileOpen(false)}
+              aria-label="Close sidebar"
+              role="button"
+            />
+            <div className="lg:hidden fixed inset-y-0 left-0 z-50 w-72 bg-background border-r border-separator shadow-2xl animate-slide-in-right">
+              <Sidebar onNavigate={() => setMobileOpen(false)} />
+            </div>
+          </>
+        )}
+
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          {/* Mobile menu trigger */}
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            className="lg:hidden fixed bottom-4 right-4 z-30 p-3 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-shadow"
+            aria-label="Open menu"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M4 6h16M4 12h16M4 18h16"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+              />
+            </svg>
+          </button>
+
           <main className="flex-1 overflow-y-auto p-4 lg:p-6 pt-6">
             {children}
           </main>
