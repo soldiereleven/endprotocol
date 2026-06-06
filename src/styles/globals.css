@@ -3,12 +3,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* 禁止全局蓝色选中背景 */
+/* 禁止全局蓝色选中背景 + 长按菜单 */
 * {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
 }
 
+/* 选区颜色 - 使用 HeroUI 语义 token */
 ::selection {
   background: hsl(var(--heroui-primary) / 0.3);
   color: inherit;
@@ -19,7 +20,11 @@
   color: inherit;
 }
 
-/* 全局 Alert 下滑动画 */
+/* ======================================================
+ * 动画 - 全部使用语义化 token,不再硬编码颜色
+ * ====================================================== */
+
+/* Alert 顶部下滑入场 */
 @keyframes slide-down {
   0% {
     opacity: 0;
@@ -34,29 +39,107 @@
     transform: translate(-50%, 0) scale(1);
   }
 }
-
 .animate-slide-down {
   animation: slide-down 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* 账户切换脉冲动画 */
-@keyframes pulse-once {
-  0% {
-    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(74, 222, 128, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
-  }
+/* 卡片上浮入场 */
+@keyframes slide-up {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
 }
 
-.animate-pulse-once {
-  animation: pulse-once 0.6s ease-out;
+/* 卡片下沉入场 */
+@keyframes slide-down-account {
+  0% { opacity: 0; transform: translateY(-20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-down-account {
+  animation: slide-down-account 0.3s ease-out;
 }
 
-/* 技能描述标记样式 */
+/* 翻页淡入 */
+@keyframes fade-in {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* 翻页淡出 */
+@keyframes fade-out {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-10px); }
+}
+.animate-fade-out {
+  animation: fade-out 0.3s ease-in;
+}
+
+/* 抽屉滑入 */
+@keyframes slide-in-right {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(0); }
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ======================================================
+ * 滚动条 - 全部使用 default token
+ * ====================================================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+::-webkit-scrollbar-track { background: transparent; border-radius: 4px; }
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--heroui-default-300) / 0.5);
+  border-radius: 4px;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--heroui-default-400) / 0.7);
+}
+::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+*:hover::-webkit-scrollbar { opacity: 1; }
+
+.dark ::-webkit-scrollbar-thumb { background: hsl(var(--heroui-default-600) / 0.5); }
+.dark ::-webkit-scrollbar-thumb:hover { background: hsl(var(--heroui-default-500) / 0.7); }
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--heroui-default-300) / 0.5) transparent;
+}
+.dark * {
+  scrollbar-color: hsl(var(--heroui-default-600) / 0.5) transparent;
+}
+
+/* ======================================================
+ * 状态指示灯 glow - 语义色 token 派生
+ * ====================================================== */
+.shadow-glow-success {
+  box-shadow: 0 0 8px hsl(var(--heroui-success) / 0.6);
+}
+.shadow-glow-danger {
+  box-shadow: 0 0 8px hsl(var(--heroui-danger) / 0.6);
+}
+.shadow-glow-warning {
+  box-shadow: 0 0 8px hsl(var(--heroui-warning) / 0.6);
+}
+.dark .shadow-glow-success { box-shadow: 0 0 10px hsl(var(--heroui-success) / 0.8); }
+.dark .shadow-glow-danger { box-shadow: 0 0 10px hsl(var(--heroui-danger) / 0.8); }
+.dark .shadow-glow-warning { box-shadow: 0 0 10px hsl(var(--heroui-warning) / 0.8); }
+
+/* ======================================================
+ * 技能描述标记 - 域语义色(游戏数据展示专用)
+ * 规则: 设计系统色一律走 token,域语义色保留为常量
+ * ====================================================== */
 .ba-tag {
   display: inline-block;
   padding: 0 3px;
@@ -66,173 +149,37 @@
 }
 
 /* @ba. 属性标记 */
-.ba-at-cryst { color: #6CB4EE; }
-.ba-at-key { color: #F39C12; }
-.ba-at-vup { color: #2ECC71; }
-.ba-at-poise { color: #3498DB; }
-.ba-at-info { color: #95A5A6; }
-.ba-at-lastcombo { color: #F1C40F; }
-.ba-at-return { color: #58D68D; }
-.ba-at-speedup { color: #58D68D; }
-.ba-at-slow { color: #5DADE2; }
-.ba-at-spellburst { color: #8E44AD; }
-.ba-at-spellvul { color: #EC7063; }
-.ba-at-crystinflict { color: #5DADE2; }
-.ba-at-purple { color: #9B59D0; }
-.ba-at-orange { color: #F39C12; }
+.ba-at-cryst { color: hsl(204 70% 65%); }
+.ba-at-key { color: hsl(33 90% 55%); }
+.ba-at-vup { color: hsl(141 60% 45%); }
+.ba-at-poise { color: hsl(207 65% 55%); }
+.ba-at-info { color: hsl(210 8% 60%); }
+.ba-at-lastcombo { color: hsl(48 95% 55%); }
+.ba-at-return { color: hsl(141 60% 50%); }
+.ba-at-speedup { color: hsl(141 60% 50%); }
+.ba-at-slow { color: hsl(207 65% 60%); }
+.ba-at-spellburst { color: hsl(282 55% 50%); }
+.ba-at-spellvul { color: hsl(8 75% 60%); }
+.ba-at-crystinflict { color: hsl(207 65% 60%); }
+.ba-at-purple { color: hsl(282 50% 55%); }
+.ba-at-orange { color: hsl(33 90% 55%); }
 
 /* #ba. 状态标记 */
-.ba-hash-cryst { color: #6CB4EE; }
-.ba-hash-key { color: #F39C12; }
-.ba-hash-vup { color: #2ECC71; }
-.ba-hash-poise { color: #3498DB; }
-.ba-hash-info { color: #95A5A6; }
-.ba-hash-lastcombo { color: #F1C40F; }
-.ba-hash-return { color: #58D68D; }
-.ba-hash-speedup { color: #58D68D; }
-.ba-hash-slow { color: #5DADE2; }
-.ba-hash-spellburst { color: #8E44AD; }
-.ba-hash-spellvul { color: #EC7063; }
-.ba-hash-crystinflict { color: #5DADE2; }
-.ba-hash-purple { color: #9B59D0; }
-.ba-hash-orange { color: #F39C12; }
+.ba-hash-cryst { color: hsl(204 70% 65%); }
+.ba-hash-key { color: hsl(33 90% 55%); }
+.ba-hash-vup { color: hsl(141 60% 45%); }
+.ba-hash-poise { color: hsl(207 65% 55%); }
+.ba-hash-info { color: hsl(210 8% 60%); }
+.ba-hash-lastcombo { color: hsl(48 95% 55%); }
+.ba-hash-return { color: hsl(141 60% 50%); }
+.ba-hash-speedup { color: hsl(141 60% 50%); }
+.ba-hash-slow { color: hsl(207 65% 60%); }
+.ba-hash-spellburst { color: hsl(282 55% 50%); }
+.ba-hash-spellvul { color: hsl(8 75% 60%); }
+.ba-hash-crystinflict { color: hsl(207 65% 60%); }
+.ba-hash-purple { color: hsl(282 50% 55%); }
+.ba-hash-orange { color: hsl(33 90% 55%); }
 
 /* @tips. 提示标记 */
-.ba-tips-purple { color: #9B59D0; }
-.ba-tips-orange { color: #F39C12; }
-
-/* 账户切换上浮动画 */
-@keyframes slide-up {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-slide-up {
-  animation: slide-up 0.3s ease-out;
-}
-
-/* 账户切换下沉动画 */
-@keyframes slide-down-account {
-  0% {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-slide-down-account {
-  animation: slide-down-account 0.3s ease-out;
-}
-
-/* 翻页浮入动画 */
-@keyframes fade-in {
-  0% {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.3s ease-out;
-}
-
-/* 翻页浮出动画 */
-@keyframes fade-out {
-  0% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-}
-
-.animate-fade-out {
-  animation: fade-out 0.3s ease-in;
-}
-
-/* 自定义滚动条样式 */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--heroui-default-300) / 0.5);
-  border-radius: 4px;
-  transition: background 0.2s ease, opacity 0.2s ease;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--heroui-default-400) / 0.7);
-}
-
-/* 移除滚动条箭头按钮 */
-::-webkit-scrollbar-button {
-  display: none;
-  width: 0;
-  height: 0;
-}
-
-/* 默认隐藏滚动条 */
-::-webkit-scrollbar {
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-/* 鼠标悬停时显示滚动条 */
-*:hover::-webkit-scrollbar {
-  opacity: 1;
-}
-
-/* 深色模式下的滚动条 */
-.dark ::-webkit-scrollbar-thumb {
-  background: hsl(var(--heroui-default-600) / 0.5);
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--heroui-default-500) / 0.7);
-}
-
-/* Firefox 滚动条样式 */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: hsl(var(--heroui-default-300) / 0.5) transparent;
-}
-
-.dark * {
-  scrollbar-color: hsl(var(--heroui-default-600) / 0.5) transparent;
-}
-
-/* 右侧抽屉滑入动画 */
-@keyframes slide-in-right {
-  0% {
-    transform: translateX(100%);
-  }
-  100% {
-    transform: translateX(0);
-  }
-}
-
-.animate-slide-in-right {
-  animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
+.ba-tips-purple { color: hsl(282 50% 55%); }
+.ba-tips-orange { color: hsl(33 90% 55%); }

@@ -1,50 +1,16 @@
-export type SiteConfig = typeof siteConfig;
-
-// This will be updated to use i18n in the components directly
+/**
+ * 站点静态配置
+ * 静态且与语言无关的链接/路径放这里;需要本地化的 nav 标签由组件内 useTranslation 处理
+ */
 export const siteConfig = {
-  name: "Vite + HeroUI",
-  description: "Make beautiful websites regardless of your design experience.",
-  navItems: [
-    {
-      label: "Dashboard",
-      href: "/",
-    },
-    {
-      label: "Analytics",
-      href: "/analytics",
-    },
-    {
-      label: "Projects",
-      href: "/projects",
-    },
-    {
-      label: "Team",
-      href: "/team",
-    },
-    {
-      label: "Calendar",
-      href: "/calendar",
-    },
-  ],
-  navMenuItems: [
-    {
-      label: "Profile",
-      href: "/profile",
-    },
-    {
-      label: "Settings",
-      href: "/settings",
-    },
-    {
-      label: "Help & Feedback",
-      href: "/help",
-    },
-  ],
+  name: "EndProtocol",
+  description:
+    "A cross-platform desktop client for Skland account management.",
   links: {
-    github: "https://github.com/heroui-inc/heroui",
-    twitter: "https://twitter.com/hero_ui",
+    github: "https://github.com/anomalyco/opencode",
     docs: "https://heroui.com",
-    discord: "https://discord.gg/9b6yyZKmH4",
     sponsor: "https://patreon.com/jrgarciadev",
   },
-};
+} as const;
+
+export type SiteConfig = typeof siteConfig;
