@@ -35,6 +35,8 @@ interface CharSelectModalProps {
   selectedCharIds: string[];
   onSave: (selectedIds: string[]) => void;
   roleId: string;
+  initialCharId?: string;
+  initialViewMode?: "list" | "detail";
 }
 
 // ====== 稀有度色阶（WIKI 风格的稀有度 tone）======
@@ -274,6 +276,8 @@ export function CharSelectModal({
   selectedCharIds,
   onSave,
   roleId,
+  initialCharId,
+  initialViewMode,
 }: CharSelectModalProps) {
   const { t } = useTranslation();
   const [tempSelectedIds, setTempSelectedIds] =
@@ -364,8 +368,8 @@ export function CharSelectModal({
   useEffect(() => {
     if (isOpen) {
       setTempSelectedIds(selectedCharIds);
-      setViewMode("list");
-      setDetailCharId(null);
+      setViewMode(initialViewMode || "list");
+      setDetailCharId(initialCharId || null);
       setSelectingCharId(null);
       setSelectedSlotIndex(null);
       setSuccessMessage(null); // Clear success message

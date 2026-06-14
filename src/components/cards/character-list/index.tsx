@@ -63,6 +63,7 @@ export default function CharacterListCard({
   const [selectedCharIds, setSelectedCharIds] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<SortOrder>("rarity");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [preopenCharId, setPreopenCharId] = useState<string | null>(null);
 
   const { data: charDetail, isLoading } = useCardData<CharDetailData>({
     fetchData: () => roleDataService.getFullCharDetail(roleId),
@@ -158,7 +159,12 @@ export default function CharacterListCard({
     return (
       <div
         key={data.id}
-        className="group relative h-full w-full rounded-md overflow-hidden border border-separator bg-content1 transition-all duration-200 hover:border-blue-400/60 hover:shadow-md"
+        className="group relative h-full w-full rounded-md overflow-hidden border border-separator bg-content1 transition-all duration-200 hover:border-blue-400/60 hover:shadow-md cursor-pointer"
+        onClick={() => {
+          if (isEditMode) return;
+          setPreopenCharId(data.id);
+          setIsModalOpen(true);
+        }}
       >
         <Img
           src={coverUrl}
@@ -242,8 +248,7 @@ export default function CharacterListCard({
   return (
     <>
       <Card
-        className="p-6 bg-content1 shadow-sm border border-separator cursor-pointer hover:shadow-md transition-shadow h-full w-full select-none"
-        onClick={() => !isEditMode && setIsModalOpen(true)}
+        className="p-6 bg-content1 shadow-sm border border-separator h-full w-full select-none"
       >
         <div className="flex flex-col h-full gap-3">
           <div className="flex items-center justify-between shrink-0">
@@ -267,7 +272,8 @@ export default function CharacterListCard({
             }).map((_, index) => (
               <div
                 key={`empty-${index}`}
-                className="h-full rounded-md border-2 border-dashed border-separator flex flex-col items-center justify-center bg-default-50"
+                className="h-full rounded-md border-2 border-dashed border-separator flex flex-col items-center justify-center bg-default-50 cursor-pointer hover:border-blue-400/60"
+                onClick={() => !isEditMode && setIsModalOpen(true)}
               >
                 <svg
                   className="w-6 h-6 mb-1 text-muted opacity-50"
@@ -293,10 +299,12 @@ export default function CharacterListCard({
 
       <CharSelectModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsModalOpen(false); setPreopenCharId(null); }}
         charDetail={processedCharDetail}
         selectedCharIds={selectedCharIds}
         roleId={roleId}
+        initialCharId={preopenCharId ?? undefined}
+        initialViewMode={preopenCharId ? "detail" : undefined}
         onSave={async (newIds: string[]) => {
           setSelectedCharIds(newIds);
           try {
