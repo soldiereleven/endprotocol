@@ -6,7 +6,7 @@ import {
   CustomModalBody,
 } from "./custom-modal";
 import { CharDetailData, CharacterItem } from "@/types/charDetail";
-import { SkillDescription } from "@/utils/skillDescParser";
+import { getWikiRenderedBlocks } from "@/utils/wikiTableParser";
 import { useTranslation } from "react-i18next";
 import { Img } from "@/utils/imageLoader";
 import { useImageRequest } from "@/utils/imageCacheManager";
@@ -295,6 +295,7 @@ export function CharSelectModal({
   const wikiCleanupRef = useRef(false);
   const wikiItemIdRef = useRef<string | null>(null);
   const wikiPreloadRef = useRef(false);
+  const [wikiDetail, setWikiDetail] = useState<any>(null);
 
   /** 打开详情面板：先渲染内容，下一帧再触发宽度动画 */
   const openDetailPanel = (item: {
@@ -355,6 +356,7 @@ export function CharSelectModal({
   // 重置 Wiki 状态
   const resetWikiState = useCallback(() => {
     setWikiLoading(false);
+    setWikiDetail(null);
     wikiItemIdRef.current = null;
   }, []);
 
@@ -409,17 +411,6 @@ export function CharSelectModal({
 
     const loadWikiDetail = async () => {
       try {
-        // 检查预加载设置
-        const preload = (await getConfig<boolean>("wiki_detail_preload")) ?? false;
-        wikiPreloadRef.current = preload;
-        if (cancelled) return;
-
-        // 预加载开启时，数据已（即将）在后端缓存中，
-        // 无需主动查询目录 / 触发按需加载，关闭时也不需要清理缓存
-        if (preload) {
-          return;
-        }
-
         // 在 wiki 目录中按名称查找 itemId
         let itemId = wikiItemIdRef.current;
         if (!itemId) {
@@ -434,9 +425,14 @@ export function CharSelectModal({
           return;
         }
 
-        // 加载 Wiki 详情（按需加载 + 关闭时清理）
-        await roleDataService.getWikiItemDetail(roleId, itemId);
+        // 检查预加载设置
+        const preload = (await getConfig<boolean>("wiki_detail_preload")) ?? false;
+        wikiPreloadRef.current = preload;
+
+        // 加载 Wiki 详情
+        const detail = await roleDataService.getWikiItemDetail(roleId, itemId);
         if (cancelled) return;
+        if (detail) setWikiDetail(detail);
 
         wikiCleanupRef.current = true;
       } catch (e) {
@@ -1013,7 +1009,35 @@ export function CharSelectModal({
                     </svg>
                   </button>
                   <div className="h-full overflow-y-auto" style={{ backgroundColor: "#404040" }}>
-                    {selectedItem && (
+                    {selectedItem && (() => {
+                      const skillLevel: number =
+                        selectedItem._type === "skill" && sel?.id && charItem?.userSkills?.[sel.id]
+                          ? charItem.userSkills[sel.id].level
+                          : 1;
+                      const talentRank = (() => {
+                        if (!sel || selectedItem._type === "skill") return -1;
+                        const pool = selectedItem._type === "abilityTalent" ? char.abilityTalents
+                          : selectedItem._type === "combatTalent" ? char.combatTalents
+                          : char.cultivationTalents || [];
+                        const sameName = [...pool]
+                          .filter((t: any) => t.name === (selectedItem as any).name)
+                          .sort((a: any, b: any) => {
+                            const numA = parseInt(a.id.match(/_(\d+)$/)?.[1] || "0");
+                            const numB = parseInt(b.id.match(/_(\d+)$/)?.[1] || "0");
+                            return numA - numB;
+                          });
+                        const idx = sameName.findIndex((t: any) => t.id === sel.id);
+                        return idx >= 0 ? idx + 1 : -1;
+                      })();
+                      const wikiBlocks = getWikiRenderedBlocks(
+                        wikiDetail,
+                        (selectedItem as any).name || "",
+                        skillLevel,
+                        selectedItem._type || "",
+                        talentRank,
+                      );
+
+                      return (
                       <div className="pl-10 p-5 text-[#f0e8d8]">
                         <div className="flex items-center gap-4 mb-4">
                           <Img src={selectedItem.iconUrl} alt={selectedItem.name}
@@ -1022,21 +1046,68 @@ export function CharSelectModal({
                           <div>
                             <h4 className="font-semibold text-lg text-[#f0e8d8]">{selectedItem.name}</h4>
                             {"type" in selectedItem && selectedItem.type && (
-                              <p className="text-sm text-[#c0b8a8]">
+                              <p className="text-[#c0b8a8] text-[15px]">
                                 {selectedItem.type.value}
                                 {"property" in selectedItem && selectedItem.property && (
                                   <> • {selectedItem.property.value}</>
+                                )}
+                                {selectedItem._type === "skill" && sel?.id && charItem?.userSkills?.[sel.id] && (
+                                  <> • Lv.{charItem.userSkills[sel.id].level}</>
                                 )}
                               </p>
                             )}
                           </div>
                         </div>
-                        <SkillDescription
-                          description={selectedItem.desc}
-                          params={selectedItem.descParams as Record<string, string> | undefined}
-                          className="text-sm leading-relaxed" />
+                        {wikiBlocks.map((block, i) =>
+                          block.kind === "text" ? (
+                            block.data.kind === "heading3" ? (
+                              <h5 key={i} className="font-semibold text-[#f0e8d8] mt-4 mb-2 text-[15px]">
+                                {block.data.segments.map((seg, si) => {
+                                  const isSpecial = seg.bold || seg.underline || seg.color;
+                                  return (
+                                    <span key={si} style={{
+                                      fontWeight: isSpecial ? 700 : undefined,
+                                      textDecoration: seg.underline ? "underline" : undefined,
+                                      color: seg.color || undefined,
+                                    }}>{seg.text}</span>
+                                  );
+                                })}
+                              </h5>
+                            ) : (
+                              <p key={i} className="text-[#c0b8a8] leading-relaxed text-[15px]">
+                                {block.data.segments.map((seg, si) => {
+                                  const isSpecial = seg.bold || seg.underline || seg.color;
+                                  return (
+                                    <span key={si} style={{
+                                      fontWeight: isSpecial ? 700 : undefined,
+                                      textDecoration: seg.underline ? "underline" : undefined,
+                                      color: seg.color || undefined,
+                                    }}>{seg.text}</span>
+                                  );
+                                })}
+                              </p>
+                            )
+                          ) : (
+                            <div key={i} className="mt-3 space-y-1.5">
+                              {block.data.map((p, pi) => (
+                                <div key={pi} className="flex items-center justify-between text-[15px]">
+                                  <span className="text-[#c0b8a8] font-medium">{p.label}</span>
+                                  <span className="text-[#c0b8a8]">
+                                    {p.value}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        )}
+                        {wikiBlocks.length === 0 && (
+                          <p className="text-[#c0b8a8] italic mt-2 text-[15px]">
+                            暂无 Wiki 数据
+                          </p>
+                        )}
                       </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

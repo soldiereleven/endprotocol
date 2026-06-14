@@ -254,10 +254,12 @@ export class RoleDataService {
    */
   async getWikiItemDetail(roleId: string, itemId: string): Promise<any | null> {
     const result = await this.queryData(roleId, 'char_wiki_detail', [itemId]);
-    if (result && result[itemId]) {
-      return result[itemId];
-    }
-    return null;
+    if (!result) return null;
+    const raw = result[itemId];
+    if (!raw) return null;
+    if (raw.data?.item) return raw.data.item;
+    if (raw.item) return raw.item;
+    return raw;
   }
 }
 

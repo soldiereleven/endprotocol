@@ -66,7 +66,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
         <Modal.Container
           size={config.size}
           placement="center"
-          scroll="outside"
+          scroll="inside"
         >
           <Modal.Dialog
             className={`bg-background border border-separator rounded-2xl !p-0 ${config.widthClass} ${dialogHeightClass} flex flex-col`}
