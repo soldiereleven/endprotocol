@@ -414,7 +414,7 @@ export function CharSelectModal({
         // 在 wiki 目录中按名称查找 itemId
         let itemId = wikiItemIdRef.current;
         if (!itemId) {
-          itemId = await roleDataService.lookupCharItemId(roleId, charName);
+          itemId = await roleDataService.lookupCharItemId(roleId, charName, charDetail.base.gender);
           wikiItemIdRef.current = itemId;
         }
 

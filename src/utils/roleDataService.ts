@@ -218,11 +218,15 @@ export class RoleDataService {
    * @param charName - 角色名称
    * @returns 匹配的 itemId，未找到返回 null
    */
-  async lookupCharItemId(roleId: string, charName: string): Promise<string | null> {
+  async lookupCharItemId(roleId: string, charName: string, gender?: number | string): Promise<string | null> {
     const catalog = await this.getWikiCatalog(roleId);
     if (!catalog) return null;
 
-    const items: any[] = [];
+    const isFemale = gender === "CHAR_GENDER_FEMALE" || gender === 2;
+    const lookupName = charName === "管理员"
+      ? isFemale ? "管理员 (女)" : "管理员 (男)"
+      : charName;
+
     const data = catalog.data || catalog;
     const catalogArr = data.catalog;
     if (!Array.isArray(catalogArr)) return null;
@@ -234,10 +238,9 @@ export class RoleDataService {
         const list = sub.items;
         if (!Array.isArray(list)) continue;
         for (const item of list) {
-          if (item.name === charName) {
+          if (item.name === lookupName) {
             return item.itemId;
           }
-          items.push(item);
         }
       }
     }
