@@ -50,7 +50,7 @@ function findBestPosition(
   cardW: number,
   cardH: number
 ): { x: number; y: number } {
-  const GRID_SIZE = 100;
+  //const GRID_SIZE = 100;
   
   // 从 (0, 0) 开始尝试所有可能的位置
   let bestX = 0;

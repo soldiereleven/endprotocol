@@ -142,19 +142,19 @@ export function parseSkillDescription(
   result = result.replace(/\n/g, "<br/>");
 
   // 第三步：处理 <@ba.xxx> 标记（属性/图标）
-  result = result.replace(/<@ba\.(\w+)>(.*?)<\/>/g, (match, tag, content) => {
+  result = result.replace(/<@ba\.(\w+)>(.*?)<\/>/g, (tag, content) => {
     const color = TAG_COLORS[tag] || "#FFFFFF";
     return `<span class="ba-tag ba-at-${tag}" style="color: ${color}; font-weight: bold;">${content}</span>`;
   });
 
   // 第四步：处理 <#ba.xxx> 标记（状态/高亮）
-  result = result.replace(/<#ba\.(\w+)>(.*?)<\/>/g, (match, tag, content) => {
+  result = result.replace(/<#ba\.(\w+)>(.*?)<\/>/g, (tag, content) => {
     const color = TAG_COLORS[tag] || "#FFFFFF";
     return `<span class="ba-tag ba-hash-${tag}" style="color: ${color}; font-weight: bold;">${content}</span>`;
   });
 
   // 第五步：处理 <@tips.xxx> 标记（提示）
-  result = result.replace(/<@tips\.(\w+)>(.*?)<\/>/g, (match, tag, content) => {
+  result = result.replace(/<@tips\.(\w+)>(.*?)<\/>/g, (tag, content) => {
     const color = TAG_COLORS[tag] || "#FFFFFF";
     return `<span class="ba-tag ba-tips-${tag}" style="color: ${color}; font-weight: bold;">${content}</span>`;
   });

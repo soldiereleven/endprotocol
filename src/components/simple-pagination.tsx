@@ -16,7 +16,7 @@ export const SimplePagination: React.FC<SimplePaginationProps> = ({
   total,
   page,
   onChange,
-  siblingsCount = 1,
+  //siblingsCount = 1,
   showControls = true,
 }) => {
   if (total < 1) return null;

@@ -1,5 +1,4 @@
 import { BaseCardProps } from "../registry/types";
-import { CardWrapper } from "../base/card-wrapper";
 import { useCardData } from "../base/use-card-data";
 import { useTranslation } from "react-i18next";
 import { Card, ProgressCircle } from "@heroui/react";
@@ -26,7 +25,7 @@ export default function TemplateCard({
   const { t } = useTranslation();
 
   // 示例：使用通用数据加载 Hook
-  const { data, isLoading, error } = useCardData({
+  const { isLoading, error } = useCardData({
     fetchData: async () => {
       // TODO: 替换为你的数据获取逻辑
       logger.info("Loading data for role: " + roleId, "TemplateCard");

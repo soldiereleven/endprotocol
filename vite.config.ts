@@ -35,4 +35,5 @@ export default defineConfig(async () => ({
     outDir: path.resolve(__dirname, "dist"),
     emptyOutDir: true,
   },
+  base: "./",
 }));

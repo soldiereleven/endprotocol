@@ -27,42 +27,70 @@ export function CharacterDetailModal({
   const { t } = useTranslation();
 
   // 调试日志
-  logger.info("characterItem: " + JSON.stringify(characterItem), "CharacterDetail");
-  logger.info("talent: " + JSON.stringify(characterItem?.talent), "CharacterDetail");
-  logger.info("combatTalents count: " + character.combatTalents.length, "CharacterDetail");
+  logger.info(
+    "characterItem: " + JSON.stringify(characterItem),
+    "CharacterDetail",
+  );
+  logger.info(
+    "talent: " + JSON.stringify(characterItem?.talent),
+    "CharacterDetail",
+  );
+  logger.info(
+    "combatTalents count: " + character.combatTalents.length,
+    "CharacterDetail",
+  );
 
   // 过滤出当前激活的战斗天赋
   const activeCombatTalents = character.combatTalents.filter((talent) => {
     const activeNodes = characterItem?.talent?.latestPassiveSkillNodes || [];
-    logger.info("Talent " + talent.name + " (" + talent.id + ") - Active nodes: " + JSON.stringify(activeNodes) + " - Match: " + activeNodes.includes(talent.id), "CharacterDetail");
+    logger.info(
+      "Talent " +
+        talent.name +
+        " (" +
+        talent.id +
+        ") - Active nodes: " +
+        JSON.stringify(activeNodes) +
+        " - Match: " +
+        activeNodes.includes(talent.id),
+      "CharacterDetail",
+    );
     return activeNodes.includes(talent.id);
   });
 
-  logger.info("Active combat talents: " + activeCombatTalents.length, "CharacterDetail");
+  logger.info(
+    "Active combat talents: " + activeCombatTalents.length,
+    "CharacterDetail",
+  );
 
   // 过滤出当前激活的能力天赋
-  const activeAbilityTalents = character.abilityTalents.filter((talent) => {
-    const activeNodes = characterItem?.talent?.attrNodes || [];
-    return activeNodes.includes(talent.id);
-  });
+  // const activeAbilityTalents = character.abilityTalents.filter((talent) => {
+  //   const activeNodes = characterItem?.talent?.attrNodes || [];
+  //   return activeNodes.includes(talent.id);
+  // });
 
-  // 过滤出当前激活的培养天赋
-  const activeCultivationTalents = (character.cultivationTalents || []).filter(
-    (talent) => {
-      const activeNodes =
-        characterItem?.talent?.latestSpaceshipSkillNodes || [];
-      return activeNodes.includes(talent.id);
-    },
-  );
+  // // 过滤出当前激活的培养天赋
+  // const activeCultivationTalents = (character.cultivationTalents || []).filter(
+  //   (talent) => {
+  //     const activeNodes =
+  //       characterItem?.talent?.latestSpaceshipSkillNodes || [];
+  //     return activeNodes.includes(talent.id);
+  //   },
+  // );
 
   // Request cache priority for all images in this modal
   const cachePaths = useMemo(() => {
     const paths: string[] = [];
     if (character.avatarSqUrl) paths.push(character.avatarSqUrl);
     if (character.illustrationUrl) paths.push(character.illustrationUrl);
-    character.skills.forEach((s) => { if (s.iconUrl) paths.push(s.iconUrl); });
-    character.abilityTalents.forEach((t) => { if (t.iconUrl) paths.push(t.iconUrl); });
-    character.combatTalents.forEach((t) => { if (t.iconUrl) paths.push(t.iconUrl); });
+    character.skills.forEach((s) => {
+      if (s.iconUrl) paths.push(s.iconUrl);
+    });
+    character.abilityTalents.forEach((t) => {
+      if (t.iconUrl) paths.push(t.iconUrl);
+    });
+    character.combatTalents.forEach((t) => {
+      if (t.iconUrl) paths.push(t.iconUrl);
+    });
     (character.cultivationTalents || []).forEach((t) => {
       if (t.iconUrl) paths.push(t.iconUrl);
     });

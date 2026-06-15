@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import logger, { logDebug, logInfo, logWarn, logError } from "./logger";
+import logger, {  logError } from "./logger";
 
 /**
  * 账户信息接口
