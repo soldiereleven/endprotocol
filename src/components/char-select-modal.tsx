@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
-import { Button, Alert, ProgressCircle } from "@heroui/react";
+import { Button, Alert, ProgressCircle, Meter, Chip } from "@heroui/react";
 import {
   CustomModal,
   CustomModalHeader,
@@ -1018,6 +1018,9 @@ export function CharSelectModal({
                         selectedItem._type === "skill" && sel?.id && charItem?.userSkills?.[sel.id]
                           ? charItem.userSkills[sel.id].level
                           : 1;
+                      const isSkill = selectedItem._type === "skill";
+                      const maxSkillLevel = 12;
+                      const isMaxed = isSkill && skillLevel >= maxSkillLevel;
                       const talentRank = (() => {
                         if (!sel || selectedItem._type === "skill") return -1;
                         const pool = selectedItem._type === "abilityTalent" ? char.abilityTalents
@@ -1062,6 +1065,38 @@ export function CharSelectModal({
                             )}
                           </div>
                         </div>
+
+                        {isSkill && (() => {
+                          const progress = Math.min(Math.round((skillLevel / maxSkillLevel) * 100), 100);
+                          return (
+                            <div className="mb-5">
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-[#c0b8a8] text-xs">技能等级</span>
+                                <span className="flex items-center gap-2">
+                                  <span className="text-[#f0e8d8] text-sm font-medium">
+                                    Lv.{skillLevel} / {maxSkillLevel}
+                                  </span>
+                                  {isMaxed && (
+                                    <Chip size="sm" variant="soft" color="success" className="text-[10px] h-5">
+                                      MAX
+                                    </Chip>
+                                  )}
+                                </span>
+                              </div>
+                              <Meter aria-label="Skill level progress" value={progress} className="w-full">
+                                <Meter.Track className="h-2 rounded-full bg-[#555]">
+                                  <Meter.Fill className={`h-2 rounded-full transition-all duration-500 ${isMaxed ? "bg-gradient-to-r from-green-500 to-emerald-400" : "bg-gradient-to-r from-yellow-500 to-orange-400"}`} />
+                                </Meter.Track>
+                              </Meter>
+                              {!isMaxed && (
+                                <p className="text-[#a09070] text-[11px] mt-1">
+                                  离满级还差 {maxSkillLevel - skillLevel} 级
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
+
                         {wikiBlocks.map((block, i) =>
                           block.kind === "text" ? (
                             block.data.kind === "heading3" ? (
@@ -1091,16 +1126,51 @@ export function CharSelectModal({
                                 })}
                               </p>
                             )
-                          ) : (
-                            <div key={i} className="mt-3 space-y-1.5">
-                              {block.data.map((p, pi) => (
-                                <div key={pi} className="flex items-center justify-between text-[15px]">
-                                  <span className="text-[#c0b8a8] font-medium">{p.label}</span>
-                                  <span className="text-[#c0b8a8]">
-                                    {p.value}
-                                  </span>
-                                </div>
-                              ))}
+                          ) : block.kind === "materials" ? null : (
+                            <div key={i} className="mt-3 bg-black/20 rounded-lg p-3">
+                              {block.data.map((p, pi) => {
+                                const hasNext = p.nextValue && p.nextValue !== p.value;
+                                const extractUnit = (s: string): string => {
+                                  const m = s.match(/^[\d.,]+([\s\S]*)$/);
+                                  return m ? m[1] : "";
+                                };
+                                const unit = extractUnit(p.value);
+                                const parseNum = (s: string): number | null => {
+                                  const m = s.replace(/,/g, "").match(/^-?[\d.]+/);
+                                  return m ? parseFloat(m[0]) : null;
+                                };
+                                const currNum = parseNum(p.value);
+                                const nextNum = hasNext ? parseNum(p.nextValue!) : null;
+                                const showDelta = currNum !== null && nextNum !== null;
+                                const delta = showDelta ? nextNum! - currNum! : null;
+                                return (
+                                  <div key={pi} className="flex items-center justify-between py-1.5 text-[14px] border-b border-white/5 last:border-b-0">
+                                    <span className="text-[#c0b8a8] font-medium">{p.label}</span>
+                                    <span className="text-[#f0e8d8] font-mono text-right">
+                                      {p.value}
+                                      {!hasNext && isMaxed && (
+                                        <Chip size="sm" variant="soft" color="success" className="ml-1.5 text-[10px] h-5 min-w-0">MAX</Chip>
+                                      )}
+                                      {hasNext && (
+                                        <>
+                                          <span className="text-[#888] mx-1.5">→</span>
+                                          <span className="text-[#f0e8d8]">{p.nextValue}</span>
+                                          {showDelta && delta !== 0 && (
+                                            <Chip
+                                              size="sm"
+                                              variant="soft"
+                                              color={delta! > 0 ? "success" : "accent"}
+                                              className="ml-1.5 text-[10px] h-5 min-w-0"
+                                            >
+                                              {delta! > 0 ? "+" : ""}{delta}{unit}
+                                            </Chip>
+                                          )}
+                                        </>
+                                      )}
+                                    </span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           )
                         )}

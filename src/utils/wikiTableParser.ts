@@ -11,6 +11,7 @@ export interface InlineSegment {
 export interface WikiSkillParam {
   label: string;
   value: string;
+  nextValue?: string;
   highlighted: boolean;
 }
 
@@ -270,9 +271,12 @@ function renderDocumentBlocks(
   colIdx: number,
   includeMaterials: boolean,
   talentRank = -1,
+  nextColIdx = -1,
 ): WikiRenderedBlock[] {
   const blocks: WikiRenderedBlock[] = [];
   const blockMap: Record<string, WikiDocumentBlock> = doc.blockMap;
+  // 标记材料章节：遇到"升级材料"标题后跳过下一张表
+  let pendingMaterialSection = false;
 
   for (const blockId of doc.blockIds) {
     const block = blockMap[blockId] as any;
@@ -283,7 +287,11 @@ function renderDocumentBlocks(
       if (!segments) continue;
       // Skip upgrade material sections
       const plainText = segmentsToPlainText(segments);
-      if (plainText.includes("技能升级材料") || plainText.includes("升级材料")) continue;
+      if (plainText.includes("技能升级材料") || plainText.includes("升级材料")) {
+        pendingMaterialSection = true;
+        continue;
+      }
+      pendingMaterialSection = false;
       blocks.push({
         kind: "text",
         data: {
@@ -294,6 +302,7 @@ function renderDocumentBlocks(
     }
 
     if (block.kind === "horizontalLine") {
+      pendingMaterialSection = false;
       blocks.push({
         kind: "text",
         data: { kind: "text", segments: [{ text: "" }] },
@@ -301,7 +310,13 @@ function renderDocumentBlocks(
     }
 
     if (block.kind === "table") {
-      const isMaterial = isMaterialTable(block);
+      // 材料章节后的第一张表直接跳过
+      if (pendingMaterialSection) {
+        pendingMaterialSection = false;
+        continue;
+      }
+
+      let isMaterial = isMaterialTable(block);
       if (isMaterial && !includeMaterials) continue;
       if (colIdx < 1 && talentRank < 1) continue;
 
@@ -328,9 +343,11 @@ function renderDocumentBlocks(
         for (const rowData of parsed.grid) {
           const cell = rowData[colIdx - 1];
           if (cell && cell.value) {
+            const nextCell = nextColIdx >= 1 ? rowData[nextColIdx - 1] : undefined;
             params.push({
               label: cell.label,
               value: cell.value,
+              nextValue: nextCell?.value,
               highlighted: cell.highlighted,
             });
           }
@@ -367,6 +384,9 @@ export function getWikiRenderedBlocks(
   const colIdx = skillLevel >= 1 && skillLevel <= 12
     ? LEVEL_TO_COLUMN_INDEX[skillLevel]
     : -1;
+  const maxLevel = LEVEL_TO_COLUMN_INDEX.length - 1;
+  const hasNextLevel = itemType === "skill" && skillLevel >= 1 && skillLevel < maxLevel;
+  const nextColIdx = hasNextLevel ? LEVEL_TO_COLUMN_INDEX[skillLevel + 1] : -1;
 
   // Look up content and description doc IDs by item name
   const { contentIds, descriptionIds } = findContentIds(widgetCommonMap, documentMap, itemName);
@@ -389,7 +409,7 @@ export function getWikiRenderedBlocks(
   for (const contentId of contentIds) {
     const contentDoc = documentMap[contentId] as any;
     if (contentDoc?.blockIds && contentDoc?.blockMap) {
-      blocks.push(...renderDocumentBlocks(contentDoc, colIdx, false, talentRank));
+      blocks.push(...renderDocumentBlocks(contentDoc, colIdx, false, talentRank, nextColIdx));
     }
   }
 
