@@ -160,8 +160,9 @@ export default function CharacterListCard({
       <div
         key={data.id}
         className="group relative h-full w-full rounded-md overflow-hidden border border-separator bg-content1 transition-all duration-200 hover:border-blue-400/60 hover:shadow-md cursor-pointer"
-        onClick={() => {
+        onClick={(e) => {
           if (isEditMode) return;
+          e.stopPropagation();
           setPreopenCharId(data.id);
           setIsModalOpen(true);
         }}
@@ -248,7 +249,8 @@ export default function CharacterListCard({
   return (
     <>
       <Card
-        className="p-6 bg-content1 shadow-sm border border-separator h-full w-full select-none"
+        className="p-6 bg-content1 shadow-sm border border-separator h-full w-full select-none cursor-pointer hover:shadow-md transition-shadow"
+        onClick={() => !isEditMode && setIsModalOpen(true)}
       >
         <div className="flex flex-col h-full gap-3">
           <div className="flex items-center justify-between shrink-0">
@@ -273,7 +275,10 @@ export default function CharacterListCard({
               <div
                 key={`empty-${index}`}
                 className="h-full rounded-md border-2 border-dashed border-separator flex flex-col items-center justify-center bg-default-50 cursor-pointer hover:border-blue-400/60"
-                onClick={() => !isEditMode && setIsModalOpen(true)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  !isEditMode && setIsModalOpen(true);
+                }}
               >
                 <svg
                   className="w-6 h-6 mb-1 text-muted opacity-50"
