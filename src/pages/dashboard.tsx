@@ -5,7 +5,7 @@ import { getSelectedAccount, refreshAccountData } from "@/utils/accountService";
 import { CardContainer } from "@/components/cards/card-container";
 import { DashboardFAB } from "@/components/dashboard-fab";
 import { AddCardModal } from "@/components/add-card-modal";
-import { CharacterListSizeModal } from "@/components/character-list-size-modal";
+import { CharacterListSizeModal } from "@/components/cards/character-list/character-list-size-modal";
 import { CardTypeId, DashboardConfig } from "@/types/dashboard";
 import {
   getDashboardConfig,

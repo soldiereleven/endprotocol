@@ -4,7 +4,7 @@ import {
   CustomModal,
   CustomModalHeader,
   CustomModalBody,
-} from "./custom-modal";
+} from "@/components/custom-modal";
 import { CharDetailData, CharacterItem } from "@/types/charDetail";
 import { getWikiRenderedBlocks } from "@/utils/wikiTableParser";
 import { useTranslation } from "react-i18next";

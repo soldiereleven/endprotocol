@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, ProgressCircle } from "@heroui/react";
 import { CharDetailData, CharacterItem } from "@/types/charDetail";
-import { CharSelectModal } from "@/components/char-select-modal";
+import { CharSelectModal } from "./char-select-modal";
 import { logDebug, logError } from "@/utils/logger";
 import { useTranslation } from "react-i18next";
 import { roleDataService } from "@/utils/roleDataService";

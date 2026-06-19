@@ -5,7 +5,7 @@ import {
   CustomModalHeader,
   CustomModalBody,
   CustomModalFooter,
-} from "./custom-modal";
+} from "@/components/custom-modal";
 import { useTranslation } from "react-i18next";
 import type { CharacterListDisplayMode } from "@/types/card-settings";
 
