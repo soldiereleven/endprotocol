@@ -137,17 +137,17 @@ function FreeDragCard({
     }
   }, [isEditMode, listeners, triggerDragStart]);
 
-  // Calculate position from grid coordinates
-  const x = (card.x ?? 0) * GRID_SIZE;
-  const y = (card.y ?? 0) * GRID_SIZE;
+  // Calculate position from grid coordinates (offset by 1px for card gap)
+  const x = (card.x ?? 0) * GRID_SIZE + 1;
+  const y = (card.y ?? 0) * GRID_SIZE + 1;
 
   // Apply transform if dragging
   const style: React.CSSProperties = {
     position: "absolute",
     left: x,
     top: y,
-    width: (card.w ?? 3) * GRID_SIZE,
-    height: (card.h ?? 2) * GRID_SIZE, // Default 3x2
+    width: (card.w ?? 3) * GRID_SIZE - 2,
+    height: (card.h ?? 2) * GRID_SIZE - 2, // Default 3x2
     transform: transform
       ? `translate(${transform.x}px, ${transform.y}px)`
       : undefined,
@@ -661,10 +661,10 @@ export function CardContainer({
                 : "bg-primary/30 border-primary shadow-[0_0_30px_hsl(var(--heroui-primary)/0.6),inset_0_0_40px_hsl(var(--heroui-primary)/0.2)]"
             }`}
             style={{
-              left: highlightGrid.x * GRID_SIZE,
-              top: highlightGrid.y * GRID_SIZE,
-              width: highlightGrid.w * GRID_SIZE,
-              height: highlightGrid.h * GRID_SIZE,
+              left: highlightGrid.x * GRID_SIZE + 1,
+              top: highlightGrid.y * GRID_SIZE + 1,
+              width: highlightGrid.w * GRID_SIZE - 2,
+              height: highlightGrid.h * GRID_SIZE - 2,
             }}
             data-testid="highlight-grid"
           >
@@ -737,8 +737,8 @@ export function CardContainer({
           <div
             className="opacity-80 scale-105 rotate-2"
             style={{
-              width: (activeCard.w ?? 3) * GRID_SIZE,
-              height: (activeCard.h ?? 2) * GRID_SIZE, // Default 3x2
+              width: (activeCard.w ?? 3) * GRID_SIZE - 2,
+              height: (activeCard.h ?? 2) * GRID_SIZE - 2, // Default 3x2
             }}
           >
             {(() => {

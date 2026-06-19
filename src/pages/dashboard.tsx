@@ -5,6 +5,7 @@ import { getSelectedAccount, refreshAccountData } from "@/utils/accountService";
 import { CardContainer } from "@/components/cards/card-container";
 import { DashboardFAB } from "@/components/dashboard-fab";
 import { AddCardModal } from "@/components/add-card-modal";
+import { CharacterListSizeModal } from "@/components/character-list-size-modal";
 import { CardTypeId, DashboardConfig } from "@/types/dashboard";
 import {
   getDashboardConfig,
@@ -15,6 +16,7 @@ import { logDebug, logError } from "@/utils/logger";
 import { roleDetailService } from "@/utils/roleDetailService";
 import { CardConfigService } from "@/utils/cardConfigService";
 import { RefreshIcon } from "@/components/ui/app-icon";
+import type { CharacterListDisplayMode } from "@/types/card-settings";
 
 export default function DashboardPage() {
   const { t } = useTranslation();
@@ -25,6 +27,8 @@ export default function DashboardPage() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [isAddCardModalOpen, setIsAddCardModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSizeModalOpen, setIsSizeModalOpen] = useState(false);
+  const [pendingCardType, setPendingCardType] = useState<string | null>(null);
 
   // Load current account and dashboard config
   const loadDashboard = async () => {
@@ -108,12 +112,46 @@ export default function DashboardPage() {
   const handleAddCard = async (cardType: CardTypeId) => {
     if (!currentRoleId) return;
 
+    // character_list 类型需要选择显示模式
+    if (cardType === "character_list") {
+      setPendingCardType(cardType);
+      setIsSizeModalOpen(true);
+      return;
+    }
+
     try {
       await addCard(currentRoleId, cardType);
       const config = await getDashboardConfig(currentRoleId);
       setDashboardConfig(config);
     } catch (error) {
       logError("Failed to add card:", error);
+    }
+  };
+
+  const handleSizeConfirm = async (mode: CharacterListDisplayMode) => {
+    if (!currentRoleId || !pendingCardType) return;
+
+    const SIZE_MAP: Record<CharacterListDisplayMode, { w: number; h: number }> = {
+      single: { w: 2, h: 3 },
+      double: { w: 3, h: 3 },
+      triple: { w: 4, h: 3 },
+    };
+
+    const { w, h } = SIZE_MAP[mode];
+
+    try {
+      await addCard(currentRoleId, pendingCardType, {
+        w,
+        h,
+        settings: { displayMode: mode },
+      });
+      const config = await getDashboardConfig(currentRoleId);
+      setDashboardConfig(config);
+    } catch (error) {
+      logError("Failed to add character list card:", error);
+    } finally {
+      setIsSizeModalOpen(false);
+      setPendingCardType(null);
     }
   };
 
@@ -258,6 +296,16 @@ export default function DashboardPage() {
           existingTypes={dashboardConfig.cards.map((c) => c.type)}
         />
       )}
+
+      {/* Character List Size Selection Modal */}
+      <CharacterListSizeModal
+        isOpen={isSizeModalOpen}
+        onClose={() => {
+          setIsSizeModalOpen(false);
+          setPendingCardType(null);
+        }}
+        onConfirm={handleSizeConfirm}
+      />
     </div>
   );
 }

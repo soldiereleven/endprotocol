@@ -5,5 +5,12 @@
   "sort_rarity": "按星级",
   "sort_name": "按名称",
   "sort_level": "按等级",
-  "empty_slot": "空槽位"
+  "empty_slot": "空槽位",
+  "display_mode": "显示模式",
+  "mode_single": "单角色",
+  "mode_single_desc": "紧凑卡片，显示 1 个角色",
+  "mode_double": "双角色",
+  "mode_double_desc": "并排显示 2 个角色",
+  "mode_triple": "三角色",
+  "mode_triple_desc": "显示 3 个角色（默认）"
 }

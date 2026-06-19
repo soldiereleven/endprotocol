@@ -5,5 +5,12 @@
   "sort_rarity": "By Rarity",
   "sort_name": "By Name",
   "sort_level": "By Level",
-  "empty_slot": "Empty"
+  "empty_slot": "Empty",
+  "display_mode": "Display Mode",
+  "mode_single": "Single",
+  "mode_single_desc": "Display 1 character in a compact card",
+  "mode_double": "Double",
+  "mode_double_desc": "Display 2 characters side by side",
+  "mode_triple": "Triple",
+  "mode_triple_desc": "Display 3 characters (default)"
 }

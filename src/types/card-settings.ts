@@ -2,12 +2,15 @@
 
 export type SortOrder = "rarity" | "name" | "level";
 
+export type CharacterListDisplayMode = "single" | "double" | "triple";
+
 /**
  * CharacterList 卡片配置
  */
 export interface CharacterListCardSettings {
   selectedCharIds?: string[];  // 选中的角色ID列表
   sortOrder?: SortOrder;       // 排列顺序
+  displayMode?: CharacterListDisplayMode;  // 显示模式
 }
 
 /**

@@ -1354,18 +1354,10 @@ export function CharSelectModal({
             }}
           >
             {viewMode === "list" ? (
-              <div className="flex items-center justify-between w-full">
+              <div className="flex items-center w-full">
                 <h2>
-                  {t("settings.characters.pin_characters", { max: MAX_SELECTION })}
+                  {t("card:title")}
                 </h2>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted">
-                    {t("settings.characters.pinned_count", {
-                      count: tempSelectedIds.filter((id) => id).length,
-                      max: MAX_SELECTION,
-                    })}
-                  </span>
-                </div>
               </div>
             ) : viewMode === "select-slot" ? (
               <div className="flex items-center gap-3">

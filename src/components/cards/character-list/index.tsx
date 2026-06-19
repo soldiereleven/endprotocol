@@ -7,24 +7,31 @@ import { useTranslation } from "react-i18next";
 import { roleDataService } from "@/utils/roleDataService";
 import { BaseCardProps } from "../registry/types";
 import { CardConfigService } from "@/utils/cardConfigService";
-import type { CharacterListCardSettings, SortOrder } from "@/types/card-settings";
+import type { CharacterListCardSettings, CharacterListDisplayMode, SortOrder } from "@/types/card-settings";
 import { useCardData } from "../base/use-card-data";
 import { Img } from "@/utils/imageLoader";
 import { useImageRequest, usePinImages } from "@/utils/imageCacheManager";
 
-function getDefaultSelectedCharIds(chars: CharacterItem[]): string[] {
-  return chars.slice(0, 3).map((c) => c.charData.id);
+const DISPLAY_MODE_CONFIG: Record<CharacterListDisplayMode, { slotCount: number; gridCols: number }> = {
+  single: { slotCount: 1, gridCols: 1 },
+  double: { slotCount: 2, gridCols: 2 },
+  triple: { slotCount: 3, gridCols: 3 },
+};
+
+function getDefaultSelectedCharIds(chars: CharacterItem[], count: number): string[] {
+  return chars.slice(0, count).map((c) => c.charData.id);
 }
 
 function getSelectedCharacters(
   charDetail: CharDetailData | null,
   ids: string[],
+  count: number,
 ): CharacterItem[] {
   if (!charDetail) return [];
   return ids
     .map((id) => charDetail.chars.find((c) => c.charData.id === id))
     .filter((c): c is CharacterItem => c !== undefined)
-    .slice(0, 3);
+    .slice(0, count);
 }
 
 function sortCharacters(chars: CharacterItem[], order: SortOrder): CharacterItem[] {
@@ -62,6 +69,7 @@ export default function CharacterListCard({
   const { t } = useTranslation();
   const [selectedCharIds, setSelectedCharIds] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<SortOrder>("rarity");
+  const [displayMode, setDisplayMode] = useState<CharacterListDisplayMode>("triple");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [preopenCharId, setPreopenCharId] = useState<string | null>(null);
 
@@ -83,8 +91,15 @@ export default function CharacterListCard({
 
       logDebug(`Loaded settings for card ${cardId}:`, settings);
 
+      const mode = settings.displayMode || "triple";
+      const count = DISPLAY_MODE_CONFIG[mode].slotCount;
+
       if (settings.sortOrder) {
         setSortOrder(settings.sortOrder);
+      }
+
+      if (settings.displayMode) {
+        setDisplayMode(settings.displayMode);
       }
 
       if (settings.selectedCharIds && settings.selectedCharIds.length > 0) {
@@ -96,6 +111,7 @@ export default function CharacterListCard({
       } else if (processedCharDetail) {
         const defaultIds = getDefaultSelectedCharIds(
           processedCharDetail.chars,
+          count,
         );
         setSelectedCharIds(defaultIds);
         logDebug("Using default IDs:", defaultIds);
@@ -117,10 +133,12 @@ export default function CharacterListCard({
     }
   }, [processedCharDetail, loadSettings]);
 
+  const { slotCount, gridCols } = DISPLAY_MODE_CONFIG[displayMode];
+
   const selectedCharacters = useMemo(() => {
-    const chars = getSelectedCharacters(processedCharDetail, selectedCharIds);
+    const chars = getSelectedCharacters(processedCharDetail, selectedCharIds, slotCount);
     return sortCharacters(chars, sortOrder);
-  }, [processedCharDetail, selectedCharIds, sortOrder]);
+  }, [processedCharDetail, selectedCharIds, sortOrder, slotCount]);
 
   const avatarPaths = useMemo(
     () =>
@@ -159,7 +177,7 @@ export default function CharacterListCard({
     return (
       <div
         key={data.id}
-        className="group relative h-full w-full rounded-md overflow-hidden border border-separator bg-content1 transition-all duration-200 hover:border-blue-400/60 hover:shadow-md cursor-pointer"
+        className="group relative h-full w-full overflow-hidden border border-separator bg-content1 transition-all duration-200 hover:border-blue-400/60 hover:shadow-md cursor-pointer first:rounded-l-[10px] last:rounded-r-[10px]"
         onClick={(e) => {
           if (isEditMode) return;
           e.stopPropagation();
@@ -249,32 +267,20 @@ export default function CharacterListCard({
   return (
     <>
       <Card
-        className="p-6 bg-content1 shadow-sm border border-separator h-full w-full select-none cursor-pointer hover:shadow-md transition-shadow"
+        radius="none"
+        className="p-0 bg-content1 shadow-sm border border-separator h-full w-full select-none cursor-pointer hover:shadow-md transition-shadow rounded-[10px] overflow-hidden"
         onClick={() => !isEditMode && setIsModalOpen(true)}
+        onContextMenu={(e) => { e.preventDefault(); !isEditMode && setIsModalOpen(true); }}
       >
-        <div className="flex flex-col h-full gap-3">
-          <div className="flex items-center justify-between shrink-0">
-            <h3 className="font-semibold text-foreground text-sm">
-              {t("card:title")}
-            </h3>
-          </div>
-
-          {isEditMode && (
-            <div className="text-[11px] text-muted shrink-0">
-              {/* 编辑模式不再显示排序控件，排序由 CharacterSelectModal 内 FloatSelect 右侧图标控制 */}
-              {t("card:title")}
-            </div>
-          )}
-
-          <div className="grid grid-cols-3 gap-3 flex-1 min-h-0">
+        <div className="grid flex-1 min-h-0 h-full" style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}>
             {selectedCharacters.map(renderCharSlot)}
 
             {Array.from({
-              length: Math.max(0, 3 - selectedCharacters.length),
+              length: Math.max(0, slotCount - selectedCharacters.length),
             }).map((_, index) => (
               <div
                 key={`empty-${index}`}
-                className="h-full rounded-md border-2 border-dashed border-separator flex flex-col items-center justify-center bg-default-50 cursor-pointer hover:border-blue-400/60"
+                className="h-full border-2 border-dashed border-separator flex flex-col items-center justify-center bg-default-50 cursor-pointer hover:border-blue-400/60 first:rounded-l-[10px] last:rounded-r-[10px]"
                 onClick={(e) => {
                   e.stopPropagation();
                   !isEditMode && setIsModalOpen(true);
@@ -298,7 +304,6 @@ export default function CharacterListCard({
                 </span>
               </div>
             ))}
-          </div>
         </div>
       </Card>
 
@@ -306,21 +311,22 @@ export default function CharacterListCard({
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setPreopenCharId(null); }}
         charDetail={processedCharDetail}
-        selectedCharIds={selectedCharIds}
+        selectedCharIds={selectedCharIds.slice(0, slotCount)}
         roleId={roleId}
         initialCharId={preopenCharId ?? undefined}
         initialViewMode={preopenCharId ? "detail" : undefined}
         onSave={async (newIds: string[]) => {
-          setSelectedCharIds(newIds);
+          const trimmedIds = newIds.slice(0, slotCount);
+          setSelectedCharIds(trimmedIds);
           try {
             await CardConfigService.updateCardSetting(
               cardId,
               "selectedCharIds",
-              newIds,
+              trimmedIds,
             );
             logDebug(
               `Saved selected character IDs for card ${cardId}:`,
-              newIds,
+              trimmedIds,
             );
           } catch (error) {
             logError("Failed to save selected character IDs:", error);

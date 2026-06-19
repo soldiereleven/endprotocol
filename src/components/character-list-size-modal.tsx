@@ -1,0 +1,158 @@
+import { useState } from "react";
+import { Button } from "@heroui/react";
+import {
+  CustomModal,
+  CustomModalHeader,
+  CustomModalBody,
+  CustomModalFooter,
+} from "./custom-modal";
+import { useTranslation } from "react-i18next";
+import type { CharacterListDisplayMode } from "@/types/card-settings";
+
+interface CharacterListSizeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (mode: CharacterListDisplayMode) => void;
+}
+
+interface SizeOption {
+  mode: CharacterListDisplayMode;
+  w: number;
+  h: number;
+  labelKey: string;
+  descKey: string;
+  preview: React.ReactNode;
+}
+
+function ModePreview({ count }: { count: number }) {
+  return (
+    <div
+      className="flex gap-1 h-12"
+      style={{ width: `${count * 28 + (count - 1) * 4}px` }}
+    >
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className="flex-1 rounded border border-blue-400/40 bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center"
+        >
+          <svg
+            className="w-4 h-4 text-blue-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+            />
+          </svg>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const SIZE_OPTIONS: SizeOption[] = [
+  {
+    mode: "single",
+    w: 2,
+    h: 3,
+    labelKey: "card:mode_single",
+    descKey: "card:mode_single_desc",
+    preview: <ModePreview count={1} />,
+  },
+  {
+    mode: "double",
+    w: 3,
+    h: 3,
+    labelKey: "card:mode_double",
+    descKey: "card:mode_double_desc",
+    preview: <ModePreview count={2} />,
+  },
+  {
+    mode: "triple",
+    w: 4,
+    h: 3,
+    labelKey: "card:mode_triple",
+    descKey: "card:mode_triple_desc",
+    preview: <ModePreview count={3} />,
+  },
+];
+
+export function CharacterListSizeModal({
+  isOpen,
+  onClose,
+  onConfirm,
+}: CharacterListSizeModalProps) {
+  const { t } = useTranslation();
+  const [selectedMode, setSelectedMode] = useState<CharacterListDisplayMode | null>(null);
+
+  const handleConfirm = () => {
+    if (selectedMode) {
+      onConfirm(selectedMode);
+      setSelectedMode(null);
+    }
+  };
+
+  const handleClose = () => {
+    setSelectedMode(null);
+    onClose();
+  };
+
+  return (
+    <CustomModal isOpen={isOpen} onClose={handleClose} size="sm">
+      <CustomModalHeader onClose={handleClose}>
+        {t("card:display_mode") || "Display Mode"}
+      </CustomModalHeader>
+      <CustomModalBody>
+        <div className="space-y-3">
+          {SIZE_OPTIONS.map((opt) => {
+            const isSelected = selectedMode === opt.mode;
+            return (
+              <div
+                key={opt.mode}
+                className={`p-4 rounded-lg cursor-pointer transition-all border-2 ${
+                  isSelected
+                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/40 shadow-md"
+                    : "border-separator hover:border-blue-400/50 hover:bg-default-50"
+                }`}
+                onClick={() => setSelectedMode(opt.mode)}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-center shrink-0">
+                    {opt.preview}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm">
+                      {t(opt.labelKey)}
+                    </div>
+                    <div className="text-xs text-muted mt-0.5">
+                      {t(opt.descKey)}
+                    </div>
+                    <div className="text-[10px] text-muted/60 mt-0.5">
+                      {opt.w}x{opt.h}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CustomModalBody>
+      <CustomModalFooter>
+        <Button variant="secondary" onPress={handleClose}>
+          {t("common.cancel") || "Cancel"}
+        </Button>
+        <Button
+          variant="primary"
+          isDisabled={!selectedMode}
+          onPress={handleConfirm}
+        >
+          {t("common.confirm") || "Confirm"}
+        </Button>
+      </CustomModalFooter>
+    </CustomModal>
+  );
+}

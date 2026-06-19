@@ -94,14 +94,14 @@ export const CustomModalHeader: React.FC<ModalHeaderProps> = ({
 }) => {
   return (
     <Modal.Header
-      className={`relative flex items-center justify-between border-b border-separator px-6 py-4 shrink-0 ${className ?? ""}`}
+      className={`relative flex items-center justify-between border-b border-separator px-6 py-3 shrink-0 ${className ?? ""}`}
     >
-      <div className="text-lg font-semibold text-foreground">{children}</div>
+      <div className="text-xl font-semibold text-foreground">{children}</div>
       <div className="flex items-center gap-2">{rightContent}</div>
       {onClose && (
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 p-1 rounded-full bg-default-50 hover:bg-default-100 transition-colors text-muted hover:text-foreground shadow-sm"
+          className="absolute top-1/2 right-3 -translate-y-1/2 p-1 rounded-full bg-default-50 hover:bg-default-100 transition-colors text-muted hover:text-foreground shadow-sm"
           aria-label="Close"
         >
           <CloseIcon size={20} />

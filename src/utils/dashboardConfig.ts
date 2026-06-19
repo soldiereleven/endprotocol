@@ -2,6 +2,7 @@ import { getConfig, setConfig } from './configService';
 import { CardConfig, CardTypeId, DashboardConfig } from '@/types/dashboard';
 import { v4 as uuidv4 } from 'uuid';
 import { loadAllCards } from '@/components/cards/registry/loader';
+import { CardConfigService } from './cardConfigService';
 
 /**
  * 获取 Dashboard 配置
@@ -112,20 +113,26 @@ function findBestPosition(
 /**
  * 添加卡片
  */
-export async function addCard(roleId: string, cardType: CardTypeId): Promise<void> {
+export async function addCard(
+  roleId: string,
+  cardType: CardTypeId,
+  options?: { w?: number; h?: number; settings?: Record<string, any> }
+): Promise<string> {
   const config = await getDashboardConfig(roleId);
-  
+
   // 获取卡片元数据以确定默认尺寸
   const cardRegistry = loadAllCards();
   const cardMeta = cardRegistry.get(cardType)?.meta;
-  const defaultW = cardMeta?.defaultSize.w ?? 3;
-  const defaultH = cardMeta?.defaultSize.h ?? 2;
-  
+  const defaultW = options?.w ?? cardMeta?.defaultSize.w ?? 3;
+  const defaultH = options?.h ?? cardMeta?.defaultSize.h ?? 2;
+
   // 寻找最佳位置
   const position = findBestPosition(config.cards, defaultW, defaultH);
-  
+
+  const cardId = uuidv4();
+
   const newCard: CardConfig = {
-    id: uuidv4(),
+    id: cardId,
     type: cardType,
     position: config.cards.length,
     x: position.x,
@@ -134,9 +141,16 @@ export async function addCard(roleId: string, cardType: CardTypeId): Promise<voi
     h: defaultH,
     settings: {}
   };
-  
+
   config.cards.push(newCard);
   await saveDashboardConfig(roleId, config);
+
+  // 如果传入了初始配置，也写入 CardConfigService（组件从此处读取）
+  if (options?.settings) {
+    await CardConfigService.saveCardSettings(cardId, options.settings);
+  }
+
+  return cardId;
 }
 
 /**
