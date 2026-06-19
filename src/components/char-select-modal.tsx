@@ -287,7 +287,7 @@ export function CharSelectModal({
   );
   const [detailCharId, setDetailCharId] = useState<string | null>(null);
   const [selectedDetailItem, setSelectedDetailItem] = useState<{
-    type: "skill" | "combatTalent" | "abilityTalent" | "cultivationTalent";
+    type: "skill" | "combatTalent" | "abilityTalent" | "cultivationTalent" | "potential";
     id: string;
   } | null>(null);
   const [detailActive, setDetailActive] = useState(false);
@@ -301,9 +301,40 @@ export function CharSelectModal({
   const wikiPreloadRef = useRef(false);
   const [wikiDetail, setWikiDetail] = useState<any>(null);
 
+  // 从 Wiki detail 中提取潜能数据（在 widgetCommonMap 中按 title="干员潜能" 查找）
+  // 从 Wiki detail 中提取潜能数据（通过 chapterGroup 查找"干员潜能"章节的 widgetId）
+  const potentialData = useMemo(() => {
+    if (!wikiDetail?.document) return null;
+    const doc = wikiDetail.document;
+    const commonMap = doc.widgetCommonMap;
+    if (!commonMap || !doc.documentMap) return null;
+    const chapterGroup: any[] = (doc as any).chapterGroup;
+    if (!chapterGroup) return null;
+    const potentialChapter = chapterGroup.find(
+      (ch: any) => ch.title === "干员潜能"
+    );
+    if (!potentialChapter?.widgets) return null;
+    const potentialWidgetEntry = (potentialChapter.widgets as any[]).find(
+      (w: any) => w.title === "干员潜能"
+    );
+    const widgetKey: string = potentialWidgetEntry?.id;
+    const widget = widgetKey ? commonMap[widgetKey] : null;
+    if (!widget?.tabList || !widget?.tabDataMap) return null;
+    return widget.tabList.map((tab: any, index: number) => {
+      const tabData = widget.tabDataMap[tab.tabId];
+      const contentDocId = tabData?.content;
+      const contentDoc = contentDocId ? doc.documentMap[contentDocId] : null;
+      return {
+        level: index + 1,
+        iconUrl: `/src/assets/icons/potential/potential_${index + 1}.png`,
+        contentDoc,
+      };
+    });
+  }, [wikiDetail]);
+
   /** 打开详情面板：先渲染内容，下一帧再触发宽度动画 */
   const openDetailPanel = (item: {
-    type: "skill" | "combatTalent" | "abilityTalent" | "cultivationTalent";
+    type: "skill" | "combatTalent" | "abilityTalent" | "cultivationTalent" | "potential";
     id: string;
   }) => {
     if (detailTimerRef.current) clearTimeout(detailTimerRef.current);
@@ -761,6 +792,16 @@ export function CharSelectModal({
               const s = char.skills.find((x) => x.id === sel.id);
               return s ? { ...s, _type: "skill" as const } : null;
             }
+            if (sel.type === "potential") {
+              const p = potentialData?.find((x: any) => x.level === parseInt(sel.id));
+              return p ? {
+                _type: "potential" as const,
+                level: p.level,
+                iconUrl: p.iconUrl,
+                contentDoc: p.contentDoc,
+                name: `潜能 ${p.level}`,
+              } : null;
+            }
             const pool =
               sel.type === "combatTalent" ? char.combatTalents :
               sel.type === "abilityTalent" ? char.abilityTalents :
@@ -990,6 +1031,44 @@ export function CharSelectModal({
                       </div>
                     </div>
                   )}
+
+                  {/* Potential */}
+                  {potentialData && (
+                    <div>
+                      <div className="flex flex-wrap gap-3">
+                        {potentialData.map((p: any, i: number) => {
+                          const isSel = sel?.type === "potential" && sel.id === String(p.level);
+                          const unlocked = i < (charItem?.potentialLevel ?? 0);
+                          return (
+                            <button key={p.level}
+                              onClick={() => openDetailPanel({ type: "potential", id: String(p.level) })}
+                              className={btnBase(true, isSel, unlocked)}
+                              style={{ backgroundColor: unlocked ? "#e9d72c" : "#404040" }}
+                              title={`潜能 ${p.level}`}>
+                              <div className="relative w-full h-full">
+                                {unlocked ? (
+                                  <div className="absolute -inset-1">
+                                    <img src={p.iconUrl} alt={`潜${p.level}`} className="w-full h-full object-cover" />
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="absolute -inset-1">
+                                      <img src={p.iconUrl} alt={`潜${p.level}`} className="w-full h-full object-cover opacity-30" />
+                                    </div>
+                                    <div className="absolute inset-0 flex items-center justify-center z-10">
+                                      <svg className="w-4 h-4 text-white drop-shadow" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm8 14H7c-.55 0-1-.45-1-1v-8c0-.55.45-1 1-1h10c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1z"/>
+                                      </svg>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1036,20 +1115,55 @@ export function CharSelectModal({
                         const idx = sameName.findIndex((t: any) => t.id === sel.id);
                         return idx >= 0 ? idx + 1 : -1;
                       })();
-                      const wikiBlocks = getWikiRenderedBlocks(
+                      const isPotential = selectedItem._type === "potential";
+                      const wikiBlocks = !isPotential ? getWikiRenderedBlocks(
                         wikiDetail,
                         (selectedItem as any).name || "",
                         skillLevel,
                         selectedItem._type || "",
                         talentRank,
-                      );
+                      ) : [];
+
+                      // 从 contentDoc 提取潜能描述文本块
+                      const getPotentialSegments = (doc: any) => {
+                        if (!doc?.blockMap || !doc?.blockIds) return [];
+                        const result: { kind: string; segments: any[] }[] = [];
+                        for (const blockId of doc.blockIds) {
+                          const block = doc.blockMap[blockId];
+                          if (!block || block.kind === "table" || block.kind === "horizontalLine") continue;
+                          const segs: any[] = [];
+                          if (block.text?.inlineElements) {
+                            for (const el of block.text.inlineElements) {
+                              if (el.kind === "text" || el.kind === "link") {
+                                segs.push({
+                                  text: el.text?.text || "",
+                                  bold: (el as any).bold || false,
+                                  color: (el as any).color || undefined,
+                                });
+                              }
+                            }
+                          }
+                          if (segs.length > 0) {
+                            result.push({ kind: block.text?.kind || "text", segments: segs });
+                          }
+                        }
+                        return result;
+                      };
+                      const contentDoc = isPotential ? (selectedItem as any).contentDoc : null;
+                      const potentialSegments = contentDoc ? getPotentialSegments(contentDoc) : [];
 
                       return (
                       <div className="pl-10 p-5 text-[#f0e8d8]">
                         <div className="flex items-center gap-4 mb-4">
-                          <Img src={selectedItem.iconUrl} alt={selectedItem.name}
-                            className={`w-16 h-16 object-contain p-1.5 ${selectedItem._type === "cultivationTalent" ? "rounded-lg" : "rounded-full"}`}
-                            style={{ backgroundColor: "#e9d72c", boxShadow: "0 0 14px rgba(0,0,0,0.35)" }} />
+                          {isPotential ? (
+                            <img src={selectedItem.iconUrl} alt={selectedItem.name}
+                              className="w-16 h-16 object-contain p-1.5 rounded-full"
+                              style={{ boxShadow: "0 0 14px rgba(0,0,0,0.35)" }} />
+                          ) : (
+                            <Img src={selectedItem.iconUrl} alt={selectedItem.name}
+                              className={`w-16 h-16 object-contain p-1.5 ${selectedItem._type === "cultivationTalent" ? "rounded-lg" : "rounded-full"}`}
+                              style={{ backgroundColor: "#e9d72c", boxShadow: "0 0 14px rgba(0,0,0,0.35)" }} />
+                          )}
                           <div>
                             <h4 className="font-semibold text-lg text-[#f0e8d8]">{selectedItem.name}</h4>
                             {"type" in selectedItem && selectedItem.type && (
@@ -1097,7 +1211,42 @@ export function CharSelectModal({
                           );
                         })()}
 
-                        {wikiBlocks.map((block, i) =>
+                        {isPotential ? (
+                          potentialSegments.length > 0 ? (
+                            potentialSegments.map((seg, i) =>
+                              seg.kind === "heading3" ? (
+                                <h5 key={i} className="font-semibold text-[#f0e8d8] mt-4 mb-2 text-[15px]">
+                                  {seg.segments.map((s: any, si: number) => {
+                                    const isSpecial = s.bold || s.underline || s.color;
+                                    return (
+                                      <span key={si} style={{
+                                        fontWeight: isSpecial ? 700 : undefined,
+                                        textDecoration: s.underline ? "underline" : undefined,
+                                        color: s.color || undefined,
+                                      }}>{s.text}</span>
+                                    );
+                                  })}
+                                </h5>
+                              ) : (
+                                <p key={i} className="text-[#c0b8a8] leading-relaxed text-[15px]">
+                                  {seg.segments.map((s: any, si: number) => {
+                                    const isSpecial = s.bold || s.underline || s.color;
+                                    return (
+                                      <span key={si} style={{
+                                        fontWeight: isSpecial ? 700 : undefined,
+                                        textDecoration: s.underline ? "underline" : undefined,
+                                        color: s.color || undefined,
+                                      }}>{s.text}</span>
+                                    );
+                                  })}
+                                </p>
+                              )
+                            )
+                          ) : (
+                            <p className="text-[#c0b8a8] italic mt-2 text-[15px]">暂无 Wiki 数据</p>
+                          )
+                        ) : (
+                          wikiBlocks.map((block, i) =>
                           block.kind === "text" ? (
                             block.data.kind === "heading3" ? (
                               <h5 key={i} className="font-semibold text-[#f0e8d8] mt-4 mb-2 text-[15px]">
@@ -1173,8 +1322,9 @@ export function CharSelectModal({
                               })}
                             </div>
                           )
+                        )
                         )}
-                        {wikiBlocks.length === 0 && (
+                        {!isPotential && wikiBlocks.length === 0 && (
                           <p className="text-[#c0b8a8] italic mt-2 text-[15px]">
                             暂无 Wiki 数据
                           </p>
