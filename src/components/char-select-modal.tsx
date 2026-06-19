@@ -37,6 +37,7 @@ interface CharSelectModalProps {
   roleId: string;
   initialCharId?: string;
   initialViewMode?: "list" | "detail";
+  maxSlots?: number;
 }
 
 // ====== 稀有度色阶（WIKI 风格的稀有度 tone）======
@@ -278,6 +279,7 @@ export function CharSelectModal({
   roleId,
   initialCharId,
   initialViewMode,
+  maxSlots = 3,
 }: CharSelectModalProps) {
   const { t } = useTranslation();
   const [tempSelectedIds, setTempSelectedIds] =
@@ -1512,8 +1514,8 @@ export function CharSelectModal({
                 {t("settings.characters.click_to_select")}
               </p>
 
-              <div className="grid grid-cols-3 gap-4">
-                {[0, 1, 2].map((slotIndex) => {
+              <div className="grid gap-4 justify-center" style={{ gridTemplateColumns: `repeat(${maxSlots}, 200px)` }}>
+                {Array.from({ length: maxSlots }).map((_, slotIndex) => {
                   const currentCharId = tempSelectedIds[slotIndex];
                   const currentChar = currentCharId
                     ? getCharById(currentCharId)
@@ -1602,10 +1604,6 @@ export function CharSelectModal({
               </div>
 
               <div className="mt-6 space-y-3">
-                <p className="text-sm text-muted text-center">
-                  {t("settings.characters.click_to_select")}
-                </p>
-
                 {/* Action Buttons */}
                 <div className="flex gap-3 justify-center">
                   <Button

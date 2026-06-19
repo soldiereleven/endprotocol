@@ -313,6 +313,7 @@ export default function CharacterListCard({
         charDetail={processedCharDetail}
         selectedCharIds={selectedCharIds.slice(0, slotCount)}
         roleId={roleId}
+        maxSlots={slotCount}
         initialCharId={preopenCharId ?? undefined}
         initialViewMode={preopenCharId ? "detail" : undefined}
         onSave={async (newIds: string[]) => {
