@@ -25,45 +25,47 @@ export type WikiRenderedBlock =
   | { kind: "params"; data: WikiSkillParam[] }
   | { kind: "materials"; data: WikiSkillParam[] };
 
-const NORMALIZE_CHAR_MAP: Record<string, string> = {
-  "\u03C5": "u",
-  "\uFF01": "!",
-  "\uFF02": "\"",
-  "\uFF03": "#",
-  "\uFF04": "$",
-  "\uFF05": "%",
-  "\uFF06": "&",
-  "\uFF07": "'",
-  "\uFF08": "(",
-  "\uFF09": ")",
-  "\uFF0A": "*",
-  "\uFF0B": "+",
-  "\uFF0C": ",",
-  "\uFF0D": "-",
-  "\uFF0E": ".",
-  "\uFF0F": "/",
-  "\uFF1A": ":",
-  "\uFF1B": ";",
-  "\uFF1C": "<",
-  "\uFF1D": "=",
-  "\uFF1E": ">",
-  "\uFF1F": "?",
-  "\uFF20": "@",
-  "\uFF3B": "[",
-  "\uFF3C": "\\",
-  "\uFF3D": "]",
-  "\uFF3E": "^",
-  "\uFF3F": "_",
-  "\uFF40": "`",
-  "\uFF5B": "{",
-  "\uFF5C": "|",
-  "\uFF5D": "}",
-  "\uFF5E": "~",
+const GREEK_TO_LATIN: Record<string, string> = {
+  "\u0391": "A", "\u03B1": "a",
+  "\u0392": "B", "\u03B2": "b",
+  "\u0393": "Y", "\u03B3": "y",
+  "\u0394": "D", "\u03B4": "d",
+  "\u0395": "E", "\u03B5": "e",
+  "\u0396": "Z", "\u03B6": "z",
+  "\u0397": "H", "\u03B7": "h",
+  "\u0398": "Th", "\u03B8": "th",
+  "\u0399": "I", "\u03B9": "i",
+  "\u039A": "K", "\u03BA": "k",
+  "\u039B": "L", "\u03BB": "l",
+  "\u039C": "M", "\u03BC": "u",
+  "\u039D": "N", "\u03BD": "v",
+  "\u039E": "X", "\u03BE": "x",
+  "\u039F": "O", "\u03BF": "o",
+  "\u03A0": "P", "\u03C0": "p",
+  "\u03A1": "P", "\u03C1": "p",
+  "\u03A3": "S", "\u03C3": "s",
+  "\u03A4": "T", "\u03C4": "t",
+  "\u03A5": "Y", "\u03C5": "u",
+  "\u03A6": "Ph", "\u03C6": "ph",
+  "\u03A7": "X", "\u03C7": "x",
+  "\u03A8": "Ps", "\u03C8": "ps",
+  "\u03A9": "O", "\u03C9": "o",
 };
+
+const MICRO_SIGN = "\u00B5";
+const MICRO_MU = "\u03BC";
 
 function normalizeName(name: string): string {
   let result = name.trim();
-  for (const [from, to] of Object.entries(NORMALIZE_CHAR_MAP)) {
+  // Full-width (U+FF01-U+FF5E) to half-width ASCII (U+0021-U+007E)
+  result = result.replace(/[\uFF01-\uFF5E]/g, ch =>
+    String.fromCharCode(ch.charCodeAt(0) - 0xFEE0),
+  );
+  // Micro sign → mu → u
+  result = result.split(MICRO_SIGN).join("u");
+  result = result.split(MICRO_MU).join("u");
+  // Greek letters → Latin look-alikes
+  for (const [from, to] of Object.entries(GREEK_TO_LATIN)) {
     result = result.split(from).join(to);
   }
   return result;
