@@ -6,6 +6,8 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
+use super::paths;
+
 /// 日志级别
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub enum LogLevel {
@@ -60,10 +62,8 @@ impl Default for LoggerConfig {
             log_to_console: true,
             log_to_file: true,
             log_level: LogLevel::Debug,
-            log_dir: dirs::data_local_dir()
-                .unwrap_or_else(|| std::env::current_dir().unwrap())
-                .join("cn.msk-network.endprotocol")
-                .join("logs"),
+            log_dir: paths::log_dir()
+                .unwrap_or_else(|_| std::env::current_dir().unwrap().join("logs")),
             max_memory_entries: 5000,
         }
     }

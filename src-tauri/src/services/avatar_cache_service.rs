@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use crate::utils::AppError;
+use crate::utils::{paths, AppError};
 use crate::{log_debug, log_info};
 
 /// 图片缓存类型
@@ -34,13 +34,9 @@ pub struct ImageCacheService {
 
 impl ImageCacheService {
     pub fn new() -> Result<Self, AppError> {
-        let app_data_dir = dirs::data_dir().ok_or_else(|| AppError::ConfigError {
-            message: "Failed to get app data directory".to_string(),
+        let cache_dir = paths::image_cache_dir().map_err(|e| AppError::ConfigError {
+            message: e.to_string(),
         })?;
-
-        let cache_dir = app_data_dir
-            .join("cn.msk-network.endprotocol")
-            .join("image_cache");
 
         // 确保主目录存在
         fs::create_dir_all(&cache_dir)?;

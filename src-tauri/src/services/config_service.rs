@@ -5,7 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use crate::utils::AppError;
+use crate::utils::{paths, AppError};
 
 /// 配置存储服务
 pub struct ConfigService {
@@ -16,17 +16,15 @@ pub struct ConfigService {
 impl ConfigService {
     /// 创建新的配置服务实例
     pub fn new() -> Result<Self, AppError> {
-        // 获取平台特定的本地应用数据目录
-        let app_data_dir = dirs::data_local_dir()
-            .ok_or_else(|| AppError::ConfigError {
-                message: "Failed to get local app data directory".to_string(),
-            })?
-            .join("cn.msk-network.endprotocol");
+        let app_data_dir = paths::app_data_dir().map_err(|e| AppError::ConfigError {
+            message: e.to_string(),
+        })?;
 
-        // 确保目录存在
         fs::create_dir_all(&app_data_dir)?;
 
-        let config_path = app_data_dir.join("app_config.json");
+        let config_path = paths::config_file_path().map_err(|e| AppError::ConfigError {
+            message: e.to_string(),
+        })?;
 
         // 加载现有配置
         let cache = if config_path.exists() {

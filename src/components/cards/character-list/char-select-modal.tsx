@@ -16,15 +16,15 @@ import { invoke } from "@tauri-apps/api/core";
 import { logError } from "@/utils/logger";
 
 // ====== 图标资源路径（占位，等用户提供资源文件）======
-// 职业图标：/src/assets/icons/profession/<profession.key>.png
+// 职业图标：/assets/icons/profession/<profession.key>.png
 //   已知 key 例子：profession_caster, profession_guard, profession_medic, profession_sniper, ...
-// 属性图标：/src/assets/icons/property/<property.key>.png
+// 属性图标：/assets/icons/property/<property.key>.png
 //   已知 key 例子：char_property_cryst, char_property_phys, ...
 // 资源就位后，本组件无需改动，直接可用
-const ICON_BASE = "/src/assets/icons";
+const ICON_BASE = "/assets/icons";
 const professionIconUrl = (key: string) => `${ICON_BASE}/profession/${key}.png`;
 const propertyIconUrl = (key: string) => `${ICON_BASE}/property/${key}.png`;
-const RARITY_ICON_URL = "/src/assets/rarity.svg";
+const RARITY_ICON_URL = "/assets/rarity.svg";
 
 type FilterKey = "profession" | "rarity" | "property" | "weapon" | "mainAttr" | "subAttr";
 
@@ -328,7 +328,7 @@ export function CharSelectModal({
       const contentDoc = contentDocId ? doc.documentMap[contentDocId] : null;
       return {
         level: index + 1,
-        iconUrl: `/src/assets/icons/potential/potential_${index + 1}.png`,
+        iconUrl: `/assets/icons/potential/potential_${index + 1}.png`,
         contentDoc,
       };
     });

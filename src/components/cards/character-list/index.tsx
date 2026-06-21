@@ -167,7 +167,7 @@ export default function CharacterListCard({
     }
   }
 
-  const ICON_BASE = "/src/assets/icons";
+  const ICON_BASE = "/assets/icons";
   const professionIconUrl = (key: string) => `${ICON_BASE}/profession/${key}.png`;
   const propertyIconUrl = (key: string) => `${ICON_BASE}/property/${key}.png`;
 

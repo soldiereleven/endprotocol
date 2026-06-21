@@ -152,6 +152,7 @@ impl CharWikiDetailService {
     }
 
     /// 清空 wiki 详情缓存，重置 initialized 状态，取消正在进行的拉取。
+    /// 注意：仅清空内存缓存，磁盘缓存文件保留以供后续直接命中。
     pub fn clear(&self) {
         self.preload_epoch.fetch_add(1, Ordering::Relaxed);
         self.preload_in_progress.store(false, Ordering::Relaxed);
@@ -159,10 +160,7 @@ impl CharWikiDetailService {
         self.cache.lock().unwrap().clear();
         *self.merged.lock().unwrap() = serde_json::Value::Object(serde_json::Map::new());
         self.initialized.store(false, Ordering::Relaxed);
-        if self.cache_dir.exists() {
-            let _ = fs::remove_dir_all(&self.cache_dir);
-        }
-        log_info!("Char wiki detail cache cleared");
+        log_info!("Char wiki detail cache cleared (memory only, disk preserved)");
     }
 
     /// 返回合并后的全部详情 JSON `{"itemId": {...}, ...}`（可能为空对象）
