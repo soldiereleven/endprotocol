@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { roleDataService } from "@/utils/roleDataService";
 import { BaseCardProps } from "../registry/types";
 import { CardConfigService } from "@/utils/cardConfigService";
-import type { CharacterListCardSettings, CharacterListDisplayMode, SortOrder } from "@/types/card-settings";
+import type { CharacterListCardSettings, CharacterListDisplayMode } from "@/types/card-settings";
 import { useCardData } from "../base/use-card-data";
 import { Img } from "@/utils/imageLoader";
 import { useImageRequest, usePinImages } from "@/utils/imageCacheManager";
@@ -34,33 +34,6 @@ function getSelectedCharacters(
     .slice(0, count);
 }
 
-function sortCharacters(chars: CharacterItem[], order: SortOrder): CharacterItem[] {
-  const sorted = [...chars];
-  switch (order) {
-    case "rarity":
-      sorted.sort((a, b) => {
-        const rA = parseInt(a.charData.rarity.value, 10) || 0;
-        const rB = parseInt(b.charData.rarity.value, 10) || 0;
-        if (rB !== rA) return rB - rA;
-        return a.charData.name.localeCompare(b.charData.name);
-      });
-      break;
-    case "name":
-      sorted.sort((a, b) => a.charData.name.localeCompare(b.charData.name));
-      break;
-    case "level": {
-      sorted.sort((a, b) => {
-        const lA = a.level ?? 0;
-        const lB = b.level ?? 0;
-        if (lB !== lA) return lB - lA;
-        return a.charData.name.localeCompare(b.charData.name);
-      });
-      break;
-    }
-  }
-  return sorted;
-}
-
 export default function CharacterListCard({
   roleId,
   cardId,
@@ -68,7 +41,6 @@ export default function CharacterListCard({
 }: BaseCardProps) {
   const { t } = useTranslation();
   const [selectedCharIds, setSelectedCharIds] = useState<string[]>([]);
-  const [sortOrder, setSortOrder] = useState<SortOrder>("rarity");
   const [displayMode, setDisplayMode] = useState<CharacterListDisplayMode>("triple");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [preopenCharId, setPreopenCharId] = useState<string | null>(null);
@@ -93,10 +65,6 @@ export default function CharacterListCard({
 
       const mode = settings.displayMode || "triple";
       const count = DISPLAY_MODE_CONFIG[mode].slotCount;
-
-      if (settings.sortOrder) {
-        setSortOrder(settings.sortOrder);
-      }
 
       if (settings.displayMode) {
         setDisplayMode(settings.displayMode);
@@ -136,9 +104,8 @@ export default function CharacterListCard({
   const { slotCount, gridCols } = DISPLAY_MODE_CONFIG[displayMode];
 
   const selectedCharacters = useMemo(() => {
-    const chars = getSelectedCharacters(processedCharDetail, selectedCharIds, slotCount);
-    return sortCharacters(chars, sortOrder);
-  }, [processedCharDetail, selectedCharIds, sortOrder, slotCount]);
+    return getSelectedCharacters(processedCharDetail, selectedCharIds, slotCount);
+  }, [processedCharDetail, selectedCharIds, slotCount]);
 
   const avatarPaths = useMemo(
     () =>
