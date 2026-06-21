@@ -25,7 +25,7 @@ export type WikiRenderedBlock =
   | { kind: "params"; data: WikiSkillParam[] }
   | { kind: "materials"; data: WikiSkillParam[] };
 
-const WIKI_COLOR_MAP: Record<string, string> = {
+export const WIKI_COLOR_MAP: Record<string, string> = {
   "light_text_primary": "#f0e8d8",
   "light_text_secondary": "#5e5e5e",
   "light_text_tertiary": "#787878",

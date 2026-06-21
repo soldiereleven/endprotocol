@@ -6,7 +6,7 @@ import {
   CustomModalBody,
 } from "@/components/custom-modal";
 import { CharDetailData, CharacterItem } from "@/types/charDetail";
-import { getWikiRenderedBlocks } from "@/utils/wikiTableParser";
+import { getWikiRenderedBlocks, WIKI_COLOR_MAP } from "@/utils/wikiTableParser";
 import { useTranslation } from "react-i18next";
 import { Img } from "@/utils/imageLoader";
 import { useImageRequest } from "@/utils/imageCacheManager";
@@ -1139,10 +1139,13 @@ export function CharSelectModal({
                           if (block.text?.inlineElements) {
                             for (const el of block.text.inlineElements) {
                               if (el.kind === "text" || el.kind === "link") {
+                                const rawColor = (el as any).color;
+                                const mappedColor = rawColor ? WIKI_COLOR_MAP[rawColor] || rawColor : undefined;
                                 segs.push({
                                   text: el.text?.text || "",
                                   bold: (el as any).bold || false,
-                                  color: (el as any).color || undefined,
+                                  underline: (el as any).underline || false,
+                                  color: rawColor === "light_text_primary" ? undefined : mappedColor,
                                 });
                               }
                             }
