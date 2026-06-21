@@ -1102,19 +1102,21 @@ export function CharSelectModal({
                       const isSkill = selectedItem._type === "skill";
                       const maxSkillLevel = 12;
                       const isMaxed = isSkill && skillLevel >= maxSkillLevel;
+                      const getBaseName = (n: string) => n.replace(/·(?:[αβγδε]|[一二三四五六七八九十]+|\d+)$/, '');
                       const talentRank = (() => {
                         if (!sel || selectedItem._type === "skill") return -1;
                         const pool = selectedItem._type === "abilityTalent" ? char.abilityTalents
                           : selectedItem._type === "combatTalent" ? char.combatTalents
                           : char.cultivationTalents || [];
-                        const sameName = [...pool]
-                          .filter((t: any) => t.name === (selectedItem as any).name)
+                        const baseName = getBaseName((selectedItem as any).name);
+                        const sameBaseName = [...pool]
+                          .filter((t: any) => getBaseName(t.name) === baseName)
                           .sort((a: any, b: any) => {
                             const numA = parseInt(a.id.match(/_(\d+)$/)?.[1] || "0");
                             const numB = parseInt(b.id.match(/_(\d+)$/)?.[1] || "0");
                             return numA - numB;
                           });
-                        const idx = sameName.findIndex((t: any) => t.id === sel.id);
+                        const idx = sameBaseName.findIndex((t: any) => t.id === sel.id);
                         return idx >= 0 ? idx + 1 : -1;
                       })();
                       const isPotential = selectedItem._type === "potential";
@@ -1265,15 +1267,21 @@ export function CharSelectModal({
                               </h5>
                             ) : (
                               <p key={i} className="text-[#c0b8a8] leading-relaxed text-[15px]">
-                                {block.data.segments.map((seg, si) => {
+                                {block.data.segments.flatMap((seg, si) => {
                                   const isSpecial = seg.bold || seg.underline || seg.color;
-                                  return (
-                                    <span key={si} style={{
-                                      fontWeight: isSpecial ? 700 : undefined,
-                                      textDecoration: seg.underline ? "underline" : undefined,
-                                      color: seg.color || undefined,
-                                    }}>{seg.text}</span>
-                                  );
+                                  const parts = seg.text.split("\n");
+                                  return parts.flatMap((part, pi) => {
+                                    const nodes: React.ReactNode[] = [];
+                                    if (pi > 0) nodes.push(<br key={`${si}-br-${pi}`} />);
+                                    nodes.push(
+                                      <span key={`${si}-${pi}`} style={{
+                                        fontWeight: isSpecial ? 700 : undefined,
+                                        textDecoration: seg.underline ? "underline" : undefined,
+                                        color: seg.color || undefined,
+                                      }}>{part}</span>
+                                    );
+                                    return nodes;
+                                  });
                                 })}
                               </p>
                             )

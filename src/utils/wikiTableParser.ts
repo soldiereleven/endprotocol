@@ -70,30 +70,70 @@ function extractCellText(
   blockMap: Record<string, WikiDocumentBlock>,
 ): { text: string; highlighted: boolean } | null {
   if (!cell?.childIds?.length) return null;
-  const childId = cell.childIds[0];
-  const block = blockMap[childId];
-  if (!block?.text?.inlineElements) return null;
-
   let result = "";
   let highlighted = false;
-  for (const el of block.text.inlineElements) {
-    const anyEl = el as any;
-    if (anyEl.kind === "text" || anyEl.kind === "link") {
-      if (anyEl.text?.text) {
-        result += anyEl.text.text;
-        if (anyEl.color === "light_text_primary") {
-          highlighted = true;
+  for (const childId of cell.childIds) {
+    const block = blockMap[childId];
+    if (!block?.text?.inlineElements) continue;
+    for (const el of block.text.inlineElements) {
+      const anyEl = el as any;
+      if (anyEl.kind === "text" || anyEl.kind === "link") {
+        if (anyEl.text?.text) {
+          result += anyEl.text.text;
+          if (anyEl.color === "light_text_primary") {
+            highlighted = true;
+          }
         }
       }
-    }
-    if (anyEl.kind === "entry") {
-      const entry = anyEl.entry;
-      if (entry?.count) {
-        result += entry.count;
+      if (anyEl.kind === "entry") {
+        const entry = anyEl.entry;
+        if (entry?.count) {
+          result += entry.count;
+        }
       }
     }
   }
   return result.trim() ? { text: result.trim(), highlighted } : null;
+}
+
+/**
+ * Extract inline segments from a table cell, preserving wiki formatting (colors, bold, etc.).
+ */
+function extractCellSegments(
+  cell: any,
+  blockMap: Record<string, WikiDocumentBlock>,
+): InlineSegment[] | null {
+  if (!cell?.childIds?.length) return null;
+  const segments: InlineSegment[] = [];
+  for (const childId of cell.childIds) {
+    const block = blockMap[childId];
+    if (!block?.text?.inlineElements) continue;
+    // Insert newline between child blocks for multi-paragraph cells
+    if (segments.length > 0) {
+      segments.push({ text: "\n" });
+    }
+    for (const el of block.text.inlineElements) {
+      const anyEl = el as any;
+      if (anyEl.kind === "text" || anyEl.kind === "link") {
+        if (anyEl.text?.text) {
+          const mapped = anyEl.color ? WIKI_COLOR_MAP[anyEl.color] || anyEl.color : undefined;
+          segments.push({
+            text: anyEl.text.text,
+            bold: anyEl.bold || undefined,
+            underline: anyEl.underline || undefined,
+            color: anyEl.color === "light_text_primary" ? undefined : mapped,
+            isDefaultColor: anyEl.color === "light_text_primary" ? true : undefined,
+          });
+        }
+      }
+      if (anyEl.kind === "entry") {
+        if (anyEl.entry?.count) {
+          segments.push({ text: String(anyEl.entry.count) });
+        }
+      }
+    }
+  }
+  return segments.length > 0 ? segments : null;
 }
 
 function extractInlineSegments(
@@ -190,24 +230,46 @@ function isMaterialTable(tableBlock: any): boolean {
 }
 
 /**
- * Check if a document's text blocks contain the given name.
- * Matches if either the doc text contains the name OR the name contains the doc text.
- * The latter handles cultivation talents where player name is "管代经验·β"
- * but wiki doc heading is "管代经验".
+ * Check if a document's primary heading (first text/heading3 block) matches the given name.
+ * Matches if the heading text equals, contains, or is contained by the name.
+ * Only falls back to scanning all blocks if the doc has no recognizable heading.
+ * This avoids matching content docs (e.g. potential) where the name appears
+ * only incidentally in the body text rather than as the identifying heading.
  */
 function docContainsName(
   contentDoc: any,
   name: string,
 ): boolean {
   if (!contentDoc?.blockMap) return false;
-  for (const blockId of contentDoc.blockIds || []) {
+
+  // First text/heading3 block = primary heading (strong match)
+  const blockIds = contentDoc.blockIds || [];
+  let primaryHeading = "";
+  for (const blockId of blockIds) {
     const block = contentDoc.blockMap[blockId] as any;
     if (!block || block.kind === "table" || block.kind === "horizontalLine") continue;
     const segments = extractInlineSegments(block);
     if (!segments) continue;
-    const text = segmentsToPlainText(segments);
-    if (text && (text.includes(name) || name.includes(text))) return true;
+    primaryHeading = segmentsToPlainText(segments);
+    break;
   }
+
+  if (primaryHeading && (primaryHeading === name || primaryHeading.includes(name) || name.includes(primaryHeading))) {
+    return true;
+  }
+
+  // Fallback: if no heading was found, scan all blocks
+  if (!primaryHeading) {
+    for (const blockId of blockIds) {
+      const block = contentDoc.blockMap[blockId] as any;
+      if (!block || block.kind === "table" || block.kind === "horizontalLine") continue;
+      const segments = extractInlineSegments(block);
+      if (!segments) continue;
+      const text = segmentsToPlainText(segments);
+      if (text && (text.includes(name) || name.includes(text))) return true;
+    }
+  }
+
   return false;
 }
 
@@ -326,17 +388,25 @@ function renderDocumentBlocks(
       const params: WikiSkillParam[] = [];
 
       if (talentRank >= 1) {
-        const rowIdx = talentRank - 1;
-        if (rowIdx < parsed.grid.length) {
-          for (let ci = 0; ci < parsed.grid[rowIdx].length; ci++) {
-            const cell = parsed.grid[rowIdx][ci];
-            const label = parsed.columnHeaders[ci + 1] || "";
-            if (label.includes("材料消耗")) continue;
-            params.push({
-              label,
-              value: cell.value,
-              highlighted: false,
-            });
+        // Only extract the description column as formatted text block
+        const tbl = block.table;
+        if (tbl?.rowIds && tbl?.columnIds && tbl?.cellMap) {
+          const descColIdx = parsed.columnHeaders.findIndex((h: string) => h.includes("描述"));
+          if (descColIdx >= 0) {
+            const dataRowIdx = Math.min(talentRank, tbl.rowIds.length - 1);
+            const rowId = tbl.rowIds[dataRowIdx];
+            const colId = tbl.columnIds[descColIdx];
+            const cellKey = `${rowId}_${colId}`;
+            const cell = tbl.cellMap[cellKey];
+            if (cell) {
+              const segments = extractCellSegments(cell, blockMap);
+              if (segments) {
+                blocks.push({
+                  kind: "text",
+                  data: { kind: "text", segments },
+                });
+              }
+            }
           }
         }
       } else {
