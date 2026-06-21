@@ -702,13 +702,13 @@ impl AccountService {
                 };
 
                 match self
-                    .skland_service
-                    .get_role_detail(&final_cred, &final_token, &role_id, &server_id, &user_id)
+                    .network_service
+                    .char_detail_service()
+                    .get_with_cache(&role_id, &final_cred, &final_token, &server_id, &user_id)
                     .await
                 {
-                    Ok(char_detail_response) => {
-                        // 从完整响应中提取 AccountInfo 所需字段
-                        let base = &char_detail_response.data.detail.base;
+                    Ok(Some(detail)) => {
+                        let base = &detail.base;
 
                         // 下载并缓存头像（返回 base64）
                         let cached_avatar = self
@@ -725,6 +725,23 @@ impl AccountService {
                             server: server_id.clone(),
                             status: "online".to_string(),
                             sync_status: None, // 同步成功，清除状态
+                            cred: Some(final_cred),
+                            token: Some(final_token),
+                            user_id: Some(user_id.clone()),
+                            server_id: Some(server_id.clone()),
+                        };
+                        accounts.push(account);
+                    }
+                    Ok(None) => {
+                        log_error!("get_accounts: No detail found for role {}", role_id);
+                        let account = AccountInfo {
+                            id: role_id.clone(),
+                            avatar: String::new(),
+                            nickname: format!("Role {}", &role_id[..8.min(role_id.len())]),
+                            level: 0,
+                            server: server_id.clone(),
+                            status: "offline".to_string(),
+                            sync_status: Some("FAILED".to_string()),
                             cred: Some(final_cred),
                             token: Some(final_token),
                             user_id: Some(user_id.clone()),
@@ -780,16 +797,16 @@ impl AccountService {
 
                                         // 重试获取角色详情
                                         match self
-                                            .skland_service
-                                            .get_role_detail(
-                                                &new_cred, &new_token, &role_id, &server_id,
+                                            .network_service
+                                            .char_detail_service()
+                                            .get_with_cache(
+                                                &role_id, &new_cred, &new_token, &server_id,
                                                 &user_id,
                                             )
                                             .await
                                         {
-                                            Ok(char_detail_response) => {
-                                                // 从完整响应中提取 AccountInfo 所需字段
-                                                let base = &char_detail_response.data.detail.base;
+                                            Ok(Some(detail)) => {
+                                                let base = &detail.base;
 
                                                 // 下载并缓存头像（返回 base64）
                                                 let cached_avatar = self
@@ -813,6 +830,23 @@ impl AccountService {
                                                 };
                                                 accounts.push(account);
                                                 continue; // 跳过下面的 FAILED 状态创建
+                                            }
+                                            Ok(None) => {
+                                                log_error!("get_accounts: No detail found for role {} after refresh", role_id);
+                                                let account = AccountInfo {
+                                                    id: role_id.clone(),
+                                                    avatar: String::new(),
+                                                    nickname: format!("Role {}", &role_id[..8.min(role_id.len())]),
+                                                    level: 0,
+                                                    server: server_id.clone(),
+                                                    status: "offline".to_string(),
+                                                    sync_status: Some("FAILED".to_string()),
+                                                    cred: Some(new_cred),
+                                                    token: Some(new_token),
+                                                    user_id: Some(user_id.clone()),
+                                                    server_id: Some(server_id.clone()),
+                                                };
+                                                accounts.push(account);
                                             }
                                             Err(retry_e) => {
                                                 log_error!("get_accounts: Auto-refresh retry also failed: {}", retry_e);

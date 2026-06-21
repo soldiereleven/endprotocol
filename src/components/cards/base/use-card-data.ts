@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { logDebug, logError } from "@/utils/logger";
 
 interface UseCardDataOptions<T> {
@@ -17,15 +17,20 @@ export function useCardData<T>({
   const [isLoading, setIsLoading] = useState(!lazy);
   const [error, setError] = useState<Error | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const hasLoadedRef = useRef(hasLoaded);
+  hasLoadedRef.current = hasLoaded;
+
+  const fetchDataRef = useRef(fetchData);
+  fetchDataRef.current = fetchData;
 
   const loadData = useCallback(async () => {
-    if (hasLoaded && !lazy) return; // 避免重复加载
-    
+    if (hasLoadedRef.current && !lazy) return;
+
     try {
       setIsLoading(true);
       setError(null);
       logDebug("Loading card data...");
-      const result = await fetchData();
+      const result = await fetchDataRef.current();
       setData(result);
       setHasLoaded(true);
       logDebug("Card data loaded successfully");
@@ -35,9 +40,8 @@ export function useCardData<T>({
     } finally {
       setIsLoading(false);
     }
-  }, [fetchData, hasLoaded, lazy]);
+  }, [lazy]);
 
-  // 如果不是懒加载，自动加载数据
   useEffect(() => {
     if (!lazy) {
       loadData();
