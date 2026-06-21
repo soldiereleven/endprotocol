@@ -549,6 +549,13 @@ export default function AccountPage() {
         const accounts = await getAccounts();
         setAccounts(accounts || []);
 
+        // 自动选中新登录的账户
+        await apiSetSelectedAccount(result.account.id);
+        setCurrentAccountId(result.account.id);
+
+        // 通知侧边栏更新
+        window.dispatchEvent(new CustomEvent("accountChanged"));
+
         // 关闭 Modal
         handleCloseAddModal();
 
@@ -634,6 +641,13 @@ export default function AccountPage() {
       // 刷新账户列表
       const accounts = await getAccounts();
       setAccounts(accounts || []);
+
+      // 自动选中第一个绑定的账户
+      if (accounts && accounts.length > 0) {
+        await apiSetSelectedAccount(accounts[0].id);
+        setCurrentAccountId(accounts[0].id);
+        window.dispatchEvent(new CustomEvent("accountChanged"));
+      }
 
       // 关闭模态并清空表单
       handleCloseAddModal();
