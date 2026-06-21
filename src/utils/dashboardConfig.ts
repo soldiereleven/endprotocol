@@ -12,16 +12,9 @@ export async function getDashboardConfig(roleId: string): Promise<DashboardConfi
   const config = await getConfig<DashboardConfig>(key);
   
   if (!config) {
-    // 返回默认配置（包含一个干员列表卡片）
+    // 初始为空，不自动添加卡片
     return {
-      cards: [
-        {
-          id: uuidv4(),
-          type: 'character_list',
-          position: 0,
-          settings: {}
-        }
-      ],
+      cards: [],
       lastUpdated: Date.now()
     };
   }
