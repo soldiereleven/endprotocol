@@ -1,11 +1,13 @@
 use std::collections::HashMap;
+use std::fs;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
 
 use crate::services::skland_service::SklandService;
-use crate::utils::AppError;
+use crate::utils::{paths, AppError};
 use crate::{log_info, log_warn};
 
 /// Preload progress snapshot exposed to the frontend.
@@ -31,10 +33,14 @@ pub struct CharWikiDetailService {
     preload_in_progress: AtomicBool,
     /// (completed, failed, total) updated incrementally during preload.
     preload_progress: Arc<Mutex<(usize, usize, usize)>>,
+    cache_dir: PathBuf,
 }
 
 impl CharWikiDetailService {
     pub fn new(skland_service: Arc<SklandService>) -> Self {
+        let cache_dir = paths::wiki_detail_cache_dir()
+            .unwrap_or_else(|_| PathBuf::from("wiki_detail_cache"));
+        log_info!("[wiki_detail_cache] Cache dir: {}", cache_dir.display());
         Self {
             skland_service,
             cache: Arc::new(Mutex::new(HashMap::new())),
@@ -43,6 +49,7 @@ impl CharWikiDetailService {
             preload_epoch: AtomicU64::new(0),
             preload_in_progress: AtomicBool::new(false),
             preload_progress: Arc::new(Mutex::new((0, 0, 0))),
+            cache_dir,
         }
     }
 
@@ -69,6 +76,41 @@ impl CharWikiDetailService {
             completed,
             failed,
             total,
+        }
+    }
+
+    fn disk_cache_path(&self, item_id: &str) -> PathBuf {
+        self.cache_dir.join(format!("{}.json", item_id))
+    }
+
+    fn save_to_disk(&self, item_id: &str, data: &serde_json::Value) {
+        let cache_dir_str = self.cache_dir.display();
+        if let Err(e) = fs::create_dir_all(&self.cache_dir) {
+            log_warn!("[wiki_detail_cache] Failed to create dir '{}': {}", cache_dir_str, e);
+            return;
+        }
+        let path = self.disk_cache_path(item_id);
+        match serde_json::to_string(data) {
+            Ok(json) => match fs::write(&path, &json) {
+                Ok(_) => log_info!("[wiki_detail_cache] Saved {} -> {}", item_id, path.display()),
+                Err(e) => log_warn!("[wiki_detail_cache] Failed to write {}: {}", item_id, e),
+            },
+            Err(e) => log_warn!("[wiki_detail_cache] Failed to serialize {}: {}", item_id, e),
+        }
+    }
+
+    fn load_from_disk(&self, item_id: &str) -> Option<serde_json::Value> {
+        let path = self.disk_cache_path(item_id);
+        if path.exists() {
+            let result = fs::read_to_string(&path).ok().and_then(|s| serde_json::from_str(&s).ok());
+            if result.is_some() {
+                log_info!("[wiki_detail_cache] Hit {} -> {}", item_id, path.display());
+            } else {
+                log_warn!("[wiki_detail_cache] Found but failed to parse {}", path.display());
+            }
+            result
+        } else {
+            None
         }
     }
 
@@ -117,6 +159,9 @@ impl CharWikiDetailService {
         self.cache.lock().unwrap().clear();
         *self.merged.lock().unwrap() = serde_json::Value::Object(serde_json::Map::new());
         self.initialized.store(false, Ordering::Relaxed);
+        if self.cache_dir.exists() {
+            let _ = fs::remove_dir_all(&self.cache_dir);
+        }
         log_info!("Char wiki detail cache cleared");
     }
 
@@ -141,6 +186,8 @@ impl CharWikiDetailService {
             .call_skland_api("GET", path, Some(&query), None, cred, token)
             .await?;
 
+        self.save_to_disk(item_id, &json);
+
         let mut cache = self.cache.lock().unwrap();
         cache.insert(item_id.to_string(), json.clone());
         drop(cache);
@@ -153,7 +200,7 @@ impl CharWikiDetailService {
         Ok(json)
     }
 
-    /// 获取指定 itemId 的详情。如果未初始化或缓存未命中则按需拉取。
+    /// 获取指定 itemId 的详情。优先使用内存缓存，其次本地磁盘缓存，最后请求 API。
     pub async fn get_item(
         &self,
         item_id: &str,
@@ -165,6 +212,17 @@ impl CharWikiDetailService {
             if let Some(data) = cache.get(item_id) {
                 return Ok(data.clone());
             }
+        }
+
+        if let Some(data) = self.load_from_disk(item_id) {
+            let mut cache = self.cache.lock().unwrap();
+            cache.insert(item_id.to_string(), data.clone());
+            drop(cache);
+            let mut guard = self.merged.lock().unwrap();
+            if let serde_json::Value::Object(ref mut map) = *guard {
+                map.insert(item_id.to_string(), data.clone());
+            }
+            return Ok(data);
         }
 
         self.fetch_item(item_id, cred, token).await
@@ -207,6 +265,21 @@ impl CharWikiDetailService {
                 return;
             }
 
+            // 优先使用本地磁盘缓存
+            if let Some(cached) = self.load_from_disk(item_id) {
+                let mut cache = self.cache.lock().unwrap();
+                cache.insert(item_id.clone(), cached.clone());
+                drop(cache);
+                let mut guard = self.merged.lock().unwrap();
+                if let serde_json::Value::Object(ref mut map) = *guard {
+                    map.insert(item_id.clone(), cached);
+                }
+                drop(guard);
+                completed += 1;
+                *self.preload_progress.lock().unwrap() = (completed, failed, total);
+                continue;
+            }
+
             let query = format!("id={}", item_id);
             match self
                 .skland_service
@@ -219,6 +292,7 @@ impl CharWikiDetailService {
                         self.preload_in_progress.store(false, Ordering::Relaxed);
                         return;
                     }
+                    self.save_to_disk(item_id, &json);
                     let mut cache = self.cache.lock().unwrap();
                     cache.insert(item_id.clone(), json.clone());
                     drop(cache);
