@@ -296,7 +296,8 @@ function findContentIds(
 
     for (const tabKey of Object.keys(tabMap)) {
       const tab = tabMap[tabKey];
-      if (!tab?.intro?.name || tab.intro.name !== itemName) continue;
+      const wikiName = tab?.intro?.name?.trim();
+      if (!wikiName || wikiName !== itemName.trim()) continue;
       if (tab.content) result.contentIds.push(tab.content);
       if (tab.intro?.description) result.descriptionIds.push(tab.intro.description);
     }
