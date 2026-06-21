@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, Button, Tooltip, ProgressCircle } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 import { getSelectedAccount, refreshAccountData } from "@/utils/accountService";
@@ -20,6 +21,7 @@ import type { CharacterListDisplayMode } from "@/types/card-settings";
 
 export default function DashboardPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [currentRoleId, setCurrentRoleId] = useState<string | null>(null);
   const [dashboardConfig, setDashboardConfig] =
     useState<DashboardConfig | null>(null);
@@ -207,6 +209,15 @@ export default function DashboardPage() {
               {t("dashboard.select_account_hint") ||
                 "Please select an account from the sidebar to view your dashboard"}
             </p>
+            <Button
+              variant="solid"
+              color="primary"
+              size="sm"
+              className="mt-4"
+              onPress={() => navigate("/account")}
+            >
+              {t("dashboard.go_to_account")}
+            </Button>
           </div>
         </Card>
       </div>

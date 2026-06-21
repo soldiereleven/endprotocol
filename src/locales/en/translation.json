@@ -219,6 +219,7 @@
     "delete_card": "Delete card",
     "no_account_selected": "No Account Selected",
     "select_account_hint": "Please select an account from the sidebar to view your dashboard",
+    "go_to_account": "Go to Account",
     "customize_hint": "Customize your dashboard with cards",
     "no_cards": "No cards added yet",
     "add_card": {
