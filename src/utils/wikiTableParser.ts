@@ -25,6 +25,50 @@ export type WikiRenderedBlock =
   | { kind: "params"; data: WikiSkillParam[] }
   | { kind: "materials"; data: WikiSkillParam[] };
 
+const NORMALIZE_CHAR_MAP: Record<string, string> = {
+  "\u03C5": "u",
+  "\uFF01": "!",
+  "\uFF02": "\"",
+  "\uFF03": "#",
+  "\uFF04": "$",
+  "\uFF05": "%",
+  "\uFF06": "&",
+  "\uFF07": "'",
+  "\uFF08": "(",
+  "\uFF09": ")",
+  "\uFF0A": "*",
+  "\uFF0B": "+",
+  "\uFF0C": ",",
+  "\uFF0D": "-",
+  "\uFF0E": ".",
+  "\uFF0F": "/",
+  "\uFF1A": ":",
+  "\uFF1B": ";",
+  "\uFF1C": "<",
+  "\uFF1D": "=",
+  "\uFF1E": ">",
+  "\uFF1F": "?",
+  "\uFF20": "@",
+  "\uFF3B": "[",
+  "\uFF3C": "\\",
+  "\uFF3D": "]",
+  "\uFF3E": "^",
+  "\uFF3F": "_",
+  "\uFF40": "`",
+  "\uFF5B": "{",
+  "\uFF5C": "|",
+  "\uFF5D": "}",
+  "\uFF5E": "~",
+};
+
+function normalizeName(name: string): string {
+  let result = name.trim();
+  for (const [from, to] of Object.entries(NORMALIZE_CHAR_MAP)) {
+    result = result.split(from).join(to);
+  }
+  return result;
+}
+
 export const WIKI_COLOR_MAP: Record<string, string> = {
   "light_text_primary": "#f0e8d8",
   "light_text_secondary": "#5e5e5e",
@@ -236,18 +280,22 @@ function isMaterialTable(tableBlock: any): boolean {
  * This avoids matching content docs (e.g. potential) where the name appears
  * only incidentally in the body text rather than as the identifying heading.
  */
+function isHeadingBlock(block: any): boolean {
+  return block?.text?.kind === "heading3";
+}
+
 function docContainsName(
   contentDoc: any,
   name: string,
 ): boolean {
   if (!contentDoc?.blockMap) return false;
 
-  // First text/heading3 block = primary heading (strong match)
   const blockIds = contentDoc.blockIds || [];
   let primaryHeading = "";
   for (const blockId of blockIds) {
     const block = contentDoc.blockMap[blockId] as any;
     if (!block || block.kind === "table" || block.kind === "horizontalLine") continue;
+    if (!isHeadingBlock(block)) continue;
     const segments = extractInlineSegments(block);
     if (!segments) continue;
     primaryHeading = segmentsToPlainText(segments);
@@ -258,11 +306,12 @@ function docContainsName(
     return true;
   }
 
-  // Fallback: if no heading was found, scan all blocks
+  // Fallback: scan only heading3 blocks
   if (!primaryHeading) {
     for (const blockId of blockIds) {
       const block = contentDoc.blockMap[blockId] as any;
       if (!block || block.kind === "table" || block.kind === "horizontalLine") continue;
+      if (!isHeadingBlock(block)) continue;
       const segments = extractInlineSegments(block);
       if (!segments) continue;
       const text = segmentsToPlainText(segments);
@@ -296,8 +345,8 @@ function findContentIds(
 
     for (const tabKey of Object.keys(tabMap)) {
       const tab = tabMap[tabKey];
-      const wikiName = tab?.intro?.name?.trim();
-      if (!wikiName || wikiName !== itemName.trim()) continue;
+      const wikiName = tab?.intro?.name;
+      if (!wikiName || normalizeName(wikiName) !== normalizeName(itemName)) continue;
       if (tab.content) result.contentIds.push(tab.content);
       if (tab.intro?.description) result.descriptionIds.push(tab.intro.description);
     }
