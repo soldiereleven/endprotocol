@@ -293,6 +293,7 @@ export function CharSelectModal({
     id: string;
   } | null>(null);
   const [detailActive, setDetailActive] = useState(false);
+  const [enteredDetailFromCard, setEnteredDetailFromCard] = useState(false);
   const detailRafRef = useRef<number>(0);
   const detailTimerRef = useRef<number>(0);
 
@@ -403,6 +404,7 @@ export function CharSelectModal({
       setTempSelectedIds(selectedCharIds);
       setViewMode(initialViewMode || "list");
       setDetailCharId(initialCharId || null);
+      setEnteredDetailFromCard(initialViewMode === "detail");
       setSelectingCharId(null);
       setSelectedSlotIndex(null);
       setSuccessMessage(null); // Clear success message
@@ -856,7 +858,14 @@ export function CharSelectModal({
             <div className="h-full w-full relative overflow-hidden rounded-2xl" style={{ border: "none" }}>
               {/* Close button at top-right corner */}
               <button
-                onClick={() => { setViewMode("list"); setDetailCharId(null); }}
+                onClick={() => {
+                  if (enteredDetailFromCard) {
+                    onClose();
+                  } else {
+                    setViewMode("list");
+                    setDetailCharId(null);
+                  }
+                }}
                 className="absolute top-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full text-white/70 hover:text-white transition-colors cursor-pointer"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -1507,6 +1516,7 @@ export function CharSelectModal({
                     onOpenDetail={() => {
                       setDetailCharId(char.charData.id);
                       setViewMode("detail");
+                      setEnteredDetailFromCard(false);
                     }}
                     onSelectSlot={() => {
                       setSelectingCharId(char.charData.id);
