@@ -6,7 +6,6 @@ import { cacheManager, CacheMode } from "@/utils/imageCacheManager";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import logger, { LogEntry, LogLevel } from "@/utils/logger";
 import { invoke } from "@tauri-apps/api/core";
-import CacheDataViewer from "@/components/cache-data-viewer";
 
 const LOG_LEVEL_NAMES: Record<LogLevel, string> = {
   [LogLevel.DEBUG]: "DEBUG",
@@ -422,9 +421,6 @@ export default function DeveloperPage() {
           </div>
           )}
         </Card>
-
-        {/* API Response Cache Viewer */}
-        <CacheDataViewer />
 
         {/* Log Viewer */}
         <Card id="developer-logs" className="p-6 bg-content1 shadow-sm overflow-hidden">
