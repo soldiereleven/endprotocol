@@ -497,6 +497,7 @@ impl SklandService {
         body: Option<serde_json::Value>,
         cred: &str,
         token: &str,
+        extra_headers: Vec<(String, String)>,
     ) -> Result<serde_json::Value, AppError> {
         let client = http_client::create_client();
         let mut last_err: Option<AppError> = None;
@@ -549,6 +550,9 @@ impl SklandService {
             let mut req = self.build_skland_request(&client, method, &url, cred, &did, &sign, &ts);
             if let Some(ref b) = body {
                 req = req.json(b);
+            }
+            for (key, value) in &extra_headers {
+                req = req.header(key.as_str(), value.as_str());
             }
 
             let start_time = std::time::Instant::now();
@@ -613,7 +617,7 @@ impl SklandService {
         token: &str,
     ) -> Result<Vec<GameBinding>, AppError> {
         let path = "/api/v1/game/player/binding";
-        let json = self.call_skland_api("GET", path, None, None, cred, token).await?;
+        let json = self.call_skland_api("GET", path, None, None, cred, token, vec![]).await?;
         let response: BindingResponse = serde_json::from_value(json).map_err(|e| {
             AppError::AuthError {
                 message: format!("Failed to parse BindingResponse: {}", e),
@@ -634,7 +638,7 @@ impl SklandService {
     ) -> Result<CharDetailResponse, AppError> {
         let path = "/api/v1/game/endfield/card/detail";
         let query = format!("roleId={}&serverId={}&userId={}", role_id, server_id, user_id);
-        let json = self.call_skland_api("GET", path, Some(&query), None, cred, token).await?;
+        let json = self.call_skland_api("GET", path, Some(&query), None, cred, token, vec![]).await?;
         let response: CharDetailResponse = serde_json::from_value(json).map_err(|e| {
             AppError::AuthError {
                 message: format!("Failed to parse CharDetailResponse: {}", e),

@@ -1,0 +1,20 @@
+{
+  "id": "attendance",
+  "name": {
+    "zh": "每日签到",
+    "en": "Daily Attendance"
+  },
+  "description": {
+    "zh": "查看并执行森空岛每日签到，查看今日和明日奖励",
+    "en": "View and perform Skland daily attendance, check today's and tomorrow's rewards"
+  },
+  "icon": "📅",
+  "defaultSize": { "w": 3, "h": 3 },
+  "version": "1.0.0",
+  "allowMultiple": true,
+  "tags": [
+    { "id": "attendance", "label": { "zh": "签到", "en": "Attendance" } },
+    { "id": "reward", "label": { "zh": "奖励", "en": "Reward" } },
+    { "id": "daily", "label": { "zh": "每日", "en": "Daily" } }
+  ]
+}

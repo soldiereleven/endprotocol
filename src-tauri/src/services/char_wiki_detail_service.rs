@@ -181,7 +181,7 @@ impl CharWikiDetailService {
         let query = format!("id={}", item_id);
         let json = self
             .skland_service
-            .call_skland_api("GET", path, Some(&query), None, cred, token)
+            .call_skland_api("GET", path, Some(&query), None, cred, token, vec![])
             .await?;
 
         self.save_to_disk(item_id, &json);
@@ -281,7 +281,7 @@ impl CharWikiDetailService {
             let query = format!("id={}", item_id);
             match self
                 .skland_service
-                .call_skland_api("GET", path, Some(&query), None, cred, token)
+                .call_skland_api("GET", path, Some(&query), None, cred, token, vec![])
                 .await
             {
                 Ok(json) => {

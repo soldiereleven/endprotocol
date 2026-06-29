@@ -12,6 +12,7 @@ pub enum ImageType {
     WeaponIcon,   // 武器图标
     EquipIcon,    // 装备图标
     Illustration, // 角色立绘
+    AttendanceIcon, // 签到奖励图标
 }
 
 impl ImageType {
@@ -23,6 +24,7 @@ impl ImageType {
             ImageType::WeaponIcon => "weapon_icons",
             ImageType::EquipIcon => "equip_icons",
             ImageType::Illustration => "illustrations",
+            ImageType::AttendanceIcon => "attendance",
         }
     }
 }
@@ -48,6 +50,7 @@ impl ImageCacheService {
             ImageType::WeaponIcon,
             ImageType::EquipIcon,
             ImageType::Illustration,
+            ImageType::AttendanceIcon,
         ] {
             let type_dir = cache_dir.join(image_type.dir_name());
             fs::create_dir_all(&type_dir)?;
@@ -100,7 +103,11 @@ impl ImageCacheService {
         log_info!("Method: GET");
         log_info!("URL: {}", url);
 
-        let response = client.get(url).send().await?;
+        let response = client
+            .get(url)
+            .header("Referer", "https://game.skland.com/")
+            .send()
+            .await?;
 
         let elapsed = start_time.elapsed();
         let status = response.status();
@@ -143,6 +150,7 @@ impl ImageCacheService {
                 ImageType::WeaponIcon,
                 ImageType::EquipIcon,
                 ImageType::Illustration,
+                ImageType::AttendanceIcon,
             ] {
                 let type_dir = self.cache_dir.join(image_type.dir_name());
                 fs::create_dir_all(&type_dir)?;

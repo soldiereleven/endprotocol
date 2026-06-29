@@ -14,6 +14,14 @@ export interface CharacterListCardSettings {
 }
 
 /**
+ * Attendance 签到卡片配置
+ */
+export interface AttendanceCardSettings {
+  selectedRoleId?: string;  // 选中的角色ID（作为签到账户）
+  autoSign?: boolean;       // 是否自动签到（App启动时）
+}
+
+/**
  * TestCard 卡片配置（示例）
  */
 export interface TestCardSettings {
@@ -25,6 +33,7 @@ export interface TestCardSettings {
  */
 export type CardSettingsMap = {
   character_list: CharacterListCardSettings;
+  attendance: AttendanceCardSettings;
   test_card: TestCardSettings;
   // 未来添加新卡片时在此注册
 };

@@ -1,4 +1,5 @@
 pub mod account;
+pub mod attendance;
 pub mod card_config;
 pub mod config;
 pub mod image;

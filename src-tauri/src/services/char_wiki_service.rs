@@ -53,7 +53,7 @@ impl CharWikiService {
 
         match self
             .skland_service
-            .call_skland_api("GET", path, Some(&query), None, cred, token)
+            .call_skland_api("GET", path, Some(&query), None, cred, token, vec![])
             .await
         {
             Ok(json) => {
@@ -93,7 +93,7 @@ impl CharWikiService {
 
         match self
             .skland_service
-            .call_skland_api("GET", path, Some(&query), None, cred, token)
+            .call_skland_api("GET", path, Some(&query), None, cred, token, vec![])
             .await
         {
             Ok(json) => {

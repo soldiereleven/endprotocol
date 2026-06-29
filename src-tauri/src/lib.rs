@@ -29,6 +29,9 @@ pub fn run() {
             commands::config::set_config,
             commands::config::remove_config,
             commands::config::get_all_configs,
+            // Attendance commands
+            commands::attendance::get_attendance,
+            commands::attendance::do_attendance,
             // Account commands
             commands::account::get_accounts,
             commands::account::add_account,

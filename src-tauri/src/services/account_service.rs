@@ -246,6 +246,11 @@ impl AccountService {
         &self.skland_service
     }
 
+    /// 获取图片缓存服务引用
+    pub fn avatar_cache_service(&self) -> &Arc<AvatarCacheService> {
+        &self.avatar_cache_service
+    }
+
     /// 获取网络数据服务引用
     pub fn network_service(&self) -> &Arc<NetworkService> {
         &self.network_service
