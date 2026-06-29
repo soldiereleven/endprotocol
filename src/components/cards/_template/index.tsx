@@ -5,6 +5,25 @@ import { Card, ProgressCircle } from "@heroui/react";
 import logger from "@/utils/logger";
 
 /**
+ * 可选：卡片启动时调用的方法
+ * 
+ * 若卡片需要注册一个"App启动时自动执行"的任务（如自动签到），
+ * 在此导出一个 async startup 函数。
+ * 
+ * 配合 CardStartupService.addTask 使用：
+ * 1. 用户在设置中启用"启动时自动执行"后，
+ *    调用 CardStartupService.addTask({ cardId, cardType: "my_card", params: {...} })
+ * 2. App 启动时，CardStartupService.runAll() 会读取 config 中的任务列表，
+ *    找到 cardType 匹配的任务，调用此函数
+ * 3. 组件可通过 CardStartupService.subscribe(cardId, callback) 监听执行状态
+ *
+ * export async function startup(task: { cardId: string; cardType: string; params: Record<string, any> }) {
+ *   const { someParam } = task.params;
+ *   await doSomething(someParam);
+ * }
+ */
+
+/**
  * 示例卡片组件
  *
  * 这是一个模板文件，复制此目录并修改以创建新卡片。
@@ -14,7 +33,7 @@ import logger from "@/utils/logger";
  * 2. 重命名 meta.json 文件（如 my-card.meta.json）
  * 3. 修改 meta.json 中的 id、name、description 等字段
  * 4. 在此文件中实现你的卡片逻辑
- * 5. 删除此注释和模板代码
+ * 5. 可选：导出 startup 函数以注册启动时自动执行的任务
  */
 export default function TemplateCard({
   roleId,

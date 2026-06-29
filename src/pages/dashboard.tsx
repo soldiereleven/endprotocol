@@ -23,6 +23,7 @@ import {
 import { logDebug, logError } from "@/utils/logger";
 import { roleDetailService } from "@/utils/roleDetailService";
 import { CardConfigService } from "@/utils/cardConfigService";
+import { CardStartupService } from "@/cards/startup-service";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { RefreshIcon, ChevronLeftIcon } from "@/components/ui/app-icon";
 import { getTabIcon } from "@/utils/tabIcons";
@@ -172,6 +173,7 @@ export default function DashboardPage() {
     try {
       await Promise.all([
         CardConfigService.removeCardSettings(cardId),
+        CardStartupService.removeCardFromMapping(cardId),
         removeCard(activeTabId, cardId),
       ]);
       logDebug(`Removed settings for card ${cardId}`);

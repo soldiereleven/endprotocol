@@ -1,9 +1,13 @@
 import type { CardModule, CardMeta, CardLocales } from './types';
+import { CardStartupService } from '@/cards/startup-service';
 import i18n from '@/i18n';
 
 // 自动扫描所有卡片的 meta.json 和 index.tsx
 // 排除 base、registry 和 _template 目录
-const cardModules = import.meta.glob<{ default: React.ComponentType<any> }>(
+const cardModules = import.meta.glob<{
+  default: React.ComponentType<any>;
+  startup?: (roleId: string) => Promise<void>;
+}>(
   '../*/index.tsx',
   { eager: true }
 );
@@ -64,10 +68,17 @@ function buildCardRegistry(): Map<string, CardModule> {
     const module = cardModules[componentPath];
 
     if (module) {
-      cards.set(meta.id, {
+      const cardModule: CardModule = {
         meta,
         component: module.default,
-      });
+      };
+
+      if (module.startup) {
+        cardModule.startup = module.startup;
+        CardStartupService.register(meta.id, module.startup);
+      }
+
+      cards.set(meta.id, cardModule);
     }
   }
 

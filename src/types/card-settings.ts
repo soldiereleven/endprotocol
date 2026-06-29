@@ -18,7 +18,6 @@ export interface CharacterListCardSettings {
  */
 export interface AttendanceCardSettings {
   selectedRoleId?: string;  // 选中的角色ID（作为签到账户）
-  autoSign?: boolean;       // 是否自动签到（App启动时）
 }
 
 /**

@@ -33,5 +33,6 @@ export interface CardLocales {
 export interface CardModule {
   meta: CardMeta;
   component: React.ComponentType<BaseCardProps>;
+  startup?: (roleId: string) => Promise<void>;
   locales?: CardLocales;   // 卡片本地化翻译资源
 }

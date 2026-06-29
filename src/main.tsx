@@ -7,6 +7,8 @@ import { Provider } from "./provider.tsx";
 import "@/styles/globals.css";
 import { setInitialLanguage } from "./i18n";
 import { getConfig } from "./utils/configService";
+import { CardStartupService } from "@/cards/startup-service";
+import { loadAllCards } from "@/components/cards/registry/loader";
 import logger from "@/utils/logger";
 
 // Initialize language from config service before rendering
@@ -25,4 +27,10 @@ getConfig<string>("app.language").then((savedLang) => {
       </BrowserRouter>
     </React.StrictMode>,
   );
+
+  // Build card registry to register startup handlers, then run startup tasks
+  loadAllCards();
+  setTimeout(() => {
+    CardStartupService.runAll();
+  }, 0);
 });

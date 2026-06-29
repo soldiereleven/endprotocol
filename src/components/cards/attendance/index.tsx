@@ -3,6 +3,7 @@ import { Card, Button, ProgressCircle } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 import { BaseCardProps } from "../registry/types";
 import { CardConfigService } from "@/utils/cardConfigService";
+import { CardStartupService } from "@/cards/startup-service";
 import type { AttendanceCardSettings } from "@/types/card-settings";
 import { AttendanceSettingsModal } from "./attendance-settings-modal";
 import { getAccounts, type Account } from "@/utils/accountService";
@@ -10,6 +11,14 @@ import { Img } from "@/utils/imageLoader";
 import { invoke } from "@tauri-apps/api/core";
 import { logError } from "@/utils/logger";
 import { resolveServerLabel } from "@/types";
+
+const signedInRoleIds = new Set<string>();
+
+export async function startup(roleId: string) {
+  if (!roleId || signedInRoleIds.has(roleId)) return;
+  signedInRoleIds.add(roleId);
+  await invoke<any>("do_attendance", { roleId });
+}
 
 interface CalendarEntry {
   awardId: string;
@@ -76,7 +85,9 @@ export default function AttendanceCard({
   const [settings, setSettings] = useState<AttendanceCardSettings>({});
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false);
   const [firstTimePrompt, setFirstTimePrompt] = useState(true);
+  const [autoSignEnabled, setAutoSignEnabled] = useState(false);
 
   const [attendanceData, setAttendanceData] = useState<AttendanceData | null>(null);
   const [attendanceState, setAttendanceState] = useState<AttendanceState>("loading");
@@ -84,24 +95,44 @@ export default function AttendanceCard({
   const [_signError, setSignError] = useState<string | null>(null);
 
   const [accountCache, setAccountCache] = useState<Account[]>([]);
-  const autoSignAttempted = useRef(false);
   const completionTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const lang = i18n.language;
+
+  const checkAutoSign = useCallback(async (roleId: string | undefined) => {
+    if (roleId) {
+      const enabled = await CardStartupService.isAutoSignEnabled(roleId);
+      setAutoSignEnabled(enabled);
+    } else {
+      setAutoSignEnabled(false);
+    }
+  }, []);
+
+  const openFirstTimePrompt = useCallback(() => {
+    setIsFirstTimeSetup(true);
+    setShowSettingsModal(true);
+  }, []);
+
+  const openSettings = useCallback(() => {
+    setIsFirstTimeSetup(false);
+    setShowSettingsModal(true);
+    checkAutoSign(settings.selectedRoleId);
+  }, [settings.selectedRoleId, checkAutoSign]);
 
   const loadSettings = useCallback(async () => {
     try {
       const s = await CardConfigService.getCardSettings<AttendanceCardSettings>(cardId);
       setSettings(s);
-      if (!s.selectedRoleId && firstTimePrompt) {
-        setShowSettingsModal(true);
-      }
       setSettingsLoaded(true);
+      checkAutoSign(s.selectedRoleId);
+      if (!s.selectedRoleId && firstTimePrompt) {
+        openFirstTimePrompt();
+      }
     } catch (e) {
       logError("[Attendance] Failed to load settings:", e);
       setSettingsLoaded(true);
     }
-  }, [cardId, firstTimePrompt]);
+  }, [cardId, firstTimePrompt, checkAutoSign, openFirstTimePrompt]);
 
   useEffect(() => {
     loadSettings();
@@ -161,7 +192,7 @@ export default function AttendanceCard({
     if (signPhase !== "idle" || attendanceState === "signed") return;
     const rid = settings.selectedRoleId;
     if (!rid) {
-      setShowSettingsModal(true);
+      openSettings();
       return;
     }
     setSignPhase("spinning");
@@ -183,37 +214,75 @@ export default function AttendanceCard({
   }, []);
 
   useEffect(() => {
-    if (!settingsLoaded || !settings.selectedRoleId || !settings.autoSign) return;
-    if (autoSignAttempted.current) return;
-    if (attendanceState === "signed" || attendanceState === "loading") return;
-    autoSignAttempted.current = true;
-    const timer = setTimeout(() => { handleSignIn(); }, 1500);
-    return () => clearTimeout(timer);
-  }, [settingsLoaded, settings.autoSign, attendanceState, handleSignIn]);
+    if (!settings.selectedRoleId) return;
+    const roleId = settings.selectedRoleId;
+
+    const status = CardStartupService.getTaskStatus(roleId);
+    if (status?.status === "running") {
+      setSignPhase("spinning");
+    }
+
+    const unsub1 = CardStartupService.subscribe(roleId, (newStatus) => {
+      if (newStatus.status === "running") {
+        setSignPhase("spinning");
+      } else if (newStatus.status === "done" || newStatus.status === "error") {
+        fetchAttendance();
+      }
+    });
+
+    const unsub2 = CardStartupService.onAutoSignChanged((changedRoleId, enabled) => {
+      if (changedRoleId === roleId) {
+        setAutoSignEnabled(enabled);
+      }
+    });
+
+    return () => { unsub1(); unsub2(); };
+  }, [settings.selectedRoleId, fetchAttendance]);
 
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail as { cardId: string; action: string } | undefined;
       if (detail?.cardId === cardId && detail?.action === "settings") {
-        setShowSettingsModal(true);
+        openSettings();
       }
     };
     window.addEventListener("cardAction", handler);
     return () => window.removeEventListener("cardAction", handler);
-  }, [cardId]);
+  }, [cardId, openSettings]);
 
   const handleSaveSettings = useCallback(
-    async (selectedRoleId: string | undefined, autoSign: boolean) => {
+    async (newRoleId: string | undefined, autoSign: boolean) => {
       try {
-        await CardConfigService.updateCardSetting(cardId, "selectedRoleId", selectedRoleId);
-        await CardConfigService.updateCardSetting(cardId, "autoSign", autoSign);
-        setSettings({ selectedRoleId, autoSign });
+        const oldRoleId = settings.selectedRoleId;
+
+        await CardConfigService.updateCardSetting(cardId, "selectedRoleId", newRoleId);
+        setSettings({ selectedRoleId: newRoleId });
+        setAutoSignEnabled(autoSign);
         setFirstTimePrompt(false);
+
+        await CardStartupService.updateUserMapping(cardId, newRoleId);
+
+        if (oldRoleId && oldRoleId !== newRoleId) {
+          const siblingIds = await CardStartupService.getCardIdsByUser(oldRoleId);
+          if (siblingIds.length <= 1) {
+            await CardStartupService.removeAutoSignUser(oldRoleId);
+          }
+        }
+        if (newRoleId) {
+          if (autoSign) {
+            await CardStartupService.addAutoSignUser(newRoleId);
+          } else {
+            const siblingIds = await CardStartupService.getCardIdsByUser(newRoleId);
+            if (siblingIds.length <= 1) {
+              await CardStartupService.removeAutoSignUser(newRoleId);
+            }
+          }
+        }
       } catch (e) {
         logError("[Attendance] Failed to save settings:", e);
       }
     },
-    [cardId],
+    [cardId, settings.selectedRoleId],
   );
 
   const selectedAccount = useMemo(
@@ -312,8 +381,7 @@ export default function AttendanceCard({
     <>
       <Card className="p-0 bg-content1 shadow-sm border border-separator h-full w-full select-none rounded-[10px] overflow-hidden flex flex-col">
         <div
-          className="flex h-full p-2.5 gap-2.5 cursor-pointer"
-          {...(isEditMode ? {} : { onClick: () => setShowSettingsModal(true) })}
+          className="flex h-full p-2.5 gap-2.5"
         >
           <div className="flex items-center justify-center shrink-0 w-[68px]">
             {!settings.selectedRoleId ? (
@@ -321,7 +389,7 @@ export default function AttendanceCard({
                 <svg className="w-6 h-6 text-muted opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
-                <Button size="sm" variant="secondary" className="text-[9px] h-5 min-w-0 px-1.5" onPress={() => setShowSettingsModal(true)}>
+                <Button size="sm" variant="secondary" className="text-[9px] h-5 min-w-0 px-1.5" onPress={openSettings}>
                   {t("card:attendance_select_account")}
                 </Button>
               </div>
@@ -427,7 +495,7 @@ export default function AttendanceCard({
             {selectedAccount ? (
               <div
                 className="flex items-center gap-1.5 cursor-pointer hover:opacity-70 transition-opacity"
-                onClick={(e) => { e.stopPropagation(); setShowSettingsModal(true); }}
+                onClick={(e) => { e.stopPropagation(); openSettings(); }}
               >
                 <div className="w-5 h-5 rounded-full overflow-hidden bg-default-200 shrink-0">
                   {selectedAccount.avatar ? (
@@ -444,13 +512,18 @@ export default function AttendanceCard({
                 </div>
                 <div className="min-w-0 leading-tight">
                   <p className="text-[11px] font-medium truncate">{selectedAccount.nickname}</p>
-                  <p className="text-[9px] text-muted truncate">{resolveServerLabel(selectedAccount.server, lang)}</p>
+                  <p className="text-[9px] text-muted truncate">
+                    {resolveServerLabel(selectedAccount.server, lang)}
+                    {settings.selectedRoleId && autoSignEnabled && (
+                      <span className="ml-1 text-[8px] text-success">●</span>
+                    )}
+                  </p>
                 </div>
               </div>
             ) : (
               <div
                 className="flex items-center gap-1 cursor-pointer hover:opacity-70 transition-opacity"
-                onClick={(e) => { e.stopPropagation(); setShowSettingsModal(true); }}
+                onClick={(e) => { e.stopPropagation(); openSettings(); }}
               >
                 <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -472,7 +545,8 @@ export default function AttendanceCard({
         isOpen={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
         selectedRoleId={settings.selectedRoleId}
-        autoSign={settings.autoSign ?? false}
+        autoSign={autoSignEnabled}
+        showAutoSign={!isFirstTimeSetup}
         onSave={handleSaveSettings}
       />
 

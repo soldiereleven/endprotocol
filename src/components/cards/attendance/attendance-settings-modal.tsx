@@ -17,6 +17,7 @@ interface AttendanceSettingsModalProps {
   onClose: () => void;
   selectedRoleId: string | undefined;
   autoSign: boolean;
+  showAutoSign?: boolean;
   onSave: (selectedRoleId: string | undefined, autoSign: boolean) => void;
 }
 
@@ -25,6 +26,7 @@ export function AttendanceSettingsModal({
   onClose,
   selectedRoleId,
   autoSign,
+  showAutoSign = true,
   onSave,
 }: AttendanceSettingsModalProps) {
   const { t, i18n } = useTranslation();
@@ -55,10 +57,17 @@ export function AttendanceSettingsModal({
       .finally(() => setLoading(false));
   }, [isOpen]);
 
-  const selectedAccount = useMemo(
-    () => accounts.find((a) => a.id === localSelectedRoleId),
-    [accounts, localSelectedRoleId],
-  );
+  const sortedAccounts = useMemo(() => {
+    const sorted = [...accounts];
+    if (localSelectedRoleId) {
+      const idx = sorted.findIndex((a) => a.id === localSelectedRoleId);
+      if (idx > 0) {
+        const [item] = sorted.splice(idx, 1);
+        sorted.unshift(item);
+      }
+    }
+    return sorted;
+  }, [accounts, localSelectedRoleId]);
 
   const handleConfirm = () => {
     onSave(localSelectedRoleId, localAutoSign);
@@ -95,12 +104,29 @@ export function AttendanceSettingsModal({
           </div>
         ) : (
           <div className="space-y-4">
+            {showAutoSign && (
+              <div className="flex items-center justify-between pb-2 border-b border-separator">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">{t("card:attendance_auto_sign")}</p>
+                  <p className="text-xs text-muted">{t("card:attendance_auto_sign_desc")}</p>
+                </div>
+                <Switch
+                  isSelected={localAutoSign}
+                  onChange={setLocalAutoSign}
+                >
+                  <Switch.Control>
+                    <Switch.Thumb />
+                  </Switch.Control>
+                </Switch>
+              </div>
+            )}
+
             <div>
               <p className="text-xs text-muted mb-2 font-medium">
                 {t("card:attendance_select_account")}
               </p>
               <div className="space-y-2 max-h-60 overflow-y-auto">
-                {accounts.map((acc) => {
+                {sortedAccounts.map((acc) => {
                   const isSelected = localSelectedRoleId === acc.id;
                   return (
                     <div
@@ -146,40 +172,6 @@ export function AttendanceSettingsModal({
                 })}
               </div>
             </div>
-
-            <div className="border-t border-separator pt-4">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{t("card:attendance_auto_sign")}</p>
-                  <p className="text-xs text-muted">{t("card:attendance_auto_sign_desc")}</p>
-                </div>
-                <Switch
-                  isSelected={localAutoSign}
-                  onChange={setLocalAutoSign}
-                >
-                  <Switch.Control>
-                    <Switch.Thumb />
-                  </Switch.Control>
-                </Switch>
-              </div>
-            </div>
-
-            {selectedAccount && (
-              <div className="bg-default-50 rounded-lg p-3 border border-separator">
-                <div className="flex items-center gap-2 mb-1">
-                  <svg className="w-4 h-4 text-muted" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                  </svg>
-                  <span className="text-xs text-muted">{t("card:attendance_current_account")}</span>
-                </div>
-                <div className="text-sm font-medium truncate">
-                  {selectedAccount.nickname}
-                  <span className="text-muted text-xs ml-1">
-                    ({resolveServerLabel(selectedAccount.server, lang)})
-                  </span>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </CustomModalBody>
