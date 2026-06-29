@@ -20,5 +20,8 @@
   "attendance_network_error": "Network error, please try again later",
   "attendance_already_signed": "Already signed in today",
   "attendance_first_rewards": "First-time Rewards",
-  "attendance_no_tomorrow": "End of list"
+  "attendance_no_tomorrow": "End of list",
+  "settings": "Settings",
+  "confirm_delete_title": "Delete Card",
+  "confirm_delete_body": "Are you sure you want to delete this card?"
 }

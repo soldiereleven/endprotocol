@@ -17,6 +17,8 @@ import { updateCardLayout } from "@/utils/dashboardConfig";
 import { useLongPressDrag } from "@/hooks/useLongPressDrag";
 import logger from "@/utils/logger";
 import { loadAllCards } from "./registry/loader";
+import { CardContextMenu, type ContextMenuItem } from "./card-context-menu";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 // Grid configuration
 const GRID_SIZE = 100; // Each grid cell is 100x100 pixels
@@ -61,6 +63,8 @@ function FreeDragCard({
   onLongPress?: () => void;
   onExitEditMode?: () => void;
 }) {
+  const { t } = useTranslation();
+
   const draggable = useDraggable({
     id: card.id,
     disabled: !isEditMode,
@@ -137,6 +141,67 @@ function FreeDragCard({
     }
   }, [isEditMode, listeners, triggerDragStart]);
 
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  const getContextMenuItems = (): ContextMenuItem[] => {
+    const items: ContextMenuItem[] = [];
+
+    if (card.type === "character_list") {
+      items.push({
+        key: "view-list",
+        label: t("card:view_list"),
+        onPress: () => {
+          window.dispatchEvent(
+            new CustomEvent("cardAction", {
+              detail: { cardId: card.id, action: "view-list" },
+            }),
+          );
+        },
+      });
+    } else if (card.type === "attendance") {
+      items.push({
+        key: "settings",
+        label: t("card:settings"),
+        onPress: () => {
+          window.dispatchEvent(
+            new CustomEvent("cardAction", {
+              detail: { cardId: card.id, action: "settings" },
+            }),
+          );
+        },
+      });
+    }
+
+    items.push({
+      key: "delete",
+      label: t("common.delete"),
+      danger: true,
+      onPress: () => {
+        confirmDialog({
+          title: t("card:confirm_delete_title"),
+          body: t("card:confirm_delete_body"),
+          confirmText: t("common.delete"),
+          cancelText: t("common.cancel"),
+          tone: "danger",
+        }).then((confirmed) => {
+          if (confirmed) onRemoveCard(card.id);
+        });
+      },
+    });
+
+    return items;
+  };
+
   // Calculate position from grid coordinates (offset by 1px for card gap)
   const x = (card.x ?? 0) * GRID_SIZE + 1;
   const y = (card.y ?? 0) * GRID_SIZE + 1;
@@ -163,6 +228,7 @@ function FreeDragCard({
       style={style}
       className={`group ${isEditMode ? "active:cursor-grabbing" : ""}`}
       {...(isEditMode ? { ...attributes, ...listeners } : {})}
+      onContextMenu={handleContextMenu}
       onPointerDown={(e) => {
         // In edit mode, let dnd-kit handle everything
         if (isEditMode) {
@@ -281,6 +347,16 @@ function FreeDragCard({
           );
         })()}
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <CardContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={getContextMenuItems()}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }

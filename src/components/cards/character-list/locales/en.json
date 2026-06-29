@@ -12,5 +12,8 @@
   "mode_double": "Double",
   "mode_double_desc": "Display 2 characters side by side",
   "mode_triple": "Triple",
-  "mode_triple_desc": "Display 3 characters (default)"
+  "mode_triple_desc": "Display 3 characters (default)",
+  "view_list": "View List",
+  "confirm_delete_title": "Delete Card",
+  "confirm_delete_body": "Are you sure you want to delete this card?"
 }

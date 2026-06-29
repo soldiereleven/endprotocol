@@ -64,7 +64,8 @@
     "hide_filters": "Hide Filters",
     "clear": "Reset Filters",
     "refresh": "Refresh",
-    "refreshing": "Refreshing..."
+    "refreshing": "Refreshing...",
+    "delete": "Delete"
   },
   "filters": {
     "title": "Filter Characters",
@@ -264,7 +265,9 @@
     "no_results_hint": "Try a different search term",
     "delete": "Delete",
     "edit": "Edit",
-    "cards_count": "{{count}} cards"
+    "cards_count": "{{count}} cards",
+    "confirm_delete_title": "Delete Tab",
+    "confirm_delete_body": "Are you sure you want to delete this tab and all its cards?"
   },
   "character_detail": {
     "skills": "Skills",

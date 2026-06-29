@@ -20,5 +20,8 @@
   "attendance_network_error": "网络错误，请稍后重试",
   "attendance_already_signed": "今日已签到",
   "attendance_first_rewards": "新手奖励",
-  "attendance_no_tomorrow": "已到末尾"
+  "attendance_no_tomorrow": "已到末尾",
+  "settings": "设置",
+  "confirm_delete_title": "删除卡片",
+  "confirm_delete_body": "确定要删除该卡片吗？"
 }

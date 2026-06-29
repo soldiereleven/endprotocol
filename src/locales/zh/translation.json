@@ -64,7 +64,8 @@
     "hide_filters": "隐藏筛选",
     "clear": "重置筛选",
     "refresh": "刷新",
-    "refreshing": "刷新中..."
+    "refreshing": "刷新中...",
+    "delete": "删除"
   },
   "filters": {
     "title": "筛选角色",
@@ -264,7 +265,9 @@
     "no_results_hint": "尝试其他搜索词",
     "delete": "删除",
     "edit": "编辑",
-    "cards_count": "{{count}} 个卡片"
+    "cards_count": "{{count}} 个卡片",
+    "confirm_delete_title": "删除标签页",
+    "confirm_delete_body": "确定要删除该标签页及其所有卡片吗？"
   },
   "character_detail": {
     "skills": "技能",

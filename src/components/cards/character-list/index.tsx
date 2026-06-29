@@ -125,6 +125,17 @@ export default function CharacterListCard({
     }
   }, [isModalOpen]);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { cardId: string; action: string } | undefined;
+      if (detail?.cardId === cardId && detail?.action === "view-list") {
+        setIsModalOpen(true);
+      }
+    };
+    window.addEventListener("cardAction", handler);
+    return () => window.removeEventListener("cardAction", handler);
+  }, [cardId]);
+
   function rarityLineColor(value: string): string {
     switch (value) {
       case "6": return "#ff7100";
@@ -237,7 +248,6 @@ export default function CharacterListCard({
         radius="none"
         className="p-0 bg-content1 shadow-sm border border-separator h-full w-full select-none cursor-pointer hover:shadow-md transition-shadow rounded-[10px] overflow-hidden"
         onClick={() => !isEditMode && setIsModalOpen(true)}
-        onContextMenu={(e) => { e.preventDefault(); !isEditMode && setIsModalOpen(true); }}
       >
         <div className="grid flex-1 min-h-0 h-full" style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}>
             {selectedCharacters.map(renderCharSlot)}

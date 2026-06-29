@@ -12,5 +12,8 @@
   "mode_double": "双角色",
   "mode_double_desc": "并排显示 2 个角色",
   "mode_triple": "三角色",
-  "mode_triple_desc": "显示 3 个角色（默认）"
+  "mode_triple_desc": "显示 3 个角色（默认）",
+  "view_list": "查看列表",
+  "confirm_delete_title": "删除卡片",
+  "confirm_delete_body": "确定要删除该卡片吗？"
 }

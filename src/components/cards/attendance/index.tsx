@@ -191,6 +191,17 @@ export default function AttendanceCard({
     return () => clearTimeout(timer);
   }, [settingsLoaded, settings.autoSign, attendanceState, handleSignIn]);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { cardId: string; action: string } | undefined;
+      if (detail?.cardId === cardId && detail?.action === "settings") {
+        setShowSettingsModal(true);
+      }
+    };
+    window.addEventListener("cardAction", handler);
+    return () => window.removeEventListener("cardAction", handler);
+  }, [cardId]);
+
   const handleSaveSettings = useCallback(
     async (selectedRoleId: string | undefined, autoSign: boolean) => {
       try {

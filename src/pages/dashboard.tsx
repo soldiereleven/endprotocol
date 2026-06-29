@@ -23,6 +23,7 @@ import {
 import { logDebug, logError } from "@/utils/logger";
 import { roleDetailService } from "@/utils/roleDetailService";
 import { CardConfigService } from "@/utils/cardConfigService";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { RefreshIcon, ChevronLeftIcon } from "@/components/ui/app-icon";
 import { getTabIcon } from "@/utils/tabIcons";
 import { TabSelector } from "@/components/tab-selector";
@@ -210,6 +211,15 @@ export default function DashboardPage() {
   };
 
   const handleDeleteTab = async (tabId: string) => {
+    const confirmed = await confirmDialog({
+      title: t("tab.confirm_delete_title"),
+      body: t("tab.confirm_delete_body"),
+      confirmText: t("common.delete"),
+      cancelText: t("common.cancel"),
+      tone: "danger",
+    });
+    if (!confirmed) return;
+
     await removeTab(tabId);
     const allTabs = await getAllTabs();
     setTabs(allTabs);
