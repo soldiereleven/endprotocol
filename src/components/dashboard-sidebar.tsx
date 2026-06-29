@@ -18,7 +18,7 @@ import { ThemeSwitch } from "@/components/theme-switch";
 import { LanguageSwitch } from "@/components/language-switch";
 import { AccountAvatar } from "@/components/ui/account-avatar";
 import { resolveServerLabel } from "@/types";
-import { SwitchIcon } from "@/components/ui/app-icon";
+import { ChevronRightIcon, ChevronDownIcon, SwitchIcon } from "@/components/ui/app-icon";
 import AccountSwitchModal from "./account-switch-modal";
 import {
   getAccounts,
@@ -27,8 +27,12 @@ import {
 } from "@/utils/accountService";
 import { usePinImages } from "@/utils/imageCacheManager";
 import { getConfig } from "@/utils/configService";
-import { getAllTabs, addTab, getActiveTabId, setActiveTabId } from "@/utils/tabService";
+import { getAllTabs, addTab, removeTab, updateTab, getActiveTabId, setActiveTabId } from "@/utils/tabService";
 import { getTabIcon } from "@/utils/tabIcons";
+import { CardContextMenu } from "@/components/cards/card-context-menu";
+import { TabEditorModal } from "@/components/tab-editor-modal";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
+import type { DashboardTab } from "@/types/dashboard";
 import logger from "@/utils/logger";
 
 interface SearchResult {
@@ -84,6 +88,10 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
   const [developerMode, setDeveloperMode] = useState(false);
   const [sidebarTabs, setSidebarTabs] = useState<Array<{ id: string; name: string; icon: string }>>([]);
   const [sidebarActiveTab, setSidebarActiveTab] = useState<string | null>(null);
+  const [isDashboardCollapsed, setIsDashboardCollapsed] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tabId: string; tabName: string } | null>(null);
+  const [isTabEditorOpen, setIsTabEditorOpen] = useState(false);
+  const [editingTabForSidebar, setEditingTabForSidebar] = useState<DashboardTab | undefined>();
 
   // Load tabs for sidebar
   useEffect(() => {
@@ -741,18 +749,6 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
     );
   };
 
-  const sidebarItems: Array<{
-    label: string;
-    href: string;
-    icon: React.FC<any>;
-  }> = [
-    {
-      label: t("sidebar.dashboard"),
-      href: "/",
-      icon: HomeIcon,
-    },
-  ];
-
   const bottomItems = useMemo(() => {
     const items = [
       {
@@ -1034,86 +1030,169 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
         {/* Main Navigation */}
         <nav className="flex-1 overflow-y-auto px-4">
           <div className="space-y-1 py-1">
-            {sidebarItems.map((item) => {
-              const isActive = location.pathname === item.href;
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  onClick={onNavigate}
+            {/* Dashboard link with collapse toggle */}
+            <div
+              className={clsx(
+                "flex items-center gap-1 px-3 py-2.5 rounded-lg transition-all duration-200 group",
+                location.pathname === "/"
+                  ? "bg-primary text-primary-foreground shadow-md"
+                  : "text-foreground hover:bg-default-100 hover:translate-x-1",
+              )}
+            >
+              <Link
+                to="/"
+                onClick={onNavigate}
+                className="flex items-center gap-3 flex-1 min-w-0"
+              >
+                <HomeIcon
                   className={clsx(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
-                    isActive
-                      ? "bg-primary text-primary-foreground shadow-md"
-                      : "text-foreground hover:bg-default-100 hover:translate-x-1",
+                    "w-5 h-5 transition-transform duration-200",
+                    location.pathname === "/" ? "scale-110" : "group-hover:scale-110",
                   )}
-                >
-                  <Icon
-                    className={clsx(
-                      "w-5 h-5 transition-transform duration-200",
-                      isActive ? "scale-110" : "group-hover:scale-110",
-                    )}
-                  />
-                  <span className="text-sm font-medium">{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
-
-          {/* Tab list */}
-          {sidebarTabs.length > 0 && (
-            <div className="pt-2">
-              <div className="flex items-center justify-between px-3 py-1">
-                <span className="text-xs font-semibold text-muted uppercase tracking-wider">
-                  {i18n.language === "zh" ? "标签页" : "Tabs"}
-                </span>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const lang = i18n.language === "zh" ? "新标签页" : "New Tab";
-                    await addTab(lang, "home");
-                    const tabs = await getAllTabs();
-                    setSidebarTabs(tabs.map(t => ({ id: t.id, name: t.name, icon: t.icon })));
-                    window.dispatchEvent(new CustomEvent("tabsChanged"));
-                  }}
-                  className="p-1 rounded hover:bg-default-100 text-muted hover:text-foreground transition-colors"
-                  aria-label="Add tab"
-                >
-                  <PlusIcon size={16} />
-                </button>
-              </div>
-              <div className="space-y-0.5">
-                {sidebarTabs.map((tab) => {
-                  const Icon = getTabIcon(tab.icon);
-                  const isTabActive = location.pathname === "/" && sidebarActiveTab === tab.id;
-                  return (
-                    <Link
-                      key={tab.id}
-                      to="/"
-                      onClick={async () => {
-                        await setActiveTabId(tab.id);
-                        setSidebarActiveTab(tab.id);
-                        window.dispatchEvent(new CustomEvent("accountChanged"));
-                        onNavigate?.();
-                      }}
-                      className={clsx(
-                        "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative",
-                        isTabActive
-                          ? "bg-primary/20 text-primary"
-                          : "text-muted hover:text-foreground hover:bg-default-100",
-                      )}
-                    >
-                      <Icon className="w-4 h-4 flex-shrink-0" />
-                      <span className="text-sm truncate">{tab.name}</span>
-                    </Link>
-                  );
-                })}
-              </div>
+                />
+                <span className="text-sm font-medium">{t("sidebar.dashboard")}</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => setIsDashboardCollapsed(!isDashboardCollapsed)}
+                className={clsx(
+                  "p-1 rounded transition-colors",
+                  location.pathname === "/"
+                    ? "text-primary-foreground/70 hover:text-primary-foreground hover:bg-white/10"
+                    : "text-muted hover:text-foreground hover:bg-default-200",
+                )}
+                aria-label={isDashboardCollapsed ? "Expand tabs" : "Collapse tabs"}
+              >
+                {isDashboardCollapsed ? <ChevronRightIcon size={16} /> : <ChevronDownIcon size={16} />}
+              </button>
             </div>
-          )}
+
+            {/* Tab list (collapsible) */}
+            {!isDashboardCollapsed && (
+              <div className="ml-6 pl-3 border-l border-separator space-y-0.5 animate-fade-in">
+                <div className="flex items-center justify-between px-3 py-1 mt-2">
+                  <span className="text-xs font-semibold text-muted uppercase tracking-wider">
+                    {i18n.language === "zh" ? "标签页" : "Tabs"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingTabForSidebar(undefined);
+                      setIsTabEditorOpen(true);
+                    }}
+                    className="p-1 rounded hover:bg-default-100 text-muted hover:text-foreground transition-colors"
+                    aria-label="Add tab"
+                  >
+                    <PlusIcon size={16} />
+                  </button>
+                </div>
+                {sidebarTabs.length > 0 && (
+                  <div className="space-y-0.5">
+                    {sidebarTabs.map((tab) => {
+                      const Icon = getTabIcon(tab.icon);
+                      const isTabActive = location.pathname === "/" && sidebarActiveTab === tab.id;
+                      return (
+                        <div
+                          key={tab.id}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id, tabName: tab.name });
+                          }}
+                        >
+                          <Link
+                            to="/"
+                            onClick={async () => {
+                              await setActiveTabId(tab.id);
+                              setSidebarActiveTab(tab.id);
+                              window.dispatchEvent(new CustomEvent("accountChanged"));
+                              onNavigate?.();
+                            }}
+                            className={clsx(
+                              "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative",
+                              isTabActive
+                                ? "bg-primary/20 text-primary"
+                                : "text-muted hover:text-foreground hover:bg-default-100",
+                            )}
+                          >
+                            <Icon className="w-4 h-4 flex-shrink-0" />
+                            <span className="text-sm truncate">{tab.name}</span>
+                          </Link>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </nav>
+
+        {/* Context Menu */}
+        {contextMenu && (
+          <CardContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            items={[
+              {
+                key: "edit",
+                label: i18n.language === "zh" ? "编辑" : "Edit",
+                onPress: async () => {
+                  const tabs = await getAllTabs();
+                  const tab = tabs.find((t) => t.id === contextMenu.tabId);
+                  if (tab) {
+                    setEditingTabForSidebar(tab);
+                    setIsTabEditorOpen(true);
+                  }
+                },
+              },
+              {
+                key: "delete",
+                label: i18n.language === "zh" ? "删除" : "Delete",
+                danger: true,
+                onPress: async () => {
+                  const confirmed = await confirmDialog({
+                    title: i18n.language === "zh" ? "删除标签页" : "Delete Tab",
+                    body: i18n.language === "zh"
+                      ? `确定要删除「${contextMenu.tabName}」吗？`
+                      : `Are you sure you want to delete "${contextMenu.tabName}"?`,
+                    confirmText: i18n.language === "zh" ? "删除" : "Delete",
+                    cancelText: i18n.language === "zh" ? "取消" : "Cancel",
+                    tone: "danger",
+                  });
+                  if (!confirmed) return;
+                  await removeTab(contextMenu.tabId);
+                  const tabs = await getAllTabs();
+                  setSidebarTabs(tabs.map((t) => ({ id: t.id, name: t.name, icon: t.icon })));
+                  window.dispatchEvent(new CustomEvent("tabsChanged"));
+                },
+              },
+            ]}
+            onClose={() => setContextMenu(null)}
+          />
+        )}
+
+        {/* Tab Editor Modal */}
+        <TabEditorModal
+          isOpen={isTabEditorOpen}
+          onClose={() => {
+            setIsTabEditorOpen(false);
+            setEditingTabForSidebar(undefined);
+          }}
+          onSave={async (data) => {
+            if (editingTabForSidebar) {
+              await updateTab(editingTabForSidebar.id, data);
+            } else {
+              await addTab(data.name, data.icon, data.tags, data.defaultRoleId);
+            }
+            setIsTabEditorOpen(false);
+            setEditingTabForSidebar(undefined);
+            const tabs = await getAllTabs();
+            setSidebarTabs(tabs.map((t) => ({ id: t.id, name: t.name, icon: t.icon })));
+            window.dispatchEvent(new CustomEvent("tabsChanged"));
+          }}
+          initialData={editingTabForSidebar}
+        />
 
         {/* Footer Section */}
         <div className="px-4 py-4 space-y-3">
