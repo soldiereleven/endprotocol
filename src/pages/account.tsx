@@ -39,6 +39,7 @@ import {
 import { roleDetailService } from "@/utils/roleDetailService";
 import logger, { logDebug, logError } from "../utils/logger";
 import { getConfig } from "@/utils/configService";
+import { resolveServerLabel } from "@/types";
 
 export default function AccountPage() {
   const { t, i18n } = useTranslation();
@@ -1528,7 +1529,7 @@ export default function AccountPage() {
                             </p>
                             <p className="text-xs text-muted/70">
                               {i18n.language === "zh" ? "服务器" : "Server"}:{" "}
-                              {role.serverId}
+                              {resolveServerLabel(role.serverId, i18n.language)}
                             </p>
                           </div>
                         </div>
