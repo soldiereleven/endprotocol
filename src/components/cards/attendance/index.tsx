@@ -324,12 +324,31 @@ export default function AttendanceCard({
                 </Button>
               </div>
             ) : attendanceState === "loading" && signPhase === "idle" ? (
-              <ProgressCircle isIndeterminate size="sm" aria-label="Loading">
-                <ProgressCircle.Track>
-                  <ProgressCircle.TrackCircle />
-                  <ProgressCircle.FillCircle />
-                </ProgressCircle.Track>
-              </ProgressCircle>
+              <div className="relative w-[68px] h-[68px]">
+                <svg className="w-[68px] h-[68px]" viewBox="0 0 52 52">
+                  <circle
+                    cx={26} cy={26} r={22}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={3}
+                    className="text-warning/20"
+                  />
+                  <circle
+                    cx={26} cy={26} r={22}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 22 * 0.25} ${2 * Math.PI * 22 * 0.75}`}
+                    className="text-warning"
+                    style={{
+                      transformOrigin: "26px 26px",
+                      transform: "rotate(-90deg)",
+                      animation: "attendance-spin-arc 1s linear infinite",
+                    }}
+                  />
+                </svg>
+              </div>
             ) : showSignButton ? (
               <div
                 className="flex flex-col items-center cursor-pointer hover:opacity-70 transition-opacity"
