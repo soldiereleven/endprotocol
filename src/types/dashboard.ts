@@ -30,3 +30,35 @@ export interface DashboardConfig {
   cards: CardConfig[];
   lastUpdated: number;
 }
+
+// 仪表盘标签页
+export interface DashboardTab {
+  id: string;
+  name: string;
+  icon: string;
+  tags: string[];
+  cards: CardConfig[];
+  defaultRoleId?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export const TAB_ICONS = [
+  'home',
+  'chart',
+  'users',
+  'star',
+  'heart',
+  'bookmark',
+  'tag',
+  'folder',
+  'calendar',
+  'bell',
+  'settings',
+  'account',
+  'search',
+  'developer',
+  'projects',
+] as const;
+
+export type TabIcon = (typeof TAB_ICONS)[number];

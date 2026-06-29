@@ -287,6 +287,7 @@ function FreeDragCard({
 
 interface CardContainerProps {
   roleId: string;
+  tabId?: string;
   cards: CardConfig[];
   onRemoveCard: (cardId: string) => void;
   isEditMode?: boolean;
@@ -296,6 +297,7 @@ interface CardContainerProps {
 
 export function CardContainer({
   roleId,
+  tabId,
   cards,
   onRemoveCard,
   isEditMode = false,
@@ -607,7 +609,8 @@ export function CardContainer({
     setSortedCards(updatedCards);
 
     // Save to config
-    await updateCardLayout(roleId, card.id, {
+    const layoutTabId = tabId ?? roleId;
+    await updateCardLayout(layoutTabId, card.id, {
       x: gridX,
       y: gridY,
       w: cardW,

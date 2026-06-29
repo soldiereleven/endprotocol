@@ -11,6 +11,7 @@ import {
   GithubIcon,
   HeartFilledIcon,
   SearchIcon,
+  PlusIcon,
 } from "@/components/icons";
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
@@ -26,6 +27,8 @@ import {
 } from "@/utils/accountService";
 import { usePinImages } from "@/utils/imageCacheManager";
 import { getConfig } from "@/utils/configService";
+import { getAllTabs, addTab, getActiveTabId, setActiveTabId } from "@/utils/tabService";
+import { getTabIcon } from "@/utils/tabIcons";
 import logger from "@/utils/logger";
 
 interface SearchResult {
@@ -79,6 +82,26 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
   const [expectedAccountCount, setExpectedAccountCount] =
     useState<number>(3); // 预期的账户数量（保留以兼容 manualRefresh 事件）
   const [developerMode, setDeveloperMode] = useState(false);
+  const [sidebarTabs, setSidebarTabs] = useState<Array<{ id: string; name: string; icon: string }>>([]);
+  const [sidebarActiveTab, setSidebarActiveTab] = useState<string | null>(null);
+
+  // Load tabs for sidebar
+  useEffect(() => {
+    const loadTabs = async () => {
+      const tabs = await getAllTabs();
+      setSidebarTabs(tabs.map(t => ({ id: t.id, name: t.name, icon: t.icon })));
+      const active = await getActiveTabId();
+      setSidebarActiveTab(active);
+    };
+    loadTabs();
+    const handleTabChange = () => loadTabs();
+    window.addEventListener("tabsChanged", handleTabChange);
+    window.addEventListener("accountChanged", handleTabChange);
+    return () => {
+      window.removeEventListener("tabsChanged", handleTabChange);
+      window.removeEventListener("accountChanged", handleTabChange);
+    };
+  }, []);
 
   // 监听主题变化，强制重新渲染
   useEffect(() => {
@@ -718,7 +741,11 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
     );
   };
 
-  const sidebarItems = [
+  const sidebarItems: Array<{
+    label: string;
+    href: string;
+    icon: React.FC<any>;
+  }> = [
     {
       label: t("sidebar.dashboard"),
       href: "/",
@@ -1034,6 +1061,58 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
               );
             })}
           </div>
+
+          {/* Tab list */}
+          {sidebarTabs.length > 0 && (
+            <div className="pt-2">
+              <div className="flex items-center justify-between px-3 py-1">
+                <span className="text-xs font-semibold text-muted uppercase tracking-wider">
+                  {i18n.language === "zh" ? "标签页" : "Tabs"}
+                </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const lang = i18n.language === "zh" ? "新标签页" : "New Tab";
+                    await addTab(lang, "home");
+                    const tabs = await getAllTabs();
+                    setSidebarTabs(tabs.map(t => ({ id: t.id, name: t.name, icon: t.icon })));
+                    window.dispatchEvent(new CustomEvent("tabsChanged"));
+                  }}
+                  className="p-1 rounded hover:bg-default-100 text-muted hover:text-foreground transition-colors"
+                  aria-label="Add tab"
+                >
+                  <PlusIcon size={16} />
+                </button>
+              </div>
+              <div className="space-y-0.5">
+                {sidebarTabs.map((tab) => {
+                  const Icon = getTabIcon(tab.icon);
+                  const isTabActive = location.pathname === "/" && sidebarActiveTab === tab.id;
+                  return (
+                    <Link
+                      key={tab.id}
+                      to="/"
+                      onClick={async () => {
+                        await setActiveTabId(tab.id);
+                        setSidebarActiveTab(tab.id);
+                        window.dispatchEvent(new CustomEvent("accountChanged"));
+                        onNavigate?.();
+                      }}
+                      className={clsx(
+                        "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative",
+                        isTabActive
+                          ? "bg-primary/20 text-primary"
+                          : "text-muted hover:text-foreground hover:bg-default-100",
+                      )}
+                    >
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-sm truncate">{tab.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </nav>
 
         {/* Footer Section */}
