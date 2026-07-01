@@ -6,6 +6,7 @@ import { CardConfigService } from "@/utils/cardConfigService";
 import { CardStartupService } from "@/cards/startup-service";
 import type { AttendanceCardSettings } from "@/types/card-settings";
 import { AttendanceSettingsModal } from "./attendance-settings-modal";
+import { AttendanceRewardsModal } from "./attendance-rewards-modal";
 import { getAccounts, type Account } from "@/utils/accountService";
 import { Img } from "@/utils/imageLoader";
 import { invoke } from "@tauri-apps/api/core";
@@ -20,20 +21,20 @@ export async function startup(roleId: string) {
   await invoke<any>("do_attendance", { roleId });
 }
 
-interface CalendarEntry {
+export interface CalendarEntry {
   awardId: string;
   available: boolean;
   done: boolean;
 }
 
-interface ResourceInfo {
+export interface ResourceInfo {
   id: string;
   count: number;
   name: string;
   icon: string;
 }
 
-interface AttendanceData {
+export interface AttendanceData {
   currentTs: string;
   calendar: CalendarEntry[];
   first: CalendarEntry[];
@@ -88,6 +89,7 @@ export default function AttendanceCard({
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false);
   const [firstTimePrompt, setFirstTimePrompt] = useState(true);
   const [autoSignEnabled, setAutoSignEnabled] = useState(false);
+  const [showRewardsModal, setShowRewardsModal] = useState(false);
 
   const [attendanceData, setAttendanceData] = useState<AttendanceData | null>(null);
   const [attendanceState, setAttendanceState] = useState<AttendanceState>("loading");
@@ -118,6 +120,11 @@ export default function AttendanceCard({
     setShowSettingsModal(true);
     checkAutoSign(settings.selectedRoleId);
   }, [settings.selectedRoleId, checkAutoSign]);
+
+  const openRewardsModal = useCallback(() => {
+    if (!attendanceData) return;
+    setShowRewardsModal(true);
+  }, [attendanceData]);
 
   const loadSettings = useCallback(async () => {
     try {
@@ -359,7 +366,7 @@ export default function AttendanceCard({
               />
               {claimed && (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <svg className="w-3 h-3 text-default-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                  <svg className="w-5 h-5 text-default-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
@@ -381,7 +388,8 @@ export default function AttendanceCard({
     <>
       <Card className="p-0 bg-content1 shadow-sm border border-separator h-full w-full select-none rounded-[10px] overflow-hidden flex flex-col">
         <div
-          className="flex h-full p-2.5 gap-2.5"
+          className="flex h-full p-2.5 gap-2.5 cursor-pointer"
+          onClick={openRewardsModal}
         >
           <div className="flex items-center justify-center shrink-0 w-[68px]">
             {!settings.selectedRoleId ? (
@@ -548,6 +556,12 @@ export default function AttendanceCard({
         autoSign={autoSignEnabled}
         showAutoSign={!isFirstTimeSetup}
         onSave={handleSaveSettings}
+      />
+
+      <AttendanceRewardsModal
+        isOpen={showRewardsModal}
+        onClose={() => setShowRewardsModal(false)}
+        attendanceData={attendanceData}
       />
 
       <style>{`

@@ -12,7 +12,7 @@
   "attendance_current_account": "Current Account",
   "attendance_auto_sign": "Auto sign in on launch",
   "attendance_auto_sign_desc": "Automatically sign in when app launches",
-  "attendance_day": "Day {day}",
+  "attendance_day": "Day {{day}}",
   "attendance_settings": "Attendance Settings",
   "attendance_refresh": "Refresh",
   "attendance_loading": "Loading...",
@@ -21,6 +21,7 @@
   "attendance_already_signed": "Already signed in today",
   "attendance_first_rewards": "First-time Rewards",
   "attendance_no_tomorrow": "End of list",
+  "attendance_monthly_rewards": "Monthly Rewards",
   "settings": "Settings",
   "confirm_delete_title": "Delete Card",
   "confirm_delete_body": "Are you sure you want to delete this card?"

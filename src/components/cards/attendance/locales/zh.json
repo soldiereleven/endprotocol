@@ -12,7 +12,7 @@
   "attendance_current_account": "当前签到账户",
   "attendance_auto_sign": "启动时自动签到",
   "attendance_auto_sign_desc": "应用启动后自动执行签到",
-  "attendance_day": "第{day}天",
+  "attendance_day": "第{{day}}天",
   "attendance_settings": "签到设置",
   "attendance_refresh": "刷新",
   "attendance_loading": "加载中...",
@@ -21,6 +21,7 @@
   "attendance_already_signed": "今日已签到",
   "attendance_first_rewards": "新手奖励",
   "attendance_no_tomorrow": "已到末尾",
+  "attendance_monthly_rewards": "月度奖励",
   "settings": "设置",
   "confirm_delete_title": "删除卡片",
   "confirm_delete_body": "确定要删除该卡片吗？"
