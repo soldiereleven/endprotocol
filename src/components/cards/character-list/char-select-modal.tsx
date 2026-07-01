@@ -164,10 +164,6 @@ function OperatorCard({
   const coverUrl = data.illustrationUrl || data.avatarRtUrl || data.avatarSqUrl;
   const rarityValue = data.rarity.value;
   const lineColor = rarityLineColorLocal(rarityValue);
-  const subProp = (() => {
-    const tags = data.tags || [];
-    return tags.find((t) => t && t !== data.property.value) ?? null;
-  })();
 
   return (
     <div
@@ -237,12 +233,32 @@ function OperatorCard({
         )}
       </div>
 
+      {/* 右下：potential 图标（potential 为 0 时不显示） */}
+      {char.potentialLevel != null && char.potentialLevel > 0 && (
+        <div className="absolute bottom-7 right-1.5 z-10">
+          <img
+            src={`/assets/icons/potential/potential_${char.potentialLevel}.png`}
+            alt=""
+            className="w-7 h-7 object-contain drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+          />
+        </div>
+      )}
+
       {/* 底栏：白色条带 + 名字 + 稀有度色条（WIKI 风格） */}
       <div className="absolute inset-x-0 bottom-0 z-10">
         <div className="bg-white dark:bg-black px-2 py-1 flex items-center gap-1.5">
-          <span className="text-[10px] text-gray-500 dark:text-gray-400 shrink-0">
-            {subProp ?? "OP"}
-          </span>
+          <div className="flex items-center gap-1 shrink-0">
+            {char.evolvePhase != null && (
+              <img
+                src={`/assets/icons/evolve/phase-${char.evolvePhase}.png`}
+                alt=""
+                className="w-5 h-5 object-contain"
+              />
+            )}
+            {char.level != null && (
+              <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Lv.{char.level}</span>
+            )}
+          </div>
           <span className="flex-1 min-w-0 text-sm font-medium text-black dark:text-white truncate text-right">
             {data.name}
           </span>

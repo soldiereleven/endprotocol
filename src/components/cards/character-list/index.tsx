@@ -194,19 +194,33 @@ export default function CharacterListCard({
           />
         </div>
 
-        {/* 右上：Lv. 标签 */}
-        {char.level != null && (
-          <div className="absolute top-1.5 right-1.5 z-10">
-            <span className="text-white text-[10px] font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
-              Lv.{char.level}
-            </span>
+        {/* 右下：potential 图标（potential 为 0 时不显示） */}
+        {char.potentialLevel != null && char.potentialLevel > 0 && (
+          <div className="absolute bottom-9 right-2 z-10">
+            <img
+              src={`/assets/icons/potential/potential_${char.potentialLevel}.png`}
+              alt=""
+              className="w-10 h-10 object-contain"
+            />
           </div>
         )}
 
-        {/* 底栏：名字 + 稀有度色条（半透明渐变，图片尽量占满） */}
+        {/* 底栏：渐变背景 + 等级/phase（左侧）+ 名字（右侧）+ 稀有度色条 */}
         <div className="absolute inset-x-0 bottom-0 z-10">
-          <div className="bg-gradient-to-t from-black/85 via-black/55 to-transparent px-1.5 pt-4 pb-1">
-            <span className="block text-xs font-medium text-white truncate drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]">
+          <div className="bg-gradient-to-t from-black/85 via-black/55 to-transparent px-1.5 pt-4 pb-1 flex items-end gap-2">
+            <div className="flex items-center gap-1 shrink-0">
+              {char.evolvePhase != null && (
+                <img
+                  src={`/assets/icons/evolve/phase-${char.evolvePhase}.png`}
+                  alt=""
+                  className="w-5 h-5 object-contain drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                />
+              )}
+              {char.level != null && (
+                <span className="text-sm text-gray-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">Lv.{char.level}</span>
+              )}
+            </div>
+            <span className="flex-1 min-w-0 text-xs font-medium text-white truncate text-right drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]">
               {data.name}
             </span>
           </div>
