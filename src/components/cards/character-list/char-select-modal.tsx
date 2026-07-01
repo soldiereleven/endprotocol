@@ -898,33 +898,41 @@ export function CharSelectModal({
               }}>
                 <div className="h-full p-4 overflow-y-auto space-y-6">
                   {/* Character Info Header */}
-                  <div className="flex items-start gap-3 pb-3 border-b border-black/10">
-                    <Img
-                      src={char.avatarSqUrl}
-                      alt={char.name}
-                      className="w-12 h-12 rounded-lg object-cover shadow-sm shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-base font-bold text-black truncate">{char.name}</h3>
-                      </div>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        {renderRarityIcons(char.rarity.value, 14)}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs text-black/70 mt-0.5 flex-wrap">
-                        <span>{char.profession.value}</span>
-                        <span className="text-black/40">·</span>
-                        <span>{char.property.value}</span>
-                        <span className="text-black/40">·</span>
-                        <span>{char.weaponType.value}</span>
+                    <div className="flex items-start justify-between pb-3 border-b border-black/10">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <Img
+                          src={char.avatarSqUrl}
+                          alt={char.name}
+                          className="w-12 h-12 rounded-lg object-cover shadow-sm shrink-0"
+                        />
                         {charItem?.level != null && (
-                          <>
-                            <span className="text-black/40">·</span>
-                            <span>Lv.{charItem.level}</span>
-                          </>
+                          <span className="text-[13px] font-semibold text-gray-500 leading-none">Lv.{charItem.level}</span>
                         )}
                       </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-base font-bold text-black truncate">{char.name}</h3>
+                        </div>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          {renderRarityIcons(char.rarity.value, 14)}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-black/70 mt-0.5 flex-wrap">
+                          <span>{char.profession.value}</span>
+                          <span className="text-black/40">·</span>
+                          <span>{char.property.value}</span>
+                          <span className="text-black/40">·</span>
+                          <span>{char.weaponType.value}</span>
+                        </div>
+                      </div>
                     </div>
+                    {charItem?.evolvePhase != null && (
+                      <img
+                        src={`/assets/icons/evolve/phase-${charItem.evolvePhase}.png`}
+                        alt={`Phase ${charItem.evolvePhase}`}
+                        className="h-12 w-auto object-contain shrink-0 mr-8"
+                      />
+                    )}
                   </div>
 
                   {/* Skills */}
