@@ -1063,68 +1063,82 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                 )}
                 aria-label={isDashboardCollapsed ? "Expand tabs" : "Collapse tabs"}
               >
-                {isDashboardCollapsed ? <ChevronRightIcon size={16} /> : <ChevronDownIcon size={16} />}
+                <ChevronDownIcon
+                  size={16}
+                  className={clsx(
+                    "transition-transform duration-300",
+                    isDashboardCollapsed && "-rotate-90",
+                  )}
+                />
               </button>
             </div>
 
-            {/* Tab list (collapsible) */}
-            {!isDashboardCollapsed && (
-              <div className="ml-6 pl-3 border-l border-separator space-y-0.5 animate-fade-in">
-                <div className="flex items-center justify-between px-3 py-1 mt-2">
-                  <span className="text-xs font-semibold text-muted uppercase tracking-wider">
-                    {i18n.language === "zh" ? "标签页" : "Tabs"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingTabForSidebar(undefined);
-                      setIsTabEditorOpen(true);
-                    }}
-                    className="p-1 rounded hover:bg-default-100 text-muted hover:text-foreground transition-colors"
-                    aria-label="Add tab"
-                  >
-                    <PlusIcon size={16} />
-                  </button>
-                </div>
-                {sidebarTabs.length > 0 && (
-                  <div className="space-y-0.5">
-                    {sidebarTabs.map((tab) => {
-                      const Icon = getTabIcon(tab.icon);
-                      const isTabActive = location.pathname === "/" && sidebarActiveTab === tab.id;
-                      return (
-                        <div
-                          key={tab.id}
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id, tabName: tab.name });
-                          }}
-                        >
-                          <Link
-                            to="/"
-                            onClick={async () => {
-                              await setActiveTabId(tab.id);
-                              setSidebarActiveTab(tab.id);
-                              window.dispatchEvent(new CustomEvent("accountChanged"));
-                              onNavigate?.();
-                            }}
-                            className={clsx(
-                              "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative",
-                              isTabActive
-                                ? "bg-primary/20 text-primary"
-                                : "text-muted hover:text-foreground hover:bg-default-100",
-                            )}
-                          >
-                            <Icon className="w-4 h-4 flex-shrink-0" />
-                            <span className="text-sm truncate">{tab.name}</span>
-                          </Link>
-                        </div>
-                      );
-                    })}
+            {/* Tab list (collapsible with smooth height animation) */}
+            <div
+              className="grid transition-all duration-300 ease-in-out"
+              style={{
+                gridTemplateRows: isDashboardCollapsed ? "0fr" : "1fr",
+                opacity: isDashboardCollapsed ? 0 : 1,
+              }}
+            >
+              <div className="overflow-hidden">
+                <div className="ml-6 pl-3 border-l border-separator space-y-0.5 pt-0">
+                  <div className="flex items-center justify-between px-3 py-1 mt-2">
+                    <span className="text-xs font-semibold text-muted uppercase tracking-wider">
+                      {i18n.language === "zh" ? "标签页" : "Tabs"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingTabForSidebar(undefined);
+                        setIsTabEditorOpen(true);
+                      }}
+                      className="p-1 rounded hover:bg-default-100 text-muted hover:text-foreground transition-colors"
+                      aria-label="Add tab"
+                    >
+                      <PlusIcon size={16} />
+                    </button>
                   </div>
-                )}
+                  {sidebarTabs.length > 0 && (
+                    <div className="space-y-0.5 pb-2">
+                      {sidebarTabs.map((tab) => {
+                        const Icon = getTabIcon(tab.icon);
+                        const isTabActive = location.pathname === "/" && sidebarActiveTab === tab.id;
+                        return (
+                          <div
+                            key={tab.id}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id, tabName: tab.name });
+                            }}
+                          >
+                            <Link
+                              to="/"
+                              onClick={async () => {
+                                await setActiveTabId(tab.id);
+                                setSidebarActiveTab(tab.id);
+                                window.dispatchEvent(new CustomEvent("accountChanged"));
+                                onNavigate?.();
+                              }}
+                              className={clsx(
+                                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative",
+                                isTabActive
+                                  ? "bg-primary/20 text-primary"
+                                  : "text-muted hover:text-foreground hover:bg-default-100",
+                              )}
+                            >
+                              <Icon className="w-4 h-4 flex-shrink-0" />
+                              <span className="text-sm truncate">{tab.name}</span>
+                            </Link>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
+            </div>
           </div>
         </nav>
 
