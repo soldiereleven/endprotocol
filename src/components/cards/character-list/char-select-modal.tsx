@@ -300,7 +300,6 @@ export function CharSelectModal({
   // Wiki 详情相关（仅非预加载时: 显示加载指示 + 关闭时清理后端缓存）
   const [wikiLoading, setWikiLoading] = useState(false);
   const wikiCleanupRef = useRef(false);
-  const wikiItemIdRef = useRef<string | null>(null);
   const wikiPreloadRef = useRef(false);
   const [wikiDetail, setWikiDetail] = useState<any>(null);
 
@@ -395,7 +394,6 @@ export function CharSelectModal({
   const resetWikiState = useCallback(() => {
     setWikiLoading(false);
     setWikiDetail(null);
-    wikiItemIdRef.current = null;
   }, []);
 
   // Reset all state when modal opens to ensure fresh data
@@ -439,8 +437,9 @@ export function CharSelectModal({
       return;
     }
 
-    const charName = getCharById(detailCharId)?.name;
-    if (!charName) return;
+    const charItem = getCharItemById(detailCharId);
+    const wikiItemId = charItem?.wikiItemId;
+    if (!wikiItemId || wikiItemId === "0") return;
 
     let cancelled = false;
 
@@ -450,26 +449,12 @@ export function CharSelectModal({
 
     const loadWikiDetail = async () => {
       try {
-        // 在 wiki 目录中按名称查找 itemId
-        let itemId = wikiItemIdRef.current;
-        if (!itemId) {
-          itemId = await roleDataService.lookupCharItemId(roleId, charName, charDetail.base.gender);
-          wikiItemIdRef.current = itemId;
-        }
-
-        if (cancelled || !itemId) {
-          if (!itemId) {
-            logError(`[Wiki] Character "${charName}" not found in wiki catalog`);
-          }
-          return;
-        }
-
         // 检查预加载设置
         const preload = (await getConfig<boolean>("wiki_detail_preload")) ?? false;
         wikiPreloadRef.current = preload;
 
         // 加载 Wiki 详情
-        const detail = await roleDataService.getWikiItemDetail(roleId, itemId);
+        const detail = await roleDataService.getWikiItemDetail(roleId, wikiItemId);
         if (cancelled) return;
         if (detail) setWikiDetail(detail);
 

@@ -58,6 +58,7 @@ export interface CharacterItem {
   userSkills?: any;
   bodyEquip?: any;
   talent?: TalentNodes; // 当前激活的天赋节点
+  wikiItemId?: string;  // 对应 Wiki 目录中的 itemId，为空时不展示 Wiki 详情
 }
 
 export interface CharacterData {

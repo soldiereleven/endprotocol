@@ -138,6 +138,8 @@ pub struct CharacterItem {
     #[serde(default)]
     pub body_equip: Option<serde_json::Value>,
     #[serde(default)]
+    pub wiki_item_id: Option<String>,
+    #[serde(default)]
     pub talent: Option<TalentNodes>,
 }
 
