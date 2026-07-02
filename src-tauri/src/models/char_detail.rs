@@ -138,6 +138,16 @@ pub struct CharacterItem {
     #[serde(default)]
     pub body_equip: Option<serde_json::Value>,
     #[serde(default)]
+    pub arm_equip: Option<serde_json::Value>,
+    #[serde(default)]
+    pub first_accessory: Option<serde_json::Value>,
+    #[serde(default)]
+    pub second_accessory: Option<serde_json::Value>,
+    #[serde(default)]
+    pub weapon: Option<serde_json::Value>,
+    #[serde(default)]
+    pub tactical_item: Option<serde_json::Value>,
+    #[serde(default)]
     pub wiki_item_id: Option<String>,
     #[serde(default)]
     pub talent: Option<TalentNodes>,

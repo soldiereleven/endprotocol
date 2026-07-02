@@ -681,6 +681,15 @@ export function CharSelectModal({
     (char.cultivationTalents || []).forEach((t) => {
       if (t.iconUrl) paths.push(t.iconUrl);
     });
+    const pushEquipIcon = (obj: any, field: string) => {
+    const url = obj?.[field]?.iconUrl;
+    if (url) paths.push(url);
+  };
+  pushEquipIcon(item.weapon, 'weaponData');
+  for (const eq of [item.bodyEquip, item.armEquip, item.firstAccessory, item.secondAccessory]) {
+    pushEquipIcon(eq, 'equipData');
+  }
+  pushEquipIcon(item.tacticalItem, 'tacticalItemData');
     return paths;
   }, [viewMode, detailCharId, charDetail.chars]);
 
@@ -855,6 +864,14 @@ export function CharSelectModal({
 
           const showLoading = wikiLoading;
 
+          const equipData = [
+            { key: 'weapon', label: '武器', data: charItem?.weapon ? { iconUrl: charItem.weapon.weaponData?.iconUrl, name: (charItem.weapon.weaponData?.name || '').trim(), rarity: charItem.weapon.weaponData?.rarity?.value || '3', level: `Lv.${charItem.weapon.level}` } : null },
+            { key: 'body', label: '护甲', data: charItem?.bodyEquip?.equipData ? { iconUrl: charItem.bodyEquip.equipData.iconUrl, name: (charItem.bodyEquip.equipData.name || '').trim(), rarity: (charItem.bodyEquip.equipData.rarity?.key || '').replace('equip_rarity_', '') || '3', level: charItem.bodyEquip.equipData.level?.value ? `Lv.${charItem.bodyEquip.equipData.level.value}` : undefined } : null },
+            { key: 'arm', label: '护手', data: charItem?.armEquip?.equipData ? { iconUrl: charItem.armEquip.equipData.iconUrl, name: (charItem.armEquip.equipData.name || '').trim(), rarity: (charItem.armEquip.equipData.rarity?.key || '').replace('equip_rarity_', '') || '3', level: charItem.armEquip.equipData.level?.value ? `Lv.${charItem.armEquip.equipData.level.value}` : undefined } : null },
+            { key: 'acc1', label: '配件', data: charItem?.firstAccessory?.equipData ? { iconUrl: charItem.firstAccessory.equipData.iconUrl, name: (charItem.firstAccessory.equipData.name || '').trim(), rarity: (charItem.firstAccessory.equipData.rarity?.key || '').replace('equip_rarity_', '') || '3', level: charItem.firstAccessory.equipData.level?.value ? `Lv.${charItem.firstAccessory.equipData.level.value}` : undefined } : null },
+            { key: 'acc2', label: '配件', data: charItem?.secondAccessory?.equipData ? { iconUrl: charItem.secondAccessory.equipData.iconUrl, name: (charItem.secondAccessory.equipData.name || '').trim(), rarity: (charItem.secondAccessory.equipData.rarity?.key || '').replace('equip_rarity_', '') || '3', level: charItem.secondAccessory.equipData.level?.value ? `Lv.${charItem.secondAccessory.equipData.level.value}` : undefined } : null },
+            { key: 'tactical', label: '战术道具', data: charItem?.tacticalItem?.tacticalItemData ? { iconUrl: charItem.tacticalItem.tacticalItemData.iconUrl, name: charItem.tacticalItem.tacticalItemData.name || '', rarity: (charItem.tacticalItem.tacticalItemData.rarity?.key || '').replace('equip_rarity_', '') || '3' } : null },
+          ];
           return (
             <div className="h-full w-full relative overflow-hidden rounded-2xl" style={{ border: "none" }}>
               {/* Close button at top-right corner */}
@@ -951,25 +968,28 @@ export function CharSelectModal({
                     )}
                   </div>
 
-                  {/* Skills */}
-                  <div>
-                    <div className="flex flex-wrap gap-5">
-                      {char.skills.map((skill) => {
-                        const isSel = sel?.type === "skill" && sel.id === skill.id;
-                        return (
-                          <button key={skill.id}
-                            onClick={() => openDetailPanel({ type: "skill", id: skill.id })}
-                            className={btnBase(true, isSel, true)}
-                            style={{ backgroundColor: "#e9d72c" }}
-                            title={skill.name}>
-                            <Img src={skill.iconUrl} alt={skill.name} className="w-full h-full object-contain" />
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  {/* Talent Array + Equipment side by side */}
+                  <div className="flex gap-6">
+                    <div className="flex-1 space-y-6 min-w-0">
+                      {/* Skills */}
+                      <div>
+                        <div className="flex flex-wrap gap-5">
+                          {char.skills.map((skill) => {
+                            const isSel = sel?.type === "skill" && sel.id === skill.id;
+                            return (
+                              <button key={skill.id}
+                                onClick={() => openDetailPanel({ type: "skill", id: skill.id })}
+                                className={btnBase(true, isSel, true)}
+                                style={{ backgroundColor: "#e9d72c" }}
+                                title={skill.name}>
+                                <Img src={skill.iconUrl} alt={skill.name} className="w-full h-full object-contain" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
 
-                  {/* Ability Talents */}
+                      {/* Ability Talents */}
                   <div>
                     <div className="flex flex-wrap gap-5">
                       {[...char.abilityTalents].sort((a, b) => {
@@ -1089,6 +1109,27 @@ export function CharSelectModal({
                       </div>
                     </div>
                   )}
+
+                    </div>
+
+                    {/* Equipment column */}
+                    <div className="flex flex-col gap-3 shrink-0 w-44 justify-center">
+                      {equipData.map((eq) => {
+                        if (!eq.data) return null;
+                        return (
+                          <div key={eq.key} className="flex items-center gap-3" title={`${eq.label}: ${eq.data.name}`}>
+                            <div className="w-16 h-16 shrink-0 flex items-center justify-center overflow-hidden">
+                              <Img src={eq.data.iconUrl} alt={eq.data.name} className="w-full h-full object-contain" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-base text-black/80 leading-tight truncate">{eq.data.name}</div>
+                              {eq.data.level && <div className="text-[13px] text-black/50">{eq.data.level}</div>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
 

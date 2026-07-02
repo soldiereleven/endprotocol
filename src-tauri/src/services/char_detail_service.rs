@@ -356,10 +356,58 @@ impl CharDetailService {
                         }
                     }
                 }
+
+                // Process equipment icon URLs
+                Self::cache_equip_icon(&image_cache, &mut char.weapon, "weaponData", char_name).await;
+                Self::cache_equip_icon(&image_cache, &mut char.body_equip, "equipData", char_name).await;
+                Self::cache_equip_icon(&image_cache, &mut char.arm_equip, "equipData", char_name).await;
+                Self::cache_equip_icon(&image_cache, &mut char.first_accessory, "equipData", char_name).await;
+                Self::cache_equip_icon(&image_cache, &mut char.second_accessory, "equipData", char_name).await;
+                Self::cache_equip_icon(&image_cache, &mut char.tactical_item, "tacticalItemData", char_name).await;
             }
         }
 
         log_debug!("Completed image processing");
         Ok(())
+    }
+
+    /// Process icon URL for an equipment item (nested inside weaponData/equipData/tacticalItemData)
+    async fn cache_equip_icon(
+        image_cache: &ImageCacheService,
+        equip: &mut Option<serde_json::Value>,
+        data_key: &str,
+        char_name: &str,
+    ) {
+        if let Some(ref mut value) = equip {
+            if let Some(obj) = value.as_object_mut() {
+                if let Some(data) = obj.get_mut(data_key) {
+                    if let Some(data_obj) = data.as_object_mut() {
+                        if let Some(serde_json::Value::String(url)) = data_obj.get("iconUrl") {
+                            if !url.is_empty() && !url.starts_with("http://asset.localhost") {
+                                let url_clone = url.clone();
+                                match image_cache
+                                    .get_or_download_image(&url_clone, ImageType::SkillIcon)
+                                    .await
+                                {
+                                    Ok(p) => {
+                                        data_obj.insert(
+                                            "iconUrl".to_string(),
+                                            serde_json::Value::String(p),
+                                        );
+                                    }
+                                    Err(e) => {
+                                        log_warn!(
+                                            "Failed to cache equipment icon for {}: {}",
+                                            char_name,
+                                            e
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

@@ -57,8 +57,13 @@ export interface CharacterItem {
   potentialLevel?: number;
   userSkills?: any;
   bodyEquip?: any;
-  talent?: TalentNodes; // 当前激活的天赋节点
-  wikiItemId?: string;  // 对应 Wiki 目录中的 itemId，为空时不展示 Wiki 详情
+  armEquip?: any;
+  firstAccessory?: any;
+  secondAccessory?: any;
+  weapon?: any;
+  tacticalItem?: any;
+  talent?: TalentNodes;
+  wikiItemId?: string;
 }
 
 export interface CharacterData {
