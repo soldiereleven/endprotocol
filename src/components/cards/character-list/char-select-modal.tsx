@@ -1,4 +1,11 @@
-import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import { Button, Alert, ProgressCircle, Meter, Chip } from "@heroui/react";
 import {
   CustomModal,
@@ -26,7 +33,13 @@ const professionIconUrl = (key: string) => `${ICON_BASE}/profession/${key}.png`;
 const propertyIconUrl = (key: string) => `${ICON_BASE}/property/${key}.png`;
 const RARITY_ICON_URL = "/assets/rarity.svg";
 
-type FilterKey = "profession" | "rarity" | "property" | "weapon" | "mainAttr" | "subAttr";
+type FilterKey =
+  | "profession"
+  | "rarity"
+  | "property"
+  | "weapon"
+  | "mainAttr"
+  | "subAttr";
 
 interface CharSelectModalProps {
   isOpen: boolean;
@@ -256,7 +269,9 @@ function OperatorCard({
               />
             )}
             {char.level != null && (
-              <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Lv.{char.level}</span>
+              <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
+                Lv.{char.level}
+              </span>
             )}
           </div>
           <span className="flex-1 min-w-0 text-sm font-medium text-black dark:text-white truncate text-right">
@@ -305,7 +320,12 @@ export function CharSelectModal({
   );
   const [detailCharId, setDetailCharId] = useState<string | null>(null);
   const [selectedDetailItem, setSelectedDetailItem] = useState<{
-    type: "skill" | "combatTalent" | "abilityTalent" | "cultivationTalent" | "potential";
+    type:
+      | "skill"
+      | "combatTalent"
+      | "abilityTalent"
+      | "cultivationTalent"
+      | "potential";
     id: string;
   } | null>(null);
   const [detailActive, setDetailActive] = useState(false);
@@ -329,11 +349,11 @@ export function CharSelectModal({
     const chapterGroup: any[] = (doc as any).chapterGroup;
     if (!chapterGroup) return null;
     const potentialChapter = chapterGroup.find(
-      (ch: any) => ch.title === "干员潜能"
+      (ch: any) => ch.title === "干员潜能",
     );
     if (!potentialChapter?.widgets) return null;
     const potentialWidgetEntry = (potentialChapter.widgets as any[]).find(
-      (w: any) => w.title === "干员潜能"
+      (w: any) => w.title === "干员潜能",
     );
     const widgetKey: string = potentialWidgetEntry?.id;
     const widget = widgetKey ? commonMap[widgetKey] : null;
@@ -352,7 +372,12 @@ export function CharSelectModal({
 
   /** 打开详情面板：先渲染内容，下一帧再触发宽度动画 */
   const openDetailPanel = (item: {
-    type: "skill" | "combatTalent" | "abilityTalent" | "cultivationTalent" | "potential";
+    type:
+      | "skill"
+      | "combatTalent"
+      | "abilityTalent"
+      | "cultivationTalent"
+      | "potential";
     id: string;
   }) => {
     if (detailTimerRef.current) clearTimeout(detailTimerRef.current);
@@ -432,7 +457,7 @@ export function CharSelectModal({
       // 模态框关闭时：如果预加载未开启，清空 BE 端 wiki 缓存
       if (wikiCleanupRef.current) {
         invoke("clear_wiki_detail_cache").catch((e) =>
-          logError("[Wiki] Failed to clear cache on close:", e)
+          logError("[Wiki] Failed to clear cache on close:", e),
         );
       }
       resetWikiState();
@@ -466,11 +491,15 @@ export function CharSelectModal({
     const loadWikiDetail = async () => {
       try {
         // 检查预加载设置
-        const preload = (await getConfig<boolean>("wiki_detail_preload")) ?? false;
+        const preload =
+          (await getConfig<boolean>("wiki_detail_preload")) ?? false;
         wikiPreloadRef.current = preload;
 
         // 加载 Wiki 详情
-        const detail = await roleDataService.getWikiItemDetail(roleId, wikiItemId);
+        const detail = await roleDataService.getWikiItemDetail(
+          roleId,
+          wikiItemId,
+        );
         if (cancelled) return;
         if (detail) setWikiDetail(detail);
 
@@ -500,7 +529,7 @@ export function CharSelectModal({
       resetWikiState();
       if (!wikiPreloadRef.current && wikiCleanupRef.current) {
         invoke("clear_wiki_detail_cache").catch((e) =>
-          logError("[Wiki] Failed to clear cache on detail close:", e)
+          logError("[Wiki] Failed to clear cache on detail close:", e),
         );
         wikiCleanupRef.current = false;
       }
@@ -520,10 +549,14 @@ export function CharSelectModal({
 
   function rarityLineColor(value: string): string {
     switch (value) {
-      case "6": return "#ff7100";
-      case "5": return "#ffcc00";
-      case "4": return "#b380ff";
-      default: return "transparent";
+      case "6":
+        return "#ff7100";
+      case "5":
+        return "#ffcc00";
+      case "4":
+        return "#b380ff";
+      default:
+        return "transparent";
     }
   }
 
@@ -627,12 +660,20 @@ export function CharSelectModal({
   // 过滤
   const filteredCharacters = sortedCharacters.filter((char) => {
     const data = char.charData;
-    if (filters.profession !== "all" && data.profession.value !== filters.profession) return false;
-    if (filters.rarity !== "all" && data.rarity.value !== filters.rarity) return false;
-    if (filters.property !== "all" && data.property.value !== filters.property) return false;
-    if (filters.weapon !== "all" && data.weaponType.value !== filters.weapon) return false;
+    if (
+      filters.profession !== "all" &&
+      data.profession.value !== filters.profession
+    )
+      return false;
+    if (filters.rarity !== "all" && data.rarity.value !== filters.rarity)
+      return false;
+    if (filters.property !== "all" && data.property.value !== filters.property)
+      return false;
+    if (filters.weapon !== "all" && data.weaponType.value !== filters.weapon)
+      return false;
     // 主能力 = property，等价于单独筛选
-    if (filters.mainAttr !== "all" && data.property.value !== filters.mainAttr) return false;
+    if (filters.mainAttr !== "all" && data.property.value !== filters.mainAttr)
+      return false;
     // 副能力：tag 中非主属性的项
     if (filters.subAttr !== "all") {
       const sub = getSubProperty(char);
@@ -667,29 +708,38 @@ export function CharSelectModal({
 
   const detailImagePaths = useMemo(() => {
     if (viewMode !== "detail" || !detailCharId) return [];
-    const item = charDetail.chars.find(
-      (c) => c.charData.id === detailCharId,
-    );
+    const item = charDetail.chars.find((c) => c.charData.id === detailCharId);
     if (!item) return [];
     const char = item.charData;
     const paths: string[] = [];
     if (char.illustrationUrl) paths.push(char.illustrationUrl);
     if (char.avatarSqUrl) paths.push(char.avatarSqUrl);
-    char.skills.forEach((s) => { if (s.iconUrl) paths.push(s.iconUrl); });
-    char.abilityTalents.forEach((t) => { if (t.iconUrl) paths.push(t.iconUrl); });
-    char.combatTalents.forEach((t) => { if (t.iconUrl) paths.push(t.iconUrl); });
+    char.skills.forEach((s) => {
+      if (s.iconUrl) paths.push(s.iconUrl);
+    });
+    char.abilityTalents.forEach((t) => {
+      if (t.iconUrl) paths.push(t.iconUrl);
+    });
+    char.combatTalents.forEach((t) => {
+      if (t.iconUrl) paths.push(t.iconUrl);
+    });
     (char.cultivationTalents || []).forEach((t) => {
       if (t.iconUrl) paths.push(t.iconUrl);
     });
     const pushEquipIcon = (obj: any, field: string) => {
-    const url = obj?.[field]?.iconUrl;
-    if (url) paths.push(url);
-  };
-  pushEquipIcon(item.weapon, 'weaponData');
-  for (const eq of [item.bodyEquip, item.armEquip, item.firstAccessory, item.secondAccessory]) {
-    pushEquipIcon(eq, 'equipData');
-  }
-  pushEquipIcon(item.tacticalItem, 'tacticalItemData');
+      const url = obj?.[field]?.iconUrl;
+      if (url) paths.push(url);
+    };
+    pushEquipIcon(item.weapon, "weaponData");
+    for (const eq of [
+      item.bodyEquip,
+      item.armEquip,
+      item.firstAccessory,
+      item.secondAccessory,
+    ]) {
+      pushEquipIcon(eq, "equipData");
+    }
+    pushEquipIcon(item.tacticalItem, "tacticalItemData");
     return paths;
   }, [viewMode, detailCharId, charDetail.chars]);
 
@@ -774,15 +824,18 @@ export function CharSelectModal({
       )}
 
       {viewMode === "detail" ? (
-        detailCharId && (() => {
+        detailCharId &&
+        (() => {
           const char = getCharById(detailCharId);
           const charItem = getCharItemById(detailCharId);
           if (!char) return null;
 
           const sel = selectedDetailItem;
-          const activeCombatNodes = charItem?.talent?.latestPassiveSkillNodes || [];
+          const activeCombatNodes =
+            charItem?.talent?.latestPassiveSkillNodes || [];
           const activeAbilityNodes = charItem?.talent?.attrNodes || [];
-          const activeCultivationNodes = charItem?.talent?.latestSpaceshipSkillNodes || [];
+          const activeCultivationNodes =
+            charItem?.talent?.latestSpaceshipSkillNodes || [];
           const hasSelection = detailActive;
 
           const groupChains = (talents: typeof char.combatTalents) => {
@@ -792,11 +845,13 @@ export function CharSelectModal({
               if (!groups.has(baseId)) groups.set(baseId, []);
               groups.get(baseId)!.push(t);
             });
-            groups.forEach((g) => g.sort((a, b) => {
-              const aL = parseInt(a.id.match(/_(\d+)$/)?.[1] || "0");
-              const bL = parseInt(b.id.match(/_(\d+)$/)?.[1] || "0");
-              return aL - bL;
-            }));
+            groups.forEach((g) =>
+              g.sort((a, b) => {
+                const aL = parseInt(a.id.match(/_(\d+)$/)?.[1] || "0");
+                const bL = parseInt(b.id.match(/_(\d+)$/)?.[1] || "0");
+                return aL - bL;
+              }),
+            );
             return Array.from(groups.values());
           };
 
@@ -807,52 +862,86 @@ export function CharSelectModal({
               return s ? { ...s, _type: "skill" as const } : null;
             }
             if (sel.type === "potential") {
-              const p = potentialData?.find((x: any) => x.level === parseInt(sel.id));
-              return p ? {
-                _type: "potential" as const,
-                level: p.level,
-                iconUrl: p.iconUrl,
-                contentDoc: p.contentDoc,
-                name: `潜能 ${p.level}`,
-              } : null;
+              const p = potentialData?.find(
+                (x: any) => x.level === parseInt(sel.id),
+              );
+              return p
+                ? {
+                    _type: "potential" as const,
+                    level: p.level,
+                    iconUrl: p.iconUrl,
+                    contentDoc: p.contentDoc,
+                    name: `潜能 ${p.level}`,
+                  }
+                : null;
             }
             const pool =
-              sel.type === "combatTalent" ? char.combatTalents :
-              sel.type === "abilityTalent" ? char.abilityTalents :
-              char.cultivationTalents || [];
+              sel.type === "combatTalent"
+                ? char.combatTalents
+                : sel.type === "abilityTalent"
+                  ? char.abilityTalents
+                  : char.cultivationTalents || [];
             const t = pool.find((x) => x.id === sel.id);
             return t ? { ...t, _type: sel.type } : null;
           };
           const selectedItem = findItem();
 
-          const isNodeUnlocked = (chain: typeof char.combatTalents, index: number, type: string) => {
-            const activeNodes = type === "combatTalent" ? activeCombatNodes :
-              type === "abilityTalent" ? activeAbilityNodes :
-              activeCultivationNodes;
+          const isNodeUnlocked = (
+            chain: typeof char.combatTalents,
+            index: number,
+            type: string,
+          ) => {
+            const activeNodes =
+              type === "combatTalent"
+                ? activeCombatNodes
+                : type === "abilityTalent"
+                  ? activeAbilityNodes
+                  : activeCultivationNodes;
             if (type === "skill") return true;
-            if (type === "abilityTalent") return activeNodes.includes(chain[index].id);
+            if (type === "abilityTalent")
+              return activeNodes.includes(chain[index].id);
             for (let i = index; i < chain.length; i++) {
               if (activeNodes.includes(chain[i].id)) return true;
             }
             return false;
           };
 
-          const talentIcon = (iconUrl: string, name: string, unlocked: boolean) => {
+          const talentIcon = (
+            iconUrl: string,
+            name: string,
+            unlocked: boolean,
+          ) => {
             return unlocked ? (
-              <Img src={iconUrl} alt={name} className="w-full h-full object-contain" />
+              <Img
+                src={iconUrl}
+                alt={name}
+                className="w-full h-full object-contain"
+              />
             ) : (
               <div className="relative w-full h-full">
-                <Img src={iconUrl} alt={name} className="w-full h-full object-contain opacity-30" />
+                <Img
+                  src={iconUrl}
+                  alt={name}
+                  className="w-full h-full object-contain opacity-30"
+                />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white drop-shadow" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm8 14H7c-.55 0-1-.45-1-1v-8c0-.55.45-1 1-1h10c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1z"/>
+                  <svg
+                    className="w-4 h-4 text-white drop-shadow"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm8 14H7c-.55 0-1-.45-1-1v-8c0-.55.45-1 1-1h10c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1z" />
                   </svg>
                 </div>
               </div>
             );
           };
 
-          const btnBase = (isFirstThree: boolean, active: boolean, unlocked: boolean) =>
+          const btnBase = (
+            isFirstThree: boolean,
+            active: boolean,
+            unlocked: boolean,
+          ) =>
             `w-12 h-12 border-2 p-1 transition-all cursor-pointer flex-shrink-0
             ${isFirstThree ? "rounded-full" : "rounded-lg"}
             ${unlocked ? "border-yellow-300" : "border-neutral-500"}
@@ -865,15 +954,110 @@ export function CharSelectModal({
           const showLoading = wikiLoading;
 
           const equipData = [
-            { key: 'weapon', label: '武器', data: charItem?.weapon ? { iconUrl: charItem.weapon.weaponData?.iconUrl, name: (charItem.weapon.weaponData?.name || '').trim(), rarity: charItem.weapon.weaponData?.rarity?.value || '3', level: `Lv.${charItem.weapon.level}` } : null },
-            { key: 'body', label: '护甲', data: charItem?.bodyEquip?.equipData ? { iconUrl: charItem.bodyEquip.equipData.iconUrl, name: (charItem.bodyEquip.equipData.name || '').trim(), rarity: (charItem.bodyEquip.equipData.rarity?.key || '').replace('equip_rarity_', '') || '3', level: charItem.bodyEquip.equipData.level?.value ? `Lv.${charItem.bodyEquip.equipData.level.value}` : undefined } : null },
-            { key: 'arm', label: '护手', data: charItem?.armEquip?.equipData ? { iconUrl: charItem.armEquip.equipData.iconUrl, name: (charItem.armEquip.equipData.name || '').trim(), rarity: (charItem.armEquip.equipData.rarity?.key || '').replace('equip_rarity_', '') || '3', level: charItem.armEquip.equipData.level?.value ? `Lv.${charItem.armEquip.equipData.level.value}` : undefined } : null },
-            { key: 'acc1', label: '配件', data: charItem?.firstAccessory?.equipData ? { iconUrl: charItem.firstAccessory.equipData.iconUrl, name: (charItem.firstAccessory.equipData.name || '').trim(), rarity: (charItem.firstAccessory.equipData.rarity?.key || '').replace('equip_rarity_', '') || '3', level: charItem.firstAccessory.equipData.level?.value ? `Lv.${charItem.firstAccessory.equipData.level.value}` : undefined } : null },
-            { key: 'acc2', label: '配件', data: charItem?.secondAccessory?.equipData ? { iconUrl: charItem.secondAccessory.equipData.iconUrl, name: (charItem.secondAccessory.equipData.name || '').trim(), rarity: (charItem.secondAccessory.equipData.rarity?.key || '').replace('equip_rarity_', '') || '3', level: charItem.secondAccessory.equipData.level?.value ? `Lv.${charItem.secondAccessory.equipData.level.value}` : undefined } : null },
-            { key: 'tactical', label: '战术道具', data: charItem?.tacticalItem?.tacticalItemData ? { iconUrl: charItem.tacticalItem.tacticalItemData.iconUrl, name: charItem.tacticalItem.tacticalItemData.name || '', rarity: (charItem.tacticalItem.tacticalItemData.rarity?.key || '').replace('equip_rarity_', '') || '3' } : null },
+            {
+              key: "weapon",
+              label: "武器",
+              data: charItem?.weapon
+                ? {
+                    iconUrl: charItem.weapon.weaponData?.iconUrl,
+                    name: (charItem.weapon.weaponData?.name || "").trim(),
+                    rarity: charItem.weapon.weaponData?.rarity?.value || "3",
+                    level: `Lv.${charItem.weapon.level}`,
+                  }
+                : null,
+            },
+            {
+              key: "body",
+              label: "护甲",
+              data: charItem?.bodyEquip?.equipData
+                ? {
+                    iconUrl: charItem.bodyEquip.equipData.iconUrl,
+                    name: (charItem.bodyEquip.equipData.name || "").trim(),
+                    rarity:
+                      (charItem.bodyEquip.equipData.rarity?.key || "").replace(
+                        "equip_rarity_",
+                        "",
+                      ) || "3",
+                    level: charItem.bodyEquip.equipData.level?.value
+                      ? `Lv.${charItem.bodyEquip.equipData.level.value}`
+                      : undefined,
+                  }
+                : null,
+            },
+            {
+              key: "arm",
+              label: "护手",
+              data: charItem?.armEquip?.equipData
+                ? {
+                    iconUrl: charItem.armEquip.equipData.iconUrl,
+                    name: (charItem.armEquip.equipData.name || "").trim(),
+                    rarity:
+                      (charItem.armEquip.equipData.rarity?.key || "").replace(
+                        "equip_rarity_",
+                        "",
+                      ) || "3",
+                    level: charItem.armEquip.equipData.level?.value
+                      ? `Lv.${charItem.armEquip.equipData.level.value}`
+                      : undefined,
+                  }
+                : null,
+            },
+            {
+              key: "acc1",
+              label: "配件",
+              data: charItem?.firstAccessory?.equipData
+                ? {
+                    iconUrl: charItem.firstAccessory.equipData.iconUrl,
+                    name: (charItem.firstAccessory.equipData.name || "").trim(),
+                    rarity:
+                      (
+                        charItem.firstAccessory.equipData.rarity?.key || ""
+                      ).replace("equip_rarity_", "") || "3",
+                    level: charItem.firstAccessory.equipData.level?.value
+                      ? `Lv.${charItem.firstAccessory.equipData.level.value}`
+                      : undefined,
+                  }
+                : null,
+            },
+            {
+              key: "acc2",
+              label: "配件",
+              data: charItem?.secondAccessory?.equipData
+                ? {
+                    iconUrl: charItem.secondAccessory.equipData.iconUrl,
+                    name: (
+                      charItem.secondAccessory.equipData.name || ""
+                    ).trim(),
+                    rarity:
+                      (
+                        charItem.secondAccessory.equipData.rarity?.key || ""
+                      ).replace("equip_rarity_", "") || "3",
+                    level: charItem.secondAccessory.equipData.level?.value
+                      ? `Lv.${charItem.secondAccessory.equipData.level.value}`
+                      : undefined,
+                  }
+                : null,
+            },
+            {
+              key: "tactical",
+              label: "战术物品",
+              data: charItem?.tacticalItem?.tacticalItemData
+                ? {
+                    iconUrl: charItem.tacticalItem.tacticalItemData.iconUrl,
+                    name: charItem.tacticalItem.tacticalItemData.name || "",
+                    rarity:
+                      (
+                        charItem.tacticalItem.tacticalItemData.rarity?.key || ""
+                      ).replace("equip_rarity_", "") || "3",
+                  }
+                : null,
+            },
           ];
           return (
-            <div className="h-full w-full relative overflow-hidden rounded-2xl" style={{ border: "none" }}>
+            <div
+              className="h-full w-full relative overflow-hidden rounded-2xl"
+              style={{ border: "none" }}
+            >
               {/* Close button at top-right corner */}
               <button
                 onClick={() => {
@@ -886,14 +1070,28 @@ export function CharSelectModal({
                 }}
                 className="absolute top-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full text-white/70 hover:text-white transition-colors cursor-pointer"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
 
               {showLoading ? (
                 <div className="flex items-center justify-center h-full">
-                  <ProgressCircle isIndeterminate size="lg" aria-label="Loading wiki">
+                  <ProgressCircle
+                    isIndeterminate
+                    size="lg"
+                    aria-label="Loading wiki"
+                  >
                     <ProgressCircle.Track>
                       <ProgressCircle.TrackCircle />
                       <ProgressCircle.FillCircle />
@@ -901,514 +1099,932 @@ export function CharSelectModal({
                   </ProgressCircle>
                 </div>
               ) : (
-              <div style={{
-                display: "flex",
-                height: "100%",
-                overflow: "hidden",
-              }}>
-              {/* Left column - pushed out when detail selected */}
-              <div style={{
-                width: hasSelection ? "0%" : "35%",
-                minWidth: 0,
-                flexShrink: 0,
-                transition: "width 300ms ease",
-                overflow: "hidden",
-                backgroundColor: "#404040",
-              }}>
-                <div className="h-full p-3 flex flex-col items-center justify-center">
-                  <Img src={char.illustrationUrl} alt={char.name} className="w-full h-full object-contain" />
-                </div>
-              </div>
-
-              {/* Middle column - pushes left, pulls right */}
-              <div style={{
-                width: hasSelection ? "48%" : "65%",
-                minWidth: 0,
-                flexShrink: 0,
-                transition: "width 300ms ease",
-                overflow: "hidden",
-                backgroundColor: "#ddc236",
-              }}>
-                <div className="h-full p-4 overflow-y-auto space-y-6">
-                  {/* Character Info Header */}
-                    <div className="flex items-start justify-between pb-3 border-b border-black/10">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div className="flex flex-col items-center gap-0.5">
-                        <Img
-                          src={char.avatarSqUrl}
-                          alt={char.name}
-                          className="w-12 h-12 rounded-lg object-cover shadow-sm shrink-0"
-                        />
-                        {charItem?.level != null && (
-                          <span className="text-[13px] font-semibold text-gray-500 leading-none">Lv.{charItem.level}</span>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-base font-bold text-black truncate">{char.name}</h3>
-                        </div>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          {renderRarityIcons(char.rarity.value, 14)}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs text-black/70 mt-0.5 flex-wrap">
-                          <span>{char.profession.value}</span>
-                          <span className="text-black/40">·</span>
-                          <span>{char.property.value}</span>
-                          <span className="text-black/40">·</span>
-                          <span>{char.weaponType.value}</span>
-                        </div>
-                      </div>
-                    </div>
-                    {charItem?.evolvePhase != null && (
-                      <img
-                        src={`/assets/icons/evolve/phase-${charItem.evolvePhase}.png`}
-                        alt={`Phase ${charItem.evolvePhase}`}
-                        className="h-12 w-auto object-contain shrink-0 mr-8"
+                <div
+                  style={{
+                    display: "flex",
+                    height: "100%",
+                    overflow: "hidden",
+                  }}
+                >
+                  {/* Left column - pushed out when detail selected */}
+                  <div
+                    style={{
+                      width: hasSelection ? "0%" : "35%",
+                      minWidth: 0,
+                      flexShrink: 0,
+                      transition: "width 300ms ease",
+                      overflow: "hidden",
+                      backgroundColor: "#404040",
+                    }}
+                  >
+                    <div className="h-full p-3 flex flex-col items-center justify-center">
+                      <Img
+                        src={char.illustrationUrl}
+                        alt={char.name}
+                        className="w-full h-full object-contain"
                       />
-                    )}
+                    </div>
                   </div>
 
-                  {/* Talent Array + Equipment side by side */}
-                  <div className="flex gap-6">
-                    <div className="flex-1 space-y-6 min-w-0">
-                      {/* Skills */}
-                      <div>
-                        <div className="flex flex-wrap gap-5">
-                          {char.skills.map((skill) => {
-                            const isSel = sel?.type === "skill" && sel.id === skill.id;
+                  {/* Middle column - pushes left, pulls right */}
+                  <div
+                    style={{
+                      width: hasSelection ? "48%" : "65%",
+                      minWidth: 0,
+                      flexShrink: 0,
+                      transition: "width 300ms ease",
+                      overflow: "hidden",
+                      backgroundColor: "#ddc236",
+                    }}
+                  >
+                    <div className="h-full p-4 overflow-y-auto space-y-6">
+                      {/* Character Info Header */}
+                      <div className="flex items-start justify-between pb-3 border-b border-black/10">
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className="flex flex-col items-center gap-0.5">
+                            <Img
+                              src={char.avatarSqUrl}
+                              alt={char.name}
+                              className="w-12 h-12 rounded-lg object-cover shadow-sm shrink-0"
+                            />
+                            {charItem?.level != null && (
+                              <span className="text-[13px] font-semibold text-gray-500 leading-none">
+                                Lv.{charItem.level}
+                              </span>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-base font-bold text-black truncate">
+                                {char.name}
+                              </h3>
+                            </div>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              {renderRarityIcons(char.rarity.value, 14)}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-black/70 mt-0.5 flex-wrap">
+                              <span>{char.profession.value}</span>
+                              <span className="text-black/40">·</span>
+                              <span>{char.property.value}</span>
+                              <span className="text-black/40">·</span>
+                              <span>{char.weaponType.value}</span>
+                            </div>
+                          </div>
+                        </div>
+                        {charItem?.evolvePhase != null && (
+                          <img
+                            src={`/assets/icons/evolve/phase-${charItem.evolvePhase}.png`}
+                            alt={`Phase ${charItem.evolvePhase}`}
+                            className="h-12 w-auto object-contain shrink-0 mr-8"
+                          />
+                        )}
+                      </div>
+
+                      {/* Talent Array + Equipment side by side */}
+                      <div className="flex gap-6">
+                        <div className="flex-1 space-y-6 min-w-0">
+                          {/* Skills */}
+                          <div>
+                            <div className="flex flex-wrap gap-5">
+                              {char.skills.map((skill) => {
+                                const isSel =
+                                  sel?.type === "skill" && sel.id === skill.id;
+                                return (
+                                  <button
+                                    key={skill.id}
+                                    onClick={() =>
+                                      openDetailPanel({
+                                        type: "skill",
+                                        id: skill.id,
+                                      })
+                                    }
+                                    className={btnBase(true, isSel, true)}
+                                    style={{ backgroundColor: "#e9d72c" }}
+                                    title={skill.name}
+                                  >
+                                    <Img
+                                      src={skill.iconUrl}
+                                      alt={skill.name}
+                                      className="w-full h-full object-contain"
+                                    />
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Ability Talents */}
+                          <div>
+                            <div className="flex flex-wrap gap-5">
+                              {[...char.abilityTalents]
+                                .sort((a, b) => {
+                                  const numA = parseInt(
+                                    a.id.match(/_(\d+)$/)?.[1] || "0",
+                                  );
+                                  const numB = parseInt(
+                                    b.id.match(/_(\d+)$/)?.[1] || "0",
+                                  );
+                                  return numA - numB;
+                                })
+                                .map((talent) => {
+                                  const isSel =
+                                    sel?.type === "abilityTalent" &&
+                                    sel.id === talent.id;
+                                  const unlocked = activeAbilityNodes.includes(
+                                    talent.id,
+                                  );
+                                  return (
+                                    <button
+                                      key={talent.id}
+                                      onClick={() =>
+                                        openDetailPanel({
+                                          type: "abilityTalent",
+                                          id: talent.id,
+                                        })
+                                      }
+                                      className={`${btnBase(true, isSel, unlocked)} relative`}
+                                      style={{
+                                        backgroundColor: unlocked
+                                          ? "#e9d72c"
+                                          : "#404040",
+                                      }}
+                                      title={talent.name}
+                                    >
+                                      {talentIcon(
+                                        talent.iconUrl,
+                                        talent.name,
+                                        unlocked,
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                            </div>
+                          </div>
+
+                          {/* Passive Skills */}
+                          {pasCombatChains.length > 0 && (
+                            <div>
+                              <div className="flex flex-col gap-4">
+                                {pasCombatChains.map((chain, ci) => (
+                                  <div
+                                    key={ci}
+                                    className="flex items-center gap-1"
+                                  >
+                                    {chain.map((talent, ti) => {
+                                      const isSel =
+                                        sel?.type === "combatTalent" &&
+                                        sel.id === talent.id;
+                                      const unlocked = isNodeUnlocked(
+                                        chain,
+                                        ti,
+                                        "combatTalent",
+                                      );
+                                      return (
+                                        <div
+                                          key={talent.id}
+                                          className="flex items-center gap-1"
+                                        >
+                                          {ti > 0 && (
+                                            <div
+                                              className={`w-10 border-t-2 rounded-none ${unlocked ? "border-white" : "border-dashed border-neutral-400"}`}
+                                            />
+                                          )}
+                                          <button
+                                            onClick={() =>
+                                              openDetailPanel({
+                                                type: "combatTalent",
+                                                id: talent.id,
+                                              })
+                                            }
+                                            className={`${btnBase(true, isSel, unlocked)} relative`}
+                                            style={{
+                                              backgroundColor: unlocked
+                                                ? "#e9d72c"
+                                                : "#404040",
+                                            }}
+                                            title={talent.name}
+                                          >
+                                            {talentIcon(
+                                              talent.iconUrl,
+                                              talent.name,
+                                              unlocked,
+                                            )}
+                                          </button>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Cultivation Talents */}
+                          {cultChains.length > 0 && (
+                            <div>
+                              <div className="flex flex-col gap-4">
+                                {cultChains.map((chain, ci) => (
+                                  <div
+                                    key={ci}
+                                    className="flex items-center gap-1"
+                                  >
+                                    {chain.map((talent, ti) => {
+                                      const isSel =
+                                        sel?.type === "cultivationTalent" &&
+                                        sel.id === talent.id;
+                                      const unlocked = isNodeUnlocked(
+                                        chain,
+                                        ti,
+                                        "cultivationTalent",
+                                      );
+                                      return (
+                                        <div
+                                          key={talent.id}
+                                          className="flex items-center gap-1"
+                                        >
+                                          {ti > 0 && (
+                                            <div
+                                              className={`w-10 border-t-2 rounded-none ${unlocked ? "border-white" : "border-dashed border-neutral-400"}`}
+                                            />
+                                          )}
+                                          <button
+                                            onClick={() =>
+                                              openDetailPanel({
+                                                type: "cultivationTalent",
+                                                id: talent.id,
+                                              })
+                                            }
+                                            className={`${btnBase(false, isSel, unlocked)} relative`}
+                                            style={{
+                                              backgroundColor: unlocked
+                                                ? "#e9d72c"
+                                                : "#404040",
+                                            }}
+                                            title={talent.name}
+                                          >
+                                            {talentIcon(
+                                              talent.iconUrl,
+                                              talent.name,
+                                              unlocked,
+                                            )}
+                                          </button>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Potential */}
+                          {potentialData && (
+                            <div>
+                              <div className="flex flex-wrap gap-3">
+                                {potentialData.map((p: any, i: number) => {
+                                  const isSel =
+                                    sel?.type === "potential" &&
+                                    sel.id === String(p.level);
+                                  const unlocked =
+                                    i < (charItem?.potentialLevel ?? 0);
+                                  return (
+                                    <button
+                                      key={p.level}
+                                      onClick={() =>
+                                        openDetailPanel({
+                                          type: "potential",
+                                          id: String(p.level),
+                                        })
+                                      }
+                                      className={btnBase(true, isSel, unlocked)}
+                                      style={{
+                                        backgroundColor: unlocked
+                                          ? "#e9d72c"
+                                          : "#404040",
+                                      }}
+                                      title={`潜能 ${p.level}`}
+                                    >
+                                      <div className="relative w-full h-full">
+                                        {unlocked ? (
+                                          <div className="absolute -inset-1">
+                                            <img
+                                              src={p.iconUrl}
+                                              alt={`潜${p.level}`}
+                                              className="w-full h-full object-cover"
+                                            />
+                                          </div>
+                                        ) : (
+                                          <>
+                                            <div className="absolute -inset-1">
+                                              <img
+                                                src={p.iconUrl}
+                                                alt={`潜${p.level}`}
+                                                className="w-full h-full object-cover opacity-30"
+                                              />
+                                            </div>
+                                            <div className="absolute inset-0 flex items-center justify-center z-10">
+                                              <svg
+                                                className="w-4 h-4 text-white drop-shadow"
+                                                fill="currentColor"
+                                                viewBox="0 0 24 24"
+                                              >
+                                                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm8 14H7c-.55 0-1-.45-1-1v-8c0-.55.45-1 1-1h10c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1z" />
+                                              </svg>
+                                            </div>
+                                          </>
+                                        )}
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Equipment column */}
+                        <div className="flex flex-col gap-2 w-40 shrink-0 justify-center">
+                          {equipData.map((eq) => {
+                            const d = eq.data;
+                            const rc: Record<string, string> = {
+                              "3": "#3b82f6",
+                              "4": "#a855f7",
+                              "5": "#ea580c",
+                              "6": "#dc2626",
+                            };
+                            const lineColor = d
+                              ? rc[d.rarity] || "transparent"
+                              : "transparent";
                             return (
-                              <button key={skill.id}
-                                onClick={() => openDetailPanel({ type: "skill", id: skill.id })}
-                                className={btnBase(true, isSel, true)}
-                                style={{ backgroundColor: "#e9d72c" }}
-                                title={skill.name}>
-                                <Img src={skill.iconUrl} alt={skill.name} className="w-full h-full object-contain" />
-                              </button>
+                              <div
+                                key={eq.key}
+                                className="flex items-center gap-2"
+                              >
+                                <div className="flex flex-col items-center">
+                                  <div className="w-16 h-16 shrink-0 flex items-center justify-center overflow-hidden text-black/30 font-bold text-3xl">
+                                    {d ? (
+                                      <Img
+                                        src={d.iconUrl}
+                                        alt={d.name}
+                                        className="w-full h-full object-contain"
+                                      />
+                                    ) : (
+                                      <span>✕</span>
+                                    )}
+                                  </div>
+                                  <div
+                                    className="h-[3px] w-full rounded-full"
+                                    style={{ backgroundColor: lineColor }}
+                                  />
+                                </div>
+                                <div className="min-w-0">
+                                  {d ? (
+                                    <>
+                                      <div className="text-[11px] text-black/50 leading-tight">
+                                        {eq.label}
+                                      </div>
+                                      <div className="leading-tight text-sm text-black/80">
+                                        {d.name}
+                                      </div>
+                                      {d.level && (
+                                        <div className="text-[13px] text-black/50">
+                                          {d.level}
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="text-[11px] text-black/50 leading-tight">
+                                        {eq.label}
+                                      </div>
+                                      <div className="text-sm text-black/40 leading-tight">
+                                        未装配
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
                             );
                           })}
                         </div>
                       </div>
-
-                      {/* Ability Talents */}
-                  <div>
-                    <div className="flex flex-wrap gap-5">
-                      {[...char.abilityTalents].sort((a, b) => {
-                        const numA = parseInt(a.id.match(/_(\d+)$/)?.[1] || "0");
-                        const numB = parseInt(b.id.match(/_(\d+)$/)?.[1] || "0");
-                        return numA - numB;
-                      }).map((talent) => {
-                        const isSel = sel?.type === "abilityTalent" && sel.id === talent.id;
-                        const unlocked = activeAbilityNodes.includes(talent.id);
-                        return (
-                          <button key={talent.id}
-                            onClick={() => openDetailPanel({ type: "abilityTalent", id: talent.id })}
-                            className={`${btnBase(true, isSel, unlocked)} relative`}
-                            style={{ backgroundColor: unlocked ? "#e9d72c" : "#404040" }}
-                            title={talent.name}>
-                            {talentIcon(talent.iconUrl, talent.name, unlocked)}
-                          </button>
-                        );
-                      })}
                     </div>
                   </div>
 
-                  {/* Passive Skills */}
-                  {pasCombatChains.length > 0 && (
-                    <div>
-                      <div className="flex flex-col gap-4">
-                        {pasCombatChains.map((chain, ci) => (
-                          <div key={ci} className="flex items-center gap-1">
-                            {chain.map((talent, ti) => {
-                              const isSel = sel?.type === "combatTalent" && sel.id === talent.id;
-                              const unlocked = isNodeUnlocked(chain, ti, "combatTalent");
-                              return (
-                                <div key={talent.id} className="flex items-center gap-1">
-                                  {ti > 0 && (
-                                    <div className={`w-10 border-t-2 rounded-none ${unlocked ? "border-white" : "border-dashed border-neutral-400"}`} />
-                                  )}
-                                  <button
-                                    onClick={() => openDetailPanel({ type: "combatTalent", id: talent.id })}
-                                    className={`${btnBase(true, isSel, unlocked)} relative`}
-                                    style={{ backgroundColor: unlocked ? "#e9d72c" : "#404040" }}
-                                    title={talent.name}>
-                                    {talentIcon(talent.iconUrl, talent.name, unlocked)}
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Cultivation Talents */}
-                  {cultChains.length > 0 && (
-                    <div>
-                      <div className="flex flex-col gap-4">
-                        {cultChains.map((chain, ci) => (
-                          <div key={ci} className="flex items-center gap-1">
-                            {chain.map((talent, ti) => {
-                              const isSel = sel?.type === "cultivationTalent" && sel.id === talent.id;
-                              const unlocked = isNodeUnlocked(chain, ti, "cultivationTalent");
-                              return (
-                                <div key={talent.id} className="flex items-center gap-1">
-                                  {ti > 0 && (
-                                    <div className={`w-10 border-t-2 rounded-none ${unlocked ? "border-white" : "border-dashed border-neutral-400"}`} />
-                                  )}
-                                  <button
-                                    onClick={() => openDetailPanel({ type: "cultivationTalent", id: talent.id })}
-                                    className={`${btnBase(false, isSel, unlocked)} relative`}
-                                    style={{ backgroundColor: unlocked ? "#e9d72c" : "#404040" }}
-                                    title={talent.name}>
-                                    {talentIcon(talent.iconUrl, talent.name, unlocked)}
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Potential */}
-                  {potentialData && (
-                    <div>
-                      <div className="flex flex-wrap gap-3">
-                        {potentialData.map((p: any, i: number) => {
-                          const isSel = sel?.type === "potential" && sel.id === String(p.level);
-                          const unlocked = i < (charItem?.potentialLevel ?? 0);
-                          return (
-                            <button key={p.level}
-                              onClick={() => openDetailPanel({ type: "potential", id: String(p.level) })}
-                              className={btnBase(true, isSel, unlocked)}
-                              style={{ backgroundColor: unlocked ? "#e9d72c" : "#404040" }}
-                              title={`潜能 ${p.level}`}>
-                              <div className="relative w-full h-full">
-                                {unlocked ? (
-                                  <div className="absolute -inset-1">
-                                    <img src={p.iconUrl} alt={`潜${p.level}`} className="w-full h-full object-cover" />
-                                  </div>
-                                ) : (
-                                  <>
-                                    <div className="absolute -inset-1">
-                                      <img src={p.iconUrl} alt={`潜${p.level}`} className="w-full h-full object-cover opacity-30" />
-                                    </div>
-                                    <div className="absolute inset-0 flex items-center justify-center z-10">
-                                      <svg className="w-4 h-4 text-white drop-shadow" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm8 14H7c-.55 0-1-.45-1-1v-8c0-.55.45-1 1-1h10c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1z"/>
-                                      </svg>
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                    </div>
-
-                    {/* Equipment column */}
-                    <div className="flex flex-col gap-3 shrink-0 w-44 justify-center">
-                      {equipData.map((eq) => {
-                        if (!eq.data) return null;
-                        return (
-                          <div key={eq.key} className="flex items-center gap-3" title={`${eq.label}: ${eq.data.name}`}>
-                            <div className="w-16 h-16 shrink-0 flex items-center justify-center overflow-hidden">
-                              <Img src={eq.data.iconUrl} alt={eq.data.name} className="w-full h-full object-contain" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-base text-black/80 leading-tight truncate">{eq.data.name}</div>
-                              {eq.data.level && <div className="text-[13px] text-black/50">{eq.data.level}</div>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right column - pulls in when detail selected */}
-              <div style={{
-                width: hasSelection ? "52%" : "0%",
-                minWidth: 0,
-                flexShrink: 0,
-                transition: "width 300ms ease",
-                overflow: "hidden",
-                backgroundColor: "#404040",
-              }}>
-                <div className="h-full relative">
-                  <button
-                    onClick={closeDetailPanel}
-                    className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-8 flex items-center justify-center text-white/60 hover:text-white transition-colors cursor-pointer"
-                    title="Collapse detail"
+                  {/* Right column - pulls in when detail selected */}
+                  <div
+                    style={{
+                      width: hasSelection ? "52%" : "0%",
+                      minWidth: 0,
+                      flexShrink: 0,
+                      transition: "width 300ms ease",
+                      overflow: "hidden",
+                      backgroundColor: "#404040",
+                    }}
                   >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
-                    </svg>
-                  </button>
-                  <div className="h-full overflow-y-auto" style={{ backgroundColor: "#404040" }}>
-                    {selectedItem && (() => {
-                      const skillLevel: number =
-                        selectedItem._type === "skill" && sel?.id && charItem?.userSkills?.[sel.id]
-                          ? charItem.userSkills[sel.id].level
-                          : 1;
-                      const isSkill = selectedItem._type === "skill";
-                      const maxSkillLevel = 12;
-                      const isMaxed = isSkill && skillLevel >= maxSkillLevel;
-                      const getBaseName = (n: string) => n.replace(/·(?:[αβγδε]|[一二三四五六七八九十]+|\d+)$/, '');
-                      const talentRank = (() => {
-                        if (!sel || selectedItem._type === "skill") return -1;
-                        const pool = selectedItem._type === "abilityTalent" ? char.abilityTalents
-                          : selectedItem._type === "combatTalent" ? char.combatTalents
-                          : char.cultivationTalents || [];
-                        const baseName = getBaseName((selectedItem as any).name);
-                        const sameBaseName = [...pool]
-                          .filter((t: any) => getBaseName(t.name) === baseName)
-                          .sort((a: any, b: any) => {
-                            const numA = parseInt(a.id.match(/_(\d+)$/)?.[1] || "0");
-                            const numB = parseInt(b.id.match(/_(\d+)$/)?.[1] || "0");
-                            return numA - numB;
-                          });
-                        const idx = sameBaseName.findIndex((t: any) => t.id === sel.id);
-                        return idx >= 0 ? idx + 1 : -1;
-                      })();
-                      const isPotential = selectedItem._type === "potential";
-                      const wikiBlocks = !isPotential ? getWikiRenderedBlocks(
-                        wikiDetail,
-                        (selectedItem as any).name || "",
-                        skillLevel,
-                        selectedItem._type || "",
-                        talentRank,
-                      ) : [];
-
-                      // 从 contentDoc 提取潜能描述文本块
-                      const getPotentialSegments = (doc: any) => {
-                        if (!doc?.blockMap || !doc?.blockIds) return [];
-                        const result: { kind: string; segments: any[] }[] = [];
-                        for (const blockId of doc.blockIds) {
-                          const block = doc.blockMap[blockId];
-                          if (!block || block.kind === "table" || block.kind === "horizontalLine") continue;
-                          const segs: any[] = [];
-                          if (block.text?.inlineElements) {
-                            for (const el of block.text.inlineElements) {
-                              if (el.kind === "text" || el.kind === "link") {
-                                const rawColor = (el as any).color;
-                                const mappedColor = rawColor ? WIKI_COLOR_MAP[rawColor] || rawColor : undefined;
-                                segs.push({
-                                  text: el.text?.text || "",
-                                  bold: (el as any).bold || false,
-                                  underline: (el as any).underline || false,
-                                  color: rawColor === "light_text_primary" ? undefined : mappedColor,
-                                });
-                              }
-                            }
-                          }
-                          if (segs.length > 0) {
-                            result.push({ kind: block.text?.kind || "text", segments: segs });
-                          }
-                        }
-                        return result;
-                      };
-                      const contentDoc = isPotential ? (selectedItem as any).contentDoc : null;
-                      const potentialSegments = contentDoc ? getPotentialSegments(contentDoc) : [];
-
-                      return (
-                      <div className="pl-10 p-5 text-[#f0e8d8]">
-                        <div className="flex items-center gap-4 mb-4">
-                          {isPotential ? (
-                            <img src={selectedItem.iconUrl} alt={selectedItem.name}
-                              className="w-16 h-16 object-contain p-1.5 rounded-full"
-                              style={{ boxShadow: "0 0 14px rgba(0,0,0,0.35)" }} />
-                          ) : (
-                            <Img src={selectedItem.iconUrl} alt={selectedItem.name}
-                              className={`w-16 h-16 object-contain p-1.5 ${selectedItem._type === "cultivationTalent" ? "rounded-lg" : "rounded-full"}`}
-                              style={{ backgroundColor: "#e9d72c", boxShadow: "0 0 14px rgba(0,0,0,0.35)" }} />
-                          )}
-                          <div>
-                            <h4 className="font-semibold text-lg text-[#f0e8d8]">{selectedItem.name}</h4>
-                            {"type" in selectedItem && selectedItem.type && (
-                              <p className="text-[#c0b8a8] text-[15px]">
-                                {selectedItem.type.value}
-                                {"property" in selectedItem && selectedItem.property && (
-                                  <> • {selectedItem.property.value}</>
-                                )}
-                                {selectedItem._type === "skill" && sel?.id && charItem?.userSkills?.[sel.id] && (
-                                  <> • Lv.{charItem.userSkills[sel.id].level}</>
-                                )}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        {isSkill && (() => {
-                          const progress = Math.min(Math.round((skillLevel / maxSkillLevel) * 100), 100);
-                          return (
-                            <div className="mb-5">
-                              <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-[#c0b8a8] text-xs">技能等级</span>
-                                <span className="flex items-center gap-2">
-                                  <span className="text-[#f0e8d8] text-sm font-medium">
-                                    Lv.{skillLevel} / {maxSkillLevel}
-                                  </span>
-                                  {isMaxed && (
-                                    <Chip size="sm" variant="soft" color="success" className="text-[10px] h-5">
-                                      MAX
-                                    </Chip>
-                                  )}
-                                </span>
-                              </div>
-                              <Meter aria-label="Skill level progress" value={progress} className="w-full">
-                                <Meter.Track className="h-2 rounded-full bg-[#555]">
-                                  <Meter.Fill className={`h-2 rounded-full transition-all duration-500 ${isMaxed ? "bg-gradient-to-r from-green-500 to-emerald-400" : "bg-gradient-to-r from-yellow-500 to-orange-400"}`} />
-                                </Meter.Track>
-                              </Meter>
-                              {!isMaxed && (
-                                <p className="text-[#a09070] text-[11px] mt-1">
-                                  离满级还差 {maxSkillLevel - skillLevel} 级
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })()}
-
-                        {isPotential ? (
-                          potentialSegments.length > 0 ? (
-                            potentialSegments.map((seg, i) =>
-                              seg.kind === "heading3" ? (
-                                <h5 key={i} className="font-semibold text-[#f0e8d8] mt-4 mb-2 text-[15px]">
-                                  {seg.segments.map((s: any, si: number) => {
-                                    const isSpecial = s.bold || s.underline || s.color;
-                                    return (
-                                      <span key={si} style={{
-                                        fontWeight: isSpecial ? 700 : undefined,
-                                        textDecoration: s.underline ? "underline" : undefined,
-                                        color: s.color || undefined,
-                                      }}>{s.text}</span>
-                                    );
-                                  })}
-                                </h5>
-                              ) : (
-                                <p key={i} className="text-[#c0b8a8] leading-relaxed text-[15px]">
-                                  {seg.segments.map((s: any, si: number) => {
-                                    const isSpecial = s.bold || s.underline || s.color;
-                                    return (
-                                      <span key={si} style={{
-                                        fontWeight: isSpecial ? 700 : undefined,
-                                        textDecoration: s.underline ? "underline" : undefined,
-                                        color: s.color || undefined,
-                                      }}>{s.text}</span>
-                                    );
-                                  })}
-                                </p>
-                              )
-                            )
-                          ) : (
-                            <p className="text-[#c0b8a8] italic mt-2 text-[15px]">暂无 Wiki 数据</p>
-                          )
-                        ) : (
-                          wikiBlocks.map((block, i) =>
-                          block.kind === "text" ? (
-                            block.data.kind === "heading3" ? (
-                              <h5 key={i} className="font-semibold text-[#f0e8d8] mt-4 mb-2 text-[15px]">
-                                {block.data.segments.map((seg, si) => {
-                                  const isSpecial = seg.bold || seg.underline || seg.color;
-                                  return (
-                                    <span key={si} style={{
-                                      fontWeight: isSpecial ? 700 : undefined,
-                                      textDecoration: seg.underline ? "underline" : undefined,
-                                      color: seg.color || undefined,
-                                    }}>{seg.text}</span>
+                    <div className="h-full relative">
+                      <button
+                        onClick={closeDetailPanel}
+                        className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-8 flex items-center justify-center text-white/60 hover:text-white transition-colors cursor-pointer"
+                        title="Collapse detail"
+                      >
+                        <svg
+                          className="w-6 h-6"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M9 18l6-6-6-6"
+                          />
+                        </svg>
+                      </button>
+                      <div
+                        className="h-full overflow-y-auto"
+                        style={{ backgroundColor: "#404040" }}
+                      >
+                        {selectedItem &&
+                          (() => {
+                            const skillLevel: number =
+                              selectedItem._type === "skill" &&
+                              sel?.id &&
+                              charItem?.userSkills?.[sel.id]
+                                ? charItem.userSkills[sel.id].level
+                                : 1;
+                            const isSkill = selectedItem._type === "skill";
+                            const maxSkillLevel = 12;
+                            const isMaxed =
+                              isSkill && skillLevel >= maxSkillLevel;
+                            const getBaseName = (n: string) =>
+                              n.replace(
+                                /·(?:[αβγδε]|[一二三四五六七八九十]+|\d+)$/,
+                                "",
+                              );
+                            const talentRank = (() => {
+                              if (!sel || selectedItem._type === "skill")
+                                return -1;
+                              const pool =
+                                selectedItem._type === "abilityTalent"
+                                  ? char.abilityTalents
+                                  : selectedItem._type === "combatTalent"
+                                    ? char.combatTalents
+                                    : char.cultivationTalents || [];
+                              const baseName = getBaseName(
+                                (selectedItem as any).name,
+                              );
+                              const sameBaseName = [...pool]
+                                .filter(
+                                  (t: any) => getBaseName(t.name) === baseName,
+                                )
+                                .sort((a: any, b: any) => {
+                                  const numA = parseInt(
+                                    a.id.match(/_(\d+)$/)?.[1] || "0",
                                   );
-                                })}
-                              </h5>
-                            ) : (
-                              <p key={i} className="text-[#c0b8a8] leading-relaxed text-[15px]">
-                                {block.data.segments.flatMap((seg, si) => {
-                                  const isSpecial = seg.bold || seg.underline || seg.color;
-                                  const parts = seg.text.split("\n");
-                                  return parts.flatMap((part, pi) => {
-                                    const nodes: React.ReactNode[] = [];
-                                    if (pi > 0) nodes.push(<br key={`${si}-br-${pi}`} />);
-                                    nodes.push(
-                                      <span key={`${si}-${pi}`} style={{
-                                        fontWeight: isSpecial ? 700 : undefined,
-                                        textDecoration: seg.underline ? "underline" : undefined,
-                                        color: seg.color || undefined,
-                                      }}>{part}</span>
-                                    );
-                                    return nodes;
+                                  const numB = parseInt(
+                                    b.id.match(/_(\d+)$/)?.[1] || "0",
+                                  );
+                                  return numA - numB;
+                                });
+                              const idx = sameBaseName.findIndex(
+                                (t: any) => t.id === sel.id,
+                              );
+                              return idx >= 0 ? idx + 1 : -1;
+                            })();
+                            const isPotential =
+                              selectedItem._type === "potential";
+                            const wikiBlocks = !isPotential
+                              ? getWikiRenderedBlocks(
+                                  wikiDetail,
+                                  (selectedItem as any).name || "",
+                                  skillLevel,
+                                  selectedItem._type || "",
+                                  talentRank,
+                                )
+                              : [];
+
+                            // 从 contentDoc 提取潜能描述文本块
+                            const getPotentialSegments = (doc: any) => {
+                              if (!doc?.blockMap || !doc?.blockIds) return [];
+                              const result: {
+                                kind: string;
+                                segments: any[];
+                              }[] = [];
+                              for (const blockId of doc.blockIds) {
+                                const block = doc.blockMap[blockId];
+                                if (
+                                  !block ||
+                                  block.kind === "table" ||
+                                  block.kind === "horizontalLine"
+                                )
+                                  continue;
+                                const segs: any[] = [];
+                                if (block.text?.inlineElements) {
+                                  for (const el of block.text.inlineElements) {
+                                    if (
+                                      el.kind === "text" ||
+                                      el.kind === "link"
+                                    ) {
+                                      const rawColor = (el as any).color;
+                                      const mappedColor = rawColor
+                                        ? WIKI_COLOR_MAP[rawColor] || rawColor
+                                        : undefined;
+                                      segs.push({
+                                        text: el.text?.text || "",
+                                        bold: (el as any).bold || false,
+                                        underline:
+                                          (el as any).underline || false,
+                                        color:
+                                          rawColor === "light_text_primary"
+                                            ? undefined
+                                            : mappedColor,
+                                      });
+                                    }
+                                  }
+                                }
+                                if (segs.length > 0) {
+                                  result.push({
+                                    kind: block.text?.kind || "text",
+                                    segments: segs,
                                   });
-                                })}
-                              </p>
-                            )
-                          ) : block.kind === "materials" ? null : (
-                            <div key={i} className="mt-3 bg-black/20 rounded-lg p-3">
-                              {block.data.map((p, pi) => {
-                                const hasNext = p.nextValue && p.nextValue !== p.value;
-                                const extractUnit = (s: string): string => {
-                                  const m = s.match(/^[\d.,]+([\s\S]*)$/);
-                                  return m ? m[1] : "";
-                                };
-                                const unit = extractUnit(p.value);
-                                const parseNum = (s: string): number | null => {
-                                  const m = s.replace(/,/g, "").match(/^-?[\d.]+/);
-                                  return m ? parseFloat(m[0]) : null;
-                                };
-                                const currNum = parseNum(p.value);
-                                const nextNum = hasNext ? parseNum(p.nextValue!) : null;
-                                const showDelta = currNum !== null && nextNum !== null;
-                                const delta = showDelta ? nextNum! - currNum! : null;
-                                return (
-                                  <div key={pi} className="flex items-center justify-between py-1.5 text-[14px] border-b border-white/5 last:border-b-0">
-                                    <span className="text-[#c0b8a8] font-medium">{p.label}</span>
-                                    <span className="text-[#f0e8d8] font-mono text-right">
-                                      {p.value}
-                                      {!hasNext && isMaxed && (
-                                        <Chip size="sm" variant="soft" color="success" className="ml-1.5 text-[10px] h-5 min-w-0">MAX</Chip>
+                                }
+                              }
+                              return result;
+                            };
+                            const contentDoc = isPotential
+                              ? (selectedItem as any).contentDoc
+                              : null;
+                            const potentialSegments = contentDoc
+                              ? getPotentialSegments(contentDoc)
+                              : [];
+
+                            return (
+                              <div className="pl-10 p-5 text-[#f0e8d8]">
+                                <div className="flex items-center gap-4 mb-4">
+                                  {isPotential ? (
+                                    <img
+                                      src={selectedItem.iconUrl}
+                                      alt={selectedItem.name}
+                                      className="w-16 h-16 object-contain p-1.5 rounded-full"
+                                      style={{
+                                        boxShadow: "0 0 14px rgba(0,0,0,0.35)",
+                                      }}
+                                    />
+                                  ) : (
+                                    <Img
+                                      src={selectedItem.iconUrl}
+                                      alt={selectedItem.name}
+                                      className={`w-16 h-16 object-contain p-1.5 ${selectedItem._type === "cultivationTalent" ? "rounded-lg" : "rounded-full"}`}
+                                      style={{
+                                        backgroundColor: "#e9d72c",
+                                        boxShadow: "0 0 14px rgba(0,0,0,0.35)",
+                                      }}
+                                    />
+                                  )}
+                                  <div>
+                                    <h4 className="font-semibold text-lg text-[#f0e8d8]">
+                                      {selectedItem.name}
+                                    </h4>
+                                    {"type" in selectedItem &&
+                                      selectedItem.type && (
+                                        <p className="text-[#c0b8a8] text-[15px]">
+                                          {selectedItem.type.value}
+                                          {"property" in selectedItem &&
+                                            selectedItem.property && (
+                                              <>
+                                                {" "}
+                                                • {selectedItem.property.value}
+                                              </>
+                                            )}
+                                          {selectedItem._type === "skill" &&
+                                            sel?.id &&
+                                            charItem?.userSkills?.[sel.id] && (
+                                              <>
+                                                {" "}
+                                                • Lv.
+                                                {
+                                                  charItem.userSkills[sel.id]
+                                                    .level
+                                                }
+                                              </>
+                                            )}
+                                        </p>
                                       )}
-                                      {hasNext && (
-                                        <>
-                                          <span className="text-[#888] mx-1.5">→</span>
-                                          <span className="text-[#f0e8d8]">{p.nextValue}</span>
-                                          {showDelta && delta !== 0 && (
-                                            <Chip
-                                              size="sm"
-                                              variant="soft"
-                                              color={delta! > 0 ? "success" : "accent"}
-                                              className="ml-1.5 text-[10px] h-5 min-w-0"
-                                            >
-                                              {delta! > 0 ? "+" : ""}{delta}{unit}
-                                            </Chip>
-                                          )}
-                                        </>
-                                      )}
-                                    </span>
                                   </div>
-                                );
-                              })}
-                            </div>
-                          )
-                        )
-                        )}
-                        {!isPotential && wikiBlocks.length === 0 && (
-                          <p className="text-[#c0b8a8] italic mt-2 text-[15px]">
-                            暂无 Wiki 数据
-                          </p>
-                        )}
+                                </div>
+
+                                {isSkill &&
+                                  (() => {
+                                    const progress = Math.min(
+                                      Math.round(
+                                        (skillLevel / maxSkillLevel) * 100,
+                                      ),
+                                      100,
+                                    );
+                                    return (
+                                      <div className="mb-5">
+                                        <div className="flex items-center justify-between mb-1.5">
+                                          <span className="text-[#c0b8a8] text-xs">
+                                            技能等级
+                                          </span>
+                                          <span className="flex items-center gap-2">
+                                            <span className="text-[#f0e8d8] text-sm font-medium">
+                                              Lv.{skillLevel} / {maxSkillLevel}
+                                            </span>
+                                            {isMaxed && (
+                                              <Chip
+                                                size="sm"
+                                                variant="soft"
+                                                color="success"
+                                                className="text-[10px] h-5"
+                                              >
+                                                MAX
+                                              </Chip>
+                                            )}
+                                          </span>
+                                        </div>
+                                        <Meter
+                                          aria-label="Skill level progress"
+                                          value={progress}
+                                          className="w-full"
+                                        >
+                                          <Meter.Track className="h-2 rounded-full bg-[#555]">
+                                            <Meter.Fill
+                                              className={`h-2 rounded-full transition-all duration-500 ${isMaxed ? "bg-gradient-to-r from-green-500 to-emerald-400" : "bg-gradient-to-r from-yellow-500 to-orange-400"}`}
+                                            />
+                                          </Meter.Track>
+                                        </Meter>
+                                        {!isMaxed && (
+                                          <p className="text-[#a09070] text-[11px] mt-1">
+                                            离满级还差{" "}
+                                            {maxSkillLevel - skillLevel} 级
+                                          </p>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+
+                                {isPotential ? (
+                                  potentialSegments.length > 0 ? (
+                                    potentialSegments.map((seg, i) =>
+                                      seg.kind === "heading3" ? (
+                                        <h5
+                                          key={i}
+                                          className="font-semibold text-[#f0e8d8] mt-4 mb-2 text-[15px]"
+                                        >
+                                          {seg.segments.map(
+                                            (s: any, si: number) => {
+                                              const isSpecial =
+                                                s.bold ||
+                                                s.underline ||
+                                                s.color;
+                                              return (
+                                                <span
+                                                  key={si}
+                                                  style={{
+                                                    fontWeight: isSpecial
+                                                      ? 700
+                                                      : undefined,
+                                                    textDecoration: s.underline
+                                                      ? "underline"
+                                                      : undefined,
+                                                    color: s.color || undefined,
+                                                  }}
+                                                >
+                                                  {s.text}
+                                                </span>
+                                              );
+                                            },
+                                          )}
+                                        </h5>
+                                      ) : (
+                                        <p
+                                          key={i}
+                                          className="text-[#c0b8a8] leading-relaxed text-[15px]"
+                                        >
+                                          {seg.segments.map(
+                                            (s: any, si: number) => {
+                                              const isSpecial =
+                                                s.bold ||
+                                                s.underline ||
+                                                s.color;
+                                              return (
+                                                <span
+                                                  key={si}
+                                                  style={{
+                                                    fontWeight: isSpecial
+                                                      ? 700
+                                                      : undefined,
+                                                    textDecoration: s.underline
+                                                      ? "underline"
+                                                      : undefined,
+                                                    color: s.color || undefined,
+                                                  }}
+                                                >
+                                                  {s.text}
+                                                </span>
+                                              );
+                                            },
+                                          )}
+                                        </p>
+                                      ),
+                                    )
+                                  ) : (
+                                    <p className="text-[#c0b8a8] italic mt-2 text-[15px]">
+                                      暂无 Wiki 数据
+                                    </p>
+                                  )
+                                ) : (
+                                  wikiBlocks.map((block, i) =>
+                                    block.kind === "text" ? (
+                                      block.data.kind === "heading3" ? (
+                                        <h5
+                                          key={i}
+                                          className="font-semibold text-[#f0e8d8] mt-4 mb-2 text-[15px]"
+                                        >
+                                          {block.data.segments.map(
+                                            (seg, si) => {
+                                              const isSpecial =
+                                                seg.bold ||
+                                                seg.underline ||
+                                                seg.color;
+                                              return (
+                                                <span
+                                                  key={si}
+                                                  style={{
+                                                    fontWeight: isSpecial
+                                                      ? 700
+                                                      : undefined,
+                                                    textDecoration:
+                                                      seg.underline
+                                                        ? "underline"
+                                                        : undefined,
+                                                    color:
+                                                      seg.color || undefined,
+                                                  }}
+                                                >
+                                                  {seg.text}
+                                                </span>
+                                              );
+                                            },
+                                          )}
+                                        </h5>
+                                      ) : (
+                                        <p
+                                          key={i}
+                                          className="text-[#c0b8a8] leading-relaxed text-[15px]"
+                                        >
+                                          {block.data.segments.flatMap(
+                                            (seg, si) => {
+                                              const isSpecial =
+                                                seg.bold ||
+                                                seg.underline ||
+                                                seg.color;
+                                              const parts =
+                                                seg.text.split("\n");
+                                              return parts.flatMap(
+                                                (part, pi) => {
+                                                  const nodes: React.ReactNode[] =
+                                                    [];
+                                                  if (pi > 0)
+                                                    nodes.push(
+                                                      <br
+                                                        key={`${si}-br-${pi}`}
+                                                      />,
+                                                    );
+                                                  nodes.push(
+                                                    <span
+                                                      key={`${si}-${pi}`}
+                                                      style={{
+                                                        fontWeight: isSpecial
+                                                          ? 700
+                                                          : undefined,
+                                                        textDecoration:
+                                                          seg.underline
+                                                            ? "underline"
+                                                            : undefined,
+                                                        color:
+                                                          seg.color ||
+                                                          undefined,
+                                                      }}
+                                                    >
+                                                      {part}
+                                                    </span>,
+                                                  );
+                                                  return nodes;
+                                                },
+                                              );
+                                            },
+                                          )}
+                                        </p>
+                                      )
+                                    ) : block.kind === "materials" ? null : (
+                                      <div
+                                        key={i}
+                                        className="mt-3 bg-black/20 rounded-lg p-3"
+                                      >
+                                        {block.data.map((p, pi) => {
+                                          const hasNext =
+                                            p.nextValue &&
+                                            p.nextValue !== p.value;
+                                          const extractUnit = (
+                                            s: string,
+                                          ): string => {
+                                            const m =
+                                              s.match(/^[\d.,]+([\s\S]*)$/);
+                                            return m ? m[1] : "";
+                                          };
+                                          const unit = extractUnit(p.value);
+                                          const parseNum = (
+                                            s: string,
+                                          ): number | null => {
+                                            const m = s
+                                              .replace(/,/g, "")
+                                              .match(/^-?[\d.]+/);
+                                            return m ? parseFloat(m[0]) : null;
+                                          };
+                                          const currNum = parseNum(p.value);
+                                          const nextNum = hasNext
+                                            ? parseNum(p.nextValue!)
+                                            : null;
+                                          const showDelta =
+                                            currNum !== null &&
+                                            nextNum !== null;
+                                          const delta = showDelta
+                                            ? nextNum! - currNum!
+                                            : null;
+                                          return (
+                                            <div
+                                              key={pi}
+                                              className="flex items-center justify-between py-1.5 text-[14px] border-b border-white/5 last:border-b-0"
+                                            >
+                                              <span className="text-[#c0b8a8] font-medium">
+                                                {p.label}
+                                              </span>
+                                              <span className="text-[#f0e8d8] font-mono text-right">
+                                                {p.value}
+                                                {!hasNext && isMaxed && (
+                                                  <Chip
+                                                    size="sm"
+                                                    variant="soft"
+                                                    color="success"
+                                                    className="ml-1.5 text-[10px] h-5 min-w-0"
+                                                  >
+                                                    MAX
+                                                  </Chip>
+                                                )}
+                                                {hasNext && (
+                                                  <>
+                                                    <span className="text-[#888] mx-1.5">
+                                                      →
+                                                    </span>
+                                                    <span className="text-[#f0e8d8]">
+                                                      {p.nextValue}
+                                                    </span>
+                                                    {showDelta &&
+                                                      delta !== 0 && (
+                                                        <Chip
+                                                          size="sm"
+                                                          variant="soft"
+                                                          color={
+                                                            delta! > 0
+                                                              ? "success"
+                                                              : "accent"
+                                                          }
+                                                          className="ml-1.5 text-[10px] h-5 min-w-0"
+                                                        >
+                                                          {delta! > 0
+                                                            ? "+"
+                                                            : ""}
+                                                          {delta}
+                                                          {unit}
+                                                        </Chip>
+                                                      )}
+                                                  </>
+                                                )}
+                                              </span>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    ),
+                                  )
+                                )}
+                                {!isPotential && wikiBlocks.length === 0 && (
+                                  <p className="text-[#c0b8a8] italic mt-2 text-[15px]">
+                                    暂无 Wiki 数据
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })()}
                       </div>
-                      );
-                    })()}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-            )}
+              )}
             </div>
           );
         })()
@@ -1427,9 +2043,7 @@ export function CharSelectModal({
           >
             {viewMode === "list" ? (
               <div className="flex items-center w-full">
-                <h2>
-                  {t("card:title")}
-                </h2>
+                <h2>{t("card:title")}</h2>
               </div>
             ) : viewMode === "select-slot" ? (
               <div className="flex items-center gap-3">
@@ -1441,7 +2055,14 @@ export function CharSelectModal({
                         alt={getCharById(selectingCharId)?.name}
                         className="w-16 h-16 rounded-t-lg object-cover"
                       />
-                      <div className="w-full h-[3px] shrink-0 rounded-b-lg" style={{ backgroundColor: rarityLineColor(getCharById(selectingCharId)?.rarity.value || "3") }} />
+                      <div
+                        className="w-full h-[3px] shrink-0 rounded-b-lg"
+                        style={{
+                          backgroundColor: rarityLineColor(
+                            getCharById(selectingCharId)?.rarity.value || "3",
+                          ),
+                        }}
+                      />
                     </div>
                     <div>
                       <h2 className="text-xl font-bold">
@@ -1460,248 +2081,285 @@ export function CharSelectModal({
           </CustomModalHeader>
 
           {/* Body */}
-          <CustomModalBody ref={modalBodyRef} onScroll={handleScroll} className="!p-0">
-        {viewMode === "list" ? (
-          <div className="space-y-4">
-            {/* Filter Section — 6 维 FloatSelect（WIKI 风格） */}
-            {showFilters && (
-              <div className="px-6 pt-4 pb-3 border-b border-separator space-y-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <FloatSelect
-                    label={t("filters.profession")}
-                    value={filters.profession}
-                    options={[
-                      { value: "all", label: t("filters.all_professions") },
-                      ...uniqueProfessions.map((v) => ({ value: v, label: v })),
-                    ]}
-                    onChange={(v) => setFilter("profession", v)}
-                  />
-                  <FloatSelect
-                    label={t("filters.rarity")}
-                    value={filters.rarity}
-                    options={[
-                      { value: "all", label: t("filters.all_rarities") },
-                      ...uniqueRarities.map((v) => ({
-                        value: v,
-                        label: `${v}★`,
-                        tone: rarityTone(v),
-                      })),
-                    ]}
-                    onChange={(v) => setFilter("rarity", v)}
-                  />
-                  <FloatSelect
-                    label={t("filters.property")}
-                    value={filters.property}
-                    options={[
-                      { value: "all", label: t("filters.all_properties") },
-                      ...uniqueProperties.map((v) => ({ value: v, label: v })),
-                    ]}
-                    onChange={(v) => setFilter("property", v)}
-                  />
-                  <FloatSelect
-                    label={t("filters.weapon")}
-                    value={filters.weapon}
-                    options={[
-                      { value: "all", label: t("filters.all_weapons") },
-                      ...uniqueWeapons.map((v) => ({ value: v, label: v })),
-                    ]}
-                    onChange={(v) => setFilter("weapon", v)}
-                  />
-                  <FloatSelect
-                    label={t("filters.mainAttr")}
-                    value={filters.mainAttr}
-                    options={[
-                      { value: "all", label: t("filters.all_mainAttrs") },
-                      ...uniqueMainAttrs.map((v) => ({ value: v, label: v })),
-                    ]}
-                    onChange={(v) => setFilter("mainAttr", v)}
-                  />
-                  <FloatSelect
-                    label={t("filters.subAttr")}
-                    value={filters.subAttr}
-                    options={[
-                      { value: "all", label: t("filters.all_subAttrs") },
-                      ...uniqueSubAttrs.map((v) => ({ value: v, label: v })),
-                    ]}
-                    onChange={(v) => setFilter("subAttr", v)}
-                  />
-
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    isIconOnly
-                    aria-label={t("common.clear")}
-                    onPress={resetFilters}
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+          <CustomModalBody
+            ref={modalBodyRef}
+            onScroll={handleScroll}
+            className="!p-0"
+          >
+            {viewMode === "list" ? (
+              <div className="space-y-4">
+                {/* Filter Section — 6 维 FloatSelect（WIKI 风格） */}
+                {showFilters && (
+                  <div className="px-6 pt-4 pb-3 border-b border-separator space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <FloatSelect
+                        label={t("filters.profession")}
+                        value={filters.profession}
+                        options={[
+                          { value: "all", label: t("filters.all_professions") },
+                          ...uniqueProfessions.map((v) => ({
+                            value: v,
+                            label: v,
+                          })),
+                        ]}
+                        onChange={(v) => setFilter("profession", v)}
                       />
-                    </svg>
-                  </Button>
-                </div>
-              </div>
-            )}
+                      <FloatSelect
+                        label={t("filters.rarity")}
+                        value={filters.rarity}
+                        options={[
+                          { value: "all", label: t("filters.all_rarities") },
+                          ...uniqueRarities.map((v) => ({
+                            value: v,
+                            label: `${v}★`,
+                            tone: rarityTone(v),
+                          })),
+                        ]}
+                        onChange={(v) => setFilter("rarity", v)}
+                      />
+                      <FloatSelect
+                        label={t("filters.property")}
+                        value={filters.property}
+                        options={[
+                          { value: "all", label: t("filters.all_properties") },
+                          ...uniqueProperties.map((v) => ({
+                            value: v,
+                            label: v,
+                          })),
+                        ]}
+                        onChange={(v) => setFilter("property", v)}
+                      />
+                      <FloatSelect
+                        label={t("filters.weapon")}
+                        value={filters.weapon}
+                        options={[
+                          { value: "all", label: t("filters.all_weapons") },
+                          ...uniqueWeapons.map((v) => ({ value: v, label: v })),
+                        ]}
+                        onChange={(v) => setFilter("weapon", v)}
+                      />
+                      <FloatSelect
+                        label={t("filters.mainAttr")}
+                        value={filters.mainAttr}
+                        options={[
+                          { value: "all", label: t("filters.all_mainAttrs") },
+                          ...uniqueMainAttrs.map((v) => ({
+                            value: v,
+                            label: v,
+                          })),
+                        ]}
+                        onChange={(v) => setFilter("mainAttr", v)}
+                      />
+                      <FloatSelect
+                        label={t("filters.subAttr")}
+                        value={filters.subAttr}
+                        options={[
+                          { value: "all", label: t("filters.all_subAttrs") },
+                          ...uniqueSubAttrs.map((v) => ({
+                            value: v,
+                            label: v,
+                          })),
+                        ]}
+                        onChange={(v) => setFilter("subAttr", v)}
+                      />
 
-            {/* Character Grid — WIKI OperatorCard 风格 */}
-            {filteredCharacters.length === 0 ? (
-              <div className="text-center py-8 text-muted">
-                <p>{t("common.no_results_found") || "No characters found"}</p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        isIconOnly
+                        aria-label={t("common.clear")}
+                        onPress={resetFilters}
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                          />
+                        </svg>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Character Grid — WIKI OperatorCard 风格 */}
+                {filteredCharacters.length === 0 ? (
+                  <div className="text-center py-8 text-muted">
+                    <p>
+                      {t("common.no_results_found") || "No characters found"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2.5 px-6 pb-6">
+                    {filteredCharacters.map((char) => (
+                      <OperatorCard
+                        key={char.charData.id}
+                        char={char}
+                        isPinned={tempSelectedIds.includes(char.charData.id)}
+                        onOpenDetail={() => {
+                          setDetailCharId(char.charData.id);
+                          setViewMode("detail");
+                          setEnteredDetailFromCard(false);
+                        }}
+                        onSelectSlot={() => {
+                          setSelectingCharId(char.charData.id);
+                          setViewMode("select-slot");
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2.5 px-6 pb-6">
-                {filteredCharacters.map((char) => (
-                  <OperatorCard
-                    key={char.charData.id}
-                    char={char}
-                    isPinned={tempSelectedIds.includes(char.charData.id)}
-                    onOpenDetail={() => {
-                      setDetailCharId(char.charData.id);
-                      setViewMode("detail");
-                      setEnteredDetailFromCard(false);
+              // Slot Selection View
+              selectingCharId && (
+                <div className="space-y-4">
+                  <p className="text-center text-muted mb-6">
+                    {t("settings.characters.click_to_select")}
+                  </p>
+
+                  <div
+                    className="grid gap-4 justify-center"
+                    style={{
+                      gridTemplateColumns: `repeat(${maxSlots}, 200px)`,
                     }}
-                    onSelectSlot={() => {
-                      setSelectingCharId(char.charData.id);
-                      setViewMode("select-slot");
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          // Slot Selection View
-          selectingCharId && (
-            <div className="space-y-4">
-              <p className="text-center text-muted mb-6">
-                {t("settings.characters.click_to_select")}
-              </p>
+                  >
+                    {Array.from({ length: maxSlots }).map((_, slotIndex) => {
+                      const currentCharId = tempSelectedIds[slotIndex];
+                      const currentChar = currentCharId
+                        ? getCharById(currentCharId)
+                        : null;
+                      const isSelected = selectedSlotIndex === slotIndex;
+                      const isCurrentCharSlot =
+                        currentCharId === selectingCharId;
 
-              <div className="grid gap-4 justify-center" style={{ gridTemplateColumns: `repeat(${maxSlots}, 200px)` }}>
-                {Array.from({ length: maxSlots }).map((_, slotIndex) => {
-                  const currentCharId = tempSelectedIds[slotIndex];
-                  const currentChar = currentCharId
-                    ? getCharById(currentCharId)
-                    : null;
-                  const isSelected = selectedSlotIndex === slotIndex;
-                  const isCurrentCharSlot = currentCharId === selectingCharId;
+                      // Check if this slot has the same character (for duplicate detection)
+                      const hasDuplicate =
+                        currentCharId === selectingCharId && !isSelected;
 
-                  // Check if this slot has the same character (for duplicate detection)
-                  const hasDuplicate =
-                    currentCharId === selectingCharId && !isSelected;
-
-                  return (
-                    <div
-                      key={slotIndex}
-                      className={`relative p-4 rounded-lg transition-all cursor-pointer ${
-                        isSelected
-                          ? "border-[3px] border-blue-500 bg-blue-50 dark:bg-blue-900/40 shadow-md scale-[1.02]"
-                          : hasDuplicate
-                            ? "border-2 border-warning bg-warning/10 opacity-50 cursor-not-allowed"
-                            : "border-2 border-separator bg-content1 hover:border-blue-400/50 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                      }`}
-                      onClick={() =>
-                        !hasDuplicate && handleSlotSelect(slotIndex)
-                      }
-                    >
-                      {/* Slot Number */}
-                      <div className="absolute top-2 left-2 px-2 py-1 bg-default-100 rounded text-xs font-bold">
-                        {t("common.slot", { number: slotIndex + 1 }) ||
-                          `Slot ${slotIndex + 1}`}
-                      </div>
-
-                      {/* Character or Empty */}
-                      {currentChar ? (
-                        <div className="mt-6 flex flex-col items-center">
-                          <div className="flex flex-col">
-                            <Img
-                              src={currentChar.avatarRtUrl || currentChar.avatarSqUrl}
-                              alt={currentChar.name}
-                              className="w-16 h-20 rounded-t-lg object-cover"
-                            />
-                             <div className="w-full h-[3px] shrink-0 rounded-b-lg" style={{ backgroundColor: rarityLineColor(currentChar.rarity.value) }} />
+                      return (
+                        <div
+                          key={slotIndex}
+                          className={`relative p-4 rounded-lg transition-all cursor-pointer ${
+                            isSelected
+                              ? "border-[3px] border-blue-500 bg-blue-50 dark:bg-blue-900/40 shadow-md scale-[1.02]"
+                              : hasDuplicate
+                                ? "border-2 border-warning bg-warning/10 opacity-50 cursor-not-allowed"
+                                : "border-2 border-separator bg-content1 hover:border-blue-400/50 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                          }`}
+                          onClick={() =>
+                            !hasDuplicate && handleSlotSelect(slotIndex)
+                          }
+                        >
+                          {/* Slot Number */}
+                          <div className="absolute top-2 left-2 px-2 py-1 bg-default-100 rounded text-xs font-bold">
+                            {t("common.slot", { number: slotIndex + 1 }) ||
+                              `Slot ${slotIndex + 1}`}
                           </div>
-                          <h4 className="font-semibold text-sm text-center mt-2">
-                            {currentChar.name}
-                          </h4>
-                          <div className="flex items-center gap-1 mt-1">
-                            {renderRarityIcons(currentChar.rarity.value, 10)}
-                          </div>
-                          <p className="text-xs text-muted mt-1">
-                            {currentChar.profession.value}
-                          </p>
-                          {isCurrentCharSlot && !isSelected && (
-                            <div className="mt-2 px-2 py-1 bg-default-500 text-default-foreground text-xs rounded">
-                              {t("settings.characters.current")}
+
+                          {/* Character or Empty */}
+                          {currentChar ? (
+                            <div className="mt-6 flex flex-col items-center">
+                              <div className="flex flex-col">
+                                <Img
+                                  src={
+                                    currentChar.avatarRtUrl ||
+                                    currentChar.avatarSqUrl
+                                  }
+                                  alt={currentChar.name}
+                                  className="w-16 h-20 rounded-t-lg object-cover"
+                                />
+                                <div
+                                  className="w-full h-[3px] shrink-0 rounded-b-lg"
+                                  style={{
+                                    backgroundColor: rarityLineColor(
+                                      currentChar.rarity.value,
+                                    ),
+                                  }}
+                                />
+                              </div>
+                              <h4 className="font-semibold text-sm text-center mt-2">
+                                {currentChar.name}
+                              </h4>
+                              <div className="flex items-center gap-1 mt-1">
+                                {renderRarityIcons(
+                                  currentChar.rarity.value,
+                                  10,
+                                )}
+                              </div>
+                              <p className="text-xs text-muted mt-1">
+                                {currentChar.profession.value}
+                              </p>
+                              {isCurrentCharSlot && !isSelected && (
+                                <div className="mt-2 px-2 py-1 bg-default-500 text-default-foreground text-xs rounded">
+                                  {t("settings.characters.current")}
+                                </div>
+                              )}
+                              {isSelected && (
+                                <div className="mt-2 px-2 py-1 bg-primary text-primary-foreground text-xs rounded font-bold">
+                                  {t("settings.characters.selected")}
+                                </div>
+                              )}
                             </div>
-                          )}
-                          {isSelected && (
-                            <div className="mt-2 px-2 py-1 bg-primary text-primary-foreground text-xs rounded font-bold">
-                              {t("settings.characters.selected")}
+                          ) : (
+                            <div className="mt-6 flex flex-col items-center justify-center h-28 text-muted">
+                              <svg
+                                className="w-10 h-10 mb-2 opacity-50"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M12 4v16m8-8H4"
+                                />
+                              </svg>
+                              <p className="text-sm">
+                                {t("settings.characters.empty_slot")}
+                              </p>
                             </div>
                           )}
                         </div>
-                      ) : (
-                        <div className="mt-6 flex flex-col items-center justify-center h-28 text-muted">
-                          <svg
-                            className="w-10 h-10 mb-2 opacity-50"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 4v16m8-8H4"
-                            />
-                          </svg>
-                          <p className="text-sm">
-                            {t("settings.characters.empty_slot")}
-                          </p>
-                        </div>
-                      )}
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-6 space-y-3">
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 justify-center">
+                      <Button
+                        variant="outline"
+                        onPress={() => {
+                          setViewMode("list");
+                          setSelectingCharId(null);
+                          setSelectedSlotIndex(null);
+                        }}
+                      >
+                        {t("settings.characters.cancel")}
+                      </Button>
+                      <Button
+                        variant="primary"
+                        isDisabled={selectedSlotIndex === null}
+                        onPress={handleConfirmSlot}
+                      >
+                        {t("settings.characters.confirm_pin")}
+                      </Button>
                     </div>
-                  );
-                })}
-              </div>
-
-              <div className="mt-6 space-y-3">
-                {/* Action Buttons */}
-                <div className="flex gap-3 justify-center">
-                  <Button
-                    variant="outline"
-                    onPress={() => {
-                      setViewMode("list");
-                      setSelectingCharId(null);
-                      setSelectedSlotIndex(null);
-                    }}
-                  >
-                    {t("settings.characters.cancel")}
-                  </Button>
-                  <Button
-                    variant="primary"
-                    isDisabled={selectedSlotIndex === null}
-                    onPress={handleConfirmSlot}
-                  >
-                    {t("settings.characters.confirm_pin")}
-                  </Button>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )
-        )}
-      </CustomModalBody>
-      </>
-    )}
+              )
+            )}
+          </CustomModalBody>
+        </>
+      )}
 
       {/* Back to Top Button */}
       {viewMode === "list" && showBackToTop && (
