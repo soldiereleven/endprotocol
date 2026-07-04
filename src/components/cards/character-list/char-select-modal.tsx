@@ -1189,25 +1189,44 @@ export function CharSelectModal({
                               {char.skills.map((skill) => {
                                 const isSel =
                                   sel?.type === "skill" && sel.id === skill.id;
+                                const skillLevel =
+                                  charItem?.userSkills?.[skill.id]?.level;
                                 return (
-                                  <button
+                                  <div
                                     key={skill.id}
-                                    onClick={() =>
-                                      openDetailPanel({
-                                        type: "skill",
-                                        id: skill.id,
-                                      })
-                                    }
-                                    className={btnBase(true, isSel, true)}
-                                    style={{ backgroundColor: "#e9d72c" }}
-                                    title={skill.name}
+                                    className="flex flex-col items-center"
                                   >
-                                    <Img
-                                      src={skill.iconUrl}
-                                      alt={skill.name}
-                                      className="w-full h-full object-contain"
-                                    />
-                                  </button>
+                                    <button
+                                      onClick={() =>
+                                        openDetailPanel({
+                                          type: "skill",
+                                          id: skill.id,
+                                        })
+                                      }
+                                      className={btnBase(true, isSel, true)}
+                                      style={{ backgroundColor: "#e9d72c" }}
+                                      title={skill.name}
+                                    >
+                                      <Img
+                                        src={skill.iconUrl}
+                                        alt={skill.name}
+                                        className="w-full h-full object-contain"
+                                      />
+                                    </button>
+                                    {skillLevel != null && (
+                                      <span className="mt-1 bg-[#5a5a5a] text-white text-xs leading-none w-[48px] py-[3px] rounded-full font-medium z-10 flex items-center justify-center gap-0.5">
+                                        {skillLevel >= 10 ? (
+                                          <img
+                                            src={`/assets/icons/specialization/rank_${skillLevel >= 12 ? 12 : skillLevel}.png`}
+                                            alt=""
+                                            className="h-[14px] w-auto object-contain"
+                                          />
+                                        ) : (
+                                          <span>RANK {skillLevel}</span>
+                                        )}
+                                      </span>
+                                    )}
+                                  </div>
                                 );
                               })}
                             </div>
