@@ -8,6 +8,7 @@ import {
   SettingsIcon,
   AccountIcon,
   DeveloperIcon,
+  UsersIcon,
   GithubIcon,
   HeartFilledIcon,
   SearchIcon,
@@ -1139,6 +1140,26 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                 </div>
               </div>
             </div>
+
+            {/* Characters link */}
+            <Link
+              to="/characters"
+              onClick={onNavigate}
+              className={clsx(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group",
+                location.pathname === "/characters"
+                  ? "bg-primary text-primary-foreground shadow-md"
+                  : "text-foreground hover:bg-default-100 hover:translate-x-1",
+              )}
+            >
+              <UsersIcon
+                className={clsx(
+                  "w-5 h-5 transition-transform duration-200",
+                  location.pathname === "/characters" ? "scale-110" : "group-hover:scale-110",
+                )}
+              />
+              <span className="text-sm font-medium">{t("sidebar.characters") || "Characters"}</span>
+            </Link>
           </div>
         </nav>
 

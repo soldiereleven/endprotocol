@@ -33,7 +33,7 @@ const professionIconUrl = (key: string) => `${ICON_BASE}/profession/${key}.png`;
 const propertyIconUrl = (key: string) => `${ICON_BASE}/property/${key}.png`;
 const RARITY_ICON_URL = "/assets/rarity.svg";
 
-type FilterKey =
+export type FilterKey =
   | "profession"
   | "rarity"
   | "property"
@@ -75,7 +75,7 @@ interface FloatSelectOption {
   label: string;
   tone?: ReturnType<typeof rarityTone>;
 }
-function FloatSelect({
+export function FloatSelect({
   label,
   value,
   options,
@@ -162,7 +162,7 @@ function FloatSelect({
 
 // ====== WIKI OperatorCard ======
 // 复刻 WIKI 列表卡：全幅立绘背景 + 渐变蒙版 + 顶角稀有度星 + 右上 pin/LED + 底栏图标+名称+稀有度色条
-function OperatorCard({
+export function OperatorCard({
   char,
   isPinned,
   onOpenDetail,
@@ -231,12 +231,12 @@ function OperatorCard({
               e.stopPropagation();
               onSelectSlot();
             }}
-            className="flex items-center justify-center text-neutral-600 dark:text-neutral-200 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+            className="w-6 h-6 rounded-full bg-black/40 hover:bg-black/65 backdrop-blur-sm flex items-center justify-center text-white/85 hover:text-white transition-colors cursor-pointer"
             title="Pin"
             aria-label="Pin to slot"
           >
             <svg
-              className="w-5 h-5 rotate-45"
+              className="w-3.5 h-3.5 rotate-45"
               fill="currentColor"
               viewBox="0 0 24 24"
             >
@@ -248,7 +248,7 @@ function OperatorCard({
 
       {/* 右下：potential 图标（potential 为 0 时不显示） */}
       {char.potentialLevel != null && char.potentialLevel > 0 && (
-        <div className="absolute bottom-[33px] right-1.5 z-10">
+        <div className="absolute bottom-7 right-1.5 z-10">
           <img
             src={`/assets/icons/potential/potential_${char.potentialLevel}.png`}
             alt=""
@@ -288,7 +288,7 @@ function OperatorCard({
 }
 
 // 模块级稀有度色条（与 OperatorCard 同源；后续可提取共享）
-function rarityLineColorLocal(value: string): string {
+export function rarityLineColorLocal(value: string): string {
   switch (value) {
     case "6":
       return "#ff7100";
