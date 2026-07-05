@@ -1610,10 +1610,7 @@ export function CharSelectModal({
                           />
                         </svg>
                       </button>
-                      <div
-                        className="h-full overflow-y-auto"
-                        style={{ backgroundColor: "#404040" }}
-                      >
+                      <div className="h-full overflow-y-auto">
                         {selectedItem &&
                           (() => {
                             const skillLevel: number =
@@ -1729,7 +1726,7 @@ export function CharSelectModal({
                               : [];
 
                             return (
-                              <div className="pl-10 p-5 text-[#f0e8d8]">
+                              <div className="pl-10 p-5 text-[#222222]">
                                 <div className="flex items-center gap-4 mb-4">
                                   {isPotential ? (
                                     <img
@@ -1786,12 +1783,12 @@ export function CharSelectModal({
                                     />
                                   )}
                                   <div>
-                                    <h4 className="font-semibold text-lg text-[#f0e8d8]">
+                                    <h4 className="font-semibold text-lg text-[#222222]">
                                       {selectedItem.name}
                                     </h4>
                                     {"type" in selectedItem &&
                                       selectedItem.type && (
-                                        <p className="text-[#c0b8a8] text-[15px]">
+                                        <p className="text-[#666666] text-[15px]">
                                           {selectedItem.type.value}
                                           {"property" in selectedItem &&
                                             selectedItem.property && (
@@ -1828,11 +1825,11 @@ export function CharSelectModal({
                                     return (
                                       <div className="mb-5">
                                         <div className="flex items-center justify-between mb-1.5">
-                                          <span className="text-[#c0b8a8] text-xs">
+                                          <span className="text-[#666666] text-xs">
                                             技能等级
                                           </span>
                                           <span className="flex items-center gap-2">
-                                            <span className="text-[#f0e8d8] text-sm font-medium">
+                                            <span className="text-[#222222] text-sm font-medium">
                                               Lv.{skillLevel} / {maxSkillLevel}
                                             </span>
                                             {isMaxed && (
@@ -1874,7 +1871,7 @@ export function CharSelectModal({
                                       seg.kind === "heading3" ? (
                                         <h5
                                           key={i}
-                                          className="font-semibold text-[#f0e8d8] mt-4 mb-2 text-[15px]"
+                                          className="font-semibold text-[#222222] mt-4 mb-2 text-[15px]"
                                         >
                                           {seg.segments.map(
                                             (s: any, si: number) => {
@@ -1904,7 +1901,7 @@ export function CharSelectModal({
                                       ) : (
                                         <p
                                           key={i}
-                                          className="text-[#c0b8a8] leading-relaxed text-[15px]"
+                                          className="text-[#666666] leading-relaxed text-[15px]"
                                         >
                                           {seg.segments.map(
                                             (s: any, si: number) => {
@@ -1934,7 +1931,7 @@ export function CharSelectModal({
                                       ),
                                     )
                                   ) : (
-                                    <p className="text-[#c0b8a8] italic mt-2 text-[15px]">
+                                    <p className="text-[#666666] italic mt-2 text-[15px]">
                                       暂无 Wiki 数据
                                     </p>
                                   )
@@ -1944,7 +1941,7 @@ export function CharSelectModal({
                                       block.data.kind === "heading3" ? (
                                         <h5
                                           key={i}
-                                          className="font-semibold text-[#f0e8d8] mt-4 mb-2 text-[15px]"
+                                          className="font-semibold text-[#222222] mt-4 mb-2 text-[15px]"
                                         >
                                           {block.data.segments.map(
                                             (seg, si) => {
@@ -1976,7 +1973,7 @@ export function CharSelectModal({
                                       ) : (
                                         <p
                                           key={i}
-                                          className="text-[#c0b8a8] leading-relaxed text-[15px]"
+                                          className="text-[#666666] leading-relaxed text-[15px]"
                                         >
                                           {block.data.segments.flatMap(
                                             (seg, si) => {
@@ -2062,10 +2059,10 @@ export function CharSelectModal({
                                               key={pi}
                                               className="flex items-center justify-between py-1.5 text-[14px] border-b border-white/5 last:border-b-0"
                                             >
-                                              <span className="text-[#c0b8a8] font-medium">
+                                              <span className="text-[#666666] font-medium">
                                                 {p.label}
                                               </span>
-                                              <span className="text-[#f0e8d8] font-mono text-right">
+                                              <span className="text-[#222222] font-mono text-right">
                                                 {p.value}
                                                 {!hasNext && isMaxed && (
                                                   <Chip
@@ -2082,7 +2079,7 @@ export function CharSelectModal({
                                                     <span className="text-[#888] mx-1.5">
                                                       →
                                                     </span>
-                                                    <span className="text-[#f0e8d8]">
+                                                    <span className="text-[#222222]">
                                                       {p.nextValue}
                                                     </span>
                                                     {showDelta &&
@@ -2115,7 +2112,7 @@ export function CharSelectModal({
                                   )
                                 )}
                                 {!isPotential && wikiBlocks.length === 0 && (
-                                  <p className="text-[#c0b8a8] italic mt-2 text-[15px]">
+                                  <p className="text-[#666666] italic mt-2 text-[15px]">
                                     暂无 Wiki 数据
                                   </p>
                                 )}
