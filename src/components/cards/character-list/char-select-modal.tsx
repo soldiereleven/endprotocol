@@ -1214,7 +1214,7 @@ export function CharSelectModal({
                                       <div
                                         className="absolute inset-0 rounded-full"
                                         style={{
-                                          background: `conic-gradient(from 157.5deg, transparent 0deg 45deg, ${SKILL_BG_COLORS[skill.property.key] || "#5e5e5e"} 45deg 360deg)`,
+                                          background: `conic-gradient(from 145deg, transparent 0deg 70deg, ${SKILL_BG_CIRCLE} 70deg 360deg)`,
                                           WebkitMask: "radial-gradient(circle at 50% 50%, transparent 26px, black 26px)",
                                           mask: "radial-gradient(circle at 50% 50%, transparent 26px, black 26px)",
                                         }}
@@ -1264,7 +1264,7 @@ export function CharSelectModal({
                                       </button>
                                     </div>
                                     {skillLevel != null && (
-                                      <span className="mt-1 bg-[#999999] text-white text-xs leading-none w-[48px] py-[3px] rounded-full font-medium z-10 flex items-center justify-center gap-0.5">
+                                      <span className="mt-0.5 bg-[#999999] text-white text-xs leading-none w-[48px] py-[3px] rounded-full font-medium z-10 flex items-center justify-center gap-0.5">
                                         {skillLevel >= 10 ? (
                                           <img
                                             src={`/assets/icons/specialization/rank_${skillLevel >= 12 ? 12 : skillLevel}.png`}

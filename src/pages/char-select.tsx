@@ -1212,7 +1212,7 @@ export function CharSelectModal({
                                       <div
                                         className="absolute inset-0 rounded-full"
                                         style={{
-                                          background: `conic-gradient(from 157.5deg, transparent 0deg 45deg, ${SKILL_BG_COLORS[skill.property.key] || "#5e5e5e"} 45deg 360deg)`,
+                                          background: `conic-gradient(from 145deg, transparent 0deg 70deg, ${SKILL_BG_CIRCLE} 70deg 360deg)`,
                                           WebkitMask: "radial-gradient(circle at 50% 50%, transparent 26px, black 26px)",
                                           mask: "radial-gradient(circle at 50% 50%, transparent 26px, black 26px)",
                                         }}
