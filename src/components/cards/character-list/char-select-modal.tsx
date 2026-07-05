@@ -1077,7 +1077,7 @@ export function CharSelectModal({
                     setDetailCharId(null);
                   }
                 }}
-                className="absolute top-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full text-white/70 hover:text-white transition-colors cursor-pointer"
+                className="absolute top-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full text-black/50 hover:text-black transition-colors cursor-pointer"
               >
                 <svg
                   className="w-5 h-5"
@@ -1207,43 +1207,62 @@ export function CharSelectModal({
                                     key={skill.id}
                                     className="flex flex-col items-center"
                                   >
-                                    <button
-                                      onClick={() =>
-                                        openDetailPanel({
-                                          type: "skill",
-                                          id: skill.id,
-                                        })
-                                      }
-                                      className={`${btnBase(true, isSel, true)} relative overflow-hidden`}
-                                      style={{ backgroundColor: SKILL_BG_CIRCLE, borderColor: SKILL_BG_CIRCLE }}
-                                      title={skill.name}
+                                    <div
+                                      className="relative"
+                                      style={{ width: 56, height: 56 }}
                                     >
                                       <div
-                                        className="absolute rounded-full"
-                                        style={
-                                          skill.type.key === "skill_type_ultimate_skill"
-                                            ? {
-                                                top: 1,
-                                                right: 1,
-                                                bottom: 1,
-                                                left: 1,
-                                                backgroundColor: SKILL_BG_COLORS[skill.property.key] || "#5e5e5e",
-                                              }
-                                            : {
-                                                top: 1,
-                                                right: 1,
-                                                bottom: 1,
-                                                left: 1,
-                                                background: `conic-gradient(from 112.5deg, ${SKILL_BG_COLORS[skill.property.key] || "#5e5e5e"} 0deg, ${SKILL_BG_COLORS[skill.property.key] || "#5e5e5e"} 135deg, transparent 135deg)`,
-                                              }
+                                        className="absolute inset-0 rounded-full"
+                                        style={{
+                                          background: `conic-gradient(from 157.5deg, transparent 0deg 45deg, ${SKILL_BG_COLORS[skill.property.key] || "#5e5e5e"} 45deg 360deg)`,
+                                          WebkitMask: "radial-gradient(circle at 50% 50%, transparent 26px, black 26px)",
+                                          mask: "radial-gradient(circle at 50% 50%, transparent 26px, black 26px)",
+                                        }}
+                                      />
+                                      <button
+                                        onClick={() =>
+                                          openDetailPanel({
+                                            type: "skill",
+                                            id: skill.id,
+                                          })
                                         }
-                                      />
-                                      <Img
-                                        src={skill.iconUrl}
-                                        alt={skill.name}
-                                        className="relative z-10 w-full h-full object-contain"
-                                      />
-                                    </button>
+                                        className={`${btnBase(true, isSel, true)} overflow-hidden`}
+                                        style={{
+                                          position: "absolute",
+                                          top: 4,
+                                          left: 4,
+                                          backgroundColor: SKILL_BG_CIRCLE,
+                                          borderColor: SKILL_BG_CIRCLE,
+                                        }}
+                                        title={skill.name}
+                                      >
+                                        <div
+                                          className="absolute rounded-full"
+                                          style={
+                                            skill.type.key === "skill_type_ultimate_skill"
+                                              ? {
+                                                  top: 1,
+                                                  right: 1,
+                                                  bottom: 1,
+                                                  left: 1,
+                                                  backgroundColor: SKILL_BG_COLORS[skill.property.key] || "#5e5e5e",
+                                                }
+                                              : {
+                                                  top: 1,
+                                                  right: 1,
+                                                  bottom: 1,
+                                                  left: 1,
+                                                  background: `conic-gradient(from 112.5deg, ${SKILL_BG_COLORS[skill.property.key] || "#5e5e5e"} 0deg, ${SKILL_BG_COLORS[skill.property.key] || "#5e5e5e"} 135deg, transparent 135deg)`,
+                                                }
+                                          }
+                                        />
+                                        <Img
+                                          src={skill.iconUrl}
+                                          alt={skill.name}
+                                          className="relative z-10 w-full h-full object-contain"
+                                        />
+                                      </button>
+                                    </div>
                                     {skillLevel != null && (
                                       <span className="mt-1 bg-[#999999] text-white text-xs leading-none w-[48px] py-[3px] rounded-full font-medium z-10 flex items-center justify-center gap-0.5">
                                         {skillLevel >= 10 ? (
@@ -1298,6 +1317,7 @@ export function CharSelectModal({
                                           ? "#ffd806"
                                           : "#404040",
                                         border: "none",
+                                        boxShadow: "inset 0 0 0 2px #a4a4a4",
                                       }}
                                       title={talent.name}
                                     >
@@ -1353,6 +1373,7 @@ export function CharSelectModal({
                                           ? "#ffd806"
                                           : "#404040",
                                               border: "none",
+                                              boxShadow: "inset 0 0 0 2px #a4a4a4",
                                             }}
                                             title={talent.name}
                                           >
@@ -1570,7 +1591,8 @@ export function CharSelectModal({
                       style={{
                         position: "absolute",
                         inset: 0,
-                        backgroundColor: "rgba(0,0,0,0.3)",
+                        backgroundColor: "rgba(0,0,0,0.25)",
+                        backdropFilter: "blur(4px)",
                         zIndex: 10,
                       }}
                       onClick={closeDetailPanel}
@@ -1788,7 +1810,7 @@ export function CharSelectModal({
                                     </h4>
                                     {"type" in selectedItem &&
                                       selectedItem.type && (
-                                        <p className="text-[#666666] text-[15px]">
+                                        <p className="text-[#222222] text-[15px]">
                                           {selectedItem.type.value}
                                           {"property" in selectedItem &&
                                             selectedItem.property && (
@@ -1825,7 +1847,7 @@ export function CharSelectModal({
                                     return (
                                       <div className="mb-5">
                                         <div className="flex items-center justify-between mb-1.5">
-                                          <span className="text-[#666666] text-xs">
+                                          <span className="text-[#222222] text-xs">
                                             技能等级
                                           </span>
                                           <span className="flex items-center gap-2">
@@ -1901,7 +1923,7 @@ export function CharSelectModal({
                                       ) : (
                                         <p
                                           key={i}
-                                          className="text-[#666666] leading-relaxed text-[15px]"
+                                          className="text-[#222222] leading-relaxed text-[15px]"
                                         >
                                           {seg.segments.map(
                                             (s: any, si: number) => {
@@ -1931,7 +1953,7 @@ export function CharSelectModal({
                                       ),
                                     )
                                   ) : (
-                                    <p className="text-[#666666] italic mt-2 text-[15px]">
+                                    <p className="text-[#222222] italic mt-2 text-[15px]">
                                       暂无 Wiki 数据
                                     </p>
                                   )
@@ -1973,7 +1995,7 @@ export function CharSelectModal({
                                       ) : (
                                         <p
                                           key={i}
-                                          className="text-[#666666] leading-relaxed text-[15px]"
+                                          className="text-[#222222] leading-relaxed text-[15px]"
                                         >
                                           {block.data.segments.flatMap(
                                             (seg, si) => {
@@ -2059,7 +2081,7 @@ export function CharSelectModal({
                                               key={pi}
                                               className="flex items-center justify-between py-1.5 text-[14px] border-b border-white/5 last:border-b-0"
                                             >
-                                              <span className="text-[#666666] font-medium">
+                                              <span className="text-[#222222] font-medium">
                                                 {p.label}
                                               </span>
                                               <span className="text-[#222222] font-mono text-right">
@@ -2112,7 +2134,7 @@ export function CharSelectModal({
                                   )
                                 )}
                                 {!isPotential && wikiBlocks.length === 0 && (
-                                  <p className="text-[#666666] italic mt-2 text-[15px]">
+                                  <p className="text-[#222222] italic mt-2 text-[15px]">
                                     暂无 Wiki 数据
                                   </p>
                                 )}
