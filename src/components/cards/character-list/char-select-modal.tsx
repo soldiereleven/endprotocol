@@ -1113,15 +1113,15 @@ export function CharSelectModal({
                     display: "flex",
                     height: "100%",
                     overflow: "hidden",
+                    position: "relative",
                   }}
                 >
-                  {/* Left column - pushed out when detail selected */}
+                  {/* Left column - fixed */}
                   <div
                     style={{
-                      width: hasSelection ? "0%" : "35%",
+                      width: "35%",
                       minWidth: 0,
                       flexShrink: 0,
-                      transition: "width 300ms ease",
                       overflow: "hidden",
                       backgroundImage: "url(/assets/illustration_background.png)",
                       backgroundSize: "cover",
@@ -1138,13 +1138,12 @@ export function CharSelectModal({
                     </div>
                   </div>
 
-                  {/* Middle column - pushes left, pulls right */}
+                  {/* Middle column - fixed */}
                   <div
                     style={{
-                      width: hasSelection ? "48%" : "65%",
+                      width: "65%",
                       minWidth: 0,
                       flexShrink: 0,
-                      transition: "width 300ms ease",
                       overflow: "hidden",
                       backgroundColor: "#dddddd",
                     }}
@@ -1565,34 +1564,49 @@ export function CharSelectModal({
                     </div>
                   </div>
 
-                  {/* Right column - pulls in when detail selected */}
+                  {/* Backdrop */}
+                  {hasSelection && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        backgroundColor: "rgba(0,0,0,0.3)",
+                        zIndex: 10,
+                      }}
+                      onClick={closeDetailPanel}
+                    />
+                  )}
+
+                  {/* Right drawer */}
                   <div
                     style={{
-                      width: hasSelection ? "52%" : "0%",
-                      minWidth: 0,
-                      flexShrink: 0,
-                      transition: "width 300ms ease",
-                      overflow: "hidden",
-                      backgroundColor: "#404040",
+                      position: "absolute",
+                      top: 0,
+                      bottom: 0,
+                      right: hasSelection ? 0 : "-52%",
+                      width: "52%",
+                      transition: "right 300ms ease",
+                      backgroundColor: "#dddddd",
+                      zIndex: 20,
                     }}
                   >
                     <div className="h-full relative">
                       <button
                         onClick={closeDetailPanel}
-                        className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-8 flex items-center justify-center text-white/60 hover:text-white transition-colors cursor-pointer"
+                        className="absolute right-2 top-2 z-20 w-8 h-8 flex items-center justify-center text-black/40 hover:text-black transition-colors cursor-pointer rounded-full hover:bg-black/10"
                         title="Collapse detail"
                       >
                         <svg
-                          className="w-6 h-6"
+                          className="w-5 h-5"
                           fill="none"
+                          viewBox="0 0 24 24"
                           stroke="currentColor"
                           strokeWidth={2}
-                          viewBox="0 0 24 24"
                         >
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M9 18l6-6-6-6"
+                            d="M6 18L18 6M6 6l12 12"
                           />
                         </svg>
                       </button>
