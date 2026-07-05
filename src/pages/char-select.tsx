@@ -22,6 +22,15 @@ import { getConfig } from "@/utils/configService";
 import { invoke } from "@tauri-apps/api/core";
 import { logError } from "@/utils/logger";
 
+const SKILL_BG_COLORS: Record<string, string> = {
+  skill_property_pulse: "#ffc000",
+  skill_property_fire: "#fe623d",
+  skill_property_natural: "#abbf00",
+  skill_property_cryst: "#21c6d0",
+  skill_property_physical: "#5e5e5e",
+};
+const SKILL_BG_CIRCLE = "#6d6d6d";
+
 // ====== 图标资源路径（占位，等用户提供资源文件）======
 // 职业图标：/assets/icons/profession/<profession.key>.png
 //   已知 key 例子：profession_caster, profession_guard, profession_medic, profession_sniper, ...
@@ -1114,7 +1123,10 @@ export function CharSelectModal({
                       flexShrink: 0,
                       transition: "width 300ms ease",
                       overflow: "hidden",
-                      backgroundColor: "#404040",
+                      backgroundImage: "url(/assets/illustration_background.png)",
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                      backgroundRepeat: "no-repeat",
                     }}
                   >
                     <div className="h-full p-3 flex flex-col items-center justify-center">
@@ -1134,10 +1146,10 @@ export function CharSelectModal({
                       flexShrink: 0,
                       transition: "width 300ms ease",
                       overflow: "hidden",
-                      backgroundColor: "#ddc236",
+                      backgroundColor: "#dddddd",
                     }}
                   >
-                    <div className="h-full p-4 overflow-y-auto space-y-6">
+                    <div className="h-full p-4 overflow-y-hidden space-y-6">
                       {/* Character Info Header */}
                       <div className="flex items-start justify-between pb-3 border-b border-black/10">
                         <div className="flex items-start gap-3 min-w-0">
@@ -1198,14 +1210,34 @@ export function CharSelectModal({
                                         id: skill.id,
                                       })
                                     }
-                                    className={btnBase(true, isSel, true)}
-                                    style={{ backgroundColor: "#e9d72c" }}
+                                    className={`${btnBase(true, isSel, true)} relative overflow-hidden`}
+                                    style={{ backgroundColor: SKILL_BG_CIRCLE, borderColor: SKILL_BG_CIRCLE }}
                                     title={skill.name}
                                   >
+                                    <div
+                                      className="absolute rounded-full"
+                                      style={
+                                        skill.type.key === "skill_type_ultimate_skill"
+                                          ? {
+                                              top: 1,
+                                              right: 1,
+                                              bottom: 1,
+                                              left: 1,
+                                              backgroundColor: SKILL_BG_COLORS[skill.property.key] || "#5e5e5e",
+                                            }
+                                          : {
+                                              top: 1,
+                                              right: 1,
+                                              bottom: 1,
+                                              left: 1,
+                                              background: `conic-gradient(from 112.5deg, ${SKILL_BG_COLORS[skill.property.key] || "#5e5e5e"} 0deg, ${SKILL_BG_COLORS[skill.property.key] || "#5e5e5e"} 135deg, transparent 135deg)`,
+                                            }
+                                      }
+                                    />
                                     <Img
                                       src={skill.iconUrl}
                                       alt={skill.name}
-                                      className="w-full h-full object-contain"
+                                      className="relative z-10 w-full h-full object-contain"
                                     />
                                   </button>
                                 );
@@ -1245,8 +1277,9 @@ export function CharSelectModal({
                                       className={`${btnBase(true, isSel, unlocked)} relative`}
                                       style={{
                                         backgroundColor: unlocked
-                                          ? "#e9d72c"
+                                          ? "#ffd806"
                                           : "#404040",
+                                        border: "none",
                                       }}
                                       title={talent.name}
                                     >
@@ -1299,8 +1332,9 @@ export function CharSelectModal({
                                             className={`${btnBase(true, isSel, unlocked)} relative`}
                                             style={{
                                               backgroundColor: unlocked
-                                                ? "#e9d72c"
-                                                : "#404040",
+                                          ? "#ffd806"
+                                          : "#404040",
+                                              border: "none",
                                             }}
                                             title={talent.name}
                                           >
@@ -1357,8 +1391,9 @@ export function CharSelectModal({
                                             className={`${btnBase(false, isSel, unlocked)} relative`}
                                             style={{
                                               backgroundColor: unlocked
-                                                ? "#e9d72c"
+                                                ? "#a2a2a2"
                                                 : "#404040",
+                                              border: "none",
                                             }}
                                             title={talent.name}
                                           >
@@ -1672,6 +1707,40 @@ export function CharSelectModal({
                                         boxShadow: "0 0 14px rgba(0,0,0,0.35)",
                                       }}
                                     />
+                                  ) : selectedItem._type === "skill" ? (
+                                    <div
+                                      className="relative w-16 h-16 rounded-full"
+                                      style={{ backgroundColor: SKILL_BG_CIRCLE }}
+                                    >
+                                      <div
+                                        className="absolute rounded-full"
+                                        style={
+                                          selectedItem.type?.key === "skill_type_ultimate_skill"
+                                            ? {
+                                                top: 1,
+                                                right: 1,
+                                                bottom: 1,
+                                                left: 1,
+                                                backgroundColor: SKILL_BG_COLORS[selectedItem.property?.key] || "#5e5e5e",
+                                              }
+                                            : {
+                                                top: 1,
+                                                right: 1,
+                                                bottom: 1,
+                                                left: 1,
+                                                background: `conic-gradient(from 112.5deg, ${SKILL_BG_COLORS[selectedItem.property?.key] || "#5e5e5e"} 0deg, ${SKILL_BG_COLORS[selectedItem.property?.key] || "#5e5e5e"} 135deg, transparent 135deg)`,
+                                              }
+                                        }
+                                      />
+                                      <Img
+                                        src={selectedItem.iconUrl}
+                                        alt={selectedItem.name}
+                                        className="relative z-10 w-full h-full object-contain p-1.5 rounded-full"
+                                        style={{
+                                          boxShadow: "0 0 14px rgba(0,0,0,0.35)",
+                                        }}
+                                      />
+                                    </div>
                                   ) : (
                                     <Img
                                       src={selectedItem.iconUrl}
