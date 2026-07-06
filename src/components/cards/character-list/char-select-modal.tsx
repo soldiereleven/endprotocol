@@ -1129,12 +1129,72 @@ export function CharSelectModal({
                       backgroundRepeat: "no-repeat",
                     }}
                   >
-                    <div className="h-full p-3 flex flex-col items-center justify-center">
-                      <Img
-                        src={char.illustrationUrl}
-                        alt={char.name}
-                        className="w-full h-full object-contain"
-                      />
+                    <div className="h-full p-3 flex flex-col items-center">
+                      <div className="flex-1 flex items-center justify-center w-full min-h-0 mb-2">
+                        <Img
+                          src={char.illustrationUrl}
+                          alt={char.name}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      <div className="flex flex-row items-center gap-3 shrink-0 w-full justify-center">
+                        {/* Left: avatar + (property + profession stacked on right) */}
+                        <div className="flex items-center gap-1.5">
+                          <Img
+                            src={char.avatarSqUrl}
+                            alt={char.name}
+                            className="w-11 h-11 rounded-lg object-cover shadow-sm shrink-0"
+                          />
+                          <div className="flex flex-col gap-0.5">
+                            <img
+                              src={professionIconUrl(char.profession.key)}
+                              alt={char.profession.value}
+                              title={char.profession.value}
+                              className="w-5 h-5 object-contain drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+                              }}
+                            />
+                            <img
+                              src={propertyIconUrl(char.property.key)}
+                              alt={char.property.value}
+                              title={char.property.value}
+                              className="w-5 h-5 object-contain drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Middle: name + rarity + weapon */}
+                        <div className="flex flex-col min-w-0">
+                          <h3 className="text-sm font-bold text-black truncate">
+                            {char.name}
+                          </h3>
+                          <div className="flex items-center">
+                            {renderRarityIcons(char.rarity.value, 11)}
+                          </div>
+                          <span className="text-[11px] text-black/60">{char.weaponType.value}</span>
+                        </div>
+
+                        {/* Right: level + evolve phase */}
+                        <div className="flex items-center gap-1">
+                          {charItem?.level != null && (
+                            <div className="flex items-baseline gap-0.5">
+                              <span className="text-[10px] text-gray-400 font-semibold">LEVEL</span>
+                              <span className="text-[44px] font-thin text-[#dddddd] leading-none">{charItem.level}</span>
+                            </div>
+                          )}
+                          {charItem?.evolvePhase != null && (
+                            <img
+                              src={`/assets/icons/evolve/phase-${charItem.evolvePhase}.png`}
+                              alt={`Phase ${charItem.evolvePhase}`}
+                              className="w-11 h-11 object-contain"
+                            />
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -1149,48 +1209,6 @@ export function CharSelectModal({
                     }}
                   >
                     <div className="h-full p-4 overflow-y-hidden space-y-6">
-                      {/* Character Info Header */}
-                      <div className="flex items-start justify-between pb-3 border-b border-black/10">
-                        <div className="flex items-start gap-3 min-w-0">
-                          <div className="flex flex-col items-center gap-0.5">
-                            <Img
-                              src={char.avatarSqUrl}
-                              alt={char.name}
-                              className="w-12 h-12 rounded-lg object-cover shadow-sm shrink-0"
-                            />
-                            {charItem?.level != null && (
-                              <span className="text-[13px] font-semibold text-gray-500 leading-none">
-                                Lv.{charItem.level}
-                              </span>
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="text-base font-bold text-black truncate">
-                                {char.name}
-                              </h3>
-                            </div>
-                            <div className="flex items-center gap-1 mt-0.5">
-                              {renderRarityIcons(char.rarity.value, 14)}
-                            </div>
-                            <div className="flex items-center gap-1.5 text-xs text-black/70 mt-0.5 flex-wrap">
-                              <span>{char.profession.value}</span>
-                              <span className="text-black/40">·</span>
-                              <span>{char.property.value}</span>
-                              <span className="text-black/40">·</span>
-                              <span>{char.weaponType.value}</span>
-                            </div>
-                          </div>
-                        </div>
-                        {charItem?.evolvePhase != null && (
-                          <img
-                            src={`/assets/icons/evolve/phase-${charItem.evolvePhase}.png`}
-                            alt={`Phase ${charItem.evolvePhase}`}
-                            className="h-12 w-auto object-contain shrink-0 mr-8"
-                          />
-                        )}
-                      </div>
-
                       {/* Talent Array + Equipment side by side */}
                       <div className="flex gap-6">
                         <div className="flex-1 space-y-6 min-w-0">
