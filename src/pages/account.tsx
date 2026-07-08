@@ -16,6 +16,7 @@ import { CONTAINER_HEIGHT } from "@/components/cards/card-container";
 import { StatusDot, type StatusDotTone } from "@/components/ui/status-dot";
 import { StatusBadge, SYNC_STATUS_META, type StatusConfig } from "@/components/ui/status-badge";
 import { useState, useEffect, useRef } from "react";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import {
   CustomModal,
   CustomModalHeader,
@@ -129,16 +130,21 @@ export default function AccountPage() {
 
     loadAccounts();
 
-    // 设置定时刷新（每5分钟）- 总是刷新
-    const interval = setInterval(
-      () => {
-        logDebug("[Account] Auto refreshing data (timer)...");
-        refreshData();
-      },
-      5 * 60 * 1000,
-    );
+    // 监听后端自动刷新事件，替代前端定时轮询
+    let unlisten: UnlistenFn | undefined;
+    (async () => {
+      unlisten = await listen("accounts-refreshed", (event: { payload: { success: boolean; accounts?: any[]; refreshTime: string } }) => {
+        logDebug("[Account] Data refreshed via backend event");
+        if (event.payload.success && event.payload.accounts) {
+          setAccounts(event.payload.accounts);
+          setLastRefreshTime(new Date(event.payload.refreshTime));
+        }
+      });
+    })();
 
-    return () => clearInterval(interval);
+    return () => {
+      if (unlisten) unlisten();
+    };
   }, []); // 只在组件挂载时执行一次
 
   // 当账户数据加载完成后，重新计算 itemsPerPage

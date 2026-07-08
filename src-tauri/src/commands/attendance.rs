@@ -6,7 +6,7 @@ use crate::services::account_service::AccountService;
 use crate::services::avatar_cache_service::ImageType;
 use crate::services::config_service::ConfigService;
 use crate::utils::AppError;
-use crate::{log_debug, log_info, log_error};
+use crate::{log_info, log_error};
 
 /// 根据 roleId 在配置中查找对应的 cred 和 token
 fn lookup_cred_token(

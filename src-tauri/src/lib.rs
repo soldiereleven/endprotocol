@@ -87,11 +87,14 @@ pub fn run() {
                 skland_service,
                 avatar_cache_service,
                 network_service,
+                app.handle().clone(),
             );
-            app.manage(Arc::new(Mutex::new(account_service)));
+            let managed_service = Arc::new(Mutex::new(account_service));
+            let timer_service = managed_service.clone();
+            app.manage(managed_service);
 
             // 启动自动刷新定时器（此时 tokio runtime 已启动）
-            AccountService::start_auto_refresh(config_service);
+            AccountService::start_auto_refresh(timer_service);
 
             Ok(())
         })

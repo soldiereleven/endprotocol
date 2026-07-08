@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::async_runtime;
+use tauri::{AppHandle, Emitter};
 
 use crate::models::account::{
     AccountInfo, AccountLoginResult, AccountRefreshResult, AccountSummary,
@@ -209,6 +210,8 @@ pub struct AccountService {
     account_summary_cache: Arc<Mutex<HashMap<String, Vec<AccountSummary>>>>,
     // 懒加载开关
     lazy_load_enabled: Arc<Mutex<bool>>,
+    // Tauri AppHandle，用于向前端发送事件通知
+    app_handle: Option<AppHandle>,
 }
 
 impl AccountService {
@@ -218,6 +221,7 @@ impl AccountService {
         skland_service: Arc<SklandService>,
         avatar_cache_service: Arc<AvatarCacheService>,
         network_service: Arc<NetworkService>,
+        app_handle: AppHandle,
     ) -> Self {
         // 从配置中读取懒加载设置，默认为true
         let lazy_load = {
@@ -233,6 +237,7 @@ impl AccountService {
             account_list_cache: Arc::new(Mutex::new(HashMap::new())),
             account_summary_cache: Arc::new(Mutex::new(HashMap::new())),
             lazy_load_enabled: Arc::new(Mutex::new(lazy_load)),
+            app_handle: Some(app_handle),
         }
     }
 
@@ -554,14 +559,172 @@ impl AccountService {
         Ok(())
     }
 
+    /// 通知前端缓存已刷新
+    fn notify_cache_refreshed(&self, result: &AccountRefreshResult) {
+        if let Some(ref handle) = self.app_handle {
+            let _ = handle.emit("accounts-refreshed", result);
+        }
+    }
+
+    /// 缓存账户数据到内存
+    fn cache_accounts_by_user(&self, accounts: &[AccountInfo]) {
+        let lazy_load = self.is_lazy_load_enabled();
+        let mut accounts_by_user: HashMap<String, Vec<AccountInfo>> = HashMap::new();
+        for account in accounts {
+            if let Some(user_id) = &account.user_id {
+                accounts_by_user
+                    .entry(user_id.clone())
+                    .or_insert_with(Vec::new)
+                    .push(account.clone());
+            }
+        }
+        for (user_id, user_accounts) in &accounts_by_user {
+            if lazy_load {
+                let summaries: Vec<AccountSummary> =
+                    user_accounts.iter().map(|acc| acc.to_summary()).collect();
+                self.cache_account_summary(user_id, summaries);
+            } else {
+                self.cache_account_list(user_id, user_accounts.clone());
+            }
+        }
+    }
+
+    /// 获取开启了自动签到的角色列表
+    pub fn get_auto_sign_roles(&self) -> Vec<String> {
+        let config = self.config_service.lock().unwrap();
+        config.get::<Vec<String>>("card_auto_sign_users").unwrap_or_default()
+    }
+
+    /// 查询角色今天是否已在服务器签到
+    pub async fn check_attendance_today(&self, role_id: &str) -> Result<bool, AppError> {
+        let (server_id, cred, token) = {
+            let config_guard = self.config_service.lock().unwrap();
+            let all_config = config_guard.get_all();
+            let mut found = None;
+            for (key, value) in &all_config {
+                if key.starts_with("account_token_") {
+                    let cred = value.get("cred").and_then(|v| v.as_str());
+                    let token = value.get("token").and_then(|v| v.as_str());
+                    if let (Some(c), Some(t)) = (cred, token) {
+                        if let Some(roles) = value.get("roles").and_then(|v| v.as_array()) {
+                            for role in roles {
+                                if let Some(rid) = role.get("roleId").and_then(|v| v.as_str()) {
+                                    if rid == role_id {
+                                        if let Some(sid) = role.get("serverId").and_then(|v| v.as_str()) {
+                                            found = Some((sid.to_string(), c.to_string(), t.to_string()));
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if found.is_some() { break; }
+            }
+            found.ok_or_else(|| AppError::AuthError {
+                message: format!("No cred/token found for roleId: {}. Please re-login.", role_id),
+            })?
+        };
+        let skland = self.skland_service();
+        let extra_headers = vec![
+            ("sk-game-role".to_string(), format!("3_{}_{}", role_id, server_id)),
+            ("token".to_string(), token.clone()),
+        ];
+        let json = skland.call_skland_api("GET", "/web/v1/game/endfield/attendance", None, None, &cred, &token, extra_headers).await?;
+        let has_today = json.get("data").and_then(|d| d.get("hasToday")).and_then(|v| v.as_bool()).unwrap_or(false);
+        Ok(has_today)
+    }
+
+    /// 为指定角色执行签到
+    pub async fn do_attendance_for_role(&self, role_id: &str) -> Result<(), AppError> {
+        let (user_id, server_id, cred, token) = {
+            let config_guard = self.config_service.lock().unwrap();
+            let all_config = config_guard.get_all();
+            let mut found = None;
+            for (key, value) in &all_config {
+                if key.starts_with("account_token_") {
+                    let cred = value.get("cred").and_then(|v| v.as_str());
+                    let token = value.get("token").and_then(|v| v.as_str());
+                    let uid = key.trim_start_matches("account_token_").to_string();
+                    if let (Some(c), Some(t)) = (cred, token) {
+                        if let Some(roles) = value.get("roles").and_then(|v| v.as_array()) {
+                            for role in roles {
+                                if let Some(rid) = role.get("roleId").and_then(|v| v.as_str()) {
+                                    if rid == role_id {
+                                        if let Some(sid) = role.get("serverId").and_then(|v| v.as_str()) {
+                                            found = Some((uid, sid.to_string(), c.to_string(), t.to_string()));
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if found.is_some() { break; }
+            }
+            found.ok_or_else(|| AppError::AuthError {
+                message: format!("No cred/token found for roleId: {}. Please re-login.", role_id),
+            })?
+        };
+        let (final_cred, final_token) = match self.check_and_refresh_user_cred(&user_id).await {
+            Ok(Some((new_cred, new_token))) => (new_cred, new_token),
+            Ok(None) => (cred, token),
+            Err(e) => {
+                log_error!("do_attendance_for_role: cred refresh failed for user {}: {}", user_id, e);
+                (cred, token)
+            }
+        };
+        let skland = self.skland_service();
+        let extra_headers = vec![
+            ("sk-game-role".to_string(), format!("3_{}_{}", role_id, server_id)),
+            ("token".to_string(), final_token.clone()),
+        ];
+        skland.call_skland_api("POST", "/web/v1/game/endfield/attendance", None, Some(serde_json::json!({})), &final_cred, &final_token, extra_headers).await?;
+        log_info!("do_attendance_for_role: SUCCESS for role_id={}", role_id);
+        Ok(())
+    }
+
     /// 启动自动刷新定时器（应在 Tauri runtime 启动后调用）
-    pub fn start_auto_refresh(_config_service: Arc<Mutex<ConfigService>>) {
+    pub fn start_auto_refresh(account_service: Arc<tokio::sync::Mutex<AccountService>>) {
         async_runtime::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(300)); // 5分钟
+            let mut interval = tokio::time::interval(Duration::from_secs(300));
             loop {
                 interval.tick().await;
                 tracing::debug!("Auto-refresh timer triggered");
-                // 注意：实际的刷新操作由前端调用 refresh_accounts 命令触发
+
+                // Step 1: 刷新账户数据
+                {
+                    let service = account_service.lock().await;
+                    service.refresh_accounts().await;
+                }
+
+                // Step 2: 自动签到 — 查询开启自动签到的角色，未签到的执行签到
+                let auto_sign_roles = {
+                    let service = account_service.lock().await;
+                    service.get_auto_sign_roles()
+                };
+
+                for role_id in auto_sign_roles {
+                    let already_signed = {
+                        let service = account_service.lock().await;
+                        match service.check_attendance_today(&role_id).await {
+                            Ok(true) => true,
+                            _ => false,
+                        }
+                    };
+                    if already_signed {
+                        tracing::debug!("Auto-attendance: already signed in for role {}", role_id);
+                        continue;
+                    }
+
+                    tracing::info!("Auto-attendance: signing in for role {}", role_id);
+                    let service = account_service.lock().await;
+                    if let Err(e) = service.do_attendance_for_role(&role_id).await {
+                        tracing::warn!("Auto-attendance: failed for role {}: {}", role_id, e);
+                    }
+                }
             }
         });
     }
@@ -1467,12 +1630,17 @@ impl AccountService {
             refreshed_accounts.len()
         );
 
-        AccountRefreshResult {
+        let result = AccountRefreshResult {
             success: true,
             error_message: None,
             accounts: refreshed_accounts,
             refresh_time: chrono::Utc::now().to_rfc3339(),
-        }
+        };
+
+        self.cache_accounts_by_user(&result.accounts);
+        self.notify_cache_refreshed(&result);
+
+        result
     }
 
     /// 发送手机验证码
