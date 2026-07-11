@@ -961,105 +961,35 @@ export function CharSelectModal({
 
           const showLoading = wikiLoading;
 
+          const getLevelNum = (v: any): number | null => {
+            if (v == null) return null;
+            const n = parseInt(String(v), 10);
+            return isNaN(n) ? null : n;
+          };
+
+          const eqCard = (
+            key: string, label: string,
+            iconUrl: string | null | undefined,
+            name: string | null | undefined,
+            rarityKey: string | null | undefined,
+            levelVal: any,
+            hasData: boolean,
+          ) => ({
+            key, label,
+            iconUrl: iconUrl || null,
+            name: (name || "").trim() || null,
+            rarityValue: (rarityKey || "").replace("equip_rarity_", "") || "3",
+            levelNum: getLevelNum(levelVal),
+            hasData,
+          });
+
           const equipData = [
-            {
-              key: "weapon",
-              label: "武器",
-              data: charItem?.weapon
-                ? {
-                    iconUrl: charItem.weapon.weaponData?.iconUrl,
-                    name: (charItem.weapon.weaponData?.name || "").trim(),
-                    rarity: charItem.weapon.weaponData?.rarity?.value || "3",
-                    level: `Lv.${charItem.weapon.level}`,
-                  }
-                : null,
-            },
-            {
-              key: "body",
-              label: "护甲",
-              data: charItem?.bodyEquip?.equipData
-                ? {
-                    iconUrl: charItem.bodyEquip.equipData.iconUrl,
-                    name: (charItem.bodyEquip.equipData.name || "").trim(),
-                    rarity:
-                      (charItem.bodyEquip.equipData.rarity?.key || "").replace(
-                        "equip_rarity_",
-                        "",
-                      ) || "3",
-                    level: charItem.bodyEquip.equipData.level?.value
-                      ? `Lv.${charItem.bodyEquip.equipData.level.value}`
-                      : undefined,
-                  }
-                : null,
-            },
-            {
-              key: "arm",
-              label: "护手",
-              data: charItem?.armEquip?.equipData
-                ? {
-                    iconUrl: charItem.armEquip.equipData.iconUrl,
-                    name: (charItem.armEquip.equipData.name || "").trim(),
-                    rarity:
-                      (charItem.armEquip.equipData.rarity?.key || "").replace(
-                        "equip_rarity_",
-                        "",
-                      ) || "3",
-                    level: charItem.armEquip.equipData.level?.value
-                      ? `Lv.${charItem.armEquip.equipData.level.value}`
-                      : undefined,
-                  }
-                : null,
-            },
-            {
-              key: "acc1",
-              label: "配件",
-              data: charItem?.firstAccessory?.equipData
-                ? {
-                    iconUrl: charItem.firstAccessory.equipData.iconUrl,
-                    name: (charItem.firstAccessory.equipData.name || "").trim(),
-                    rarity:
-                      (
-                        charItem.firstAccessory.equipData.rarity?.key || ""
-                      ).replace("equip_rarity_", "") || "3",
-                    level: charItem.firstAccessory.equipData.level?.value
-                      ? `Lv.${charItem.firstAccessory.equipData.level.value}`
-                      : undefined,
-                  }
-                : null,
-            },
-            {
-              key: "acc2",
-              label: "配件",
-              data: charItem?.secondAccessory?.equipData
-                ? {
-                    iconUrl: charItem.secondAccessory.equipData.iconUrl,
-                    name: (
-                      charItem.secondAccessory.equipData.name || ""
-                    ).trim(),
-                    rarity:
-                      (
-                        charItem.secondAccessory.equipData.rarity?.key || ""
-                      ).replace("equip_rarity_", "") || "3",
-                    level: charItem.secondAccessory.equipData.level?.value
-                      ? `Lv.${charItem.secondAccessory.equipData.level.value}`
-                      : undefined,
-                  }
-                : null,
-            },
-            {
-              key: "tactical",
-              label: "战术物品",
-              data: charItem?.tacticalItem?.tacticalItemData
-                ? {
-                    iconUrl: charItem.tacticalItem.tacticalItemData.iconUrl,
-                    name: charItem.tacticalItem.tacticalItemData.name || "",
-                    rarity:
-                      (
-                        charItem.tacticalItem.tacticalItemData.rarity?.key || ""
-                      ).replace("equip_rarity_", "") || "3",
-                  }
-                : null,
-            },
+            eqCard("weapon", "武器", charItem?.weapon?.weaponData?.iconUrl, charItem?.weapon?.weaponData?.name, charItem?.weapon?.weaponData?.rarity?.value, charItem?.weapon?.level, !!charItem?.weapon),
+            eqCard("body", "护甲", charItem?.bodyEquip?.equipData?.iconUrl, charItem?.bodyEquip?.equipData?.name, charItem?.bodyEquip?.equipData?.rarity?.key, charItem?.bodyEquip?.equipData?.level?.value, !!charItem?.bodyEquip?.equipData),
+            eqCard("arm", "护手", charItem?.armEquip?.equipData?.iconUrl, charItem?.armEquip?.equipData?.name, charItem?.armEquip?.equipData?.rarity?.key, charItem?.armEquip?.equipData?.level?.value, !!charItem?.armEquip?.equipData),
+            eqCard("acc1", "配件", charItem?.firstAccessory?.equipData?.iconUrl, charItem?.firstAccessory?.equipData?.name, charItem?.firstAccessory?.equipData?.rarity?.key, charItem?.firstAccessory?.equipData?.level?.value, !!charItem?.firstAccessory?.equipData),
+            eqCard("acc2", "配件", charItem?.secondAccessory?.equipData?.iconUrl, charItem?.secondAccessory?.equipData?.name, charItem?.secondAccessory?.equipData?.rarity?.key, charItem?.secondAccessory?.equipData?.level?.value, !!charItem?.secondAccessory?.equipData),
+            eqCard("tactical", "战术物品", charItem?.tacticalItem?.tacticalItemData?.iconUrl, charItem?.tacticalItem?.tacticalItemData?.name, charItem?.tacticalItem?.tacticalItemData?.rarity?.key, null, !!charItem?.tacticalItem?.tacticalItemData),
           ];
           return (
             <div
@@ -1209,7 +1139,7 @@ export function CharSelectModal({
                   >
                     <div className="h-full p-4 overflow-y-hidden space-y-6">
                       {/* Talent Array + Equipment side by side */}
-                      <div className="flex gap-6">
+                      <div className="flex gap-4">
                         <div className="flex-1 space-y-3 min-w-0">
                           {/* Skills */}
                           <div>
@@ -1557,9 +1487,8 @@ export function CharSelectModal({
                         </div>
 
                         {/* Equipment column */}
-                        <div className="flex flex-col gap-2 w-40 shrink-0 justify-center">
-                          {equipData.map((eq) => {
-                            const d = eq.data;
+                        <div className="flex flex-col gap-1.5 flex-1 min-w-0 justify-center">
+                          {(() => {
                             const rc: Record<string, string> = {
                               "2": "#c1d681",
                               "3": "#33c1fe",
@@ -1567,59 +1496,103 @@ export function CharSelectModal({
                               "5": "#fac800",
                               "6": "#fe7100",
                             };
-                            const lineColor = d
-                              ? rc[d.rarity] || "transparent"
-                              : "transparent";
-                            return (
-                              <div
-                                key={eq.key}
-                                className="flex items-center gap-2"
-                              >
-                                <div className="flex flex-col items-center">
-                                  <div className="w-16 h-16 shrink-0 flex items-center justify-center overflow-hidden text-black/30 font-bold text-3xl">
-                                    {d ? (
-                                      <Img
-                                        src={d.iconUrl}
-                                        alt={d.name}
-                                        className="w-full h-full object-contain"
-                                      />
-                                    ) : (
-                                      <span>✕</span>
-                                    )}
-                                  </div>
-                                  <div
-                                    style={{ borderBottom: "3px solid " + lineColor, width: "100%" }}
-                                  />
-                                </div>
-                                <div className="min-w-0">
-                                  {d ? (
-                                    <>
-                                      <div className="text-[11px] text-black/50 leading-tight">
-                                        {eq.label}
-                                      </div>
-                                      <div className="leading-tight text-sm text-black/80">
-                                        {d.name}
-                                      </div>
-                                      {d.level && (
-                                        <div className="text-[13px] text-black/50">
-                                          {d.level}
-                                        </div>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <>
-                                      <div className="text-[11px] text-black/50 leading-tight">
-                                        {eq.label}
-                                      </div>
-                                      <div className="text-sm text-black/40 leading-tight">
-                                        未装配
-                                      </div>
-                                    </>
-                                  )}
-                                </div>
+
+                            const sectionTitle = (text: string) => (
+                              <div className="flex items-center px-2 w-full" style={{ background: "linear-gradient(to bottom, transparent 8px, #d3d3d3 8px)" }}>
+                                <div className="w-[4px] h-4 bg-[#555] shrink-0 mr-1.5" />
+                                <span className="text-sm font-semibold text-[#444]">{text}</span>
                               </div>
                             );
-                          })}
+
+                            const renderCard = (eq: typeof equipData[number], compact?: boolean, opts?: { showLabel?: boolean }) => {
+                              const lineColor = eq.hasData ? (rc[eq.rarityValue] || "transparent") : "transparent";
+                              const rarityCount = parseInt(eq.rarityValue, 10) || 0;
+                              const imgSize = compact ? "w-14 h-14" : "w-20 h-20";
+                              const svgSize = compact ? 12 : 16;
+                              const nameSize = compact ? "text-xs" : "text-sm";
+                              const levelNumSize = compact ? "text-xl" : "text-2xl";
+                              const levelLabelSize = compact ? "text-[8px]" : "text-[10px]";
+                              return (
+                                <div
+                                  key={eq.key}
+                                  className="relative bg-[#eeeeee] overflow-hidden h-full"
+                                  style={{ borderRadius: 0 }}
+                                >
+                                  {/* Top-left: Level or Label badge */}
+                                  {eq.hasData && opts?.showLabel && (
+                                    <div className="absolute top-0 left-0 z-10 flex items-baseline pt-[3px] pl-[3px]">
+                                      <span className="text-black text-xs leading-tight">{eq.label}</span>
+                                    </div>
+                                  )}
+                                  {eq.hasData && !opts?.showLabel && eq.levelNum !== null && (
+                                    <div className="absolute top-0 left-1 z-10 flex items-baseline px-1"
+                                      style={{ background: "linear-gradient(to bottom, transparent 16px, #d3d3d3 16px)" }}
+                                    >
+                                      <span className={"text-black " + levelNumSize + " leading-tight"}>{eq.levelNum}</span>
+                                      <span className={levelLabelSize + " text-gray-500 ml-0.5 leading-tight"}>LEVEL</span>
+                                      {eq.key === "weapon" && charItem?.weapon?.refineLevel != null && (
+                                        <img
+                                          src={`/assets/icons/potential/potential_${charItem.weapon.refineLevel}.png`}
+                                          alt=""
+                                          className="w-4 h-4 object-contain ml-0.5"
+                                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                                        />
+                                      )}
+                                    </div>
+                                  )}
+                                  {/* Top-right: Equipment image */}
+                                  <div className={"absolute top-0 right-0 z-10 " + imgSize}>
+                                    {eq.hasData && eq.iconUrl ? (
+                                      <Img src={eq.iconUrl} alt={eq.name || ""} className="w-full h-full object-contain" />
+                                    ) : null}
+                                  </div>
+                                  {/* Bottom-left: Name (no SVG stars for tactical) */}
+                                  <div className="absolute bottom-1 left-1 z-10">
+                                    {eq.hasData ? (
+                                      <div className="flex flex-col items-start">
+                                        {!opts?.showLabel && (
+                                          <span className="inline-flex items-center gap-px">
+                                            {Array.from({ length: rarityCount }).map((_, i) => (
+                                              <img key={i} src={RARITY_ICON_URL} alt="" className="inline-block" style={{ width: svgSize, height: svgSize }} />
+                                            ))}
+                                          </span>
+                                        )}
+                                        <span className={nameSize + " text-black/70 leading-tight"}>{eq.name}</span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-[10px] text-black/40 leading-tight">未装配</span>
+                                    )}
+                                  </div>
+                                  {/* Bottom: 3px rarity line inside card */}
+                                  <div className="absolute bottom-0 left-0 right-0" style={{ borderBottom: "3px solid " + lineColor }} />
+                                </div>
+                              );
+                            };
+
+                            const weapon = equipData[0];
+                            const rest = equipData.slice(1);
+
+                            return (
+                              <>
+                                {sectionTitle("武器")}
+                                <div style={{ height: 115 }} className="shrink-0">
+                                  {renderCard(weapon)}
+                                </div>
+                                {sectionTitle("装备")}
+                                <div className="flex gap-1.5">
+                                  <div className="flex flex-col gap-1.5 flex-1">
+                                    <div style={{ height: 111 }}>{renderCard(rest[0])}</div>
+                                    <div style={{ height: 111 }}>{renderCard(rest[1])}</div>
+                                  </div>
+                                  <div className="flex flex-col gap-1.5 flex-1">
+                                    <div style={{ height: 72 }}>{renderCard(rest[2], true)}</div>
+                                    <div style={{ height: 72 }}>{renderCard(rest[3], true)}</div>
+                                    <div style={{ height: 72 }}>{renderCard(rest[4], true, { showLabel: true })}</div>
+                                  </div>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
