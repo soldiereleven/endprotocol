@@ -968,14 +968,16 @@ export function CharSelectModal({
           };
 
           const eqCard = (
-            key: string, label: string,
+            key: string,
+            label: string,
             iconUrl: string | null | undefined,
             name: string | null | undefined,
             rarityKey: string | null | undefined,
             levelVal: any,
             hasData: boolean,
           ) => ({
-            key, label,
+            key,
+            label,
             iconUrl: iconUrl || null,
             name: (name || "").trim() || null,
             rarityValue: (rarityKey || "").replace("equip_rarity_", "") || "3",
@@ -984,12 +986,60 @@ export function CharSelectModal({
           });
 
           const equipData = [
-            eqCard("weapon", "武器", charItem?.weapon?.weaponData?.iconUrl, charItem?.weapon?.weaponData?.name, charItem?.weapon?.weaponData?.rarity?.value, charItem?.weapon?.level, !!charItem?.weapon),
-            eqCard("body", "护甲", charItem?.bodyEquip?.equipData?.iconUrl, charItem?.bodyEquip?.equipData?.name, charItem?.bodyEquip?.equipData?.rarity?.key, charItem?.bodyEquip?.equipData?.level?.value, !!charItem?.bodyEquip?.equipData),
-            eqCard("arm", "护手", charItem?.armEquip?.equipData?.iconUrl, charItem?.armEquip?.equipData?.name, charItem?.armEquip?.equipData?.rarity?.key, charItem?.armEquip?.equipData?.level?.value, !!charItem?.armEquip?.equipData),
-            eqCard("acc1", "配件", charItem?.firstAccessory?.equipData?.iconUrl, charItem?.firstAccessory?.equipData?.name, charItem?.firstAccessory?.equipData?.rarity?.key, charItem?.firstAccessory?.equipData?.level?.value, !!charItem?.firstAccessory?.equipData),
-            eqCard("acc2", "配件", charItem?.secondAccessory?.equipData?.iconUrl, charItem?.secondAccessory?.equipData?.name, charItem?.secondAccessory?.equipData?.rarity?.key, charItem?.secondAccessory?.equipData?.level?.value, !!charItem?.secondAccessory?.equipData),
-            eqCard("tactical", "战术物品", charItem?.tacticalItem?.tacticalItemData?.iconUrl, charItem?.tacticalItem?.tacticalItemData?.name, charItem?.tacticalItem?.tacticalItemData?.rarity?.key, null, !!charItem?.tacticalItem?.tacticalItemData),
+            eqCard(
+              "weapon",
+              "武器",
+              charItem?.weapon?.weaponData?.iconUrl,
+              charItem?.weapon?.weaponData?.name,
+              charItem?.weapon?.weaponData?.rarity?.value,
+              charItem?.weapon?.level,
+              !!charItem?.weapon,
+            ),
+            eqCard(
+              "body",
+              "护甲",
+              charItem?.bodyEquip?.equipData?.iconUrl,
+              charItem?.bodyEquip?.equipData?.name,
+              charItem?.bodyEquip?.equipData?.rarity?.key,
+              charItem?.bodyEquip?.equipData?.level?.value,
+              !!charItem?.bodyEquip?.equipData,
+            ),
+            eqCard(
+              "arm",
+              "护手",
+              charItem?.armEquip?.equipData?.iconUrl,
+              charItem?.armEquip?.equipData?.name,
+              charItem?.armEquip?.equipData?.rarity?.key,
+              charItem?.armEquip?.equipData?.level?.value,
+              !!charItem?.armEquip?.equipData,
+            ),
+            eqCard(
+              "acc1",
+              "配件",
+              charItem?.firstAccessory?.equipData?.iconUrl,
+              charItem?.firstAccessory?.equipData?.name,
+              charItem?.firstAccessory?.equipData?.rarity?.key,
+              charItem?.firstAccessory?.equipData?.level?.value,
+              !!charItem?.firstAccessory?.equipData,
+            ),
+            eqCard(
+              "acc2",
+              "配件",
+              charItem?.secondAccessory?.equipData?.iconUrl,
+              charItem?.secondAccessory?.equipData?.name,
+              charItem?.secondAccessory?.equipData?.rarity?.key,
+              charItem?.secondAccessory?.equipData?.level?.value,
+              !!charItem?.secondAccessory?.equipData,
+            ),
+            eqCard(
+              "tactical",
+              "战术物品",
+              charItem?.tacticalItem?.tacticalItemData?.iconUrl,
+              charItem?.tacticalItem?.tacticalItemData?.name,
+              charItem?.tacticalItem?.tacticalItemData?.rarity?.key,
+              null,
+              !!charItem?.tacticalItem?.tacticalItemData,
+            ),
           ];
           return (
             <div
@@ -1052,7 +1102,8 @@ export function CharSelectModal({
                       minWidth: 0,
                       flexShrink: 0,
                       overflow: "hidden",
-                      backgroundImage: "url(/assets/illustration_background.png)",
+                      backgroundImage:
+                        "url(/assets/illustration_background.png)",
                       backgroundSize: "cover",
                       backgroundPosition: "center",
                       backgroundRepeat: "no-repeat",
@@ -1081,7 +1132,9 @@ export function CharSelectModal({
                               title={char.profession.value}
                               className="w-5 h-5 object-contain drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
                               onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+                                (
+                                  e.currentTarget as HTMLImageElement
+                                ).style.visibility = "hidden";
                               }}
                             />
                             <img
@@ -1090,7 +1143,9 @@ export function CharSelectModal({
                               title={char.property.value}
                               className="w-5 h-5 object-contain drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
                               onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+                                (
+                                  e.currentTarget as HTMLImageElement
+                                ).style.visibility = "hidden";
                               }}
                             />
                           </div>
@@ -1104,15 +1159,21 @@ export function CharSelectModal({
                           <div className="flex items-center">
                             {renderRarityIcons(char.rarity.value, 11)}
                           </div>
-                          <span className="text-[11px] text-black/60">{char.weaponType.value}</span>
+                          <span className="text-[11px] text-black/60">
+                            {char.weaponType.value}
+                          </span>
                         </div>
 
                         {/* Right: level + evolve phase */}
                         <div className="flex items-center gap-1">
                           {charItem?.level != null && (
                             <div className="flex items-baseline gap-0.5">
-                              <span className="text-[10px] text-gray-400 font-semibold">LEVEL</span>
-                              <span className="text-[44px] font-thin text-[#dddddd] leading-none">{charItem.level}</span>
+                              <span className="text-[10px] text-gray-400 font-semibold">
+                                LEVEL
+                              </span>
+                              <span className="text-[44px] font-thin text-[#dddddd] leading-none">
+                                {charItem.level}
+                              </span>
                             </div>
                           )}
                           {charItem?.evolvePhase != null && (
@@ -1144,9 +1205,18 @@ export function CharSelectModal({
                           {/* Skills */}
                           <div>
                             <div className="mb-2">
-                              <div className="relative flex items-center px-2" style={{ background: "linear-gradient(to bottom, transparent 8px, #d3d3d3 8px)", width: "320px" }}>
+                              <div
+                                className="relative flex items-center px-2"
+                                style={{
+                                  background:
+                                    "linear-gradient(to bottom, transparent 8px, #d3d3d3 8px)",
+                                  width: "320px",
+                                }}
+                              >
                                 <div className="w-[4px] h-4 bg-[#555] shrink-0 mr-1.5" />
-                                <span className="text-sm font-semibold text-[#444]">技能</span>
+                                <span className="text-sm font-semibold text-[#444]">
+                                  技能
+                                </span>
                               </div>
                             </div>
                             <div className="flex flex-wrap gap-5">
@@ -1168,7 +1238,8 @@ export function CharSelectModal({
                                         className="absolute inset-0 rounded-full"
                                         style={{
                                           background: `conic-gradient(from 145deg, transparent 0deg 70deg, ${SKILL_BG_CIRCLE} 70deg 360deg)`,
-                                          WebkitMask: "radial-gradient(circle at 50% 50%, transparent 26px, black 26px)",
+                                          WebkitMask:
+                                            "radial-gradient(circle at 50% 50%, transparent 26px, black 26px)",
                                           mask: "radial-gradient(circle at 50% 50%, transparent 26px, black 26px)",
                                         }}
                                       />
@@ -1192,13 +1263,17 @@ export function CharSelectModal({
                                         <div
                                           className="absolute rounded-full"
                                           style={
-                                            skill.type.key === "skill_type_ultimate_skill"
+                                            skill.type.key ===
+                                            "skill_type_ultimate_skill"
                                               ? {
                                                   top: 1,
                                                   right: 1,
                                                   bottom: 1,
                                                   left: 1,
-                                                  backgroundColor: SKILL_BG_COLORS[skill.property.key] || "#5e5e5e",
+                                                  backgroundColor:
+                                                    SKILL_BG_COLORS[
+                                                      skill.property.key
+                                                    ] || "#5e5e5e",
                                                 }
                                               : {
                                                   top: 1,
@@ -1240,9 +1315,18 @@ export function CharSelectModal({
                           {/* Ability Talents */}
                           <div>
                             <div className="mb-2">
-                              <div className="relative flex items-center px-2" style={{ background: "linear-gradient(to bottom, transparent 8px, #d3d3d3 8px)", width: "320px" }}>
+                              <div
+                                className="relative flex items-center px-2"
+                                style={{
+                                  background:
+                                    "linear-gradient(to bottom, transparent 8px, #d3d3d3 8px)",
+                                  width: "320px",
+                                }}
+                              >
                                 <div className="w-[4px] h-4 bg-[#555] shrink-0 mr-1.5" />
-                                <span className="text-sm font-semibold text-[#444]">天赋阵列</span>
+                                <span className="text-sm font-semibold text-[#444]">
+                                  天赋阵列
+                                </span>
                               </div>
                             </div>
                             <div className="flex flex-wrap gap-5">
@@ -1331,10 +1415,11 @@ export function CharSelectModal({
                                             className={`${btnBase(true, isSel, unlocked)} relative`}
                                             style={{
                                               backgroundColor: unlocked
-                                          ? "#ffd806"
-                                          : "#404040",
+                                                ? "#ffd806"
+                                                : "#404040",
                                               border: "none",
-                                              boxShadow: "inset 0 0 0 2px #a4a4a4",
+                                              boxShadow:
+                                                "inset 0 0 0 2px #a4a4a4",
                                             }}
                                             title={talent.name}
                                           >
@@ -1416,9 +1501,18 @@ export function CharSelectModal({
                           {potentialData && (
                             <div>
                               <div className="mb-2">
-                                <div className="relative flex items-center px-2" style={{ background: "linear-gradient(to bottom, transparent 8px, #d3d3d3 8px)", width: "320px" }}>
+                                <div
+                                  className="relative flex items-center px-2"
+                                  style={{
+                                    background:
+                                      "linear-gradient(to bottom, transparent 8px, #d3d3d3 8px)",
+                                    width: "320px",
+                                  }}
+                                >
                                   <div className="w-[4px] h-4 bg-[#555] shrink-0 mr-1.5" />
-                                  <span className="text-sm font-semibold text-[#444]">潜能</span>
+                                  <span className="text-sm font-semibold text-[#444]">
+                                    潜能
+                                  </span>
                                 </div>
                               </div>
                               <div className="flex flex-wrap gap-3">
@@ -1498,20 +1592,41 @@ export function CharSelectModal({
                             };
 
                             const sectionTitle = (text: string) => (
-                              <div className="flex items-center px-2 w-full" style={{ background: "linear-gradient(to bottom, transparent 8px, #d3d3d3 8px)" }}>
+                              <div
+                                className="flex items-center px-2 w-full"
+                                style={{
+                                  background:
+                                    "linear-gradient(to bottom, transparent 8px, #d3d3d3 8px)",
+                                }}
+                              >
                                 <div className="w-[4px] h-4 bg-[#555] shrink-0 mr-1.5" />
-                                <span className="text-sm font-semibold text-[#444]">{text}</span>
+                                <span className="text-sm font-semibold text-[#444]">
+                                  {text}
+                                </span>
                               </div>
                             );
 
-                            const renderCard = (eq: typeof equipData[number], compact?: boolean, opts?: { showLabel?: boolean }) => {
-                              const lineColor = eq.hasData ? (rc[eq.rarityValue] || "transparent") : "transparent";
-                              const rarityCount = parseInt(eq.rarityValue, 10) || 0;
-                              const imgSize = compact ? "w-14 h-14" : "w-20 h-20";
+                            const renderCard = (
+                              eq: (typeof equipData)[number],
+                              compact?: boolean,
+                              opts?: { showLabel?: boolean },
+                            ) => {
+                              const lineColor = eq.hasData
+                                ? rc[eq.rarityValue] || "transparent"
+                                : "transparent";
+                              const rarityCount =
+                                parseInt(eq.rarityValue, 10) || 0;
+                              const imgSize = compact
+                                ? "w-14 h-14"
+                                : "w-20 h-20";
                               const svgSize = compact ? 12 : 16;
                               const nameSize = compact ? "text-xs" : "text-sm";
-                              const levelNumSize = compact ? "text-xl" : "text-2xl";
-                              const levelLabelSize = compact ? "text-[8px]" : "text-[10px]";
+                              const levelNumSize = compact
+                                ? "text-xl"
+                                : "text-2xl";
+                              const levelLabelSize = compact
+                                ? "text-[8px]"
+                                : "text-[10px]";
                               return (
                                 <div
                                   key={eq.key}
@@ -1521,29 +1636,65 @@ export function CharSelectModal({
                                   {/* Top-left: Level or Label badge */}
                                   {eq.hasData && opts?.showLabel && (
                                     <div className="absolute top-0 left-0 z-10 flex items-baseline pt-[3px] pl-[3px]">
-                                      <span className="text-black text-xs leading-tight">{eq.label}</span>
+                                      <span className="text-black text-xs leading-tight">
+                                        {eq.label}
+                                      </span>
                                     </div>
                                   )}
-                                  {eq.hasData && !opts?.showLabel && eq.levelNum !== null && (
-                                    <div className="absolute top-0 left-1 z-10 flex items-baseline px-1"
-                                      style={{ background: "linear-gradient(to bottom, transparent 16px, #d3d3d3 16px)" }}
-                                    >
-                                      <span className={"text-black " + levelNumSize + " leading-tight"}>{eq.levelNum}</span>
-                                      <span className={levelLabelSize + " text-gray-500 ml-0.5 leading-tight"}>LEVEL</span>
-                                      {eq.key === "weapon" && charItem?.weapon?.refineLevel != null && (
-                                        <img
-                                          src={`/assets/icons/potential/potential_${charItem.weapon.refineLevel}.png`}
-                                          alt=""
-                                          className="w-4 h-4 object-contain ml-0.5"
-                                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                                        />
-                                      )}
-                                    </div>
-                                  )}
+                                  {eq.hasData &&
+                                    !opts?.showLabel &&
+                                    eq.levelNum !== null && (
+                                      <div
+                                        className="absolute top-0 left-1 z-10 flex items-baseline px-1"
+                                        style={{
+                                          background: `linear-gradient(to bottom, transparent ${eq.key === "weapon" ? "36px" : "16px"}, #d3d3d3 ${eq.key === "weapon" ? "36px" : "16px"})`,
+                                        }}
+                                      >
+                                        <span
+                                          className={
+                                            "text-black " +
+                                            levelNumSize +
+                                            " leading-tight"
+                                          }
+                                        >
+                                          {eq.levelNum}
+                                        </span>
+                                        <span
+                                          className={
+                                            levelLabelSize +
+                                            " text-gray-500 ml-0.5 leading-tight"
+                                          }
+                                        >
+                                          LEVEL
+                                        </span>
+                                        {eq.key === "weapon" &&
+                                          charItem?.weapon?.refineLevel !=
+                                            null && (
+                                            <img
+                                              src={`/assets/icons/potential/potential_${charItem.weapon.refineLevel}.png`}
+                                              alt=""
+                                              className="w-10 h-10 object-contain ml-[15px] translate-y-[17px]"
+                                              onError={(e) => {
+                                                (
+                                                  e.currentTarget as HTMLImageElement
+                                                ).style.display = "none";
+                                              }}
+                                            />
+                                          )}
+                                      </div>
+                                    )}
                                   {/* Top-right: Equipment image */}
-                                  <div className={"absolute top-0 right-0 z-10 " + imgSize}>
+                                  <div
+                                    className={
+                                      "absolute top-0 right-0 z-10 " + imgSize
+                                    }
+                                  >
                                     {eq.hasData && eq.iconUrl ? (
-                                      <Img src={eq.iconUrl} alt={eq.name || ""} className="w-full h-full object-contain" />
+                                      <Img
+                                        src={eq.iconUrl}
+                                        alt={eq.name || ""}
+                                        className="w-full h-full object-contain"
+                                      />
                                     ) : null}
                                   </div>
                                   {/* Bottom-left: Name (no SVG stars for tactical) */}
@@ -1552,19 +1703,44 @@ export function CharSelectModal({
                                       <div className="flex flex-col items-start">
                                         {!opts?.showLabel && (
                                           <span className="inline-flex items-center gap-px">
-                                            {Array.from({ length: rarityCount }).map((_, i) => (
-                                              <img key={i} src={RARITY_ICON_URL} alt="" className="inline-block" style={{ width: svgSize, height: svgSize }} />
+                                            {Array.from({
+                                              length: rarityCount,
+                                            }).map((_, i) => (
+                                              <img
+                                                key={i}
+                                                src={RARITY_ICON_URL}
+                                                alt=""
+                                                className="inline-block"
+                                                style={{
+                                                  width: svgSize,
+                                                  height: svgSize,
+                                                }}
+                                              />
                                             ))}
                                           </span>
                                         )}
-                                        <span className={nameSize + " text-black/70 leading-tight"}>{eq.name}</span>
+                                        <span
+                                          className={
+                                            nameSize +
+                                            " text-black/70 leading-tight"
+                                          }
+                                        >
+                                          {eq.name}
+                                        </span>
                                       </div>
                                     ) : (
-                                      <span className="text-[10px] text-black/40 leading-tight">未装配</span>
+                                      <span className="text-[10px] text-black/40 leading-tight">
+                                        未装配
+                                      </span>
                                     )}
                                   </div>
                                   {/* Bottom: 3px rarity line inside card */}
-                                  <div className="absolute bottom-0 left-0 right-0" style={{ borderBottom: "3px solid " + lineColor }} />
+                                  <div
+                                    className="absolute bottom-0 left-0 right-0"
+                                    style={{
+                                      borderBottom: "3px solid " + lineColor,
+                                    }}
+                                  />
                                 </div>
                               );
                             };
@@ -1575,19 +1751,34 @@ export function CharSelectModal({
                             return (
                               <>
                                 {sectionTitle("武器")}
-                                <div style={{ height: 115 }} className="shrink-0">
+                                <div
+                                  style={{ height: 115 }}
+                                  className="shrink-0"
+                                >
                                   {renderCard(weapon)}
                                 </div>
                                 {sectionTitle("装备")}
                                 <div className="flex gap-1.5">
                                   <div className="flex flex-col gap-1.5 flex-1">
-                                    <div style={{ height: 111 }}>{renderCard(rest[0])}</div>
-                                    <div style={{ height: 111 }}>{renderCard(rest[1])}</div>
+                                    <div style={{ height: 111 }}>
+                                      {renderCard(rest[0])}
+                                    </div>
+                                    <div style={{ height: 111 }}>
+                                      {renderCard(rest[1])}
+                                    </div>
                                   </div>
                                   <div className="flex flex-col gap-1.5 flex-1">
-                                    <div style={{ height: 72 }}>{renderCard(rest[2], true)}</div>
-                                    <div style={{ height: 72 }}>{renderCard(rest[3], true)}</div>
-                                    <div style={{ height: 72 }}>{renderCard(rest[4], true, { showLabel: true })}</div>
+                                    <div style={{ height: 72 }}>
+                                      {renderCard(rest[2], true)}
+                                    </div>
+                                    <div style={{ height: 72 }}>
+                                      {renderCard(rest[3], true)}
+                                    </div>
+                                    <div style={{ height: 72 }}>
+                                      {renderCard(rest[4], true, {
+                                        showLabel: true,
+                                      })}
+                                    </div>
                                   </div>
                                 </div>
                               </>
@@ -1775,18 +1966,24 @@ export function CharSelectModal({
                                   ) : selectedItem._type === "skill" ? (
                                     <div
                                       className="relative w-16 h-16 rounded-full"
-                                      style={{ backgroundColor: SKILL_BG_CIRCLE }}
+                                      style={{
+                                        backgroundColor: SKILL_BG_CIRCLE,
+                                      }}
                                     >
                                       <div
                                         className="absolute rounded-full"
                                         style={
-                                          selectedItem.type?.key === "skill_type_ultimate_skill"
+                                          selectedItem.type?.key ===
+                                          "skill_type_ultimate_skill"
                                             ? {
                                                 top: 1,
                                                 right: 1,
                                                 bottom: 1,
                                                 left: 1,
-                                                backgroundColor: SKILL_BG_COLORS[selectedItem.property?.key] || "#5e5e5e",
+                                                backgroundColor:
+                                                  SKILL_BG_COLORS[
+                                                    selectedItem.property?.key
+                                                  ] || "#5e5e5e",
                                               }
                                             : {
                                                 top: 1,
@@ -1802,7 +1999,8 @@ export function CharSelectModal({
                                         alt={selectedItem.name}
                                         className="relative z-10 w-full h-full object-contain p-1.5 rounded-full"
                                         style={{
-                                          boxShadow: "0 0 14px rgba(0,0,0,0.35)",
+                                          boxShadow:
+                                            "0 0 14px rgba(0,0,0,0.35)",
                                         }}
                                       />
                                     </div>
@@ -2192,9 +2390,11 @@ export function CharSelectModal({
                       <div
                         className="shrink-0"
                         style={{
-                          borderBottom: "3px solid " + rarityLineColor(
-                            getCharById(selectingCharId)?.rarity.value || "3",
-                          ),
+                          borderBottom:
+                            "3px solid " +
+                            rarityLineColor(
+                              getCharById(selectingCharId)?.rarity.value || "3",
+                            ),
                           width: "100%",
                         }}
                       />
@@ -2413,9 +2613,9 @@ export function CharSelectModal({
                                 <div
                                   className="shrink-0"
                                   style={{
-                                    borderBottom: "3px solid " + rarityLineColor(
-                                      currentChar.rarity.value,
-                                    ),
+                                    borderBottom:
+                                      "3px solid " +
+                                      rarityLineColor(currentChar.rarity.value),
                                     width: "100%",
                                   }}
                                 />
