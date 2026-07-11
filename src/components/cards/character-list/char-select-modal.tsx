@@ -6,7 +6,7 @@ import {
   useMemo,
   useCallback,
 } from "react";
-import { Button, Alert, ProgressCircle, Meter, Chip } from "@heroui/react";
+import { Button, Alert, ProgressCircle } from "@heroui/react";
 import {
   CustomModal,
   CustomModalHeader,
@@ -748,6 +748,8 @@ export function CharSelectModal({
       pushEquipIcon(eq, "equipData");
     }
     pushEquipIcon(item.tacticalItem, "tacticalItemData");
+    const gemIcon = item.weapon?.gem?.gemData?.icon;
+    if (gemIcon) paths.push(gemIcon);
     return paths;
   }, [viewMode, detailCharId, charDetail.chars]);
 
@@ -1041,7 +1043,11 @@ export function CharSelectModal({
               !!charItem?.tacticalItem?.tacticalItemData,
             ),
           ];
-          return (
+
+          const gem = charItem?.weapon?.gem?.gemData;
+          const gemRarity = charItem?.weapon?.gem?.gemData?.templateId?.replace("item_gem_rarity_", "") || null;
+
+            return (
             <div
               className="h-full w-full relative overflow-hidden rounded-2xl"
               style={{ border: "none" }}
@@ -1745,17 +1751,49 @@ export function CharSelectModal({
                               );
                             };
 
+                            const renderGemCard = () => {
+                              if (!gem?.icon && !gem?.name) return null;
+                              const lineColor = gemRarity ? rc[gemRarity] || "transparent" : "transparent";
+                              return (
+                                <div
+                                  className="relative bg-[#eeeeee] overflow-hidden h-full"
+                                  style={{ borderRadius: 0 }}
+                                >
+                                  {gem.icon && (
+                                    <div className="absolute top-0 right-0 z-10 w-20 h-20">
+                                      <Img
+                                        src={gem.icon}
+                                        alt={gem.name || ""}
+                                        className="w-full h-full object-contain"
+                                      />
+                                    </div>
+                                  )}
+                                  <div className="absolute bottom-1 left-1 z-10">
+                                    <span className="text-sm text-black/70 leading-tight">
+                                      {gem.name || ""}
+                                    </span>
+                                  </div>
+                                  <div
+                                    className="absolute bottom-0 left-0 right-0"
+                                    style={{ borderBottom: "3px solid " + lineColor }}
+                                  />
+                                </div>
+                              );
+                            };
+
                             const weapon = equipData[0];
                             const rest = equipData.slice(1);
 
                             return (
                               <>
                                 {sectionTitle("武器")}
-                                <div
-                                  style={{ height: 115 }}
-                                  className="shrink-0"
-                                >
-                                  {renderCard(weapon)}
+                                <div className="flex gap-1.5" style={{ height: 115 }}>
+                                  <div className="shrink-0" style={{ width: "55%" }}>
+                                    {renderCard(weapon)}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    {renderGemCard()}
+                                  </div>
                                 </div>
                                 {sectionTitle("装备")}
                                 <div className="flex gap-1.5">

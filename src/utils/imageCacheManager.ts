@@ -69,8 +69,34 @@ class ImageCacheManager {
 
   async load(path: string): Promise<string> {
     if (!path) return "";
-    if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("blob:") || path.startsWith("data:")) {
+    if (path.startsWith("blob:") || path.startsWith("data:")) {
       return path;
+    }
+
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      const hit = this.cache.get(path);
+      if (hit) {
+        this.cancelEviction(path);
+        this.touch(path);
+        return hit;
+      }
+      const inflight = this.loading.get(path);
+      if (inflight) return inflight;
+      const promise = invoke<number[]>("download_image_url", { url: path })
+        .then((bytes) => {
+          const blob = new Blob([new Uint8Array(bytes)]);
+          const url = URL.createObjectURL(blob);
+          const byteSize = bytes.length;
+          this.evictFor(byteSize);
+          this.cache.set(path, url);
+          this.sizes.set(path, byteSize);
+          this.totalSizeBytes += byteSize;
+          this.touch(path);
+          return url;
+        })
+        .finally(() => this.loading.delete(path));
+      this.loading.set(path, promise);
+      return promise;
     }
 
     const hit = this.cache.get(path);
