@@ -358,12 +358,14 @@ impl CharDetailService {
                 }
 
                 // Process equipment icon URLs
-                Self::cache_equip_icon(&image_cache, &mut char.weapon, "weaponData", char_name).await;
-                Self::cache_equip_icon(&image_cache, &mut char.body_equip, "equipData", char_name).await;
-                Self::cache_equip_icon(&image_cache, &mut char.arm_equip, "equipData", char_name).await;
-                Self::cache_equip_icon(&image_cache, &mut char.first_accessory, "equipData", char_name).await;
-                Self::cache_equip_icon(&image_cache, &mut char.second_accessory, "equipData", char_name).await;
-                Self::cache_equip_icon(&image_cache, &mut char.tactical_item, "tacticalItemData", char_name).await;
+                Self::cache_equip_icon(&image_cache, &mut char.weapon, "weaponData", char_name, ImageType::WeaponIcon).await;
+                Self::cache_equip_icon(&image_cache, &mut char.body_equip, "equipData", char_name, ImageType::EquipIcon).await;
+                Self::cache_equip_icon(&image_cache, &mut char.arm_equip, "equipData", char_name, ImageType::EquipIcon).await;
+                Self::cache_equip_icon(&image_cache, &mut char.first_accessory, "equipData", char_name, ImageType::EquipIcon).await;
+                Self::cache_equip_icon(&image_cache, &mut char.second_accessory, "equipData", char_name, ImageType::EquipIcon).await;
+                Self::cache_equip_icon(&image_cache, &mut char.tactical_item, "tacticalItemData", char_name, ImageType::EquipIcon).await;
+                // Cache gem icon from weapon
+                Self::cache_gem_icon(&image_cache, &mut char.weapon, char_name).await;
             }
         }
 
@@ -377,6 +379,7 @@ impl CharDetailService {
         equip: &mut Option<serde_json::Value>,
         data_key: &str,
         char_name: &str,
+        image_type: ImageType,
     ) {
         if let Some(ref mut value) = equip {
             if let Some(obj) = value.as_object_mut() {
@@ -386,7 +389,7 @@ impl CharDetailService {
                             if !url.is_empty() && !url.starts_with("http://asset.localhost") {
                                 let url_clone = url.clone();
                                 match image_cache
-                                    .get_or_download_image(&url_clone, ImageType::SkillIcon)
+                                    .get_or_download_image(&url_clone, image_type)
                                     .await
                                 {
                                     Ok(p) => {
@@ -401,6 +404,49 @@ impl CharDetailService {
                                             char_name,
                                             e
                                         );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Cache gem icon from weapon (nested inside weapon.gem.gemData.icon)
+    async fn cache_gem_icon(
+        image_cache: &ImageCacheService,
+        weapon: &mut Option<serde_json::Value>,
+        char_name: &str,
+    ) {
+        if let Some(ref mut value) = weapon {
+            if let Some(obj) = value.as_object_mut() {
+                if let Some(gem) = obj.get_mut("gem") {
+                    if let Some(gem_obj) = gem.as_object_mut() {
+                        if let Some(gem_data) = gem_obj.get_mut("gemData") {
+                            if let Some(gem_data_obj) = gem_data.as_object_mut() {
+                                if let Some(serde_json::Value::String(url)) = gem_data_obj.get("icon") {
+                                    if !url.is_empty() && !url.starts_with("http://asset.localhost") {
+                                        let url_clone = url.clone();
+                                        match image_cache
+                                            .get_or_download_image(&url_clone, ImageType::EquipIcon)
+                                            .await
+                                        {
+                                            Ok(p) => {
+                                                gem_data_obj.insert(
+                                                    "icon".to_string(),
+                                                    serde_json::Value::String(p),
+                                                );
+                                            }
+                                            Err(e) => {
+                                                log_warn!(
+                                                    "Failed to cache gem icon for {}: {}",
+                                                    char_name,
+                                                    e
+                                                );
+                                            }
+                                        }
                                     }
                                 }
                             }
