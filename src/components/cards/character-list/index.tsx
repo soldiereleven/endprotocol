@@ -225,8 +225,7 @@ export default function CharacterListCard({
             </span>
           </div>
           <div
-            className="h-[3px] w-full"
-            style={{ backgroundColor: rarityLineColor(data.rarity.value) }}
+            style={{ borderBottom: "3px solid " + rarityLineColor(data.rarity.value), width: "100%" }}
           />
         </div>
       </div>

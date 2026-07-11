@@ -288,8 +288,7 @@ function OperatorCard({
           </span>
         </div>
         <div
-          className="h-[3px] w-full"
-          style={{ backgroundColor: lineColor }}
+          style={{ borderBottom: "3px solid " + lineColor, width: "100%" }}
         />
       </div>
     </div>
@@ -1211,9 +1210,15 @@ export function CharSelectModal({
                     <div className="h-full p-4 overflow-y-hidden space-y-6">
                       {/* Talent Array + Equipment side by side */}
                       <div className="flex gap-6">
-                        <div className="flex-1 space-y-6 min-w-0">
+                        <div className="flex-1 space-y-3 min-w-0">
                           {/* Skills */}
                           <div>
+                            <div className="mb-2">
+                              <div className="relative flex items-center px-2" style={{ background: "linear-gradient(to bottom, transparent 8px, #d3d3d3 8px)", width: "320px" }}>
+                                <div className="w-[4px] h-4 bg-[#555] shrink-0 mr-1.5" />
+                                <span className="text-sm font-semibold text-[#444]">技能</span>
+                              </div>
+                            </div>
                             <div className="flex flex-wrap gap-5">
                               {char.skills.map((skill) => {
                                 const isSel =
@@ -1300,8 +1305,16 @@ export function CharSelectModal({
                             </div>
                           </div>
 
+                          <hr className="border-t border-gray-300/30 my-1" />
+
                           {/* Ability Talents */}
                           <div>
+                            <div className="mb-2">
+                              <div className="relative flex items-center px-2" style={{ background: "linear-gradient(to bottom, transparent 8px, #d3d3d3 8px)", width: "320px" }}>
+                                <div className="w-[4px] h-4 bg-[#555] shrink-0 mr-1.5" />
+                                <span className="text-sm font-semibold text-[#444]">天赋阵列</span>
+                              </div>
+                            </div>
                             <div className="flex flex-wrap gap-5">
                               {[...char.abilityTalents]
                                 .sort((a, b) => {
@@ -1472,6 +1485,12 @@ export function CharSelectModal({
                           {/* Potential */}
                           {potentialData && (
                             <div>
+                              <div className="mb-2">
+                                <div className="relative flex items-center px-2" style={{ background: "linear-gradient(to bottom, transparent 8px, #d3d3d3 8px)", width: "320px" }}>
+                                  <div className="w-[4px] h-4 bg-[#555] shrink-0 mr-1.5" />
+                                  <span className="text-sm font-semibold text-[#444]">潜能</span>
+                                </div>
+                              </div>
                               <div className="flex flex-wrap gap-3">
                                 {potentialData.map((p: any, i: number) => {
                                   const isSel =
@@ -1491,8 +1510,11 @@ export function CharSelectModal({
                                       className={btnBase(true, isSel, unlocked)}
                                       style={{
                                         backgroundColor: unlocked
-                                          ? "#e9d72c"
+                                          ? "transparent"
                                           : "#404040",
+                                        borderColor: unlocked
+                                          ? "transparent"
+                                          : undefined,
                                       }}
                                       title={`潜能 ${p.level}`}
                                     >
@@ -1539,10 +1561,11 @@ export function CharSelectModal({
                           {equipData.map((eq) => {
                             const d = eq.data;
                             const rc: Record<string, string> = {
-                              "3": "#3b82f6",
-                              "4": "#a855f7",
-                              "5": "#ea580c",
-                              "6": "#dc2626",
+                              "2": "#c1d681",
+                              "3": "#33c1fe",
+                              "4": "#b380ff",
+                              "5": "#fac800",
+                              "6": "#fe7100",
                             };
                             const lineColor = d
                               ? rc[d.rarity] || "transparent"
@@ -1565,8 +1588,7 @@ export function CharSelectModal({
                                     )}
                                   </div>
                                   <div
-                                    className="h-[3px] w-full rounded-full"
-                                    style={{ backgroundColor: lineColor }}
+                                    style={{ borderBottom: "3px solid " + lineColor, width: "100%" }}
                                   />
                                 </div>
                                 <div className="min-w-0">
@@ -2195,11 +2217,12 @@ export function CharSelectModal({
                         className="w-16 h-16 rounded-t-lg object-cover"
                       />
                       <div
-                        className="w-full h-[3px] shrink-0 rounded-b-lg"
+                        className="shrink-0"
                         style={{
-                          backgroundColor: rarityLineColor(
+                          borderBottom: "3px solid " + rarityLineColor(
                             getCharById(selectingCharId)?.rarity.value || "3",
                           ),
+                          width: "100%",
                         }}
                       />
                     </div>
@@ -2415,11 +2438,12 @@ export function CharSelectModal({
                                   className="w-16 h-20 rounded-t-lg object-cover"
                                 />
                                 <div
-                                  className="w-full h-[3px] shrink-0 rounded-b-lg"
+                                  className="shrink-0"
                                   style={{
-                                    backgroundColor: rarityLineColor(
+                                    borderBottom: "3px solid " + rarityLineColor(
                                       currentChar.rarity.value,
                                     ),
+                                    width: "100%",
                                   }}
                                 />
                               </div>
