@@ -2019,84 +2019,33 @@ export function CharSelectModal({
                                     <h4 className="font-semibold text-lg text-[#222222]">
                                       {selectedItem.name}
                                     </h4>
-                                    {"type" in selectedItem &&
-                                      selectedItem.type && (
-                                        <p className="text-[#222222] text-[15px]">
-                                          {selectedItem.type.value}
-                                          {"property" in selectedItem &&
-                                            selectedItem.property && (
-                                              <>
-                                                {" "}
-                                                • {selectedItem.property.value}
-                                              </>
-                                            )}
-                                          {selectedItem._type === "skill" &&
-                                            sel?.id &&
-                                            charItem?.userSkills?.[sel.id] && (
-                                              <>
-                                                {" "}
-                                                • Lv.
-                                                {
-                                                  charItem.userSkills[sel.id]
-                                                    .level
-                                                }
-                                              </>
-                                            )}
-                                        </p>
-                                      )}
+                                    {selectedItem._type === "skill" && (
+                                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                                        {"type" in selectedItem && selectedItem.type && (
+                                          <span className="inline-flex items-center bg-[#999999] text-white text-sm leading-none px-3 py-1.5 rounded-md font-medium">
+                                            {selectedItem.type.value}
+                                          </span>
+                                        )}
+                                        {sel?.id && charItem?.userSkills?.[sel.id] && (() => {
+                                          const sl = charItem.userSkills[sel.id].level;
+                                          return (
+                                            <span className="inline-flex items-center gap-1 bg-[#999999] text-white text-sm leading-none px-3 py-1.5 rounded-md font-medium">
+                                              {sl >= 10 ? (
+                                                <img
+                                                  src={`/assets/icons/specialization/rank_${sl >= 12 ? 12 : sl}.png`}
+                                                  alt=""
+                                                  className="h-[14px] w-auto object-contain"
+                                                />
+                                              ) : (
+                                                <span>RANK {sl}</span>
+                                              )}
+                                            </span>
+                                          );
+                                        })()}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
-
-                                {isSkill &&
-                                  (() => {
-                                    const progress = Math.min(
-                                      Math.round(
-                                        (skillLevel / maxSkillLevel) * 100,
-                                      ),
-                                      100,
-                                    );
-                                    return (
-                                      <div className="mb-5">
-                                        <div className="flex items-center justify-between mb-1.5">
-                                          <span className="text-[#222222] text-xs">
-                                            技能等级
-                                          </span>
-                                          <span className="flex items-center gap-2">
-                                            <span className="text-[#222222] text-sm font-medium">
-                                              Lv.{skillLevel} / {maxSkillLevel}
-                                            </span>
-                                            {isMaxed && (
-                                              <Chip
-                                                size="sm"
-                                                variant="soft"
-                                                color="success"
-                                                className="text-[10px] h-5"
-                                              >
-                                                MAX
-                                              </Chip>
-                                            )}
-                                          </span>
-                                        </div>
-                                        <Meter
-                                          aria-label="Skill level progress"
-                                          value={progress}
-                                          className="w-full"
-                                        >
-                                          <Meter.Track className="h-2 rounded-full bg-[#555]">
-                                            <Meter.Fill
-                                              className={`h-2 rounded-full transition-all duration-500 ${isMaxed ? "bg-gradient-to-r from-green-500 to-emerald-400" : "bg-gradient-to-r from-yellow-500 to-orange-400"}`}
-                                            />
-                                          </Meter.Track>
-                                        </Meter>
-                                        {!isMaxed && (
-                                          <p className="text-[#a09070] text-[11px] mt-1">
-                                            离满级还差{" "}
-                                            {maxSkillLevel - skillLevel} 级
-                                          </p>
-                                        )}
-                                      </div>
-                                    );
-                                  })()}
 
                                 {isPotential ? (
                                   potentialSegments.length > 0 ? (
@@ -2295,47 +2244,25 @@ export function CharSelectModal({
                                               <span className="text-[#222222] font-medium">
                                                 {p.label}
                                               </span>
-                                              <span className="text-[#222222] font-mono text-right">
-                                                {p.value}
-                                                {!hasNext && isMaxed && (
-                                                  <Chip
-                                                    size="sm"
-                                                    variant="soft"
-                                                    color="success"
-                                                    className="ml-1.5 text-[10px] h-5 min-w-0"
-                                                  >
-                                                    MAX
-                                                  </Chip>
-                                                )}
+                                              <span className="text-[#222222] font-mono text-right inline-flex items-center gap-1.5">
+                                                <span>{p.value}</span>
                                                 {hasNext && (
                                                   <>
-                                                    <span className="text-[#888] mx-1.5">
-                                                      →
-                                                    </span>
-                                                    <span className="text-[#222222]">
-                                                      {p.nextValue}
-                                                    </span>
-                                                    {showDelta &&
-                                                      delta !== 0 && (
-                                                        <Chip
-                                                          size="sm"
-                                                          variant="soft"
-                                                          color={
-                                                            delta! > 0
-                                                              ? "success"
-                                                              : "accent"
-                                                          }
-                                                          className="ml-1.5 text-[10px] h-5 min-w-0"
-                                                        >
-                                                          {delta! > 0
-                                                            ? "+"
-                                                            : ""}
-                                                          {delta}
-                                                          {unit}
-                                                        </Chip>
-                                                      )}
+                                                    <span className="text-[#888]">→</span>
+                                                    <span>{p.nextValue}</span>
                                                   </>
                                                 )}
+                                                <span className="inline-flex items-center min-w-[60px] justify-end">
+                                                  {hasNext && showDelta && delta !== 0 ? (
+                                                    <span className="font-bold text-[15px] leading-none text-white">
+                                                      {delta! > 0 ? "+" : ""}{Math.round(delta!)}{unit}
+                                                    </span>
+                                                  ) : !hasNext && isMaxed ? (
+                                                    <span className="font-bold text-[15px] leading-none text-white">MAX</span>
+                                                  ) : (
+                                                    <span className="w-8 inline-block" />
+                                                  )}
+                                                </span>
                                               </span>
                                             </div>
                                           );
