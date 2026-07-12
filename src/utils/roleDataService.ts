@@ -200,7 +200,7 @@ export class RoleDataService {
    * 
    * @param roleId - 角色ID
    * @param itemId - Wiki 物品 ID
-   * @returns Wiki 详情数据
+   * @returns Wiki 详情数据（含 coverUrl）
    */
   async getWikiItemDetail(roleId: string, itemId: string): Promise<any | null> {
     const result = await this.queryData(roleId, 'char_wiki_detail', [itemId]);
@@ -208,8 +208,86 @@ export class RoleDataService {
     const raw = result[itemId];
     if (!raw) return null;
     if (raw.data?.item) return raw.data.item;
+    if (raw.data?.brief) return raw.data;
     if (raw.item) return raw.item;
     return raw;
+  }
+
+  /**
+   * 获取物品目录（item catalog），用于将物品 ID 映射为名称和封面图
+   * 
+   * @param roleId - 角色ID（需要鉴权）
+   * @returns 物品 ID → { name, cover } 的映射
+   */
+  async getItemCatalog(
+    roleId: string,
+  ): Promise<Map<string, { name: string; cover: string }> | null> {
+    const result = await this.queryData(roleId, 'wiki_catalog', []);
+    if (!result || !result.__full__) {
+      console.log('[RoleDataService] getItemCatalog: no result or __full__');
+      return null;
+    }
+    const raw = result.__full__;
+    const catalogArr = raw.data?.catalog;
+    if (!Array.isArray(catalogArr)) {
+      console.log('[RoleDataService] getItemCatalog: catalogArr is not array, raw.data:', raw.data);
+      return null;
+    }
+
+    const map = new Map<string, { name: string; cover: string }>();
+    let itemCount = 0;
+    let withCover = 0;
+    for (const entry of catalogArr) {
+      const subs = entry.typeSub;
+      if (!Array.isArray(subs)) continue;
+      for (const sub of subs) {
+        const items = sub.items;
+        if (!Array.isArray(items)) continue;
+        for (const item of items) {
+          if (item.itemId && item.name) {
+            const cover = item.brief?.cover || '';
+            if (cover) withCover++;
+            itemCount++;
+            map.set(item.itemId, {
+              name: item.name,
+              cover,
+            });
+            // 打印前3个item的原始结构
+            if (itemCount <= 3) {
+              console.log(`[RoleDataService] catalog item #${itemCount} raw:`, JSON.stringify(item).substring(0, 500));
+            }
+          }
+        }
+      }
+    }
+    console.log(`[RoleDataService] getItemCatalog: ${itemCount} items, ${withCover} with cover`);
+    return map;
+  }
+
+  /**
+   * 批量获取多个物品的 Wiki 详情
+   * 
+   * @param roleId - 角色ID
+   * @param itemIds - 物品 ID 数组
+   * @returns itemId → 详情数据的映射
+   */
+  async getWikiItemDetails(
+    roleId: string,
+    itemIds: string[],
+  ): Promise<Record<string, any>> {
+    if (itemIds.length === 0) return {};
+    const result = await this.queryData(roleId, 'char_wiki_detail', itemIds);
+    if (!result) return {};
+    const details: Record<string, any> = {};
+    for (const itemId of itemIds) {
+      const raw = result[itemId];
+      if (!raw) continue;
+      if (raw.data?.item) details[itemId] = raw.data.item;
+      else if (raw.data?.brief) details[itemId] = raw.data;
+      else if (raw.item) details[itemId] = raw.item;
+      else details[itemId] = raw;
+    }
+    return details;
   }
 }
 

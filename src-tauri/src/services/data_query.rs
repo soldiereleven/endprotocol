@@ -6,21 +6,18 @@ use std::fmt;
 pub enum DataApi {
     /// 角色详情
     CharDetail,
-    /// 角色 Wiki 列表
-    CharWikiList,
+    /// 统一 Wiki 目录（typeMainId=1&onlyOnline=true）
+    WikiCatalog,
     /// 角色 Wiki 详情（按 itemId 索引的 JSON 对象）
     CharWikiDetail,
-    /// 基质 Wiki 目录
-    GemCatalog,
 }
 
 impl fmt::Display for DataApi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             DataApi::CharDetail => write!(f, "char_detail"),
-            DataApi::CharWikiList => write!(f, "char_wiki_list"),
+            DataApi::WikiCatalog => write!(f, "wiki_catalog"),
             DataApi::CharWikiDetail => write!(f, "char_wiki_detail"),
-            DataApi::GemCatalog => write!(f, "gem_catalog"),
         }
     }
 }
@@ -31,9 +28,8 @@ impl std::str::FromStr for DataApi {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "char_detail" => Ok(DataApi::CharDetail),
-            "char_wiki_list" => Ok(DataApi::CharWikiList),
+            "wiki_catalog" => Ok(DataApi::WikiCatalog),
             "char_wiki_detail" => Ok(DataApi::CharWikiDetail),
-            "gem_catalog" => Ok(DataApi::GemCatalog),
             _ => Err(format!("Unknown API: {}", s)),
         }
     }

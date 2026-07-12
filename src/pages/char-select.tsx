@@ -19,7 +19,6 @@ import { Img } from "@/utils/imageLoader";
 import { useImageRequest } from "@/utils/imageCacheManager";
 import { roleDataService } from "@/utils/roleDataService";
 import { getConfig } from "@/utils/configService";
-import { invoke } from "@tauri-apps/api/core";
 import { logError } from "@/utils/logger";
 
 const SKILL_BG_COLORS: Record<string, string> = {
@@ -463,12 +462,6 @@ export function CharSelectModal({
       wikiCleanupRef.current = false;
       resetWikiState();
     } else {
-      // 模态框关闭时：如果预加载未开启，清空 BE 端 wiki 缓存
-      if (wikiCleanupRef.current) {
-        invoke("clear_wiki_detail_cache").catch((e) =>
-          logError("[Wiki] Failed to clear cache on close:", e),
-        );
-      }
       resetWikiState();
     }
   }, [isOpen]);
@@ -531,17 +524,11 @@ export function CharSelectModal({
     };
   }, [viewMode, detailCharId, roleId]);
 
-  // 离开 detail view 时重置 Wiki 状态，若未预加载则清理 BE 缓存
+  // 离开 detail view 时重置 Wiki 状态
   const prevViewMode = useRef(viewMode);
   useEffect(() => {
     if (prevViewMode.current === "detail" && viewMode !== "detail") {
       resetWikiState();
-      if (!wikiPreloadRef.current && wikiCleanupRef.current) {
-        invoke("clear_wiki_detail_cache").catch((e) =>
-          logError("[Wiki] Failed to clear cache on detail close:", e),
-        );
-        wikiCleanupRef.current = false;
-      }
     }
     prevViewMode.current = viewMode;
   }, [viewMode, resetWikiState]);

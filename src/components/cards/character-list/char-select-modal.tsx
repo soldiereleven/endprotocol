@@ -13,13 +13,12 @@ import {
   CustomModalBody,
 } from "@/components/custom-modal";
 import { CharDetailData, CharacterItem } from "@/types/charDetail";
-import { getWikiRenderedBlocks, WIKI_COLOR_MAP } from "@/utils/wikiTableParser";
+import { getWikiRenderedBlocks, getUpgradeMaterials, findContentIds, extractCell, WIKI_COLOR_MAP } from "@/utils/wikiTableParser";
 import { useTranslation } from "react-i18next";
 import { Img } from "@/utils/imageLoader";
 import { useImageRequest } from "@/utils/imageCacheManager";
 import { roleDataService } from "@/utils/roleDataService";
 import { getConfig } from "@/utils/configService";
-import { invoke } from "@tauri-apps/api/core";
 import { logError } from "@/utils/logger";
 
 const SKILL_BG_COLORS: Record<string, string> = {
@@ -346,6 +345,7 @@ export function CharSelectModal({
   const wikiCleanupRef = useRef(false);
   const wikiPreloadRef = useRef(false);
   const [wikiDetail, setWikiDetail] = useState<any>(null);
+  const [itemNameMap, setItemNameMap] = useState<Map<string, { name: string; cover: string }> | null>(null);
 
   // 从 Wiki detail 中提取潜能数据（在 widgetCommonMap 中按 title="干员潜能" 查找）
   // 从 Wiki detail 中提取潜能数据（通过 chapterGroup 查找"干员潜能"章节的 widgetId）
@@ -443,6 +443,8 @@ export function CharSelectModal({
   const resetWikiState = useCallback(() => {
     setWikiLoading(false);
     setWikiDetail(null);
+    setMaterialCoverMap({});
+    fetchedCoverIdsRef.current.clear();
   }, []);
 
   // Reset all state when modal opens to ensure fresh data
@@ -462,12 +464,6 @@ export function CharSelectModal({
       wikiCleanupRef.current = false;
       resetWikiState();
     } else {
-      // 模态框关闭时：如果预加载未开启，清空 BE 端 wiki 缓存
-      if (wikiCleanupRef.current) {
-        invoke("clear_wiki_detail_cache").catch((e) =>
-          logError("[Wiki] Failed to clear cache on close:", e),
-        );
-      }
       resetWikiState();
     }
   }, [isOpen]);
@@ -511,6 +507,25 @@ export function CharSelectModal({
         if (cancelled) return;
         if (detail) setWikiDetail(detail);
 
+        // 加载物品目录（ID → 名称映射）
+        if (!itemNameMap && roleId) {
+          console.log('[Wiki] Loading item catalog for roleId:', roleId);
+          roleDataService.getItemCatalog(roleId).then((map) => {
+            console.log('[Wiki] Item catalog loaded, map size:', map?.size);
+            if (map) {
+              // 打印前5个条目检查cover字段
+              let count = 0;
+              for (const [id, info] of map) {
+                console.log(`[Wiki] catalog item: ${id} -> name=${info.name}, cover=${info.cover || '(empty)'}`);
+                if (++count >= 5) break;
+              }
+            }
+            if (!cancelled && map) setItemNameMap(map);
+          }).catch((e) => {
+            logError("[Wiki] Failed to load item catalog:", e);
+          });
+        }
+
         wikiCleanupRef.current = true;
       } catch (e) {
         if (!cancelled) {
@@ -530,17 +545,173 @@ export function CharSelectModal({
     };
   }, [viewMode, detailCharId, roleId]);
 
-  // 离开 detail view 时重置 Wiki 状态，若未预加载则清理 BE 缓存
+  // 从 selectedDetailItem 中解析技能/天赋名称
+  const selectedItemName = useMemo(() => {
+    if (!selectedDetailItem || !detailCharId) return "";
+    if (selectedDetailItem.type === "potential") return "";
+    const char = charDetail.chars.find((c: any) => c.charData.id === detailCharId)?.charData;
+    if (!char) return "";
+    if (selectedDetailItem.type === "skill") {
+      return char.skills.find((s: any) => s.id === selectedDetailItem.id)?.name || "";
+    }
+    const pool = selectedDetailItem.type === "combatTalent"
+      ? char.combatTalents
+      : selectedDetailItem.type === "abilityTalent"
+        ? char.abilityTalents
+        : char.cultivationTalents || [];
+    const t = pool.find((x: any) => x.id === selectedDetailItem.id);
+    return t?.name || "";
+  }, [selectedDetailItem, detailCharId]);
+
+  // 加载升级材料的封面图
+  const fetchedCoverIdsRef = useRef(new Set<string>());
+  const [materialCoverMap, setMaterialCoverMap] = useState<Record<string, string>>({});
+  const cacheDirRef = useRef<string>('');
+  useEffect(() => {
+    if (!selectedDetailItem || !wikiDetail || !roleId) {
+      console.log('[MaterialCover] Skipped: missing selectedDetailItem/wikiDetail/roleId', { selectedDetailItem: !!selectedDetailItem, wikiDetail: !!wikiDetail, roleId });
+      return;
+    }
+    if (selectedDetailItem.type === "potential") {
+      console.log('[MaterialCover] Skipped: potential type');
+      return;
+    }
+    if (!selectedItemName) {
+      console.log('[MaterialCover] Skipped: no selectedItemName');
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchCovers = async () => {
+      console.log('[MaterialCover] Start fetching covers for:', selectedItemName);
+      const doc = wikiDetail.document || wikiDetail.data?.item?.document || wikiDetail.item?.document;
+      if (!doc?.widgetCommonMap || !doc?.documentMap) {
+        console.log('[MaterialCover] No widgetCommonMap/documentMap in wikiDetail');
+        return;
+      }
+
+      // 使用 findContentIds 查找匹配的内容文档
+      const { contentIds } = findContentIds(
+        doc.widgetCommonMap,
+        doc.documentMap,
+        selectedItemName,
+      );
+      console.log('[MaterialCover] Found contentIds:', contentIds);
+      if (cancelled) return;
+
+      const itemIds = new Set<string>();
+      for (const contentId of contentIds) {
+        const contentDoc = doc.documentMap[contentId] as any;
+        if (!contentDoc?.blockIds || !contentDoc?.blockMap) continue;
+        let inMaterialSection = false;
+        for (const blockId of contentDoc.blockIds) {
+          const block = contentDoc.blockMap[blockId] as any;
+          // 检查 "升级材料" 文本标记
+          if (block?.kind === "text" || block?.kind === "heading3") {
+            const segments = block?.text?.inlineElements || block?.children;
+            if (segments) {
+              const plainText = (Array.isArray(segments) ? segments : []).map((s: any) => s?.text?.text || s?.text || '').join('');
+              if (plainText.includes("升级材料")) {
+                inMaterialSection = true;
+                continue;
+              }
+            }
+            inMaterialSection = false;
+          }
+          if (block?.kind === "table" && inMaterialSection) {
+            const table = block.table as any;
+            if (!table?.rowIds?.length || !table?.columnIds?.length || !table?.cellMap) break;
+            // 遍历所有行和列，提取 entries
+            for (const rowId of table.rowIds) {
+              for (const colId of table.columnIds) {
+                const cellKey = `${rowId}_${colId}`;
+                const cell = table.cellMap[cellKey];
+                const extracted = extractCell(cell, contentDoc.blockMap);
+                if (extracted?.entries) {
+                  for (const e of extracted.entries) {
+                    itemIds.add(e.itemId);
+                  }
+                }
+              }
+            }
+            break;
+          }
+        }
+      }
+
+      console.log('[MaterialCover] Extracted itemIds from wiki:', [...itemIds]);
+      const needed = [...itemIds].filter(id => !fetchedCoverIdsRef.current.has(id));
+      console.log('[MaterialCover] Needed (not yet fetched):', needed);
+      if (needed.length === 0) return;
+
+      // 从 catalog 获取物品的 cover URL
+      if (!itemNameMap) {
+        console.log('[MaterialCover] itemNameMap is null, cannot proceed');
+        return;
+      }
+      console.log('[MaterialCover] itemNameMap size:', itemNameMap.size);
+      
+      // 检查每个 item 在 catalog 中的信息
+      for (const itemId of needed) {
+        const itemInfo = itemNameMap.get(itemId);
+        console.log(`[MaterialCover] catalog lookup for ${itemId}:`, itemInfo ? { name: itemInfo.name, cover: itemInfo.cover } : 'NOT FOUND');
+      }
+      
+      // 获取缓存目录
+      if (!cacheDirRef.current) {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          cacheDirRef.current = await invoke<string>('get_image_cache_dir');
+          console.log('[MaterialCover] Got cache dir:', cacheDirRef.current);
+        } catch (e) {
+          console.error('[MaterialCover] Failed to get cache dir:', e);
+          return;
+        }
+      }
+
+      const { invoke } = await import('@tauri-apps/api/core');
+      const newCovers: Record<string, string> = {};
+      
+      for (const itemId of needed) {
+        if (cancelled) return;
+        const itemInfo = itemNameMap.get(itemId);
+        if (!itemInfo?.cover) {
+          console.log(`[MaterialCover] Skipping ${itemId}: no cover URL in catalog`);
+          continue;
+        }
+        
+        console.log(`[MaterialCover] Downloading cover for ${itemId} from: ${itemInfo.cover}`);
+        try {
+          // 下载图片到本地缓存
+          const localPath = await invoke<string>('download_image', {
+            url: itemInfo.cover,
+            cacheDir: cacheDirRef.current,
+            subDir: 'item_icons',
+          });
+          console.log(`[MaterialCover] Downloaded ${itemId} -> ${localPath}`);
+          newCovers[itemId] = localPath;
+          fetchedCoverIdsRef.current.add(itemId);
+        } catch (e) {
+          console.error(`[MaterialCover] Failed to download cover for ${itemId}:`, e);
+        }
+      }
+      
+      console.log('[MaterialCover] Final newCovers:', newCovers);
+      if (Object.keys(newCovers).length > 0) {
+        setMaterialCoverMap(prev => ({ ...prev, ...newCovers }));
+      }
+    };
+
+    fetchCovers();
+    return () => { cancelled = true; };
+  }, [selectedDetailItem, wikiDetail, roleId, itemNameMap]);
+
+  // 离开 detail view 时重置 Wiki 状态
   const prevViewMode = useRef(viewMode);
   useEffect(() => {
     if (prevViewMode.current === "detail" && viewMode !== "detail") {
       resetWikiState();
-      if (!wikiPreloadRef.current && wikiCleanupRef.current) {
-        invoke("clear_wiki_detail_cache").catch((e) =>
-          logError("[Wiki] Failed to clear cache on detail close:", e),
-        );
-        wikiCleanupRef.current = false;
-      }
     }
     prevViewMode.current = viewMode;
   }, [viewMode, resetWikiState]);
@@ -1949,6 +2120,25 @@ export function CharSelectModal({
                                   talentRank,
                                 )
                               : [];
+                            const upgradeMaterials = !isPotential
+                              ? getUpgradeMaterials(
+                                  wikiDetail,
+                                  (selectedItem as any).name || "",
+                                  skillLevel,
+                                  selectedItem._type || "",
+                                  talentRank,
+                                )
+                              : [];
+                            const upgradeToMax = isSkill && !isMaxed && skillLevel < 12
+                              ? getUpgradeMaterials(
+                                  wikiDetail,
+                                  (selectedItem as any).name || "",
+                                  skillLevel,
+                                  selectedItem._type || "",
+                                  talentRank,
+                                  true,
+                                )
+                              : [];
 
                             // 从 contentDoc 提取潜能描述文本块
                             const getPotentialSegments = (doc: any) => {
@@ -2329,6 +2519,68 @@ export function CharSelectModal({
                                   <p className="text-[#222222] italic mt-2 text-[15px]">
                                     暂无 Wiki 数据
                                   </p>
+                                )}
+
+                                {/* Upgrade Materials */}
+                                {!isPotential && !isMaxed && upgradeMaterials.length > 0 && (
+                                  <div className="mt-4">
+                                    <h5 className="font-semibold text-[#222222] text-[14px] mb-2">
+                                      {isSkill
+                                        ? `升级至 Lv.${skillLevel + 1} 所需材料`
+                                        : "下一级所需材料"}
+                                    </h5>
+                                    <div className="bg-black/20 rounded-lg p-3 space-y-1">
+                                      {upgradeMaterials.map((mat, mi) => {
+                                        const itemInfo = itemNameMap?.get(mat.itemId);
+                                        const itemName = itemInfo?.name || `#${mat.itemId}`;
+                                        const coverUrl = materialCoverMap[mat.itemId];
+                                        return (
+                                          <div
+                                            key={mi}
+                                            className="flex items-center justify-between py-1 text-[14px]"
+                                          >
+                                            <div className="flex items-center gap-2">
+                                              {coverUrl && (
+                                                <Img src={coverUrl} className="w-7 h-7 rounded object-cover shrink-0" />
+                                              )}
+                                              <span className="text-[#222222]">{itemName}</span>
+                                            </div>
+                                            <span className="text-[#222222] font-mono font-semibold">×{mat.count}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* To Max Materials */}
+                                {isSkill && !isMaxed && skillLevel < 11 && upgradeToMax.length > 0 && (
+                                  <div className="mt-3">
+                                    <h5 className="font-semibold text-[#222222] text-[14px] mb-2">
+                                      升级至满级 (Lv.12) 共需
+                                    </h5>
+                                    <div className="bg-black/15 rounded-lg p-3 space-y-1">
+                                      {upgradeToMax.map((mat, mi) => {
+                                        const itemInfo = itemNameMap?.get(mat.itemId);
+                                        const itemName = itemInfo?.name || `#${mat.itemId}`;
+                                        const coverUrl = materialCoverMap[mat.itemId];
+                                        return (
+                                          <div
+                                            key={mi}
+                                            className="flex items-center justify-between py-1 text-[13px]"
+                                          >
+                                            <div className="flex items-center gap-2">
+                                              {coverUrl && (
+                                                <Img src={coverUrl} className="w-6 h-6 rounded object-cover shrink-0" />
+                                              )}
+                                              <span className="text-[#222222]">{itemName}</span>
+                                            </div>
+                                            <span className="text-[#222222] font-mono font-semibold">×{mat.count}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
                                 )}
                               </div>
                             );

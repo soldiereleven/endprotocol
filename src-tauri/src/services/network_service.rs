@@ -4,7 +4,6 @@ use std::sync::{Arc, Mutex};
 use crate::services::avatar_cache_service::AvatarCacheService;
 use crate::services::char_detail_service::CharDetailService;
 use crate::services::char_wiki_detail_service::CharWikiDetailService;
-use crate::services::char_wiki_service::CharWikiService;
 use crate::services::data_query::{self, DataApi};
 use crate::services::skland_service::SklandService;
 use crate::utils::AppError;
@@ -17,7 +16,6 @@ pub use crate::services::char_detail_service::PreloadRoleInfo;
 pub struct NetworkService {
     skland_service: Arc<SklandService>,
     char_detail_service: CharDetailService,
-    char_wiki_service: CharWikiService,
     char_wiki_detail_service: Arc<CharWikiDetailService>,
     current_role_id: Arc<Mutex<Option<String>>>,
 }
@@ -32,7 +30,6 @@ impl NetworkService {
                 skland_service.clone(),
                 avatar_cache_service,
             ),
-            char_wiki_service: CharWikiService::new(skland_service.clone()),
             char_wiki_detail_service: Arc::new(CharWikiDetailService::new(skland_service.clone())),
             skland_service,
             current_role_id: Arc::new(Mutex::new(None)),
@@ -45,10 +42,6 @@ impl NetworkService {
 
     pub fn char_detail_service(&self) -> &CharDetailService {
         &self.char_detail_service
-    }
-
-    pub fn char_wiki_service(&self) -> &CharWikiService {
-        &self.char_wiki_service
     }
 
     pub fn char_wiki_detail_service(&self) -> &Arc<CharWikiDetailService> {
@@ -86,23 +79,6 @@ impl NetworkService {
         self.char_detail_service.preload_all(role_infos).await
     }
 
-    /// 预加载全部 wiki 详情
-    pub async fn preload_wiki_detail(
-        &self,
-        catalog: &serde_json::Value,
-        cred: &str,
-        token: &str,
-    ) {
-        self.char_wiki_detail_service
-            .preload_all(catalog, cred, token)
-            .await;
-    }
-
-    /// 清空 wiki 详情缓存
-    pub fn clear_wiki_detail_cache(&self) {
-        self.char_wiki_detail_service.clear();
-    }
-
     /// 统一数据查询入口
     pub async fn query_role_data(
         &self,
@@ -134,39 +110,31 @@ impl NetworkService {
                     .get_processed(role_id, cred, token, server_id, user_id)
                     .await?
             }
-            DataApi::CharWikiList => {
-                // wiki 列表不依赖 role_id，typeMainId/typeSubId 固定为 1
-                self.char_wiki_service
-                    .get_processed("1", "1", cred, token)
-                    .await?
-            }
-            DataApi::GemCatalog => {
-                self.char_wiki_service
-                    .get_processed("1", "7", cred, token)
+            DataApi::WikiCatalog => {
+                let path = "/web/v1/wiki/item/catalog";
+                let query = "typeMainId=1&onlyOnline=true".to_string();
+                self.skland_service
+                    .call_skland_api("GET", path, Some(&query), None, cred, token, vec![])
                     .await?
             }
             DataApi::CharWikiDetail => {
-                if paths.is_empty() {
-                    self.char_wiki_detail_service.get_processed()?
-                } else {
-                    let mut result = HashMap::new();
-                    for item_id in paths {
-                        match self
-                            .char_wiki_detail_service
-                            .get_item(item_id, cred, token)
-                            .await
-                        {
-                            Ok(val) => {
-                                result.insert(item_id.clone(), val);
-                            }
-                            Err(e) => {
-                                log_error!("Failed to fetch wiki detail for item {}: {}", item_id, e);
-                                result.insert(item_id.clone(), serde_json::Value::Null);
-                            }
+                let mut result = HashMap::new();
+                for item_id in paths {
+                    match self
+                        .char_wiki_detail_service
+                        .get_item(item_id, cred, token)
+                        .await
+                    {
+                        Ok(val) => {
+                            result.insert(item_id.clone(), val);
+                        }
+                        Err(e) => {
+                            log_error!("Failed to fetch wiki detail for item {}: {}", item_id, e);
+                            result.insert(item_id.clone(), serde_json::Value::Null);
                         }
                     }
-                    return Ok(result);
                 }
+                return Ok(result);
             }
         };
 

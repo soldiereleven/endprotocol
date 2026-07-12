@@ -1068,49 +1068,6 @@ impl AccountService {
             }
         }
 
-        // Wiki 数据初始化（只执行一次，常驻整个应用生命周期）
-        if !self.network_service.char_wiki_service().is_initialized() {
-            if let Some(first) = accounts.iter().find(|a| a.cred.is_some() && a.token.is_some()) {
-                if let (Some(cred), Some(token)) = (&first.cred, &first.token) {
-                    self.network_service
-                        .char_wiki_service()
-                        .initialize(cred, token)
-                        .await;
-
-                    // Wiki 列表初始化成功后，查询是否预加载所有 detail
-                    let preload = self
-                        .config_service
-                        .lock()
-                        .unwrap()
-                        .get::<bool>("wiki_detail_preload")
-                        .unwrap_or(false);
-                    if let Some(catalog) = self.network_service.char_wiki_service().get_catalog() {
-                        if preload {
-                            // 后台拉取，避免阻塞 get_accounts / 应用启动
-                            let detail_svc = self
-                                .network_service
-                                .char_wiki_detail_service()
-                                .clone();
-                            let catalog_value = catalog.clone();
-                            let cred_owned = cred.clone();
-                            let token_owned = token.clone();
-                            async_runtime::spawn(async move {
-                                detail_svc
-                                    .initialize(&catalog_value, &cred_owned, &token_owned, true)
-                                    .await;
-                            });
-                            log_info!("Wiki detail preload started in background");
-                        } else {
-                            self.network_service
-                                .char_wiki_detail_service()
-                                .initialize(&catalog, cred, token, false)
-                                .await;
-                        }
-                    }
-                }
-            }
-        }
-
         // 根据懒加载状态缓存不同版本
         let lazy_load = self.is_lazy_load_enabled();
         for (user_id, user_accounts) in &accounts_by_user {
@@ -2200,53 +2157,6 @@ impl AccountService {
                 message: format!("Skland API error: {}", msg),
             })
         }
-    }
-
-    /// 预加载全部 wiki 详情（当用户打开 preload 开关时调用）。
-    /// 先清空缓存以取消任何正在进行的拉取，再在后台拉取。
-    /// 此方法本身在清理完缓存后立即返回，不阻塞调用方。
-    pub async fn preload_wiki_detail(&self) {
-        self.clear_wiki_detail_cache();
-        let accounts = self.get_accounts().await;
-        let first = match accounts.iter().find(|a| a.cred.is_some() && a.token.is_some()) {
-            Some(a) => a,
-            None => {
-                log_warn!("No account with cred/token found, cannot preload wiki detail");
-                return;
-            }
-        };
-        let (cred, token) = match (&first.cred, &first.token) {
-            (Some(c), Some(t)) => (c.clone(), t.clone()),
-            _ => return,
-        };
-
-        // 确保 wiki 列表已初始化
-        if !self.network_service.char_wiki_service().is_initialized() {
-            self.network_service
-                .char_wiki_service()
-                .initialize(&cred, &token)
-                .await;
-        }
-
-        let catalog = match self.network_service.char_wiki_service().get_catalog() {
-            Some(c) => c,
-            None => {
-                log_warn!("Wiki catalog not available, cannot preload details");
-                return;
-            }
-        };
-
-        // 后台拉取，立即返回
-        let detail_svc = self.network_service.char_wiki_detail_service().clone();
-        async_runtime::spawn(async move {
-            detail_svc.preload_all(&catalog, &cred, &token).await;
-        });
-        log_info!("Wiki detail preload started in background");
-    }
-
-    /// 清空 wiki 详情缓存（当用户关闭 preload 开关时调用）
-    pub fn clear_wiki_detail_cache(&self) {
-        self.network_service.clear_wiki_detail_cache();
     }
 
     /// 统一数据查询入口

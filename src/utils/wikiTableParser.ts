@@ -20,6 +20,12 @@ export interface WikiTextBlock {
   segments: InlineSegment[];
 }
 
+export interface WikiMaterialEntry {
+  itemId: string;
+  count: string;
+  name?: string;
+}
+
 export type WikiRenderedBlock =
   | { kind: "text"; data: WikiTextBlock }
   | { kind: "params"; data: WikiSkillParam[] }
@@ -111,13 +117,20 @@ const LEVEL_TO_COLUMN_INDEX = [
   12,   // level 12 -> col index 12 (专精3)
 ];
 
-function extractCellText(
+interface ExtractedCell {
+  text: string;
+  highlighted: boolean;
+  entries: { itemId: string; count: string }[];
+}
+
+export function extractCell(
   cell: any,
   blockMap: Record<string, WikiDocumentBlock>,
-): { text: string; highlighted: boolean } | null {
+): ExtractedCell | null {
   if (!cell?.childIds?.length) return null;
   let result = "";
   let highlighted = false;
+  const entries: { itemId: string; count: string }[] = [];
   for (const childId of cell.childIds) {
     const block = blockMap[childId];
     if (!block?.text?.inlineElements) continue;
@@ -135,11 +148,20 @@ function extractCellText(
         const entry = anyEl.entry;
         if (entry?.count) {
           result += entry.count;
+          entries.push({ itemId: entry.id, count: entry.count });
         }
       }
     }
   }
-  return result.trim() ? { text: result.trim(), highlighted } : null;
+  return result.trim() ? { text: result.trim(), highlighted, entries } : null;
+}
+
+function extractCellText(
+  cell: any,
+  blockMap: Record<string, WikiDocumentBlock>,
+): { text: string; highlighted: boolean } | null {
+  const e = extractCell(cell, blockMap);
+  return e ? { text: e.text, highlighted: e.highlighted } : null;
 }
 
 /**
@@ -221,6 +243,7 @@ function parseWikiTable(
 ): {
   grid: { label: string; value: string; highlighted: boolean }[][];
   columnHeaders: string[];
+  entryGrid?: { label: string; entries: { itemId: string; count: string }[] }[];
 } | null {
   const table = tableBlock.table;
   if (!table?.rowIds || !table?.columnIds) return null;
@@ -239,6 +262,7 @@ function parseWikiTable(
   }
 
   const grid: { label: string; value: string; highlighted: boolean }[][] = [];
+  const entryGrid: { label: string; entries: { itemId: string; count: string }[] }[] = [];
 
   for (let ri = 1; ri < rowIds.length; ri++) {
     const rowId = rowIds[ri];
@@ -249,22 +273,29 @@ function parseWikiTable(
 
     const label = labelText.text;
     const rowData: { label: string; value: string; highlighted: boolean }[] = [];
+    let rowEntries: { itemId: string; count: string }[] = [];
 
     for (let ci = 1; ci < columnIds.length; ci++) {
       const colId = columnIds[ci];
       const cellKey = `${rowId}_${colId}`;
       const cell = cellMap[cellKey];
-      const text = extractCellText(cell, blockMap);
+      const cellExtract = extractCell(cell, blockMap);
       rowData.push({
         label,
-        value: text?.text || "",
-        highlighted: text?.highlighted || false,
+        value: cellExtract?.text || "",
+        highlighted: cellExtract?.highlighted || false,
       });
+      if (cellExtract?.entries) {
+        rowEntries = rowEntries.concat(cellExtract.entries);
+      }
     }
     grid.push(rowData);
+    if (rowEntries.length > 0) {
+      entryGrid.push({ label, entries: rowEntries });
+    }
   }
 
-  return { grid, columnHeaders };
+  return { grid, columnHeaders, entryGrid: entryGrid.length > 0 ? entryGrid : undefined };
 }
 
 function isMaterialTable(tableBlock: any): boolean {
@@ -329,7 +360,7 @@ function docContainsName(
  * Strategy 1: tab.intro.name === itemName → returns { content, description }
  * Strategy 2: scan content docs for a block containing itemName
  */
-function findContentIds(
+export function findContentIds(
   widgetCommonMap: Record<string, any> | undefined,
   documentMap: Record<string, any> | undefined,
   itemName: string,
@@ -483,6 +514,128 @@ function renderDocumentBlocks(
   }
 
   return blocks;
+}
+
+/**
+ * Extract upgrade material entries from a content document for a specific level.
+ * Returns array of { itemId, count } representing the materials needed.
+ */
+export function extractMaterialsFromDoc(
+  doc: any,
+  colIdx: number,
+): WikiMaterialEntry[] {
+  const materials: WikiMaterialEntry[] = [];
+  if (!doc?.blockMap || !doc?.blockIds) return materials;
+
+  const blockMap: Record<string, WikiDocumentBlock> = doc.blockMap;
+  let inMaterialSection = false;
+
+  for (const blockId of doc.blockIds) {
+    const block = blockMap[blockId] as any;
+    if (!block) continue;
+
+    if (block.kind === "text" || block.kind === "heading3") {
+      const segments = extractInlineSegments(block);
+      if (segments) {
+        const plainText = segmentsToPlainText(segments);
+        if (plainText.includes("升级材料")) {
+          inMaterialSection = true;
+          continue;
+        }
+      }
+      inMaterialSection = false;
+    }
+
+    if (block.kind === "table" && inMaterialSection) {
+      const table = block.table as any;
+      if (!table?.rowIds?.length || !table?.columnIds?.length || !table?.cellMap) break;
+
+      // Material tables: row 0 = header, row 1 = data (single row with columns per rank)
+      // colIdx selects the column for the target rank
+      const dataRowId = table.rowIds[table.rowIds.length > 2 ? 1 : 1];
+      if (colIdx >= 1 && colIdx < table.columnIds.length) {
+        const colId = table.columnIds[colIdx];
+        const cellKey = `${dataRowId}_${colId}`;
+        const cell = table.cellMap[cellKey];
+        const cellExtract = extractCell(cell, blockMap);
+        if (cellExtract?.entries) {
+          for (const e of cellExtract.entries) {
+            materials.push({ itemId: e.itemId, count: e.count });
+          }
+        }
+      }
+      break;
+    }
+  }
+
+  return materials;
+}
+
+/**
+ * Extract upgrade material entries for a skill/talent at a given level.
+ * Returns materials needed to upgrade from current level to the next level.
+ * If toMax is true, returns aggregated materials from current level to max level.
+ */
+export function getUpgradeMaterials(
+  wikiItemDetail: any,
+  itemName: string,
+  skillLevel: number,
+  itemType: string,
+  _talentRank: number,
+  toMax = false,
+): WikiMaterialEntry[] {
+  if (!wikiItemDetail) return [];
+
+  const doc = wikiItemDetail.document
+    || wikiItemDetail.data?.item?.document
+    || wikiItemDetail.item?.document;
+  if (!doc) return [];
+
+  const documentMap = doc.documentMap;
+  const widgetCommonMap = doc.widgetCommonMap;
+  if (!documentMap || !widgetCommonMap) return [];
+
+  const { contentIds } = findContentIds(widgetCommonMap, documentMap, itemName);
+
+  if (toMax && itemType === "skill") {
+    // Aggregate materials from next level to max level (12)
+    const aggregated = new Map<string, WikiMaterialEntry>();
+    const maxLevel = 12;
+    for (let lvl = skillLevel; lvl < maxLevel; lvl++) {
+      const colIdx = lvl >= 1 && lvl <= 12 ? LEVEL_TO_COLUMN_INDEX[lvl] : -1;
+      if (colIdx < 1) continue;
+      for (const contentId of contentIds) {
+        const contentDoc = documentMap[contentId] as any;
+        if (contentDoc?.blockIds && contentDoc?.blockMap) {
+          const docMaterials = extractMaterialsFromDoc(contentDoc, colIdx);
+          for (const m of docMaterials) {
+            const existing = aggregated.get(m.itemId);
+            if (existing) {
+              existing.count = String(Number(existing.count) + Number(m.count));
+            } else {
+              aggregated.set(m.itemId, { ...m });
+            }
+          }
+        }
+      }
+    }
+    return Array.from(aggregated.values());
+  }
+
+  const colIdx = skillLevel >= 1 && skillLevel <= 12
+    ? LEVEL_TO_COLUMN_INDEX[skillLevel]
+    : -1;
+
+  const materials: WikiMaterialEntry[] = [];
+  for (const contentId of contentIds) {
+    const contentDoc = documentMap[contentId] as any;
+    if (contentDoc?.blockIds && contentDoc?.blockMap) {
+      const docMaterials = extractMaterialsFromDoc(contentDoc, colIdx);
+      materials.push(...docMaterials);
+    }
+  }
+
+  return materials;
 }
 
 export function getWikiRenderedBlocks(

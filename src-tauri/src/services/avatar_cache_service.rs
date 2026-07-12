@@ -14,6 +14,7 @@ pub enum ImageType {
     Illustration,   // 角色立绘
     AttendanceIcon, // 签到奖励图标
     GemIcon,       // 基质图标
+    ItemIcon,      // 物品/材料图标
 }
 
 impl ImageType {
@@ -27,6 +28,7 @@ impl ImageType {
             ImageType::Illustration => "illustrations",
             ImageType::AttendanceIcon => "attendance",
             ImageType::GemIcon => "gem_icons",
+            ImageType::ItemIcon => "item_icons",
         }
     }
 }
@@ -54,6 +56,7 @@ impl ImageCacheService {
             ImageType::Illustration,
             ImageType::AttendanceIcon,
             ImageType::GemIcon,
+            ImageType::ItemIcon,
         ] {
             let type_dir = cache_dir.join(image_type.dir_name());
             fs::create_dir_all(&type_dir)?;
@@ -158,6 +161,7 @@ impl ImageCacheService {
                 ImageType::Illustration,
                 ImageType::AttendanceIcon,
                 ImageType::GemIcon,
+                ImageType::ItemIcon,
             ] {
                 let type_dir = self.cache_dir.join(image_type.dir_name());
                 fs::create_dir_all(&type_dir)?;
