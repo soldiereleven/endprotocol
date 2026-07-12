@@ -502,7 +502,10 @@ impl CharDetailService {
             .and_then(|i| i.as_array());
 
         let items = match items {
-            Some(arr) => arr,
+            Some(arr) => {
+                log_info!("Gem catalog has {} items for {}", arr.len(), char_name);
+                arr
+            }
             None => {
                 log_warn!("No items in gem catalog response for {}", char_name);
                 return;
@@ -510,18 +513,35 @@ impl CharDetailService {
         };
 
         let tag_suffix = format!("000{}", gem_rarity);
+        let gem_chars: Vec<char> = gem_name.chars().collect();
+        log_info!("Gem catalog matching: name='{}' (chars: {:?}), rarity={}", gem_name, gem_chars, gem_rarity);
+
         let matched = items.iter().find(|item| {
-            let name_match = item.get("name").and_then(|n| n.as_str()) == Some(&gem_name);
-            if !name_match {
+            let item_name = match item.get("name").and_then(|n| n.as_str()) {
+                Some(n) => n,
+                None => return false,
+            };
+            let item_chars: Vec<char> = item_name.chars().collect();
+            if gem_chars.len() < 4 || item_chars.len() < 4 {
+                log_debug!("  skip (too short): item_name='{}'", item_name);
                 return false;
             }
-            if let Some(tags) = item.get("tagsIds").and_then(|t| t.as_array()) {
+            let prefix_match = gem_chars[0..2] == item_chars[0..2];
+            let suffix_match = gem_chars[gem_chars.len()-2..] == item_chars[item_chars.len()-2..];
+            if !prefix_match || !suffix_match {
+                return false;
+            }
+            let tag_match = if let Some(tags) = item.get("tagsIds").and_then(|t| t.as_array()) {
                 tags.iter().any(|t| {
                     t.as_i64().map(|v| v.to_string().ends_with(&tag_suffix)).unwrap_or(false)
                 })
             } else {
                 false
+            };
+            if tag_match {
+                log_info!("  matched: item_name='{}'", item_name);
             }
+            tag_match
         });
 
         let cover_url = match matched {
