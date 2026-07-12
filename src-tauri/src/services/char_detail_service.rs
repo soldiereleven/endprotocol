@@ -425,8 +425,6 @@ impl CharDetailService {
         cred: &str,
         token: &str,
     ) {
-        log_info!("cache_gem_icon for {}", char_name);
-
         let (original_url, gem_name, gem_rarity) = {
             let value = match weapon {
                 Some(ref v) => v,
@@ -484,7 +482,6 @@ impl CharDetailService {
             let name = gem_data_obj.get("name").and_then(|n| n.as_str()).unwrap_or("").trim().to_string();
             let template_id = gem_data_obj.get("templateId").and_then(|t| t.as_str()).unwrap_or("").trim().to_string();
             let rarity = template_id.replace("item_gem_rarity_", "");
-            log_info!("  gem: name='{}', rarity='{}', url='{}'", name, rarity, url);
             (url, name, rarity)
         };
 
@@ -505,8 +502,6 @@ impl CharDetailService {
             return;
         }
 
-        log_info!("Resolving gem icon via wiki catalog for {} (name={}, rarity={})", char_name, gem_name, gem_rarity);
-
         let path = "/web/v1/wiki/item/catalog";
         let query = "typeMainId=1&typeSubId=7".to_string();
 
@@ -521,51 +516,34 @@ impl CharDetailService {
             }
         };
 
-        log_info!("  catalog response: {}", catalog);
-
-        // Brute-force: find any array of objects with "name" field in the response
-        let items: Option<Vec<serde_json::Value>> = {
-            fn find_items(val: &serde_json::Value) -> Option<Vec<serde_json::Value>> {
-                match val {
-                    serde_json::Value::Array(arr) => {
-                        if arr.iter().any(|v| v.get("name").and_then(|n| n.as_str()).is_some()) {
-                            return Some(arr.clone());
-                        }
-                        for v in arr {
-                            if let Some(found) = find_items(v) {
-                                return Some(found);
-                            }
-                        }
-                        None
-                    }
-                    serde_json::Value::Object(obj) => {
-                        for v in obj.values() {
-                            if let Some(found) = find_items(v) {
-                                return Some(found);
-                            }
-                        }
-                        None
-                    }
-                    _ => None,
+        // Navigate: response.data.catalog[0].typeSub[?].items
+        let items: &Vec<serde_json::Value> = {
+            let catalog_array = match catalog.get("data").and_then(|d| d.get("catalog")).and_then(|c| c.as_array()) {
+                Some(arr) => arr,
+                None => {
+                    log_warn!("No data.catalog array in gem catalog response for {}", char_name);
+                    return;
                 }
-            }
-            find_items(&catalog)
-        };
-
-        let items = match items {
-            Some(ref arr) => {
-                log_info!("Gem catalog has {} items (found via brute-force)", arr.len());
-                arr
-            }
-            None => {
-                log_warn!("No items found in gem catalog response for {}", char_name);
-                return;
-            }
+            };
+            let first_entry = match catalog_array.first().and_then(|e| e.get("typeSub")).and_then(|ts| ts.as_array()) {
+                Some(arr) => arr,
+                None => {
+                    log_warn!("No catalog[0].typeSub array in gem catalog response for {}", char_name);
+                    return;
+                }
+            };
+            let items_arr = match first_entry.first().and_then(|s| s.get("items")).and_then(|i| i.as_array()) {
+                Some(arr) => arr,
+                None => {
+                    log_warn!("No typeSub[0].items array in gem catalog response for {}", char_name);
+                    return;
+                }
+            };
+            items_arr
         };
 
         let tag_suffix = format!("000{}", gem_rarity);
         let gem_chars: Vec<char> = gem_name.chars().collect();
-        log_info!("Gem catalog matching: name='{}' (chars: {:?}), rarity={}", gem_name, gem_chars, gem_rarity);
 
         let matched = items.iter().find(|item| {
             let raw_name = match item.get("name").and_then(|n| n.as_str()) {
@@ -574,7 +552,6 @@ impl CharDetailService {
             };
             let item_chars: Vec<char> = raw_name.chars().collect();
             if gem_chars.len() < 4 || item_chars.len() < 4 {
-                log_debug!("  skip (too short): item_name='{}'", raw_name);
                 return false;
             }
             let prefix_match = gem_chars[0..2] == item_chars[0..2];
@@ -582,21 +559,18 @@ impl CharDetailService {
             if !prefix_match || !suffix_match {
                 return false;
             }
-            let tag_match = if let Some(tags) = item.get("tagsIds").and_then(|t| t.as_array()) {
+            let tag_match = if let Some(tags) = item.get("tagIds").and_then(|t| t.as_array()) {
                 tags.iter().any(|t| {
-                    t.as_i64().map(|v| v.to_string().ends_with(&tag_suffix)).unwrap_or(false)
+                    t.as_str().map(|v| v.ends_with(&tag_suffix)).unwrap_or(false)
                 })
             } else {
                 false
             };
-            if tag_match {
-                log_info!("  matched: item_name='{}'", raw_name);
-            }
             tag_match
         });
 
         let cover_url = match matched {
-            Some(item) => item.get("cover").and_then(|c| c.as_str()).map(|s| s.to_string()),
+            Some(item) => item.get("brief").and_then(|b| b.get("cover")).and_then(|c| c.as_str()).map(|s| s.to_string()),
             None => {
                 log_warn!("No matching gem found in catalog for {} (name={}, rarity={})", char_name, gem_name, gem_rarity);
                 return;

@@ -1053,7 +1053,9 @@ export function CharSelectModal({
               {/* Close button at top-right corner */}
               <button
                 onClick={() => {
-                  if (enteredDetailFromCard) {
+                  if (hasSelection) {
+                    closeDetailPanel();
+                  } else if (enteredDetailFromCard) {
                     onClose();
                   } else {
                     setViewMode("list");
@@ -1702,49 +1704,65 @@ export function CharSelectModal({
                                     ) : null}
                                   </div>
                                   {/* Bottom-left: Name (no SVG stars for tactical) */}
-                                  <div className="absolute bottom-1 left-1 z-10">
-                                    {eq.hasData ? (
-                                      <div className="flex flex-col items-start">
-                                        {!opts?.showLabel && (
-                                          <span className="inline-flex items-center gap-px">
-                                            {Array.from({
-                                              length: rarityCount,
-                                            }).map((_, i) => (
-                                              <img
-                                                key={i}
-                                                src={RARITY_ICON_URL}
-                                                alt=""
-                                                className="inline-block"
+                                  <div className="absolute bottom-1 left-1 z-10 flex items-start gap-1">
+                                    <div>
+                                      {eq.hasData ? (
+                                        <div className="flex flex-col items-start">
+                                          {!opts?.showLabel && (
+                                            <span className="inline-flex items-center gap-px">
+                                              {Array.from({
+                                                length: rarityCount,
+                                              }).map((_, i) => (
+                                                <img
+                                                  key={i}
+                                                  src={RARITY_ICON_URL}
+                                                  alt=""
+                                                  className="inline-block"
+                                                  style={{
+                                                    width: svgSize,
+                                                    height: svgSize,
+                                                  }}
+                                                />
+                                              ))}
+                                            </span>
+                                          )}
+                                          <span className="inline-flex items-center gap-1">
+                                            {eq.hasData && eq.key === "weapon" && (
+                                              <div
+                                                className="shrink-0 rounded-sm"
                                                 style={{
-                                                  width: svgSize,
-                                                  height: svgSize,
+                                                  width: 3,
+                                                  height: "1.1em",
+                                                  backgroundColor: lineColor,
                                                 }}
                                               />
-                                            ))}
+                                            )}
+                                            <span
+                                              className={
+                                                nameSize +
+                                                " text-black/90 leading-tight"
+                                              }
+                                            >
+                                              {eq.name}
+                                            </span>
                                           </span>
-                                        )}
-                                        <span
-                                          className={
-                                            nameSize +
-                                            " text-black/70 leading-tight"
-                                          }
-                                        >
-                                          {eq.name}
+                                        </div>
+                                      ) : (
+                                        <span className="text-[10px] text-black/40 leading-tight">
+                                          未装配
                                         </span>
-                                      </div>
-                                    ) : (
-                                      <span className="text-[10px] text-black/40 leading-tight">
-                                        未装配
-                                      </span>
-                                    )}
+                                      )}
+                                    </div>
                                   </div>
-                                  {/* Bottom: 3px rarity line inside card */}
-                                  <div
-                                    className="absolute bottom-0 left-0 right-0"
-                                    style={{
-                                      borderBottom: "3px solid " + lineColor,
-                                    }}
-                                  />
+                                  {/* Bottom: 3px rarity line inside card (not for weapon) */}
+                                  {eq.key !== "weapon" && (
+                                    <div
+                                      className="absolute bottom-0 left-0 right-0"
+                                      style={{
+                                        borderBottom: "3px solid " + lineColor,
+                                      }}
+                                    />
+                                  )}
                                 </div>
                               );
                             };
@@ -1767,7 +1785,7 @@ export function CharSelectModal({
                                     </div>
                                   )}
                                   <div className="absolute bottom-1 left-1 z-10">
-                                    <span className="text-sm text-black/70 leading-tight">
+                                    <span className="text-xs text-black/70 leading-tight">
                                       {gem?.name || ""}
                                     </span>
                                   </div>
@@ -1785,8 +1803,8 @@ export function CharSelectModal({
                             return (
                               <>
                                 {sectionTitle("武器")}
-                                <div className="flex gap-1.5" style={{ height: 115 }}>
-                                  <div className="shrink-0" style={{ width: "55%" }}>
+                                <div className="flex gap-1.5" style={{ height: 95 }}>
+                                  <div className="shrink-0" style={{ width: "65%" }}>
                                     {renderCard(weapon)}
                                   </div>
                                   <div className="flex-1 min-w-0">
