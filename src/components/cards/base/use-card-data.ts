@@ -4,14 +4,16 @@ import { logDebug, logError } from "@/utils/logger";
 interface UseCardDataOptions<T> {
   fetchData: () => Promise<T>;
   defaultValue?: T;
-  lazy?: boolean;  // 是否懒加载
-  concurrent?: boolean; // 是否支持并发请求（默认false）
+  lazy?: boolean;
+  /** 当此值变化时强制重新加载（如 roleId） */
+  reloadKey?: string | number | null;
 }
 
 export function useCardData<T>({
   fetchData,
   defaultValue,
   lazy = false,
+  reloadKey,
 }: UseCardDataOptions<T>) {
   const [data, setData] = useState<T | null>(defaultValue || null);
   const [isLoading, setIsLoading] = useState(!lazy);
@@ -23,8 +25,8 @@ export function useCardData<T>({
   const fetchDataRef = useRef(fetchData);
   fetchDataRef.current = fetchData;
 
-  const loadData = useCallback(async () => {
-    if (hasLoadedRef.current && !lazy) return;
+  const loadData = useCallback(async (force = false) => {
+    if (hasLoadedRef.current && !force && !lazy) return;
 
     try {
       setIsLoading(true);
@@ -41,6 +43,16 @@ export function useCardData<T>({
       setIsLoading(false);
     }
   }, [lazy]);
+
+  const prevReloadKeyRef = useRef(reloadKey);
+  useEffect(() => {
+    if (prevReloadKeyRef.current !== reloadKey) {
+      prevReloadKeyRef.current = reloadKey;
+      hasLoadedRef.current = false;
+      setHasLoaded(false);
+      loadData(true);
+    }
+  }, [reloadKey, loadData]);
 
   useEffect(() => {
     if (!lazy) {

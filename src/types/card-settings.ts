@@ -11,6 +11,7 @@ export interface CharacterListCardSettings {
   selectedCharIds?: string[];  // 选中的角色ID列表
   sortOrder?: SortOrder;       // 排列顺序
   displayMode?: CharacterListDisplayMode;  // 显示模式
+  roleId?: string;             // 自定义角色ID（独立于dashboard的defaultRoleId）
 }
 
 /**

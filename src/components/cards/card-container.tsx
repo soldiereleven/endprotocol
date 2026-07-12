@@ -168,6 +168,17 @@ function FreeDragCard({
           );
         },
       });
+      items.push({
+        key: "change-role",
+        label: t("card:change_role"),
+        onPress: () => {
+          window.dispatchEvent(
+            new CustomEvent("cardAction", {
+              detail: { cardId: card.id, action: "change-role" },
+            }),
+          );
+        },
+      });
     } else if (card.type === "attendance") {
       items.push({
         key: "settings",

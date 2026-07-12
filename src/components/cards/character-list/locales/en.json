@@ -15,5 +15,9 @@
   "mode_triple_desc": "Display 3 characters (default)",
   "view_list": "View List",
   "confirm_delete_title": "Delete Card",
-  "confirm_delete_body": "Are you sure you want to delete this card?"
+  "confirm_delete_body": "Are you sure you want to delete this card?",
+  "change_role": "Change Role",
+  "select_role": "Select Role",
+  "no_accounts": "No accounts available",
+  "current": "Current"
 }

@@ -15,5 +15,9 @@
   "mode_triple_desc": "显示 3 个角色（默认）",
   "view_list": "查看列表",
   "confirm_delete_title": "删除卡片",
-  "confirm_delete_body": "确定要删除该卡片吗？"
+  "confirm_delete_body": "确定要删除该卡片吗？",
+  "change_role": "更改角色",
+  "select_role": "选择角色",
+  "no_accounts": "无可用账户",
+  "current": "当前"
 }

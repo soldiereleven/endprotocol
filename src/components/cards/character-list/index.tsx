@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, ProgressCircle } from "@heroui/react";
 import { CharDetailData, CharacterItem } from "@/types/charDetail";
 import { CharSelectModal } from "./char-select-modal";
 import { logDebug, logError } from "@/utils/logger";
+import { resolveServerLabel } from "@/types";
 import { useTranslation } from "react-i18next";
 import { roleDataService } from "@/utils/roleDataService";
 import { BaseCardProps } from "../registry/types";
@@ -11,6 +12,15 @@ import type { CharacterListCardSettings, CharacterListDisplayMode } from "@/type
 import { useCardData } from "../base/use-card-data";
 import { Img } from "@/utils/imageLoader";
 import { useImageRequest, usePinImages } from "@/utils/imageCacheManager";
+import { getAccounts } from "@/utils/accountService";
+import type { Account } from "@/utils/accountService";
+import {
+  CustomModal,
+  CustomModalHeader,
+  CustomModalBody,
+  CustomModalFooter,
+} from "@/components/custom-modal";
+import { Button } from "@heroui/react";
 
 const DISPLAY_MODE_CONFIG: Record<CharacterListDisplayMode, { slotCount: number; gridCols: number }> = {
   single: { slotCount: 1, gridCols: 1 },
@@ -39,14 +49,43 @@ export default function CharacterListCard({
   cardId,
   isEditMode = false,
 }: BaseCardProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [selectedCharIds, setSelectedCharIds] = useState<string[]>([]);
   const [displayMode, setDisplayMode] = useState<CharacterListDisplayMode>("triple");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [preopenCharId, setPreopenCharId] = useState<string | null>(null);
+  const [customRoleId, setCustomRoleId] = useState<string | null>(null);
+  const [isRoleSelectModalOpen, setIsRoleSelectModalOpen] = useState(false);
+  const [availableAccounts, setAvailableAccounts] = useState<Account[]>([]);
+  const prevRoleIdRef = useRef<string | null>(null);
+
+  // 加载自定义roleId
+  useEffect(() => {
+    const loadCustomRoleId = async () => {
+      try {
+        const settings = await CardConfigService.getCardSettings<CharacterListCardSettings>(cardId);
+        if (settings.roleId) {
+          setCustomRoleId(settings.roleId);
+        }
+      } catch (error) {
+        logError("Failed to load custom roleId:", error);
+      }
+    };
+    loadCustomRoleId();
+  }, [cardId]);
+
+  // 使用自定义roleId或props中的roleId
+  const effectiveRoleId = customRoleId || roleId;
+
+  // 跟踪 roleId 变化
+  const roleIdChanged = prevRoleIdRef.current !== null && prevRoleIdRef.current !== effectiveRoleId;
+  useEffect(() => {
+    prevRoleIdRef.current = effectiveRoleId;
+  }, [effectiveRoleId]);
 
   const { data: charDetail, isLoading } = useCardData<CharDetailData>({
-    fetchData: () => roleDataService.getFullCharDetail(roleId),
+    fetchData: () => roleDataService.getFullCharDetail(effectiveRoleId),
+    reloadKey: effectiveRoleId,
   });
 
   const processedCharDetail = useMemo(() => {
@@ -68,6 +107,12 @@ export default function CharacterListCard({
 
       if (settings.displayMode) {
         setDisplayMode(settings.displayMode);
+      }
+
+      // 如果 roleId 发生变化，不加载之前的 selectedCharIds
+      if (roleIdChanged) {
+        logDebug("roleId changed, skipping selectedCharIds load");
+        return;
       }
 
       if (settings.selectedCharIds && settings.selectedCharIds.length > 0) {
@@ -93,7 +138,7 @@ export default function CharacterListCard({
     } catch (error) {
       logError("Failed to load settings:", error);
     }
-  }, [processedCharDetail, cardId]);
+  }, [processedCharDetail, cardId, roleIdChanged]);
 
   useEffect(() => {
     if (processedCharDetail) {
@@ -130,11 +175,46 @@ export default function CharacterListCard({
       const detail = (e as CustomEvent).detail as { cardId: string; action: string } | undefined;
       if (detail?.cardId === cardId && detail?.action === "view-list") {
         setIsModalOpen(true);
+      } else if (detail?.cardId === cardId && detail?.action === "change-role") {
+        handleOpenRoleSelect();
       }
     };
     window.addEventListener("cardAction", handler);
     return () => window.removeEventListener("cardAction", handler);
   }, [cardId]);
+
+  const handleOpenRoleSelect = async () => {
+    try {
+      const accounts = await getAccounts();
+      setAvailableAccounts(accounts);
+      setIsRoleSelectModalOpen(true);
+    } catch (error) {
+      logError("Failed to load accounts:", error);
+    }
+  };
+
+  const handleRoleSelect = async (newRoleId: string) => {
+    setCustomRoleId(newRoleId);
+    setIsRoleSelectModalOpen(false);
+    try {
+      // 获取新角色的干员数据，自动选中前N位
+      const newCharDetail = await roleDataService.getFullCharDetail(newRoleId);
+      const mode = displayMode;
+      const count = DISPLAY_MODE_CONFIG[mode].slotCount;
+      const defaultIds = newCharDetail
+        ? getDefaultSelectedCharIds(newCharDetail.chars, count)
+        : [];
+
+      setSelectedCharIds(defaultIds);
+      await Promise.all([
+        CardConfigService.updateCardSetting(cardId, "roleId", newRoleId),
+        CardConfigService.updateCardSetting(cardId, "selectedCharIds", defaultIds),
+      ]);
+      logDebug(`Updated roleId for card ${cardId}, selected ${defaultIds.length} chars:`, newRoleId);
+    } catch (error) {
+      logError("Failed to save roleId:", error);
+    }
+  };
 
   function rarityLineColor(value: string): string {
     switch (value) {
@@ -302,7 +382,7 @@ export default function CharacterListCard({
         onClose={() => { setIsModalOpen(false); setPreopenCharId(null); }}
         charDetail={processedCharDetail}
         selectedCharIds={selectedCharIds.slice(0, slotCount)}
-        roleId={roleId}
+        roleId={effectiveRoleId}
         maxSlots={slotCount}
         initialCharId={preopenCharId ?? undefined}
         initialViewMode={preopenCharId ? "detail" : undefined}
@@ -324,6 +404,73 @@ export default function CharacterListCard({
           }
         }}
       />
+
+      {/* Role Select Modal */}
+      <CustomModal
+        isOpen={isRoleSelectModalOpen}
+        onClose={() => setIsRoleSelectModalOpen(false)}
+        size="md"
+      >
+        <CustomModalHeader onClose={() => setIsRoleSelectModalOpen(false)}>
+          {t("card:change_role") || "Change Role"}
+        </CustomModalHeader>
+        <CustomModalBody>
+          <div className="space-y-3">
+            {availableAccounts.length === 0 ? (
+              <div className="text-center text-muted py-8">
+                {t("card:no_accounts") || "No accounts available"}
+              </div>
+            ) : (
+              availableAccounts.map((account) => (
+                <div
+                  key={account.id}
+                  className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all hover:bg-default-100 border ${
+                    effectiveRoleId === account.id
+                      ? "border-primary bg-primary/10"
+                      : "border-separator hover:border-primary/50"
+                  }`}
+                  onClick={() => handleRoleSelect(account.id)}
+                >
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-default-200 shrink-0">
+                    {account.avatar ? (
+                      <Img
+                        src={account.avatar}
+                        alt={account.nickname}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-muted text-sm">
+                        {account.nickname?.charAt(0) || "?"}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">
+                      {account.nickname || t("common.unknown") || "Unknown"}
+                    </div>
+                    <div className="text-xs text-muted">
+                      {resolveServerLabel(account.server, i18n.language)} · Lv.{account.level}
+                    </div>
+                  </div>
+                  {effectiveRoleId === account.id && (
+                    <div className="text-primary text-xs font-medium">
+                      {t("card:current") || "Current"}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </CustomModalBody>
+        <CustomModalFooter>
+          <Button
+            variant="secondary"
+            onPress={() => setIsRoleSelectModalOpen(false)}
+          >
+            {t("common.cancel") || "Cancel"}
+          </Button>
+        </CustomModalFooter>
+      </CustomModal>
     </>
   );
 }
