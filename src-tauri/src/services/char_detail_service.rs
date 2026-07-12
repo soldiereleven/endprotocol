@@ -521,26 +521,44 @@ impl CharDetailService {
             }
         };
 
-        log_info!("  catalog response keys: {:?}", catalog.as_object().map(|o| o.keys().collect::<Vec<_>>()));
-        if let Some(data) = catalog.get("data") {
-            log_info!("  data keys: {:?}", data.as_object().map(|o| o.keys().collect::<Vec<_>>()));
-        }
+        log_info!("  catalog response: {}", catalog);
 
-        // Try multiple possible paths for the items array
-        let items = catalog
-            .get("data")
-            .and_then(|d| d.get("items"))
-            .or_else(|| catalog.get("data").and_then(|d| d.get("list")))
-            .or_else(|| catalog.get("items"))
-            .and_then(|i| i.as_array());
+        // Brute-force: find any array of objects with "name" field in the response
+        let items: Option<Vec<serde_json::Value>> = {
+            fn find_items(val: &serde_json::Value) -> Option<Vec<serde_json::Value>> {
+                match val {
+                    serde_json::Value::Array(arr) => {
+                        if arr.iter().any(|v| v.get("name").and_then(|n| n.as_str()).is_some()) {
+                            return Some(arr.clone());
+                        }
+                        for v in arr {
+                            if let Some(found) = find_items(v) {
+                                return Some(found);
+                            }
+                        }
+                        None
+                    }
+                    serde_json::Value::Object(obj) => {
+                        for v in obj.values() {
+                            if let Some(found) = find_items(v) {
+                                return Some(found);
+                            }
+                        }
+                        None
+                    }
+                    _ => None,
+                }
+            }
+            find_items(&catalog)
+        };
 
         let items = match items {
-            Some(arr) => {
-                log_info!("Gem catalog has {} items for {}", arr.len(), char_name);
+            Some(ref arr) => {
+                log_info!("Gem catalog has {} items (found via brute-force)", arr.len());
                 arr
             }
             None => {
-                log_warn!("No items in gem catalog response for {}", char_name);
+                log_warn!("No items found in gem catalog response for {}", char_name);
                 return;
             }
         };
