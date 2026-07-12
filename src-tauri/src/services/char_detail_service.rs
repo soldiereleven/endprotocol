@@ -425,45 +425,70 @@ impl CharDetailService {
         cred: &str,
         token: &str,
     ) {
+        log_info!("cache_gem_icon for {}", char_name);
+
         let (original_url, gem_name, gem_rarity) = {
             let value = match weapon {
                 Some(ref v) => v,
-                None => return,
+                None => {
+                    log_warn!("  weapon is None");
+                    return;
+                }
             };
             let obj = match value.as_object() {
                 Some(o) => o,
-                None => return,
+                None => {
+                    log_warn!("  weapon is not an object: {:?}", value);
+                    return;
+                }
             };
             let gem = match obj.get("gem") {
                 Some(g) => g,
-                None => return,
+                None => {
+                    log_warn!("  no gem field in weapon object, keys: {:?}", obj.keys().collect::<Vec<_>>());
+                    return;
+                }
             };
             let gem_obj = match gem.as_object() {
                 Some(o) => o,
-                None => return,
+                None => {
+                    log_warn!("  gem is not an object: {:?}", gem);
+                    return;
+                }
             };
             let gem_data = match gem_obj.get("gemData") {
                 Some(d) => d,
-                None => return,
+                None => {
+                    log_warn!("  no gemData in gem, keys: {:?}", gem_obj.keys().collect::<Vec<_>>());
+                    return;
+                }
             };
             let gem_data_obj = match gem_data.as_object() {
                 Some(o) => o,
-                None => return,
+                None => {
+                    log_warn!("  gemData is not an object: {:?}", gem_data);
+                    return;
+                }
             };
             let url = match gem_data_obj.get("icon") {
                 Some(serde_json::Value::String(u)) => u.clone(),
-                _ => return,
+                _ => {
+                    log_warn!("  no icon string in gemData, keys: {:?}", gem_data_obj.keys().collect::<Vec<_>>());
+                    return;
+                }
             };
             if url.is_empty() || url.starts_with("http://asset.localhost") {
+                log_warn!("  icon is empty or asset.localhost: {}", url);
                 return;
             }
-            let name = gem_data_obj.get("name").and_then(|n| n.as_str()).unwrap_or("").to_string();
-            let template_id = gem_data_obj.get("templateId").and_then(|t| t.as_str()).unwrap_or("").to_string();
+            let name = gem_data_obj.get("name").and_then(|n| n.as_str()).unwrap_or("").trim().to_string();
+            let template_id = gem_data_obj.get("templateId").and_then(|t| t.as_str()).unwrap_or("").trim().to_string();
             let rarity = template_id.replace("item_gem_rarity_", "");
+            log_info!("  gem: name='{}', rarity='{}', url='{}'", name, rarity, url);
             (url, name, rarity)
         };
 
-        let filename = original_url.split('/').last().unwrap_or("").to_string();
+        let filename = original_url.split('/').last().or_else(|| original_url.split('\\').last()).unwrap_or("").to_string();
 
         // 1) Check if the file already exists in cache (named by original URL filename)
         if !filename.is_empty() {
@@ -496,9 +521,17 @@ impl CharDetailService {
             }
         };
 
+        log_info!("  catalog response keys: {:?}", catalog.as_object().map(|o| o.keys().collect::<Vec<_>>()));
+        if let Some(data) = catalog.get("data") {
+            log_info!("  data keys: {:?}", data.as_object().map(|o| o.keys().collect::<Vec<_>>()));
+        }
+
+        // Try multiple possible paths for the items array
         let items = catalog
             .get("data")
             .and_then(|d| d.get("items"))
+            .or_else(|| catalog.get("data").and_then(|d| d.get("list")))
+            .or_else(|| catalog.get("items"))
             .and_then(|i| i.as_array());
 
         let items = match items {
@@ -517,13 +550,13 @@ impl CharDetailService {
         log_info!("Gem catalog matching: name='{}' (chars: {:?}), rarity={}", gem_name, gem_chars, gem_rarity);
 
         let matched = items.iter().find(|item| {
-            let item_name = match item.get("name").and_then(|n| n.as_str()) {
-                Some(n) => n,
+            let raw_name = match item.get("name").and_then(|n| n.as_str()) {
+                Some(n) => n.trim(),
                 None => return false,
             };
-            let item_chars: Vec<char> = item_name.chars().collect();
+            let item_chars: Vec<char> = raw_name.chars().collect();
             if gem_chars.len() < 4 || item_chars.len() < 4 {
-                log_debug!("  skip (too short): item_name='{}'", item_name);
+                log_debug!("  skip (too short): item_name='{}'", raw_name);
                 return false;
             }
             let prefix_match = gem_chars[0..2] == item_chars[0..2];
@@ -539,7 +572,7 @@ impl CharDetailService {
                 false
             };
             if tag_match {
-                log_info!("  matched: item_name='{}'", item_name);
+                log_info!("  matched: item_name='{}'", raw_name);
             }
             tag_match
         });
