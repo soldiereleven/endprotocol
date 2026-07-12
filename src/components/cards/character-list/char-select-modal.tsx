@@ -346,7 +346,6 @@ export function CharSelectModal({
   const wikiCleanupRef = useRef(false);
   const wikiPreloadRef = useRef(false);
   const [wikiDetail, setWikiDetail] = useState<any>(null);
-  const [gemIconUrl, setGemIconUrl] = useState<string | null>(null);
 
   // 从 Wiki detail 中提取潜能数据（在 widgetCommonMap 中按 title="干员潜能" 查找）
   // 从 Wiki detail 中提取潜能数据（通过 chapterGroup 查找"干员潜能"章节的 widgetId）
@@ -529,28 +528,6 @@ export function CharSelectModal({
     return () => {
       cancelled = true;
     };
-  }, [viewMode, detailCharId, roleId]);
-
-  // 进入 detail view 时加载基质图标
-  useEffect(() => {
-    if (viewMode !== "detail" || !detailCharId || !roleId) {
-      setGemIconUrl(null);
-      return;
-    }
-    const charItem = getCharItemById(detailCharId);
-    const gemData = charItem?.weapon?.gem?.gemData;
-    const gemName = gemData?.name;
-    const gemTemplateId = gemData?.templateId || "";
-    const rarity = gemTemplateId.replace("item_gem_rarity_", "") || "";
-    if (!gemName || !rarity) {
-      setGemIconUrl(null);
-      return;
-    }
-    let cancelled = false;
-    roleDataService.resolveGemIcon(roleId, gemName, rarity).then((url) => {
-      if (!cancelled) setGemIconUrl(url);
-    });
-    return () => { cancelled = true; };
   }, [viewMode, detailCharId, roleId]);
 
   // 离开 detail view 时重置 Wiki 状态，若未预加载则清理 BE 缓存
@@ -1773,18 +1750,17 @@ export function CharSelectModal({
                             };
 
                             const renderGemCard = () => {
-                              const icon = gemIconUrl || gem?.icon;
-                              if (!icon && !gem?.name) return null;
+                              if (!gem?.icon && !gem?.name) return null;
                               const lineColor = gemRarity ? rc[gemRarity] || "transparent" : "transparent";
                               return (
                                 <div
                                   className="relative bg-[#eeeeee] overflow-hidden h-full"
                                   style={{ borderRadius: 0 }}
                                 >
-                                  {icon && (
+                                  {gem?.icon && (
                                     <div className="absolute top-0 right-0 z-10 w-20 h-20">
                                       <Img
-                                        src={icon}
+                                        src={gem.icon}
                                         alt={gem?.name || ""}
                                         className="w-full h-full object-contain"
                                       />

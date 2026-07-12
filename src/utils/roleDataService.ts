@@ -211,29 +211,6 @@ export class RoleDataService {
     if (raw.item) return raw.item;
     return raw;
   }
-
-  /**
-   * 获取基质 Wiki 目录并匹配基质图标
-   * 
-   * @param roleId - 角色ID（用于认证）
-   * @param gemName - 基质名称
-   * @param rarity - 稀有度数字（从 templateId 提取）
-   * @returns 匹配到的基质 icon URL，未匹配到返回 null
-   */
-  async resolveGemIcon(roleId: string, gemName: string, rarity: string): Promise<string | null> {
-    const result = await this.queryData(roleId, 'gem_catalog', []);
-    if (!result || !result.__full__) return null;
-    const data = result.__full__;
-    const items = data.data?.items || data.items || [];
-    if (!Array.isArray(items)) return null;
-    const tagSuffix = `000${rarity}`;
-    const matched = items.find((item: any) =>
-      item.name === gemName &&
-      Array.isArray(item.tagsIds) &&
-      item.tagsIds.some((t: number) => t.toString().endsWith(tagSuffix))
-    );
-    return matched?.cover || null;
-  }
 }
 
 // 导出单例

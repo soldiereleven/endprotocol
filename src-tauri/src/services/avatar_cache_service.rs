@@ -45,26 +45,29 @@ impl ImageCacheService {
         // 确保主目录存在
         fs::create_dir_all(&cache_dir)?;
 
-            // 创建所有子目录
-            for image_type in [
-                ImageType::Avatar,
-                ImageType::SkillIcon,
-                ImageType::WeaponIcon,
-                ImageType::EquipIcon,
-                ImageType::Illustration,
-                ImageType::AttendanceIcon,
-                ImageType::GemIcon,
-            ] {
-                let type_dir = cache_dir.join(image_type.dir_name());
-                fs::create_dir_all(&type_dir)?;
-            }
+        // 创建所有子目录
+        for image_type in [
+            ImageType::Avatar,
+            ImageType::SkillIcon,
+            ImageType::WeaponIcon,
+            ImageType::EquipIcon,
+            ImageType::Illustration,
+            ImageType::AttendanceIcon,
+            ImageType::GemIcon,
+        ] {
+            let type_dir = cache_dir.join(image_type.dir_name());
+            fs::create_dir_all(&type_dir)?;
+        }
 
         Ok(Self { cache_dir })
     }
 
+    pub fn cache_dir(&self) -> &PathBuf {
+        &self.cache_dir
+    }
+
     /// 从 URL 中提取文件名
     fn extract_filename_from_url(&self, url: &str) -> Option<String> {
-        // 获取 URL 的最后一段作为文件名
         url.split('/').last().and_then(|s| {
             if s.is_empty() {
                 None

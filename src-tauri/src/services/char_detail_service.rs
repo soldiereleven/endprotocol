@@ -197,7 +197,7 @@ impl CharDetailService {
         };
 
         let mut detail = detail.clone();
-        self.process_images(&mut detail).await?;
+        self.process_images(&mut detail, cred, token).await?;
 
         let json_value = serde_json::to_value(&detail).map_err(|e| {
             log_error!("Failed to serialize: {}", e);
@@ -213,7 +213,7 @@ impl CharDetailService {
     }
 
     /// 处理角色详情中的所有图片URL，替换为本地缓存路径
-    async fn process_images(&self, detail: &mut CharDetailData) -> Result<(), AppError> {
+    async fn process_images(&self, detail: &mut CharDetailData, cred: &str, token: &str) -> Result<(), AppError> {
         log_debug!("Processing images for {} chars", detail.chars.len());
 
         let image_cache = ImageCacheService::new().map_err(|e| {
@@ -365,7 +365,7 @@ impl CharDetailService {
                 Self::cache_equip_icon(&image_cache, &mut char.second_accessory, "equipData", char_name, ImageType::EquipIcon).await;
                 Self::cache_equip_icon(&image_cache, &mut char.tactical_item, "tacticalItemData", char_name, ImageType::EquipIcon).await;
                 // Cache gem icon from weapon
-                Self::cache_gem_icon(&image_cache, &mut char.weapon, char_name).await;
+                Self::cache_gem_icon(&image_cache, &self.skland_service, &mut char.weapon, char_name, cred, token).await;
             }
         }
 
@@ -414,41 +414,216 @@ impl CharDetailService {
         }
     }
 
-    /// Cache gem icon from weapon (nested inside weapon.gem.gemData.icon)
+    /// Cache gem icon from weapon.
+    /// Tries the original URL first; if that fails, falls back to the wiki catalog
+    /// to find the correct cover and saves it with the original filename.
     async fn cache_gem_icon(
         image_cache: &ImageCacheService,
+        skland_service: &SklandService,
         weapon: &mut Option<serde_json::Value>,
         char_name: &str,
+        cred: &str,
+        token: &str,
     ) {
+        let (original_url, gem_name, gem_rarity) = {
+            let value = match weapon {
+                Some(ref v) => v,
+                None => return,
+            };
+            let obj = match value.as_object() {
+                Some(o) => o,
+                None => return,
+            };
+            let gem = match obj.get("gem") {
+                Some(g) => g,
+                None => return,
+            };
+            let gem_obj = match gem.as_object() {
+                Some(o) => o,
+                None => return,
+            };
+            let gem_data = match gem_obj.get("gemData") {
+                Some(d) => d,
+                None => return,
+            };
+            let gem_data_obj = match gem_data.as_object() {
+                Some(o) => o,
+                None => return,
+            };
+            let url = match gem_data_obj.get("icon") {
+                Some(serde_json::Value::String(u)) => u.clone(),
+                _ => return,
+            };
+            if url.is_empty() || url.starts_with("http://asset.localhost") {
+                return;
+            }
+            let name = gem_data_obj.get("name").and_then(|n| n.as_str()).unwrap_or("").to_string();
+            let template_id = gem_data_obj.get("templateId").and_then(|t| t.as_str()).unwrap_or("").to_string();
+            let rarity = template_id.replace("item_gem_rarity_", "");
+            (url, name, rarity)
+        };
+
+        // 1) Try direct download from the original URL
+        match image_cache.get_or_download_image(&original_url, ImageType::GemIcon).await {
+            Ok(p) => {
+                if let Some(ref mut value) = weapon {
+                    if let Some(obj) = value.as_object_mut() {
+                        if let Some(gem) = obj.get_mut("gem") {
+                            if let Some(gem_obj) = gem.as_object_mut() {
+                                if let Some(gem_data) = gem_obj.get_mut("gemData") {
+                                    if let Some(gem_data_obj) = gem_data.as_object_mut() {
+                                        gem_data_obj.insert("icon".to_string(), serde_json::Value::String(p));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                return;
+            }
+            Err(_) => {
+                log_debug!("Direct gem icon download failed for {}, trying wiki catalog", char_name);
+            }
+        }
+
+        // 2) Check if the file already exists in cache (named by original URL filename)
+        let filename = original_url.split('/').last().unwrap_or("").to_string();
+        if !filename.is_empty() {
+            let cached_path = image_cache.cache_dir().join("gem_icons").join(&filename);
+            if cached_path.exists() {
+                log_info!("Gem icon cache hit (by filename) for {}: {}", char_name, filename);
+                if let Some(ref mut value) = weapon {
+                    if let Some(obj) = value.as_object_mut() {
+                        if let Some(gem) = obj.get_mut("gem") {
+                            if let Some(gem_obj) = gem.as_object_mut() {
+                                if let Some(gem_data) = gem_obj.get_mut("gemData") {
+                                    if let Some(gem_data_obj) = gem_data.as_object_mut() {
+                                        gem_data_obj.insert("icon".to_string(), serde_json::Value::String(cached_path.to_string_lossy().to_string()));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                return;
+            }
+        }
+
+        // 3) No cache hit — fetch wiki catalog to find the correct gem icon
+        if gem_name.is_empty() || gem_rarity.is_empty() {
+            log_warn!("Gem name or rarity missing for {}, cannot resolve via catalog", char_name);
+            return;
+        }
+
+        log_info!("Resolving gem icon via wiki catalog for {} (name={}, rarity={})", char_name, gem_name, gem_rarity);
+
+        let path = "/web/v1/wiki/item/catalog";
+        let query = "typeMainId=1&typeSubId=7".to_string();
+
+        let catalog = match skland_service
+            .call_skland_api("GET", path, Some(&query), None, cred, token, vec![])
+            .await
+        {
+            Ok(j) => j,
+            Err(e) => {
+                log_warn!("Failed to fetch gem catalog for {}: {}", char_name, e);
+                return;
+            }
+        };
+
+        let items = catalog
+            .get("data")
+            .and_then(|d| d.get("items"))
+            .and_then(|i| i.as_array());
+
+        let items = match items {
+            Some(arr) => arr,
+            None => {
+                log_warn!("No items in gem catalog response for {}", char_name);
+                return;
+            }
+        };
+
+        let tag_suffix = format!("000{}", gem_rarity);
+        let matched = items.iter().find(|item| {
+            let name_match = item.get("name").and_then(|n| n.as_str()) == Some(&gem_name);
+            if !name_match {
+                return false;
+            }
+            if let Some(tags) = item.get("tagsIds").and_then(|t| t.as_array()) {
+                tags.iter().any(|t| {
+                    t.as_i64().map(|v| v.to_string().ends_with(&tag_suffix)).unwrap_or(false)
+                })
+            } else {
+                false
+            }
+        });
+
+        let cover_url = match matched {
+            Some(item) => item.get("cover").and_then(|c| c.as_str()).map(|s| s.to_string()),
+            None => {
+                log_warn!("No matching gem found in catalog for {} (name={}, rarity={})", char_name, gem_name, gem_rarity);
+                return;
+            }
+        };
+
+        let cover_url = match cover_url {
+            Some(u) => u,
+            None => {
+                log_warn!("Matched gem has no cover for {}", char_name);
+                return;
+            }
+        };
+
+        // 4) Download the matched cover and save with the original filename
+        let download_result = if !filename.is_empty() {
+            let client = reqwest::Client::new();
+            let resp = match client.get(&cover_url).send().await {
+                Ok(r) => r,
+                Err(e) => {
+                    log_warn!("Failed to download gem cover for {}: {}", char_name, e);
+                    return;
+                }
+            };
+            let bytes = match resp.bytes().await {
+                Ok(b) => b,
+                Err(e) => {
+                    log_warn!("Failed to read bytes from gem cover for {}: {}", char_name, e);
+                    return;
+                }
+            };
+            let save_path = image_cache.cache_dir().join("gem_icons").join(&filename);
+            if let Some(parent) = save_path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            match std::fs::write(&save_path, &bytes) {
+                Ok(_) => {
+                    log_info!("Cached gem icon for {} at {:?}", char_name, save_path);
+                    save_path.to_string_lossy().to_string()
+                }
+                Err(e) => {
+                    log_warn!("Failed to write gem icon for {}: {}", char_name, e);
+                    return;
+                }
+            }
+        } else {
+            match image_cache.get_or_download_image(&cover_url, ImageType::GemIcon).await {
+                Ok(p) => p,
+                Err(e) => {
+                    log_warn!("Failed to cache gem cover for {}: {}", char_name, e);
+                    return;
+                }
+            }
+        };
+
+        // Update the icon field
         if let Some(ref mut value) = weapon {
             if let Some(obj) = value.as_object_mut() {
                 if let Some(gem) = obj.get_mut("gem") {
                     if let Some(gem_obj) = gem.as_object_mut() {
                         if let Some(gem_data) = gem_obj.get_mut("gemData") {
                             if let Some(gem_data_obj) = gem_data.as_object_mut() {
-                                if let Some(serde_json::Value::String(url)) = gem_data_obj.get("icon") {
-                                    if !url.is_empty() && !url.starts_with("http://asset.localhost") {
-                                        let url_clone = url.clone();
-                                        match image_cache
-                                            .get_or_download_image(&url_clone, ImageType::GemIcon)
-                                            .await
-                                        {
-                                            Ok(p) => {
-                                                gem_data_obj.insert(
-                                                    "icon".to_string(),
-                                                    serde_json::Value::String(p),
-                                                );
-                                            }
-                                            Err(e) => {
-                                                log_warn!(
-                                                    "Failed to cache gem icon for {}: {}",
-                                                    char_name,
-                                                    e
-                                                );
-                                            }
-                                        }
-                                    }
-                                }
+                                gem_data_obj.insert("icon".to_string(), serde_json::Value::String(download_result));
                             }
                         }
                     }
