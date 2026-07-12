@@ -10,6 +10,8 @@ pub enum DataApi {
     CharWikiList,
     /// 角色 Wiki 详情（按 itemId 索引的 JSON 对象）
     CharWikiDetail,
+    /// 基质 Wiki 目录
+    GemCatalog,
 }
 
 impl fmt::Display for DataApi {
@@ -18,6 +20,7 @@ impl fmt::Display for DataApi {
             DataApi::CharDetail => write!(f, "char_detail"),
             DataApi::CharWikiList => write!(f, "char_wiki_list"),
             DataApi::CharWikiDetail => write!(f, "char_wiki_detail"),
+            DataApi::GemCatalog => write!(f, "gem_catalog"),
         }
     }
 }
@@ -30,6 +33,7 @@ impl std::str::FromStr for DataApi {
             "char_detail" => Ok(DataApi::CharDetail),
             "char_wiki_list" => Ok(DataApi::CharWikiList),
             "char_wiki_detail" => Ok(DataApi::CharWikiDetail),
+            "gem_catalog" => Ok(DataApi::GemCatalog),
             _ => Err(format!("Unknown API: {}", s)),
         }
     }

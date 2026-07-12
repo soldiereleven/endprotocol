@@ -56,7 +56,6 @@ pub fn run() {
             commands::account::clear_wiki_detail_cache,
             // Image commands
             commands::image::read_image_file,
-            commands::image::download_image_url,
             // Window commands
             commands::window::minimize_window,
             commands::window::toggle_maximize_window,

@@ -430,7 +430,7 @@ impl CharDetailService {
                                     if !url.is_empty() && !url.starts_with("http://asset.localhost") {
                                         let url_clone = url.clone();
                                         match image_cache
-                                            .get_or_download_image(&url_clone, ImageType::EquipIcon)
+                                            .get_or_download_image(&url_clone, ImageType::GemIcon)
                                             .await
                                         {
                                             Ok(p) => {

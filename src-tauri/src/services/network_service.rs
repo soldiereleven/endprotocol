@@ -140,6 +140,11 @@ impl NetworkService {
                     .get_processed("1", "1", cred, token)
                     .await?
             }
+            DataApi::GemCatalog => {
+                self.char_wiki_service
+                    .get_processed("1", "7", cred, token)
+                    .await?
+            }
             DataApi::CharWikiDetail => {
                 if paths.is_empty() {
                     self.char_wiki_detail_service.get_processed()?

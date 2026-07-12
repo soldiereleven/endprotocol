@@ -7,12 +7,13 @@ use crate::{log_debug, log_info};
 /// 图片缓存类型
 #[derive(Debug, Clone, Copy)]
 pub enum ImageType {
-    Avatar,       // 角色头像
-    SkillIcon,    // 技能图标
-    WeaponIcon,   // 武器图标
-    EquipIcon,    // 装备图标
-    Illustration, // 角色立绘
+    Avatar,         // 角色头像
+    SkillIcon,      // 技能图标
+    WeaponIcon,     // 武器图标
+    EquipIcon,      // 装备图标
+    Illustration,   // 角色立绘
     AttendanceIcon, // 签到奖励图标
+    GemIcon,       // 基质图标
 }
 
 impl ImageType {
@@ -25,6 +26,7 @@ impl ImageType {
             ImageType::EquipIcon => "equip_icons",
             ImageType::Illustration => "illustrations",
             ImageType::AttendanceIcon => "attendance",
+            ImageType::GemIcon => "gem_icons",
         }
     }
 }
@@ -43,18 +45,19 @@ impl ImageCacheService {
         // 确保主目录存在
         fs::create_dir_all(&cache_dir)?;
 
-        // 创建所有子目录
-        for image_type in [
-            ImageType::Avatar,
-            ImageType::SkillIcon,
-            ImageType::WeaponIcon,
-            ImageType::EquipIcon,
-            ImageType::Illustration,
-            ImageType::AttendanceIcon,
-        ] {
-            let type_dir = cache_dir.join(image_type.dir_name());
-            fs::create_dir_all(&type_dir)?;
-        }
+            // 创建所有子目录
+            for image_type in [
+                ImageType::Avatar,
+                ImageType::SkillIcon,
+                ImageType::WeaponIcon,
+                ImageType::EquipIcon,
+                ImageType::Illustration,
+                ImageType::AttendanceIcon,
+                ImageType::GemIcon,
+            ] {
+                let type_dir = cache_dir.join(image_type.dir_name());
+                fs::create_dir_all(&type_dir)?;
+            }
 
         Ok(Self { cache_dir })
     }
@@ -151,6 +154,7 @@ impl ImageCacheService {
                 ImageType::EquipIcon,
                 ImageType::Illustration,
                 ImageType::AttendanceIcon,
+                ImageType::GemIcon,
             ] {
                 let type_dir = self.cache_dir.join(image_type.dir_name());
                 fs::create_dir_all(&type_dir)?;
