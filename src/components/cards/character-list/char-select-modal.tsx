@@ -1711,11 +1711,9 @@ export function CharSelectModal({
                                       className={btnBase(true, isSel, unlocked)}
                                       style={{
                                         backgroundColor: unlocked
-                                          ? "transparent"
+                                          ? "#a2a2a2"
                                           : "#404040",
-                                        borderColor: unlocked
-                                          ? "transparent"
-                                          : undefined,
+                                        border: "none",
                                       }}
                                       title={`潜能 ${p.level}`}
                                     >
