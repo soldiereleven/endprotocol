@@ -1,0 +1,20 @@
+{
+  "id": "achievement",
+  "name": {
+    "zh": "成就奖章",
+    "en": "Achievement Medals"
+  },
+  "description": {
+    "zh": "展示已获得的成就奖章",
+    "en": "Display earned achievement medals"
+  },
+  "icon": "🏅",
+  "defaultSize": { "w": 4, "h": 2 },
+  "version": "1.0.0",
+  "allowMultiple": true,
+  "tags": [
+    { "id": "achievement", "label": { "zh": "成就", "en": "Achievement" } },
+    { "id": "medal", "label": { "zh": "奖章", "en": "Medal" } },
+    { "id": "display", "label": { "zh": "显示", "en": "Display" } }
+  ]
+}

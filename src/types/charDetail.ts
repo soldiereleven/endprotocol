@@ -22,7 +22,7 @@ export interface CharDetailData {
   domain?: any;
   quickaccess?: any;
   config?: any;
-  achieve?: any;
+  achieve?: AchieveData;
   currentTs?: number;
 }
 
@@ -312,4 +312,31 @@ export interface DailyMission {
 export interface WeeklyMission {
   score: number;
   total: number;
+}
+
+// ====== 成就/奖章相关类型 ======
+
+export interface AchievementData {
+  id: string;
+  name: string;
+  initIcon: string;
+  reforge2Icon: string;
+  reforge3Icon: string;
+  platedIcon: string;
+  cateName: string;
+  canCertify: boolean;
+  cate: string;
+  initLevel: number;
+}
+
+export interface AchieveMedal {
+  achievementData: AchievementData;
+  level: number;
+  isPlated: boolean;
+  obtainTs: string;
+}
+
+export interface AchieveData {
+  achieveMedals: AchieveMedal[];
+  display?: Record<string, string>;
 }

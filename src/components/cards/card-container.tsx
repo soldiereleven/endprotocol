@@ -191,6 +191,29 @@ function FreeDragCard({
           );
         },
       });
+    } else if (card.type === "achievement") {
+      items.push({
+        key: "select-medals",
+        label: t("card:ach_select_medals"),
+        onPress: () => {
+          window.dispatchEvent(
+            new CustomEvent("cardAction", {
+              detail: { cardId: card.id, action: "select-medals" },
+            }),
+          );
+        },
+      });
+      items.push({
+        key: "change-role",
+        label: t("card:change_role"),
+        onPress: () => {
+          window.dispatchEvent(
+            new CustomEvent("cardAction", {
+              detail: { cardId: card.id, action: "change-role" },
+            }),
+          );
+        },
+      });
     }
 
     items.push({

@@ -147,6 +147,17 @@ export default function DashboardPage() {
       setIsSizeModalOpen(true);
       return;
     }
+    if (cardType === "achievement") {
+      setPendingCardType(cardType);
+      try {
+        const accounts = await getAccounts();
+        setAvailableAccounts(accounts);
+        setIsRoleSelectModalOpen(true);
+      } catch (error) {
+        logError("Failed to load accounts:", error);
+      }
+      return;
+    }
     try {
       await addCard(activeTabId, cardType);
       const config = await getDashboardConfig(activeTabId);
@@ -172,7 +183,24 @@ export default function DashboardPage() {
   };
 
   const handleRoleConfirm = async (roleId: string) => {
-    if (!activeTabId || !pendingCardType || !pendingDisplayMode) return;
+    if (!activeTabId || !pendingCardType) return;
+    if (pendingCardType === "achievement") {
+      try {
+        await addCard(activeTabId, pendingCardType, {
+          settings: { roleId },
+        });
+        const config = await getDashboardConfig(activeTabId);
+        setDashboardConfig(config);
+      } catch (error) {
+        logError("Failed to add achievement card:", error);
+      } finally {
+        setIsRoleSelectModalOpen(false);
+        setPendingCardType(null);
+      }
+      return;
+    }
+    // character_list path
+    if (!pendingDisplayMode) return;
     const SIZE_MAP: Record<CharacterListDisplayMode, { w: number; h: number }> = {
       single: { w: 2, h: 3 },
       double: { w: 3, h: 3 },

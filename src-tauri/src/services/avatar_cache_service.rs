@@ -7,14 +7,15 @@ use crate::{log_debug, log_info};
 /// 图片缓存类型
 #[derive(Debug, Clone, Copy)]
 pub enum ImageType {
-    Avatar,         // 角色头像
-    SkillIcon,      // 技能图标
-    WeaponIcon,     // 武器图标
-    EquipIcon,      // 装备图标
-    Illustration,   // 角色立绘
-    AttendanceIcon, // 签到奖励图标
-    GemIcon,       // 基质图标
-    ItemIcon,      // 物品/材料图标
+    Avatar,          // 角色头像
+    SkillIcon,       // 技能图标
+    WeaponIcon,      // 武器图标
+    EquipIcon,       // 装备图标
+    Illustration,    // 角色立绘
+    AttendanceIcon,  // 签到奖励图标
+    GemIcon,         // 基质图标
+    ItemIcon,        // 物品/材料图标
+    AchievementIcon, // 成就奖章图标
 }
 
 impl ImageType {
@@ -29,6 +30,7 @@ impl ImageType {
             ImageType::AttendanceIcon => "attendance",
             ImageType::GemIcon => "gem_icons",
             ImageType::ItemIcon => "item_icons",
+            ImageType::AchievementIcon => "achv_icons",
         }
     }
 }
@@ -57,6 +59,7 @@ impl ImageCacheService {
             ImageType::AttendanceIcon,
             ImageType::GemIcon,
             ImageType::ItemIcon,
+            ImageType::AchievementIcon,
         ] {
             let type_dir = cache_dir.join(image_type.dir_name());
             fs::create_dir_all(&type_dir)?;
@@ -162,6 +165,7 @@ impl ImageCacheService {
                 ImageType::AttendanceIcon,
                 ImageType::GemIcon,
                 ImageType::ItemIcon,
+                ImageType::AchievementIcon,
             ] {
                 let type_dir = self.cache_dir.join(image_type.dir_name());
                 fs::create_dir_all(&type_dir)?;

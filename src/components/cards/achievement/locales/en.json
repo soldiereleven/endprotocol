@@ -1,0 +1,18 @@
+{
+  "ach_title": "Achievement Medals",
+  "ach_select_medals": "Select Display Medals",
+  "ach_use_display_list": "Use Game Display List",
+  "ach_manual_select": "Manual Select",
+  "ach_save": "Save",
+  "ach_cancel": "Cancel",
+  "ach_all": "All",
+  "ach_plated": "Plated",
+  "ach_selected_count": "Selected {{count}}/10",
+  "ach_no_medals": "No medals in this category",
+  "ach_level": "Level",
+  "ach_unplated": "Unplated",
+  "ach_sort": "Sort",
+  "ach_default": "Default",
+  "ach_time": "Newest",
+  "ach_level_sort": "Highest"
+}

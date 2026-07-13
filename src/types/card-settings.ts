@@ -22,6 +22,15 @@ export interface AttendanceCardSettings {
 }
 
 /**
+ * 成就奖章卡片配置
+ */
+export interface AchievementCardSettings {
+  selectedMedalIds?: string[];
+  useDisplayList?: boolean;
+  roleId?: string;
+}
+
+/**
  * TestCard 卡片配置（示例）
  */
 export interface TestCardSettings {
@@ -34,6 +43,7 @@ export interface TestCardSettings {
 export type CardSettingsMap = {
   character_list: CharacterListCardSettings;
   attendance: AttendanceCardSettings;
+  achievement: AchievementCardSettings;
   test_card: TestCardSettings;
   // 未来添加新卡片时在此注册
 };

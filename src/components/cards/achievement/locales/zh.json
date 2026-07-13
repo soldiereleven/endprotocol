@@ -1,0 +1,18 @@
+{
+  "ach_title": "成就奖章",
+  "ach_select_medals": "选择展示奖章",
+  "ach_use_display_list": "使用游戏展示列表",
+  "ach_manual_select": "手动选择",
+  "ach_save": "保存",
+  "ach_cancel": "取消",
+  "ach_all": "全部",
+  "ach_plated": "镀层",
+  "ach_selected_count": "已选 {{count}}/10",
+  "ach_no_medals": "该分类下没有奖章",
+  "ach_level": "等级",
+  "ach_unplated": "无镀层",
+  "ach_sort": "排序",
+  "ach_default": "默认",
+  "ach_time": "最新",
+  "ach_level_sort": "最高"
+}

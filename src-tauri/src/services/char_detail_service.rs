@@ -357,7 +357,7 @@ impl CharDetailService {
                     }
                 }
 
-                // Process equipment icon URLs
+                        // Process equipment icon URLs
                 Self::cache_equip_icon(&image_cache, &mut char.weapon, "weaponData", char_name, ImageType::WeaponIcon).await;
                 Self::cache_equip_icon(&image_cache, &mut char.body_equip, "equipData", char_name, ImageType::EquipIcon).await;
                 Self::cache_equip_icon(&image_cache, &mut char.arm_equip, "equipData", char_name, ImageType::EquipIcon).await;
@@ -368,6 +368,9 @@ impl CharDetailService {
                 Self::cache_gem_icon(&image_cache, &self.skland_service, &mut char.weapon, char_name, cred, token).await;
             }
         }
+
+        // Cache achievement medal icons
+        Self::cache_achieve_icons(&image_cache, &mut detail.achieve).await;
 
         log_debug!("Completed image processing");
         Ok(())
@@ -624,6 +627,58 @@ impl CharDetailService {
                 Ok(p) => update_gem_icon_path(weapon, p),
                 Err(e) => {
                     log_warn!("Failed to cache gem cover for {}: {}", char_name, e);
+                }
+            }
+        }
+    }
+
+    /// Cache achievement medal icons (initIcon, reforge2Icon, reforge3Icon, platedIcon)
+    async fn cache_achieve_icons(
+        image_cache: &ImageCacheService,
+        achieve: &mut Option<serde_json::Value>,
+    ) {
+        let achieve_obj = match achieve {
+            Some(ref mut v) => v.as_object_mut(),
+            None => return,
+        };
+        let achieve_obj = match achieve_obj {
+            Some(obj) => obj,
+            None => return,
+        };
+        let medals = match achieve_obj.get_mut("achieveMedals") {
+            Some(serde_json::Value::Array(arr)) => arr,
+            _ => return,
+        };
+
+        let icon_fields = ["initIcon", "reforge2Icon", "reforge3Icon", "platedIcon"];
+
+        for medal in medals.iter_mut() {
+            let achievement_data = match medal.get_mut("achievementData") {
+                Some(d) => d,
+                None => continue,
+            };
+            let data_obj = match achievement_data.as_object_mut() {
+                Some(obj) => obj,
+                None => continue,
+            };
+
+            for field in &icon_fields {
+                if let Some(serde_json::Value::String(url)) = data_obj.get(*field) {
+                    if url.is_empty() || url.starts_with("http://asset.localhost") {
+                        continue;
+                    }
+                    let url_clone = url.clone();
+                    match image_cache
+                        .get_or_download_image(&url_clone, ImageType::AchievementIcon)
+                        .await
+                    {
+                        Ok(p) => {
+                            data_obj.insert((*field).to_string(), serde_json::Value::String(p));
+                        }
+                        Err(e) => {
+                            log_warn!("Failed to cache achievement icon {}: {}", field, e);
+                        }
+                    }
                 }
             }
         }
