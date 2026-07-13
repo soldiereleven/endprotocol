@@ -1,8 +1,8 @@
 {
   "id": "achievement",
   "name": {
-    "zh": "成就奖章",
-    "en": "Achievement Medals"
+    "zh": "光荣之路",
+    "en": "Glory Road"
   },
   "description": {
     "zh": "展示已获得的成就奖章",
