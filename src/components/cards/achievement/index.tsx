@@ -152,6 +152,11 @@ export default function AchievementCard({
     }
   }, [allMedals, loadSettings]);
 
+  const displayMedalIds = useMemo(() => {
+    if (!charDetail?.achieve?.display) return [];
+    return Object.values(charDetail.achieve.display);
+  }, [charDetail?.achieve?.display]);
+
   const displayMedals = useMemo(() => {
     if (allMedals.length === 0) return [];
     if (useDisplayList || selectedMedalIds.length === 0) {
@@ -163,10 +168,10 @@ export default function AchievementCard({
       }
       return allMedals.slice(0, MAX_DISPLAY);
     }
-    const idSet = new Set(selectedMedalIds);
-    return allMedals
-      .filter((m) => idSet.has(m.achievementData.id))
-      .slice(0, MAX_DISPLAY);
+    return selectedMedalIds
+      .slice(0, MAX_DISPLAY)
+      .map((id) => allMedals.find((m) => m.achievementData.id === id))
+      .filter(Boolean) as AchieveMedal[];
   }, [allMedals, useDisplayList, selectedMedalIds, charDetail?.achieve?.display]);
 
   const iconPaths = useMemo(
@@ -213,6 +218,21 @@ export default function AchievementCard({
     }
   };
 
+  const handleModalSave = async (ids: string[], useDisplay: boolean) => {
+    setSelectedMedalIds(ids);
+    setUseDisplayList(useDisplay);
+    try {
+      await CardConfigService.saveCardSettings(cardId, {
+        selectedMedalIds: useDisplay ? undefined : ids,
+        useDisplayList: useDisplay ? true : undefined,
+        roleId: customRoleId,
+      } as AchievementCardSettings);
+      logDebug("Saved achievement settings:", { ids, useDisplay });
+    } catch (error) {
+      logError("Failed to save achievement settings:", error);
+    }
+  };
+
   if (isLoading) {
     return (
       <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full flex items-center justify-center">
@@ -253,20 +273,8 @@ export default function AchievementCard({
         medals={allMedals}
         selectedMedalIds={selectedMedalIds}
         useDisplayList={useDisplayList}
-        onSave={async (ids, useDisplay) => {
-          setSelectedMedalIds(ids);
-          setUseDisplayList(useDisplay);
-          try {
-            await CardConfigService.saveCardSettings(cardId, {
-              selectedMedalIds: useDisplay ? undefined : ids,
-              useDisplayList: useDisplay ? true : undefined,
-              roleId: customRoleId,
-            } as AchievementCardSettings);
-            logDebug("Saved achievement settings:", { ids, useDisplay });
-          } catch (error) {
-            logError("Failed to save achievement settings:", error);
-          }
-        }}
+        displayMedalIds={displayMedalIds}
+        onSave={handleModalSave}
       />
 
       {/* Role select modal */}

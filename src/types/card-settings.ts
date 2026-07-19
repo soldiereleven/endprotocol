@@ -26,6 +26,7 @@ export interface AttendanceCardSettings {
  */
 export interface AchievementCardSettings {
   selectedMedalIds?: string[];
+  featuredMedalId?: string;
   useDisplayList?: boolean;
   roleId?: string;
 }
