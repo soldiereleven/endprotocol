@@ -88,11 +88,8 @@ function DroppableHexCell({
     >
       <div
         className={`
-          overflow-hidden flex items-center justify-center
-          ${medal
-            ? "bg-black/10"
-            : "bg-gradient-to-br from-black/30 to-black/10 border-2 border-dashed border-separator"
-          }
+          relative
+          ${medal ? "overflow-hidden" : ""}
           ${isDragOver ? "ring-2 ring-primary ring-offset-2 ring-offset-content1" : ""}
           transition-shadow duration-200
         `}
@@ -102,21 +99,38 @@ function DroppableHexCell({
           clipPath: HEX_CLIP,
           WebkitClipPath: HEX_CLIP,
           boxShadow: medal
-            ? "inset 0 2px 8px rgba(0,0,0,0.45), inset 0 -1px 4px rgba(255,255,255,0.06)"
-            : "inset 0 3px 12px rgba(0,0,0,0.55), inset 0 -1px 3px rgba(255,255,255,0.04)",
+            ? "inset 0 2px 4px rgba(0,0,0,0.3), inset 0 -1px 2px rgba(255,255,255,0.06)"
+            : "none",
         }}
       >
         {icon ? (
           <Img
             src={icon}
             alt={medal!.achievementData.name}
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
             draggable={false}
           />
         ) : (
-          <span className="text-xs text-separator/40 select-none">{index + 1}</span>
+          <span className="absolute inset-0 flex items-center justify-center text-xs text-separator/40 select-none">{index + 1}</span>
         )}
       </div>
+      {!medal && (
+        <svg
+          className="absolute pointer-events-none"
+          style={{ top: 0, left: 0 }}
+          width={HEX_W}
+          height={HEX_H}
+          viewBox={`0 0 ${HEX_W} ${HEX_H}`}
+        >
+          <polygon
+            points={`${HEX_W / 2},0 ${HEX_W},${HEX_H * 0.25} ${HEX_W},${HEX_H * 0.75} ${HEX_W / 2},${HEX_H} 0,${HEX_H * 0.75} 0,${HEX_H * 0.25}`}
+            fill="none"
+            stroke="rgba(120,120,120,0.5)"
+            strokeWidth={1}
+            strokeDasharray="3 2"
+          />
+        </svg>
+      )}
       {isDragOver && (
         <div
           className="absolute inset-0 bg-primary/20 pointer-events-none"
@@ -138,11 +152,14 @@ function SlotHoneycomb({
   onCellPointerDown: (medalId: string, e: React.PointerEvent) => void;
   onCellRemove: (index: number) => void;
 }) {
-  const ROW_Y = [0, Math.round(HEX_H * 0.75)];
-  const ROW_X = (i: number, row: number) => (i + (row === 1 ? 0.5 : 0)) * HEX_W;
+  const GAP = 3;
+  const CELL_W = HEX_W + GAP;
+  const CELL_H = HEX_H + GAP;
+  const ROW_Y = [0, Math.round(CELL_H * 0.75)];
+  const ROW_X = (i: number, row: number) => (i + (row === 1 ? 0.5 : 0)) * CELL_W;
 
   return (
-    <div className="relative" style={{ width: 5.5 * HEX_W, height: ROW_Y[1] + HEX_H }}>
+    <div className="relative" style={{ width: 5.5 * CELL_W, height: ROW_Y[1] + HEX_H }}>
       {Array.from({ length: 5 }).flatMap((_, col) =>
         [0, 1].map((row) => {
           const idx = col * 2 + row;
@@ -186,23 +203,24 @@ function StripHex({
       data-drop-target="strip"
     >
       <div
-        className="overflow-hidden bg-black/20"
+        className="relative overflow-hidden"
         style={{
           width: STRIP_HEX_W,
           height: STRIP_HEX_H,
           clipPath: HEX_CLIP,
           WebkitClipPath: HEX_CLIP,
+          filter: !icon ? "drop-shadow(0 0 0 1px rgba(180,180,180,0.6))" : "none",
         }}
       >
         {icon ? (
           <Img
             src={icon}
             alt={medal.achievementData.name}
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
             draggable={false}
           />
         ) : (
-          <div className="w-full h-full bg-default-200" />
+          <div className="absolute inset-0 bg-default-200" />
         )}
       </div>
     </div>
@@ -442,7 +460,7 @@ export function AchievementModal({
   };
 
   const handleClose = () => {
-    onSave([...slots.filter(Boolean) as string[], ...strip], localUseDisplayList);
+    onSave([...slots.map((s) => s ?? ""), ...strip], localUseDisplayList);
     onClose();
   };
 
@@ -666,7 +684,7 @@ export function AchievementModal({
                         >
                           {icon ? (
                             <div
-                              className="w-14 h-14 shrink-0 overflow-hidden bg-black/20"
+                              className="w-14 h-14 shrink-0 overflow-hidden bg-[#999999]"
                               style={{ clipPath: HEX_CLIP, WebkitClipPath: HEX_CLIP }}
                             >
                               <Img
@@ -734,7 +752,7 @@ export function AchievementModal({
           }}
         >
           <div
-            className="opacity-80 overflow-hidden bg-black/20"
+            className="opacity-80 overflow-hidden"
             style={{
               width: HEX_W,
               height: HEX_H,

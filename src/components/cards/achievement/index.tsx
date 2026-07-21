@@ -44,13 +44,13 @@ function getMedalIcon(medal: AchieveMedal): string {
 function HexImg({ src, alt }: { src: string; alt: string }) {
   return (
     <div
-      className="relative overflow-hidden bg-black/20"
+      className="relative overflow-hidden"
       style={{ width: HEX_W, height: HEX_H, clipPath: HEX_CLIP, WebkitClipPath: HEX_CLIP }}
     >
       <Img
         src={src}
         alt={alt}
-        className="w-full h-full object-cover"
+        className="absolute inset-0 w-full h-full object-cover"
         draggable={false}
       />
     </div>
@@ -59,19 +59,38 @@ function HexImg({ src, alt }: { src: string; alt: string }) {
 
 function EmptyHex() {
   return (
-    <div
-      className="border-2 border-dashed border-separator bg-default-50"
-      style={{ width: HEX_W, height: HEX_H, clipPath: HEX_CLIP, WebkitClipPath: HEX_CLIP }}
-    />
+    <div className="relative" style={{ width: HEX_W, height: HEX_H }}>
+      <div
+        style={{ width: HEX_W, height: HEX_H, clipPath: HEX_CLIP, WebkitClipPath: HEX_CLIP }}
+      />
+      <svg
+        className="absolute pointer-events-none"
+        style={{ top: 0, left: 0 }}
+        width={HEX_W}
+        height={HEX_H}
+        viewBox={`0 0 ${HEX_W} ${HEX_H}`}
+      >
+        <polygon
+          points={`${HEX_W / 2},0 ${HEX_W},${HEX_H * 0.25} ${HEX_W},${HEX_H * 0.75} ${HEX_W / 2},${HEX_H} 0,${HEX_H * 0.75} 0,${HEX_H * 0.25}`}
+          fill="none"
+          stroke="rgba(120,120,120,0.5)"
+          strokeWidth={1}
+          strokeDasharray="3 2"
+        />
+      </svg>
+    </div>
   );
 }
 
 function Honeycomb({ displayMedals, shownMedals }: { displayMedals: any[]; shownMedals: number }) {
-  const ROW_Y = [0, Math.round(HEX_H * 0.75)];
-  const ROW_X = (i: number, row: number) => (i + (row === 1 ? 0.5 : 0)) * HEX_W;
+  const GAP = 0;
+  const CELL_W = HEX_W + GAP;
+  const ROW_Y_OFFSET = Math.round(HEX_H * 0.75);
+  const ROW_Y = [0, ROW_Y_OFFSET];
+  const ROW_X = (i: number, row: number) => (i + (row === 1 ? 0.5 : 0)) * CELL_W;
 
   return (
-    <div className="relative" style={{ width: 5.5 * HEX_W, height: ROW_Y[1] + HEX_H }}>
+    <div className="relative" style={{ width: 5.5 * CELL_W, height: ROW_Y[1] + HEX_H }}>
       {Array.from({ length: 5 }).flatMap((_, col) =>
         [0, 1].map((row) => {
           const idx = col * 2 + row;
@@ -164,18 +183,18 @@ export default function AchievementCard({
       if (displayMap) {
         const ids = Object.values(displayMap).slice(0, MAX_DISPLAY);
         const idToMedal = new Map(allMedals.map((m) => [m.achievementData.id, m]));
-        return ids.map((id) => idToMedal.get(id)).filter(Boolean) as AchieveMedal[];
+        return ids.map((id) => idToMedal.get(id) ?? null);
       }
       return allMedals.slice(0, MAX_DISPLAY);
     }
+    const idToMedal = new Map(allMedals.map((m) => [m.achievementData.id, m]));
     return selectedMedalIds
       .slice(0, MAX_DISPLAY)
-      .map((id) => allMedals.find((m) => m.achievementData.id === id))
-      .filter(Boolean) as AchieveMedal[];
+      .map((id) => id ? idToMedal.get(id) ?? null : null);
   }, [allMedals, useDisplayList, selectedMedalIds, charDetail?.achieve?.display]);
 
   const iconPaths = useMemo(
-    () => displayMedals.map((m) => getMedalIcon(m)).filter(Boolean),
+    () => displayMedals.filter((m): m is AchieveMedal => m !== null).map((m) => getMedalIcon(m)),
     [displayMedals],
   );
   useImageRequest(iconPaths, [iconPaths]);
@@ -254,12 +273,12 @@ export default function AchievementCard({
     );
   }
 
-  const shownMedals = displayMedals.length;
+  const shownMedals = MAX_DISPLAY;
 
   return (
     <>
       <Card
-        className="px-[2px] py-0 bg-content1 shadow-sm border border-separator h-full w-full select-none cursor-pointer hover:shadow-md transition-shadow rounded-[10px] overflow-hidden"
+        className="px-[3px] py-0 bg-content1 shadow-sm border border-separator h-full w-full select-none cursor-pointer hover:shadow-md transition-shadow rounded-[10px] overflow-hidden"
         onClick={() => !isEditMode && setIsModalOpen(true)}
       >
         <div className="flex items-center justify-center h-full">
