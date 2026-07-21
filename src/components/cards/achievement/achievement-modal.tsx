@@ -274,6 +274,19 @@ export function AchievementModal({
 
   useEffect(() => {
     if (!isOpen) return;
+    setView("main");
+    const s: (string | null)[] = [];
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      s.push(initialSelectedIds[i] || null);
+    }
+    setSlots(s);
+    setStrip(initialSelectedIds.slice(SLOT_COUNT));
+    setLocalUseDisplayList(initialUseDisplayList);
+    setListSelectedIds([]);
+  }, [isOpen, initialSelectedIds, initialUseDisplayList]);
+
+  useEffect(() => {
+    if (!isOpen) return;
     const handler = (e: MouseEvent) => {
       e.preventDefault();
     };
