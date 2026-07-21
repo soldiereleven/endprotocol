@@ -121,13 +121,16 @@ function DroppableHexCell({
           width={HEX_W}
           height={HEX_H}
           viewBox={`0 0 ${HEX_W} ${HEX_H}`}
+          overflow="visible"
         >
           <polygon
             points={`${HEX_W / 2},0 ${HEX_W},${HEX_H * 0.25} ${HEX_W},${HEX_H * 0.75} ${HEX_W / 2},${HEX_H} 0,${HEX_H * 0.75} 0,${HEX_H * 0.25}`}
             fill="none"
             stroke="rgba(120,120,120,0.5)"
-            strokeWidth={1}
-            strokeDasharray="3 2"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray="4 3"
           />
         </svg>
       )}
