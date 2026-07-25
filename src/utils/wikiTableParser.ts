@@ -583,6 +583,7 @@ export function getUpgradeMaterials(
   itemType: string,
   _talentRank: number,
   toMax = false,
+  filterContentId?: string,
 ): WikiMaterialEntry[] {
   if (!wikiItemDetail) return [];
 
@@ -597,6 +598,10 @@ export function getUpgradeMaterials(
 
   const { contentIds } = findContentIds(widgetCommonMap, documentMap, itemName);
 
+  const allContentIds = filterContentId
+    ? contentIds.filter((id: string) => id === filterContentId)
+    : contentIds;
+
   if (toMax && itemType === "skill") {
     // Aggregate materials from next level to max level (12)
     const aggregated = new Map<string, WikiMaterialEntry>();
@@ -604,7 +609,7 @@ export function getUpgradeMaterials(
     for (let lvl = skillLevel; lvl < maxLevel; lvl++) {
       const colIdx = lvl >= 1 && lvl <= 12 ? LEVEL_TO_COLUMN_INDEX[lvl] : -1;
       if (colIdx < 1) continue;
-      for (const contentId of contentIds) {
+      for (const contentId of allContentIds) {
         const contentDoc = documentMap[contentId] as any;
         if (contentDoc?.blockIds && contentDoc?.blockMap) {
           const docMaterials = extractMaterialsFromDoc(contentDoc, colIdx);
@@ -627,7 +632,7 @@ export function getUpgradeMaterials(
     : -1;
 
   const materials: WikiMaterialEntry[] = [];
-  for (const contentId of contentIds) {
+  for (const contentId of allContentIds) {
     const contentDoc = documentMap[contentId] as any;
     if (contentDoc?.blockIds && contentDoc?.blockMap) {
       const docMaterials = extractMaterialsFromDoc(contentDoc, colIdx);
@@ -636,6 +641,52 @@ export function getUpgradeMaterials(
   }
 
   return materials;
+}
+
+/**
+ * Render wiki blocks from explicit content/description document IDs.
+ * Unlike getWikiRenderedBlocks which looks up IDs by name, this function
+ * takes pre-determined IDs directly — useful for skills with multiple forms
+ * (same name, different tabs in the wiki widget).
+ */
+export function renderWikiBlocksFromIds(
+  documentMap: Record<string, any> | undefined,
+  contentIds: string[],
+  descriptionIds: string[],
+  skillLevel: number,
+  itemType: string,
+  talentRank: number,
+): WikiRenderedBlock[] {
+  if (!documentMap) return [];
+
+  const colIdx = skillLevel >= 1 && skillLevel <= 12
+    ? LEVEL_TO_COLUMN_INDEX[skillLevel]
+    : -1;
+  const maxLevel = LEVEL_TO_COLUMN_INDEX.length - 1;
+  const hasNextLevel = itemType === "skill" && skillLevel >= 1 && skillLevel < maxLevel;
+  const nextColIdx = hasNextLevel ? LEVEL_TO_COLUMN_INDEX[skillLevel + 1] : -1;
+
+  const blocks: WikiRenderedBlock[] = [];
+
+  // Render description documents first (text only)
+  if (itemType === "skill") {
+    for (const descId of descriptionIds) {
+      const descDoc = documentMap[descId] as any;
+      if (descDoc?.blockIds && descDoc?.blockMap) {
+        blocks.push(...renderDocumentBlocks(descDoc, -1, false));
+      }
+    }
+  }
+
+  // Render content documents (with level-specific data)
+  for (const contentId of contentIds) {
+    const contentDoc = documentMap[contentId] as any;
+    if (contentDoc?.blockIds && contentDoc?.blockMap) {
+      blocks.push(...renderDocumentBlocks(contentDoc, colIdx, false, talentRank, nextColIdx));
+    }
+  }
+
+  return blocks;
 }
 
 export function getWikiRenderedBlocks(
