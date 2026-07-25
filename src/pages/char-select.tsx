@@ -174,23 +174,46 @@ export function OperatorCard({
   char,
   isPinned,
   onOpenDetail,
-  onSelectSlot,
+  onDragMouseDown,
 }: {
   char: CharacterItem;
   isPinned: boolean;
   onOpenDetail: () => void;
-  onSelectSlot: () => void;
+  onDragMouseDown: (charId: string, e: React.MouseEvent) => void;
 }) {
   const data = char.charData;
   const coverUrl = data.illustrationUrl || data.avatarRtUrl || data.avatarSqUrl;
   const rarityValue = data.rarity.value;
   const lineColor = rarityLineColorLocal(rarityValue);
+  const isDraggingRef = useRef(false);
 
   return (
     <div
       className={`group relative aspect-[3/4] rounded-lg overflow-hidden border bg-content1 cursor-pointer transition-all duration-200
         ${isPinned ? "border-blue-500 ring-1 ring-blue-500/40" : "border-separator hover:border-blue-400/60 hover:shadow-md"}`}
-      onClick={onOpenDetail}
+      onMouseDown={(e) => {
+        isDraggingRef.current = false;
+        onDragMouseDown(char.charData.id, e);
+        const checkMove = () => {
+          isDraggingRef.current = true;
+          document.removeEventListener("mousemove", checkMove);
+        };
+        document.addEventListener("mousemove", checkMove);
+        document.addEventListener(
+          "mouseup",
+          () => document.removeEventListener("mousemove", checkMove),
+          { once: true },
+        );
+      }}
+      onDragStart={(e) => e.preventDefault()}
+      onClick={(e) => {
+        if (isDraggingRef.current) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        onOpenDetail();
+      }}
     >
       {/* 全幅立绘（走 imageCacheManager 转 blob URL，object-cover 铺满） */}
       <Img
@@ -225,32 +248,13 @@ export function OperatorCard({
         />
       </div>
 
-      {/* 右上：pin 按钮（未 pin）或 LED 指示（已 pin） */}
+      {/* 右上：已选中状态指示 */}
       <div className="absolute top-1.5 right-1.5 z-10">
-        {isPinned ? (
+        {isPinned && (
           <div
             className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.85)]"
             title="Pinned"
           />
-        ) : (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelectSlot();
-            }}
-            className="w-6 h-6 rounded-full bg-black/40 hover:bg-black/65 backdrop-blur-sm flex items-center justify-center text-white/85 hover:text-white transition-colors cursor-pointer"
-            title="Pin"
-            aria-label="Pin to slot"
-          >
-            <svg
-              className="w-3.5 h-3.5 rotate-45"
-              fill="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path d="M16 9V4l1 0c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1l1 0v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z" />
-            </svg>
-          </button>
         )}
       </div>
 
@@ -323,7 +327,7 @@ export function CharSelectModal({
   const { t } = useTranslation();
   const [tempSelectedIds, setTempSelectedIds] =
     useState<string[]>(selectedCharIds);
-  const [viewMode, setViewMode] = useState<"list" | "detail" | "select-slot">(
+  const [viewMode, setViewMode] = useState<"list" | "detail">(
     "list",
   );
   const [detailCharId, setDetailCharId] = useState<string | null>(null);
@@ -405,11 +409,94 @@ export function CharSelectModal({
     }, 300);
   };
 
-  const [selectingCharId, setSelectingCharId] = useState<string | null>(null);
-  const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(
-    null,
-  );
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  const [dragOverSlot, setDragOverSlot] = useState<number | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const dragCharIdRef = useRef<string | null>(null);
+  const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const isDraggingRef = useRef(false);
+  const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const dragGhostRef = useRef<HTMLDivElement>(null);
+  const tempSelectedIdsRef = useRef(tempSelectedIds);
+
+  useEffect(() => {
+    tempSelectedIdsRef.current = tempSelectedIds;
+  }, [tempSelectedIds]);
+
+  const handleDragStart = (charId: string, e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    dragCharIdRef.current = charId;
+    dragStartPosRef.current = { x: e.clientX, y: e.clientY };
+    setDragPos({ x: e.clientX, y: e.clientY });
+    isDraggingRef.current = false;
+
+    const handleMouseMove = (moveE: MouseEvent) => {
+      const start = dragStartPosRef.current;
+      if (!start) return;
+
+      const dx = moveE.clientX - start.x;
+      const dy = moveE.clientY - start.y;
+      if (!isDraggingRef.current && Math.sqrt(dx * dx + dy * dy) < 5) return;
+
+      isDraggingRef.current = true;
+      setDragPos({ x: moveE.clientX, y: moveE.clientY });
+
+      const id = dragCharIdRef.current;
+      let found: number | null = null;
+      const ids = tempSelectedIdsRef.current;
+      slotRefs.current.forEach((slot, i) => {
+        if (!slot) return;
+        const rect = slot.getBoundingClientRect();
+        if (
+          moveE.clientX >= rect.left && moveE.clientX <= rect.right &&
+          moveE.clientY >= rect.top && moveE.clientY <= rect.bottom &&
+          ids[i] !== id
+        ) {
+          found = i;
+        }
+      });
+      setDragOverSlot(found);
+    };
+
+    const handleMouseUp = (upE: MouseEvent) => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+
+      if (isDraggingRef.current) {
+        const id = dragCharIdRef.current;
+        if (id) {
+          let target: number | null = null;
+          const ids = tempSelectedIdsRef.current;
+          slotRefs.current.forEach((slot, i) => {
+            if (!slot) return;
+            const rect = slot.getBoundingClientRect();
+            if (
+              upE.clientX >= rect.left && upE.clientX <= rect.right &&
+              upE.clientY >= rect.top && upE.clientY <= rect.bottom &&
+              ids[i] !== id
+            ) {
+              target = i;
+            }
+          });
+          if (target !== null) {
+            handleDropOnSlot(target, id);
+          }
+        }
+      }
+
+      dragCharIdRef.current = null;
+      dragStartPosRef.current = null;
+      setDragPos(null);
+      setDragOverSlot(null);
+      isDraggingRef.current = false;
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
 
   // 6 维筛选：每个维度独立
   const [filters, setFilters] = useState<Record<FilterKey, string>>({
@@ -452,8 +539,6 @@ export function CharSelectModal({
       setViewMode(initialViewMode || "list");
       setDetailCharId(initialCharId || null);
       setEnteredDetailFromCard(initialViewMode === "detail");
-      setSelectingCharId(null);
-      setSelectedSlotIndex(null);
       setSuccessMessage(null); // Clear success message
       setSelectedDetailItem(null);
       setDetailActive(false);
@@ -541,20 +626,7 @@ export function CharSelectModal({
     };
   }, []);
 
-  const MAX_SELECTION = 3;
-
-  function rarityLineColor(value: string): string {
-    switch (value) {
-      case "6":
-        return "#ff7100";
-      case "5":
-        return "#ffcc00";
-      case "4":
-        return "#b380ff";
-      default:
-        return "transparent";
-    }
-  }
+  
 
   function renderRarityIcons(value: string, size: number = 14) {
     const count = parseInt(value, 10) || 0;
@@ -746,52 +818,35 @@ export function CharSelectModal({
 
   useImageRequest(allCachePaths, [allCachePaths]);
 
-  // Handle slot selection
-  const handleSlotSelect = (slotIndex: number) => {
-    if (!selectingCharId) return;
-
-    // Check for duplicate - don't allow same character in multiple slots
+  // Handle drop on slot
+  const handleDropOnSlot = (slotIndex: number, charId: string) => {
     const isDuplicate = tempSelectedIds.some(
-      (id, idx) => id === selectingCharId && idx !== slotIndex,
+      (id, idx) => id === charId && idx !== slotIndex,
     );
-
-    if (isDuplicate) {
-      // Show error or just don't allow selection
-      return;
-    }
-
-    setSelectedSlotIndex(slotIndex);
-  };
-
-  // Confirm slot selection
-  const handleConfirmSlot = () => {
-    if (!selectingCharId || selectedSlotIndex === null) return;
+    if (isDuplicate) return;
 
     const newSelectedIds = [...tempSelectedIds];
-    newSelectedIds[selectedSlotIndex] = selectingCharId;
+    newSelectedIds[slotIndex] = charId;
     setTempSelectedIds(newSelectedIds);
+    setTimeout(() => onSave(newSelectedIds)); // 延迟保存，避免父组件重渲染导致 HeroUI Modal.Body 丢失滚动
 
-    // Save to config immediately
-    onSave(newSelectedIds);
-
-    // Show success message
-    const charName = getCharById(selectingCharId)?.name || "Character";
+    const charName = getCharById(charId)?.name || "Character";
     setSuccessMessage(
       t("settings.characters.pin_success", {
         name: charName,
-        slot: selectedSlotIndex + 1,
+        slot: slotIndex + 1,
       }),
     );
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
 
-    // Auto-hide after 3 seconds
-    setTimeout(() => {
-      setSuccessMessage(null);
-    }, 3000);
-
-    // Reset and go back to list
-    setViewMode("list");
-    setSelectingCharId(null);
-    setSelectedSlotIndex(null);
+  // Remove character from slot
+  const handleRemoveFromSlot = (slotIndex: number) => {
+    const newSelectedIds = [...tempSelectedIds];
+    newSelectedIds.splice(slotIndex, 1);
+    newSelectedIds.push("");
+    setTempSelectedIds(newSelectedIds);
+    setTimeout(() => onSave(newSelectedIds)); // 延迟保存，避免父组件重渲染导致 HeroUI Modal.Body 丢失滚动
   };
 
   // 滚动事件处理
@@ -806,11 +861,11 @@ export function CharSelectModal({
   };
 
   return (
-    <CustomModal isOpen={isOpen} onClose={onClose} size="xl" height="fixed">
-      {/* Success Alert */}
+    <>
+      {/* Floating Success Alert — 窗口顶部固定浮窗 */}
       {successMessage && (
-        <div className="px-6 pt-4">
-          <Alert status="success">
+        <div className="fixed top-0 left-0 right-0 z-[10003] flex justify-center px-6 pt-4">
+          <Alert status="success" className="shadow-lg max-w-md">
             <Alert.Indicator />
             <Alert.Content>
               <Alert.Description>{successMessage}</Alert.Description>
@@ -818,6 +873,8 @@ export function CharSelectModal({
           </Alert>
         </div>
       )}
+
+      <CustomModal isOpen={isOpen} onClose={onClose} size="xl" height="fixed">
 
       {viewMode === "detail" ? (
         detailCharId &&
@@ -2124,54 +2181,82 @@ export function CharSelectModal({
       ) : (
         <>
           <CustomModalHeader
-            onClose={() => {
-              if (viewMode === "select-slot") {
-                setViewMode("list");
-                setDetailCharId(null);
-                setSelectingCharId(null);
-              } else {
-                onClose();
-              }
-            }}
+            onClose={onClose}
           >
             {viewMode === "list" ? (
               <div className="flex items-center w-full">
                 <h2>{t("card:title")}</h2>
               </div>
-            ) : viewMode === "select-slot" ? (
-              <div className="flex items-center gap-3">
-                {selectingCharId && (
-                  <>
-                    <div className="flex flex-col">
-                      <Img
-                        src={getCharById(selectingCharId)?.avatarSqUrl || ""}
-                        alt={getCharById(selectingCharId)?.name}
-                        className="w-16 h-16 rounded-t-lg object-cover"
-                      />
-                      <div
-                        className="w-full h-[3px] shrink-0 rounded-b-lg"
-                        style={{
-                          backgroundColor: rarityLineColor(
-                            getCharById(selectingCharId)?.rarity.value || "3",
-                          ),
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold">
-                        {t("settings.characters.select_slot", {
-                          name: getCharById(selectingCharId)?.name,
-                        })}
-                      </h2>
-                      <p className="text-sm text-muted">
-                        {t("settings.characters.choose_slot")}
-                      </p>
-                    </div>
-                  </>
-                )}
-              </div>
             ) : null}
           </CustomModalHeader>
+
+          {/* Slot Bar — 独立区域，不随内容滚动 */}
+          {viewMode === "list" && (
+            <div className="px-6 py-3 border-b border-separator bg-content1">
+              <div className="flex items-center gap-3">
+                {Array.from({ length: maxSlots }).map((_, slotIndex) => {
+                  const currentCharId = tempSelectedIds[slotIndex];
+                  const currentChar = currentCharId
+                    ? getCharById(currentCharId)
+                    : null;
+
+                  return (
+                    <div
+                      key={slotIndex}
+                      ref={(el) => { slotRefs.current[slotIndex] = el; }}
+                      className={`relative flex-1 min-w-0 rounded-lg border-2 transition-all ${
+                        dragOverSlot === slotIndex
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/40 scale-105 shadow-md"
+                          : currentChar
+                            ? "border-blue-400/60 bg-content1"
+                            : "border-dashed border-separator bg-default-50"
+                      }`}
+                    >
+                      {currentChar ? (
+                        <div className="flex items-center gap-2 p-1.5">
+                          <Img
+                            src={currentChar.avatarSqUrl}
+                            alt={currentChar.name}
+                            className="w-10 h-10 rounded object-cover shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-medium truncate">
+                              {currentChar.name}
+                            </div>
+                            <div className="text-[10px] text-muted">
+                              {t("common.slot", { number: slotIndex + 1 }) || `Slot ${slotIndex + 1}`}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveFromSlot(slotIndex);
+                            }}
+                            className="w-5 h-5 rounded-full bg-default-200 hover:bg-danger/20 hover:text-danger flex items-center justify-center shrink-0 transition-colors"
+                            title={t("common.remove") || "Remove"}
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-1.5 p-2 text-muted">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                          </svg>
+                          <span className="text-xs">
+                            {t("common.slot", { number: slotIndex + 1 }) || `Slot ${slotIndex + 1}`}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Body */}
           <CustomModalBody
@@ -2300,156 +2385,13 @@ export function CharSelectModal({
                           setViewMode("detail");
                           setEnteredDetailFromCard(false);
                         }}
-                        onSelectSlot={() => {
-                          setSelectingCharId(char.charData.id);
-                          setViewMode("select-slot");
-                        }}
+                        onDragMouseDown={(charId, e) => handleDragStart(charId, e)}
                       />
                     ))}
                   </div>
                 )}
               </div>
-            ) : (
-              // Slot Selection View
-              selectingCharId && (
-                <div className="space-y-4">
-                  <p className="text-center text-muted mb-6">
-                    {t("settings.characters.click_to_select")}
-                  </p>
-
-                  <div
-                    className="grid gap-4 justify-center"
-                    style={{
-                      gridTemplateColumns: `repeat(${maxSlots}, 200px)`,
-                    }}
-                  >
-                    {Array.from({ length: maxSlots }).map((_, slotIndex) => {
-                      const currentCharId = tempSelectedIds[slotIndex];
-                      const currentChar = currentCharId
-                        ? getCharById(currentCharId)
-                        : null;
-                      const isSelected = selectedSlotIndex === slotIndex;
-                      const isCurrentCharSlot =
-                        currentCharId === selectingCharId;
-
-                      // Check if this slot has the same character (for duplicate detection)
-                      const hasDuplicate =
-                        currentCharId === selectingCharId && !isSelected;
-
-                      return (
-                        <div
-                          key={slotIndex}
-                          className={`relative p-4 rounded-lg transition-all cursor-pointer ${
-                            isSelected
-                              ? "border-[3px] border-blue-500 bg-blue-50 dark:bg-blue-900/40 shadow-md scale-[1.02]"
-                              : hasDuplicate
-                                ? "border-2 border-warning bg-warning/10 opacity-50 cursor-not-allowed"
-                                : "border-2 border-separator bg-content1 hover:border-blue-400/50 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                          }`}
-                          onClick={() =>
-                            !hasDuplicate && handleSlotSelect(slotIndex)
-                          }
-                        >
-                          {/* Slot Number */}
-                          <div className="absolute top-2 left-2 px-2 py-1 bg-default-100 rounded text-xs font-bold">
-                            {t("common.slot", { number: slotIndex + 1 }) ||
-                              `Slot ${slotIndex + 1}`}
-                          </div>
-
-                          {/* Character or Empty */}
-                          {currentChar ? (
-                            <div className="mt-6 flex flex-col items-center">
-                              <div className="flex flex-col">
-                                <Img
-                                  src={
-                                    currentChar.avatarRtUrl ||
-                                    currentChar.avatarSqUrl
-                                  }
-                                  alt={currentChar.name}
-                                  className="w-16 h-20 rounded-t-lg object-cover"
-                                />
-                                <div
-                                  className="w-full h-[3px] shrink-0 rounded-b-lg"
-                                  style={{
-                                    backgroundColor: rarityLineColor(
-                                      currentChar.rarity.value,
-                                    ),
-                                  }}
-                                />
-                              </div>
-                              <h4 className="font-semibold text-sm text-center mt-2">
-                                {currentChar.name}
-                              </h4>
-                              <div className="flex items-center gap-1 mt-1">
-                                {renderRarityIcons(
-                                  currentChar.rarity.value,
-                                  10,
-                                )}
-                              </div>
-                              <p className="text-xs text-muted mt-1">
-                                {currentChar.profession.value}
-                              </p>
-                              {isCurrentCharSlot && !isSelected && (
-                                <div className="mt-2 px-2 py-1 bg-default-500 text-default-foreground text-xs rounded">
-                                  {t("settings.characters.current")}
-                                </div>
-                              )}
-                              {isSelected && (
-                                <div className="mt-2 px-2 py-1 bg-primary text-primary-foreground text-xs rounded font-bold">
-                                  {t("settings.characters.selected")}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="mt-6 flex flex-col items-center justify-center h-28 text-muted">
-                              <svg
-                                className="w-10 h-10 mb-2 opacity-50"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M12 4v16m8-8H4"
-                                />
-                              </svg>
-                              <p className="text-sm">
-                                {t("settings.characters.empty_slot")}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="mt-6 space-y-3">
-                    {/* Action Buttons */}
-                    <div className="flex gap-3 justify-center">
-                      <Button
-                        variant="outline"
-                        onPress={() => {
-                          setViewMode("list");
-                          setSelectingCharId(null);
-                          setSelectedSlotIndex(null);
-                        }}
-                      >
-                        {t("settings.characters.cancel")}
-                      </Button>
-                      <Button
-                        variant="primary"
-                        isDisabled={selectedSlotIndex === null}
-                        onPress={handleConfirmSlot}
-                      >
-                        {t("settings.characters.confirm_pin")}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )
-            )}
+            ) : null}
           </CustomModalBody>
         </>
       )}
@@ -2486,6 +2428,34 @@ export function CharSelectModal({
           )}
         </button>
       )}
+
+      {/* Drag Ghost */}
+      {dragPos && dragCharIdRef.current && (() => {
+        const charData = getCharById(dragCharIdRef.current!);
+        if (!charData) return null;
+        return (
+          <div
+            ref={dragGhostRef}
+            className="fixed pointer-events-none z-[10004] flex flex-col items-center"
+            style={{
+              left: dragPos.x - 40,
+              top: dragPos.y - 60,
+              width: 80,
+              height: 100,
+            }}
+          >
+            <Img
+              src={charData.avatarSqUrl}
+              alt={charData.name}
+              className="w-16 h-20 rounded-lg object-cover shadow-xl ring-2 ring-blue-500"
+            />
+            <div className="text-xs font-bold text-white bg-blue-500/90 px-2 py-0.5 rounded-full mt-1 whitespace-nowrap shadow">
+              {charData.name}
+            </div>
+          </div>
+        );
+      })()}
     </CustomModal>
+    </>
   );
 }
