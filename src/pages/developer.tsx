@@ -227,7 +227,7 @@ export default function DeveloperPage() {
 
       <div className="grid grid-cols-1 gap-6">
         {/* Image Cache Settings */}
-        <Card id="developer-cache" className="p-6 bg-content1 border border-separator/80 overflow-hidden">
+        <Card id="developer-cache" className="p-6 glass-surface border border-separator/90 overflow-hidden">
           <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
             <span className="w-1 h-5 bg-primary rounded-full" />
             {t("settings.cache.title")}
@@ -424,7 +424,7 @@ export default function DeveloperPage() {
         </Card>
 
         {/* Log Viewer */}
-        <Card id="developer-logs" className="p-6 bg-content1 border border-separator/80 overflow-hidden">
+        <Card id="developer-logs" className="p-6 glass-surface border border-separator/90 overflow-hidden">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <span className="w-1 h-5 bg-secondary rounded-full" />
@@ -456,7 +456,7 @@ export default function DeveloperPage() {
                   onClick={() => setLogSourceFilter(f)}
                   className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 ${
                     isActive
-                      ? "bg-background text-foreground shadow-sm border border-separator/60"
+                      ? "glass-surface text-foreground shadow-sm border border-separator/80"
                       : "text-muted hover:text-foreground"
                   }`}
                 >
@@ -494,7 +494,7 @@ export default function DeveloperPage() {
           {/* Log entries */}
           <div
             ref={logContainerRef}
-            className="bg-background rounded-xl border border-separator/60 overflow-y-auto font-mono text-xs"
+            className="glass-surface rounded-xl border border-separator/80 overflow-y-auto font-mono text-xs"
             style={{ maxHeight: "480px" }}
           >
             {filteredLogs.length === 0 ? (

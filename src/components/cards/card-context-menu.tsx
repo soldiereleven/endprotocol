@@ -43,7 +43,7 @@ export function CardContextMenu({
   return createPortal(
     <div
       ref={menuRef}
-      className="fixed z-[9999] min-w-[160px] bg-background border border-separator rounded-xl shadow-2xl py-1 animate-fade-in"
+      className="fixed z-[9999] min-w-[160px] glass-surface border border-separator/80 rounded-xl py-1 animate-fade-in"
       style={{ left: x, top: y }}
     >
       {items.map((item) => (
@@ -53,7 +53,7 @@ export function CardContextMenu({
           className={`w-full px-4 py-2 text-left text-sm transition-colors flex items-center gap-2 ${
             item.danger
               ? "text-danger hover:bg-danger/10"
-              : "text-foreground hover:bg-default-100"
+              : "context-item-normal"
           }`}
           onClick={() => {
             item.onPress();

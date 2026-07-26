@@ -233,31 +233,111 @@ html {
 }
 
 /* ======================================================
- * 玻璃态效果
+ * 液态玻璃效果 — 自带基础 tint 渐变 + 清晰边框 + 高光内阴影
+ * 注意：glass-surface 不设 border，可与 Tailwind border-* 混用
  * ====================================================== */
-.glass {
-  background: hsl(var(--heroui-background) / 0.6);
+
+/* 液态玻璃 — 背景层（无边框，配合 border-separator/60 或更高校用） */
+.glass-surface {
+  background: linear-gradient(
+    145deg,
+    hsl(var(--heroui-background) / 0.68),
+    hsl(var(--heroui-primary) / 0.04) 40%,
+    hsl(var(--heroui-background) / 0.52) 85%,
+    hsl(var(--heroui-secondary) / 0.03)
+  );
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.65),
+    inset 0 -1px 0 hsl(var(--heroui-default-300) / 0.08),
+    0 2px 12px hsl(var(--heroui-foreground) / 0.06);
+}
+
+.dark .glass-surface {
+  background: linear-gradient(
+    145deg,
+    hsl(var(--heroui-background) / 0.42),
+    hsl(var(--heroui-primary) / 0.06) 40%,
+    hsl(var(--heroui-background) / 0.32) 85%,
+    hsl(var(--heroui-secondary) / 0.04)
+  );
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.06),
+    inset 0 -1px 0 hsl(var(--heroui-default-100) / 0.08),
+    0 2px 12px hsl(0 0% 0% / 0.2);
+}
+
+/* 液态玻璃 — 强（Modal、突出面板） */
+.glass-surface-strong {
+  background: linear-gradient(
+    145deg,
+    hsl(var(--heroui-background) / 0.84),
+    hsl(var(--heroui-primary) / 0.05) 40%,
+    hsl(var(--heroui-background) / 0.68) 85%,
+    hsl(var(--heroui-secondary) / 0.03)
+  );
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.75),
+    inset 0 -1px 0 hsl(var(--heroui-default-300) / 0.1),
+    0 4px 24px hsl(var(--heroui-foreground) / 0.08);
+}
+
+.dark .glass-surface-strong {
+  background: linear-gradient(
+    145deg,
+    hsl(var(--heroui-background) / 0.52),
+    hsl(var(--heroui-primary) / 0.07) 40%,
+    hsl(var(--heroui-background) / 0.42) 85%,
+    hsl(var(--heroui-secondary) / 0.04)
+  );
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.08),
+    inset 0 -1px 0 hsl(var(--heroui-default-100) / 0.08),
+    0 4px 24px hsl(0 0% 0% / 0.25);
+}
+
+/* 液态玻璃 — Modal 背景层（半透明渐变色 + 模糊） */
+.glass-backdrop {
+  background: linear-gradient(
+    145deg,
+    hsl(0 0% 0% / 0.35),
+    hsl(var(--heroui-primary) / 0.04) 40%,
+    hsl(0 0% 0% / 0.25) 85%
+  );
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid hsl(var(--heroui-default-200) / 0.5);
 }
 
-.dark .glass {
-  background: hsl(var(--heroui-background) / 0.5);
-  border: 1px solid hsl(var(--heroui-default-100) / 0.15);
+.dark .glass-backdrop {
+  background: linear-gradient(
+    145deg,
+    hsl(0 0% 0% / 0.45),
+    hsl(var(--heroui-primary) / 0.06) 40%,
+    hsl(0 0% 0% / 0.35) 85%
+  );
 }
 
-.glass-strong {
-  background: hsl(var(--heroui-background) / 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid hsl(var(--heroui-default-200) / 0.6);
+/* 上下文菜单项悬停 — 参考 danger 的显式颜色定义 */
+.context-item-normal {
+  color: hsl(var(--heroui-foreground));
+}
+.context-item-normal:hover {
+  background: hsl(var(--heroui-primary) / 0.08);
+  color: hsl(var(--heroui-primary));
+}
+.dark .context-item-normal:hover {
+  background: hsl(var(--heroui-primary) / 0.12);
+  color: hsl(var(--heroui-primary-300, var(--heroui-primary)) / 1);
 }
 
-.dark .glass-strong {
-  background: hsl(var(--heroui-background) / 0.65);
-  border: 1px solid hsl(var(--heroui-default-100) / 0.15);
-}
+/* 向后兼容 */
+.glass { background: transparent; }
+.dark .glass { background: transparent; }
+.glass-strong { background: transparent; }
+.dark .glass-strong { background: transparent; }
 
 /* ======================================================
  * 卡片交互

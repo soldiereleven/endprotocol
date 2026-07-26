@@ -28,7 +28,7 @@ export function SectionCard({
     <Card
       id={id}
       className={clsx(
-        "bg-content1 border border-separator/80 overflow-hidden transition-all duration-200 hover:shadow-md",
+        "glass-surface border border-separator/90 overflow-hidden transition-all duration-200 hover:shadow-md",
         className,
       )}
     >

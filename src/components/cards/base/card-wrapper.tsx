@@ -43,7 +43,7 @@ export function CardWrapper({ children, fallback }: CardWrapperProps) {
 
 function LoadingSkeleton() {
   return (
-    <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full">
+    <Card className="p-6 glass-surface border border-separator/80">
       <LoadingBlock label="" minHeight={120} />
     </Card>
   );
@@ -51,7 +51,7 @@ function LoadingSkeleton() {
 
 function ErrorState() {
   return (
-    <Card className="p-6 bg-content1 shadow-sm border border-separator">
+    <Card className="p-6 glass-surface border border-separator/80">
       <p className="text-danger text-center">加载失败</p>
     </Card>
   );

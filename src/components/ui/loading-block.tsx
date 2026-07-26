@@ -70,7 +70,7 @@ export function SkeletonList({
       {Array.from({ length: count }).map((_, i) => (
         <Card
           key={i}
-          className="p-4 bg-content1 border border-separator/60"
+          className="p-4 glass-surface border border-separator/80"
           style={{ height: rowHeight }}
         >
           <div className="flex items-center gap-4 h-full">

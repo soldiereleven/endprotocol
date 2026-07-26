@@ -68,7 +68,7 @@ export default function TemplateCard({
   // 加载状态
   if (isLoading) {
     return (
-      <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full flex items-center justify-center">
+      <Card className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
         <ProgressCircle isIndeterminate size="md" aria-label="Loading">
           <ProgressCircle.Track>
             <ProgressCircle.TrackCircle />
@@ -82,7 +82,7 @@ export default function TemplateCard({
   // 错误状态
   if (error) {
     return (
-      <Card className="p-6 bg-content1 shadow-sm border border-separator">
+      <Card className="p-6 glass-surface border border-separator/90">
         <p className="text-danger text-center">
           {t("common.load_error") || "加载失败"}
         </p>
@@ -92,7 +92,7 @@ export default function TemplateCard({
 
   // 正常渲染
   return (
-    <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full">
+    <Card className="p-6 glass-surface border border-separator/90 h-full w-full">
       <div className="space-y-4">
         <h3 className="font-semibold text-foreground text-base">
           {t("template_card.title") || "Template Card"}

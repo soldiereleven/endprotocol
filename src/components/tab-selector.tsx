@@ -106,7 +106,7 @@ export function TabSelector({
               return (
                 <div
                   key={tab.id}
-                  className="group relative bg-content1 border border-separator rounded-xl p-5 hover:border-primary/50 hover:shadow-md transition-all cursor-pointer"
+                  className="group relative glass-surface border border-separator/90 rounded-xl p-5 hover:border-primary/50 hover:shadow-md transition-all cursor-pointer"
                   onClick={() => onSelectTab(tab.id)}
                   onContextMenu={(e) => {
                     e.preventDefault();

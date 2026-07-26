@@ -254,7 +254,7 @@ export default function AchievementCard({
 
   if (isLoading) {
     return (
-      <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full flex items-center justify-center">
+      <Card className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
         <ProgressCircle isIndeterminate size="md" aria-label="Loading">
           <ProgressCircle.Track>
             <ProgressCircle.TrackCircle />
@@ -267,7 +267,7 @@ export default function AchievementCard({
 
   if (!charDetail?.achieve?.achieveMedals) {
     return (
-      <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full flex items-center justify-center">
+      <Card className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
         <p className="text-muted text-center text-sm">{t("card:no_data")}</p>
       </Card>
     );
@@ -278,7 +278,7 @@ export default function AchievementCard({
   return (
     <>
       <Card
-        className="px-[3px] py-0 bg-content1 shadow-sm border border-separator h-full w-full select-none cursor-pointer hover:shadow-md transition-shadow rounded-[10px] overflow-hidden"
+        className="px-[3px] py-0 glass-surface border border-separator/90 h-full w-full select-none cursor-pointer hover:shadow-md transition-shadow rounded-[10px] overflow-hidden"
         onClick={() => !isEditMode && setIsModalOpen(true)}
       >
         <div className="flex items-center justify-center h-full">

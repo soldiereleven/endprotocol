@@ -130,7 +130,7 @@ export const LanguageSwitch = () => {
 
       {isOpen && (
         <div
-          className={`absolute left-0 w-[220px] bg-background border border-separator rounded-lg shadow-xl z-50 ${
+          className={`absolute left-0 w-[220px] glass-surface border border-separator/80 rounded-lg shadow-xl z-50 ${
             dropdownPosition === "bottom" ? "top-full mt-2" : "bottom-full mb-2"
           }`}
         >

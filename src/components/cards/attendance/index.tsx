@@ -329,7 +329,7 @@ export default function AttendanceCard({
 
   if (!settingsLoaded) {
     return (
-      <Card className="p-3 bg-content1 shadow-sm border border-separator h-full w-full flex items-center justify-center">
+      <Card className="p-3 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
         <ProgressCircle isIndeterminate size="sm" aria-label="Loading">
           <ProgressCircle.Track>
             <ProgressCircle.TrackCircle />
@@ -386,7 +386,7 @@ export default function AttendanceCard({
 
   return (
     <>
-      <Card className="p-0 bg-content1 shadow-sm border border-separator h-full w-full select-none rounded-[10px] overflow-hidden flex flex-col">
+      <Card className="p-0 glass-surface border border-separator/90 h-full w-full select-none rounded-[10px] overflow-hidden flex flex-col">
         <div
           className="flex h-full p-2.5 gap-2.5 cursor-pointer"
           onClick={openRewardsModal}

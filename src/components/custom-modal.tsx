@@ -59,9 +59,8 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       }}
     >
       <Modal.Backdrop
-        variant="blur"
         isDismissable={!disableBackdropClick}
-        className="z-[100]"
+        className="z-[100] glass-backdrop"
       >
         <Modal.Container
           size={config.size}
@@ -69,7 +68,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           scroll="inside"
         >
           <Modal.Dialog
-            className={`bg-background border border-separator/80 rounded-2xl !p-0 shadow-2xl ${config.widthClass} ${dialogHeightClass} flex flex-col`}
+            className={`glass-surface-strong border border-separator/90 rounded-2xl !p-0 ${config.widthClass} ${dialogHeightClass} flex flex-col`}
           >
             {children}
           </Modal.Dialog>

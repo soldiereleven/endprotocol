@@ -124,7 +124,7 @@ export default function SettingsPage() {
 
       <div className="grid grid-cols-1 gap-6">
         {/* General Settings */}
-        <Card id="settings-general" className="p-6 bg-content1 border border-separator/80">
+        <Card id="settings-general" className="p-6 glass-surface border border-separator/90">
           <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
             <span className="w-1 h-5 bg-primary rounded-full" />
             {t("settings.general.title")}
@@ -212,7 +212,7 @@ export default function SettingsPage() {
                   </Button>
 
                   {isLangDropdownOpen && (
-                    <div className="absolute left-0 right-0 mt-2 bg-background border border-separator/80 rounded-xl shadow-xl z-50 overflow-hidden animate-scale-in">
+                    <div className="absolute left-0 right-0 mt-2 glass-surface border border-separator/80 rounded-xl shadow-xl z-50 overflow-hidden animate-scale-in">
                       <div className="py-1">
                         {languages.map((lang) => (
                           <button
@@ -351,7 +351,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* Developer Mode */}
-        <Card id="settings-developer" className="p-6 bg-content1 border border-separator/80">
+        <Card id="settings-developer" className="p-6 glass-surface border border-separator/90">
           {isConfigLoading ? (
             <div className="space-y-6">
               <div className="flex items-center justify-between">

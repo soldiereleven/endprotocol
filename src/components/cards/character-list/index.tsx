@@ -314,7 +314,7 @@ export default function CharacterListCard({
 
   if (isLoading) {
     return (
-      <Card className="p-6 bg-content1 shadow-sm border border-separator h-full w-full flex items-center justify-center">
+      <Card className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
         <ProgressCircle isIndeterminate size="md" aria-label="Loading">
           <ProgressCircle.Track>
             <ProgressCircle.TrackCircle />
@@ -327,7 +327,7 @@ export default function CharacterListCard({
 
   if (!processedCharDetail) {
     return (
-      <Card className="p-6 bg-content1 shadow-sm border border-separator">
+      <Card className="p-6 glass-surface border border-separator/90">
         <p className="text-muted text-center">
           {t("card:no_data")}
         </p>
@@ -339,7 +339,7 @@ export default function CharacterListCard({
     <>
       <Card
         radius="none"
-        className="p-0 bg-content1 shadow-sm border border-separator h-full w-full select-none cursor-pointer hover:shadow-md transition-shadow rounded-[10px] overflow-hidden"
+        className="p-0 glass-surface border border-separator/90 h-full w-full select-none cursor-pointer hover:shadow-md transition-shadow rounded-[10px] overflow-hidden"
         onClick={() => !isEditMode && setIsModalOpen(true)}
       >
         <div className="grid flex-1 min-h-0 h-full" style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}>

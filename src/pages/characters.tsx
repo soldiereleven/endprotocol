@@ -389,7 +389,7 @@ export default function CharactersPage() {
           </ProgressCircle>
         </div>
       ) : !charDetail || charDetail.chars.length === 0 ? (
-        <Card className="p-16 bg-content1 border border-separator/80">
+        <Card className="p-16 glass-surface border border-separator/90">
           <div className="text-center">
             <svg
               className="w-16 h-16 mx-auto mb-4 opacity-30 text-muted"
@@ -411,7 +411,7 @@ export default function CharactersPage() {
         </Card>
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2 bg-content1 p-3 rounded-xl border border-separator/60">
+          <div className="flex flex-wrap items-center gap-2 glass-surface p-3 rounded-xl border border-separator/90">
             <FloatSelect
               label={t("filters.profession")}
               value={filters.profession}

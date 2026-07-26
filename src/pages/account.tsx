@@ -886,7 +886,7 @@ export default function AccountPage() {
         {[...Array(skeletonCount)].map((_, index) => (
           <Card
             key={index}
-            className="p-4 bg-content1 border border-separator/60"
+            className="p-4 glass-surface border border-separator/90"
             style={{ height: `${CARD_HEIGHT}px` }}
           >
             <div className="flex items-center gap-4 h-full">
@@ -1037,7 +1037,7 @@ export default function AccountPage() {
         </div>
       ) : accounts.length === 0 ? (
         <Card
-          className="p-12 bg-content1 shadow-md border border-separator"
+          className="p-12 glass-surface border border-separator/90"
           style={{ minHeight: `${CONTAINER_HEIGHT}px` }}
         >
           <div className="text-center">

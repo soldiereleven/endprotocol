@@ -363,7 +363,7 @@ function FreeDragCard({
 
           if (!CardComponent) {
             return (
-              <div className="p-6 bg-content1 shadow-sm border border-separator">
+              <div className="p-6 glass-surface border border-separator/90">
                 <p className="text-danger text-center">
                   Unknown card type: {card.type}
                 </p>

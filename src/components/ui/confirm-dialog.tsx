@@ -60,7 +60,7 @@ export function ConfirmDialogHost() {
     >
       <Modal.Backdrop variant="blur" className="z-[100]">
         <Modal.Container size="sm" placement="center" scroll="outside">
-          <Modal.Dialog className="bg-background border border-separator">
+          <Modal.Dialog className="glass-surface-strong border border-separator/90">
             <Modal.Header>
               <Modal.Heading>{opts.title}</Modal.Heading>
             </Modal.Header>

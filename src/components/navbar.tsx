@@ -35,7 +35,7 @@ export const Navbar = () => {
   );
 
   return (
-    <nav className="sticky top-0 z-40 w-full border-b border-separator bg-background/70 backdrop-blur-lg">
+    <nav className="sticky top-0 z-40 w-full border-b border-separator glass-surface">
       <header className="mx-auto flex h-16 max-w-[1280px] items-center justify-end gap-4 px-6">
         <div className="flex items-center gap-2">
           <Link

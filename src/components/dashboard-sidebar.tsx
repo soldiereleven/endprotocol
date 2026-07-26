@@ -780,7 +780,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
     <>
       <aside
         key={themeChangeKey}
-        className="w-full h-full bg-background flex flex-col"
+        className="w-full h-full flex flex-col"
       >
         {/* Selected Account Display */}
         <div className="px-4 py-3 border-b border-separator/60">
@@ -897,7 +897,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
 
               {/* Search Results Dropdown */}
               {showResults && searchQuery.trim() && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-background border-2 border-separator rounded-lg shadow-2xl z-50 max-h-[400px] overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-2 glass-surface-strong border-2 border-separator/80 rounded-lg shadow-2xl z-50 max-h-[400px] overflow-y-auto">
                   {searchResults.length === 0 ? (
                     <div className="py-6 text-center">
                       <SearchIcon className="w-8 h-8 text-muted mx-auto mb-2 opacity-50" />
