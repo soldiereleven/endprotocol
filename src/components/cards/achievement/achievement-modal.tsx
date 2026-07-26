@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Button, Switch } from "@heroui/react";
 import {
   CustomModal,
@@ -76,6 +77,7 @@ function DroppableHexCell({
     <div
       onPointerDown={(e) => {
         if (!medal || e.button !== 0) return;
+        e.stopPropagation();
         onPointerDown(medal.achievementData.id, e);
       }}
       onContextMenu={(e) => {
@@ -200,6 +202,7 @@ function StripHex({
     <div
       onPointerDown={(e) => {
         if (e.button !== 0) return;
+        e.stopPropagation();
         onPointerDown(medal.achievementData.id, e);
       }}
       className="shrink-0 cursor-grab active:cursor-grabbing transition-all duration-150 hover:scale-110"
@@ -759,9 +762,9 @@ export function AchievementModal({
         </>
       )}
 
-      {drag && hasDragged.current && (
+      {drag && hasDragged.current && createPortal(
         <div
-          className="fixed pointer-events-none z-[200]"
+          className="fixed pointer-events-none z-[99999]"
           style={{
             left: drag.currentX - HEX_W / 2,
             top: drag.currentY - HEX_H / 2,
@@ -785,7 +788,8 @@ export function AchievementModal({
               />
             ) : null}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </CustomModal>
   );

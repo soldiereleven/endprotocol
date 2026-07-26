@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
   DndContext,
@@ -854,38 +855,41 @@ export function CardContainer({
         </div>
       </div>
 
-      {/* Drag Overlay - Only show when actively dragging */}
-      <DragOverlay dropAnimation={null}>
-        {activeCard ? (
-          <div
-            className="opacity-80 scale-105 rotate-2"
-            style={{
-              width: (activeCard.w ?? 3) * GRID_SIZE - 2,
-              height: (activeCard.h ?? 2) * GRID_SIZE - 2, // Default 3x2
-            }}
-          >
-            {(() => {
-              const cardRegistry = loadAllCards();
-              const CardComponent = cardRegistry.get(
-                activeCard.type,
-              )?.component;
+      {/* Drag Overlay — portaled to body so backdrop-filter ancestors don't break position:fixed */}
+      {createPortal(
+        <DragOverlay dropAnimation={null}>
+          {activeCard ? (
+            <div
+              className="opacity-80 scale-105 rotate-2"
+              style={{
+                width: (activeCard.w ?? 3) * GRID_SIZE - 2,
+                height: (activeCard.h ?? 2) * GRID_SIZE - 2,
+              }}
+            >
+              {(() => {
+                const cardRegistry = loadAllCards();
+                const CardComponent = cardRegistry.get(
+                  activeCard.type,
+                )?.component;
 
-              if (!CardComponent) {
-                return null;
-              }
+                if (!CardComponent) {
+                  return null;
+                }
 
-              return (
-                <CardComponent
-                  roleId={roleId}
-                  cardId={activeCard.id}
-                  settings={activeCard.settings}
-                  isEditMode={isEditMode}
-                />
-              );
-            })()}
-          </div>
-        ) : null}
-      </DragOverlay>
+                return (
+                  <CardComponent
+                    roleId={roleId}
+                    cardId={activeCard.id}
+                    settings={activeCard.settings}
+                    isEditMode={isEditMode}
+                  />
+                );
+              })()}
+            </div>
+          ) : null}
+        </DragOverlay>,
+        document.body,
+      )}
     </DndContext>
   );
 }
