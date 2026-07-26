@@ -19,7 +19,7 @@ import { ThemeSwitch } from "@/components/theme-switch";
 import { LanguageSwitch } from "@/components/language-switch";
 import { AccountAvatar } from "@/components/ui/account-avatar";
 import { resolveServerLabel } from "@/types";
-import { ChevronRightIcon, ChevronDownIcon, SwitchIcon } from "@/components/ui/app-icon";
+import { ChevronDownIcon, SwitchIcon } from "@/components/ui/app-icon";
 import AccountSwitchModal from "./account-switch-modal";
 import {
   getAccounts,
@@ -778,13 +778,12 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
 
   return (
     <>
-      {/* Sidebar */}
       <aside
         key={themeChangeKey}
         className="w-full h-full bg-background flex flex-col"
       >
         {/* Selected Account Display */}
-        <div className="px-4 py-3 border-b border-separator">
+        <div className="px-4 py-3 border-b border-separator/60">
           {isLoadingAccount || isManualRefreshing ? (
             <div className="flex items-center gap-3 p-2 rounded-lg">
               <Skeleton className="w-10 h-10 rounded-full" />
@@ -794,7 +793,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
               </div>
             </div>
           ) : selectedAccount ? (
-            <div className="flex items-center gap-3 p-2 rounded-lg">
+            <div className="flex items-center gap-3 p-2 rounded-xl transition-all duration-200 hover:bg-default-50 group">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <AccountAvatar
                   src={selectedAccount.avatar}
@@ -815,15 +814,15 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
 
               <button
                 onClick={() => setIsSwitchModalOpen(true)}
-                className="p-2 hover:bg-default-100 rounded-lg transition-colors flex-shrink-0 text-muted hover:text-foreground"
+                className="p-1.5 hover:bg-default-100 rounded-lg transition-all duration-200 flex-shrink-0 text-muted hover:text-foreground hover:scale-105 active:scale-95 opacity-0 group-hover:opacity-100"
                 title={i18n.language === "zh" ? "切换账户" : "Switch Account"}
                 aria-label="Switch account"
               >
-                <SwitchIcon size={20} />
+                <SwitchIcon size={18} />
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-3 p-2 rounded-lg bg-default-50 border border-dashed border-separator">
+            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-default-50 border border-dashed border-separator/60">
               <div className="w-10 h-10 rounded-full bg-muted/20 flex items-center justify-center">
                 <AccountIcon className="w-5 h-5 text-muted" />
               </div>
@@ -833,7 +832,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                     ? "未选择账户"
                     : "No account selected"}
                 </p>
-                <p className="text-xs text-muted/70">
+                <p className="text-xs text-muted/60">
                   {i18n.language === "zh"
                     ? "前往账户页面选择"
                     : "Go to Account page"}
@@ -1029,15 +1028,15 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
         )}
 
         {/* Main Navigation */}
-        <nav className="flex-1 overflow-y-auto px-4">
-          <div className="space-y-1 py-1">
+        <nav className="flex-1 overflow-y-auto px-3">
+          <div className="space-y-0.5 py-2">
             {/* Dashboard link with collapse toggle */}
             <div
               className={clsx(
-                "flex items-center gap-1 px-3 py-2.5 rounded-lg transition-all duration-200 group",
+                "flex items-center gap-1 px-3 py-2.5 rounded-xl transition-all duration-200 group",
                 location.pathname === "/"
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : "text-foreground hover:bg-default-100 hover:translate-x-1",
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-foreground hover:bg-default-100",
               )}
             >
               <Link
@@ -1048,16 +1047,16 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                 <HomeIcon
                   className={clsx(
                     "w-5 h-5 transition-transform duration-200",
-                    location.pathname === "/" ? "scale-110" : "group-hover:scale-110",
+                    location.pathname === "/" ? "" : "group-hover:scale-110",
                   )}
                 />
-                <span className="text-sm font-medium">{t("sidebar.dashboard")}</span>
+                <span className="text-sm font-semibold">{t("sidebar.dashboard")}</span>
               </Link>
               <button
                 type="button"
                 onClick={() => setIsDashboardCollapsed(!isDashboardCollapsed)}
                 className={clsx(
-                  "p-1 rounded transition-colors",
+                  "p-1 rounded-lg transition-colors",
                   location.pathname === "/"
                     ? "text-primary-foreground/70 hover:text-primary-foreground hover:bg-white/10"
                     : "text-muted hover:text-foreground hover:bg-default-200",
@@ -1074,7 +1073,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
               </button>
             </div>
 
-            {/* Tab list (collapsible with smooth height animation) */}
+            {/* Tab list */}
             <div
               className="grid transition-all duration-300 ease-in-out"
               style={{
@@ -1083,9 +1082,9 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
               }}
             >
               <div className="overflow-hidden">
-                <div className="ml-6 pl-3 border-l border-separator space-y-0.5 pt-0">
-                  <div className="flex items-center justify-between px-3 py-1 mt-2">
-                    <span className="text-xs font-semibold text-muted uppercase tracking-wider">
+                <div className="ml-6 pl-3 border-l-2 border-default-200/60 dark:border-default-700/40 space-y-0.5 pt-0">
+                  <div className="flex items-center justify-between px-3 py-1 mt-1.5">
+                    <span className="text-[11px] font-semibold text-muted uppercase tracking-wider">
                       {i18n.language === "zh" ? "标签页" : "Tabs"}
                     </span>
                     <button
@@ -1094,10 +1093,10 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                         setEditingTabForSidebar(undefined);
                         setIsTabEditorOpen(true);
                       }}
-                      className="p-1 rounded hover:bg-default-100 text-muted hover:text-foreground transition-colors"
+                      className="p-1 rounded-lg hover:bg-default-100 text-muted hover:text-foreground transition-all duration-200 hover:scale-105 active:scale-95"
                       aria-label="Add tab"
                     >
-                      <PlusIcon size={16} />
+                      <PlusIcon size={15} />
                     </button>
                   </div>
                   {sidebarTabs.length > 0 && (
@@ -1125,16 +1124,24 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                               className={clsx(
                                 "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative",
                                 isTabActive
-                                  ? "bg-primary/20 text-primary"
-                                  : "text-muted hover:text-foreground hover:bg-default-100",
+                                  ? "bg-primary/15 text-primary font-medium"
+                                  : "text-muted hover:text-foreground hover:bg-default-50",
                               )}
                             >
+                              {isTabActive && (
+                                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary rounded-full" />
+                              )}
                               <Icon className="w-4 h-4 flex-shrink-0" />
                               <span className="text-sm truncate">{tab.name}</span>
                             </Link>
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+                  {sidebarTabs.length === 0 && (
+                    <div className="px-3 py-4 text-center">
+                      <p className="text-xs text-muted/60">{i18n.language === "zh" ? "暂无标签页" : "No tabs yet"}</p>
                     </div>
                   )}
                 </div>
@@ -1146,19 +1153,19 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
               to="/characters"
               onClick={onNavigate}
               className={clsx(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group",
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
                 location.pathname === "/characters"
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : "text-foreground hover:bg-default-100 hover:translate-x-1",
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-foreground hover:bg-default-100",
               )}
             >
               <UsersIcon
                 className={clsx(
                   "w-5 h-5 transition-transform duration-200",
-                  location.pathname === "/characters" ? "scale-110" : "group-hover:scale-110",
+                  location.pathname === "/characters" ? "" : "group-hover:scale-110",
                 )}
               />
-              <span className="text-sm font-medium">{t("sidebar.characters") || "Characters"}</span>
+              <span className="text-sm font-semibold">{t("sidebar.characters") || "Characters"}</span>
             </Link>
           </div>
         </nav>
@@ -1230,11 +1237,9 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
         />
 
         {/* Footer Section */}
-        <div className="px-4 py-4 space-y-3">
-          <div className="h-px bg-separator my-2" />
-
+        <div className="px-4 py-4 space-y-2 border-t border-separator/60">
           {/* Bottom Navigation */}
-          <div className="space-y-1 py-1">
+          <div className="space-y-0.5">
             {bottomItems.map((item) => {
               const isActive = location.pathname === item.href;
               const Icon = item.icon;
@@ -1245,55 +1250,49 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                   to={item.href}
                   onClick={onNavigate}
                   className={clsx(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-md"
-                      : "text-foreground hover:bg-default-100 hover:translate-x-1",
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-foreground hover:bg-default-100",
                   )}
                 >
                   <Icon
                     className={clsx(
                       "w-5 h-5 transition-transform duration-200",
-                      isActive ? "scale-110" : "group-hover:scale-110",
+                      isActive ? "" : "group-hover:scale-110",
                     )}
                   />
-                  <span className="text-sm font-medium">{item.label}</span>
+                  <span className="text-sm font-semibold">{item.label}</span>
                 </Link>
               );
             })}
           </div>
 
-          <div className="h-px bg-separator my-2" />
-
-          {/* Quick Actions */}
-          <div className="space-y-3">
-            {/* Social and Settings Row */}
-            <div className="flex items-center justify-between px-1">
-              <div className="flex items-center gap-2">
-                <a
-                  aria-label="Github"
-                  href={siteConfig.links.github}
-                  rel="noopener noreferrer"
-                  target="_blank"
-                  className="p-2 rounded-lg hover:bg-default-100 transition-colors"
-                >
-                  <GithubIcon className="text-muted w-5 h-5 hover:text-foreground transition-colors" />
-                </a>
-                <ThemeSwitch />
-                <LanguageSwitch />
-              </div>
+          <div className="flex items-center justify-between px-1 pt-1">
+            <div className="flex items-center gap-1">
+              <a
+                aria-label="Github"
+                href={siteConfig.links.github}
+                rel="noopener noreferrer"
+                target="_blank"
+                className="p-2 rounded-lg hover:bg-default-100 transition-all duration-200 hover:scale-105 active:scale-95"
+              >
+                <GithubIcon className="text-muted w-4 h-4 hover:text-foreground transition-colors" />
+              </a>
+              <ThemeSwitch />
+              <LanguageSwitch />
             </div>
-
-            {/* Sponsor Button */}
-            <Button
-              className="w-full font-medium"
-              variant="danger-soft"
-              onPress={() => window.open(siteConfig.links.sponsor, "_blank")}
-            >
-              <HeartFilledIcon className="w-4 h-4 mr-2" />
-              {t("common.sponsor")}
-            </Button>
           </div>
+
+          <Button
+            className="w-full font-medium"
+            variant="danger-soft"
+            size="sm"
+            onPress={() => window.open(siteConfig.links.sponsor, "_blank")}
+          >
+            <HeartFilledIcon className="w-4 h-4 mr-1.5" />
+            {t("common.sponsor")}
+          </Button>
         </div>
       </aside>
 

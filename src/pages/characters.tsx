@@ -74,8 +74,8 @@ function FloatSelect({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-1.5 h-8 pl-2.5 pr-2 rounded-md border text-xs transition-colors cursor-pointer
-          ${open ? "border-blue-500 bg-white dark:bg-neutral-800" : "border-separator bg-white dark:bg-neutral-800 hover:border-blue-400/60"}`}
+        className={`flex items-center gap-1.5 h-9 pl-3 pr-2.5 rounded-xl border text-xs transition-all duration-200 cursor-pointer
+          ${open ? "border-primary bg-primary/5" : "border-separator/60 bg-background hover:border-primary/40 hover:bg-default-50"}`}
       >
         <span className="text-muted">{label}</span>
         <span
@@ -99,7 +99,7 @@ function FloatSelect({
       </button>
       {open && (
         <div
-          className="absolute left-0 top-full mt-1 z-50 min-w-full max-h-64 overflow-y-auto rounded-md border border-separator bg-white dark:bg-neutral-900 shadow-lg"
+          className="absolute left-0 top-full mt-1.5 z-50 min-w-full max-h-64 overflow-y-auto rounded-xl border border-separator/60 bg-background shadow-xl animate-scale-in"
           onClick={(e) => e.stopPropagation()}
         >
           {options.map((opt) => {
@@ -112,8 +112,8 @@ function FloatSelect({
                   onChange(opt.value);
                   setOpen(false);
                 }}
-                className={`w-full text-left px-3 py-1.5 text-xs whitespace-nowrap transition-colors cursor-pointer
-                  ${active ? "bg-blue-500/15 text-blue-500 font-semibold" : "text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-800"}`}
+                className={`w-full text-left px-3 py-2 text-xs whitespace-nowrap transition-colors cursor-pointer first:rounded-t-xl last:rounded-b-xl
+                  ${active ? "bg-primary/10 text-primary font-semibold" : "text-foreground hover:bg-default-50"}`}
               >
                 {opt.tone ? (
                   <span className={rarityToneClass[opt.tone]}>{opt.label}</span>
@@ -145,13 +145,13 @@ function OperatorCard({ char, onClick }: { char: CharacterItem; onClick: () => v
 
   return (
     <div
-      className="group relative aspect-[3/4] rounded-lg overflow-hidden border border-separator bg-content1 cursor-pointer transition-all duration-200 hover:border-blue-400/60 hover:shadow-md"
+      className="group relative aspect-[3/4] rounded-xl overflow-hidden border border-separator/60 bg-content1 cursor-pointer transition-all duration-300 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5"
       onClick={onClick}
     >
       <Img
         src={coverUrl}
         alt={data.name}
-        className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         loading="lazy"
         draggable={false}
       />
@@ -367,15 +367,20 @@ export default function CharactersPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-12">
+    <div className="max-w-6xl mx-auto space-y-8 pb-12">
       <div>
-        <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+        <h1 className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight">
           {t("sidebar.characters")}
         </h1>
+        {charDetail && (
+          <p className="text-muted/70 mt-1.5 text-sm">
+            {filteredCharacters.length} / {charDetail.chars.length} {t("common.characters")}
+          </p>
+        )}
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
+        <div className="flex items-center justify-center py-24">
           <ProgressCircle isIndeterminate size="lg" aria-label="Loading">
             <ProgressCircle.Track>
               <ProgressCircle.TrackCircle />
@@ -384,10 +389,10 @@ export default function CharactersPage() {
           </ProgressCircle>
         </div>
       ) : !charDetail || charDetail.chars.length === 0 ? (
-        <Card className="p-12 bg-content1 shadow-md border border-separator">
+        <Card className="p-16 bg-content1 border border-separator/80">
           <div className="text-center">
             <svg
-              className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted"
+              className="w-16 h-16 mx-auto mb-4 opacity-30 text-muted"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -399,14 +404,14 @@ export default function CharactersPage() {
                 d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
               />
             </svg>
-            <p className="text-lg font-medium text-foreground">
+            <p className="text-lg font-semibold text-foreground">
               {t("common.no_results_found")}
             </p>
           </div>
         </Card>
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 bg-content1 p-3 rounded-xl border border-separator/60">
             <FloatSelect
               label={t("filters.profession")}
               value={filters.profession}
@@ -490,8 +495,11 @@ export default function CharactersPage() {
           </div>
 
           {filteredCharacters.length === 0 ? (
-            <div className="text-center py-8 text-muted">
-              <p>{t("common.no_results_found")}</p>
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <svg className="w-12 h-12 mb-3 text-muted/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-sm text-muted/60">{t("common.no_results_found")}</p>
             </div>
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2.5">

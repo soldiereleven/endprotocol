@@ -3,13 +3,16 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* 禁止全局蓝色选中背景 + 长按菜单 */
+/* 全局平滑过渡 */
+html {
+  transition: color-scheme 0.3s ease;
+}
+
 * {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
 }
 
-/* 选区颜色 - 使用 HeroUI 语义 token */
 ::selection {
   background: hsl(var(--heroui-primary) / 0.3);
   color: inherit;
@@ -21,10 +24,9 @@
 }
 
 /* ======================================================
- * 动画 - 全部使用语义化 token,不再硬编码颜色
+ * 动画系统
  * ====================================================== */
 
-/* Alert 顶部下滑入场 */
 @keyframes slide-down {
   0% {
     opacity: 0;
@@ -43,43 +45,38 @@
   animation: slide-down 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* 卡片上浮入场 */
 @keyframes slide-up {
   0% { opacity: 0; transform: translateY(20px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 .animate-slide-up {
-  animation: slide-up 0.3s ease-out;
+  animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* 卡片下沉入场 */
 @keyframes slide-down-account {
   0% { opacity: 0; transform: translateY(-20px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 .animate-slide-down-account {
-  animation: slide-down-account 0.3s ease-out;
+  animation: slide-down-account 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* 翻页淡入 */
 @keyframes fade-in {
-  0% { opacity: 0; transform: translateY(10px); }
+  0% { opacity: 0; transform: translateY(8px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-in {
   animation: fade-in 0.3s ease-out;
 }
 
-/* 翻页淡出 */
 @keyframes fade-out {
   0% { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(-10px); }
+  100% { opacity: 0; transform: translateY(-8px); }
 }
 .animate-fade-out {
-  animation: fade-out 0.3s ease-in;
+  animation: fade-out 0.25s ease-in;
 }
 
-/* 抽屉滑入 */
 @keyframes slide-in-right {
   0% { transform: translateX(100%); }
   100% { transform: translateX(0); }
@@ -88,40 +85,200 @@
   animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+@keyframes scale-in {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.animate-scale-in {
+  animation: scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes spin-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+  animation: spin-slow 2s linear infinite;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 /* ======================================================
- * 滚动条 - 全部使用 default token
+ * 主题切换 - 径向 clip-path 揭示动画
+ * ====================================================== */
+@keyframes theme-reveal {
+  0% {
+    clip-path: circle(200vmax at var(--rx) var(--ry));
+    -webkit-clip-path: circle(200vmax at var(--rx) var(--ry));
+  }
+  100% {
+    clip-path: circle(0px at var(--rx) var(--ry));
+    -webkit-clip-path: circle(0px at var(--rx) var(--ry));
+  }
+}
+.animate-theme-reveal {
+  animation: theme-reveal 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ======================================================
+ * 页面过渡 - 3D 立体翻页动画
+ * ====================================================== */
+.page-transition-enter {
+  animation: page-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: center center;
+  perspective: 1200px;
+}
+
+@keyframes page-enter {
+  0% {
+    opacity: 0;
+    transform: perspective(1200px) rotateX(8deg) translateY(30px) scale(0.97);
+    filter: blur(4px);
+  }
+  40% {
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1200px) rotateX(0deg) translateY(0) scale(1);
+    filter: blur(0px);
+  }
+}
+
+.page-transition-slide-up {
+  animation: page-slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes page-slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.96);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.002);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.page-transition-scale-in {
+  animation: page-scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes page-scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 列表逐项入场 */
+@keyframes list-item-in {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-list-item {
+  animation: list-item-in 0.3s ease-out both;
+}
+.animate-list-item:nth-child(1) { animation-delay: 0ms; }
+.animate-list-item:nth-child(2) { animation-delay: 40ms; }
+.animate-list-item:nth-child(3) { animation-delay: 80ms; }
+.animate-list-item:nth-child(4) { animation-delay: 120ms; }
+.animate-list-item:nth-child(5) { animation-delay: 160ms; }
+.animate-list-item:nth-child(6) { animation-delay: 200ms; }
+.animate-list-item:nth-child(7) { animation-delay: 240ms; }
+.animate-list-item:nth-child(8) { animation-delay: 280ms; }
+
+/* ======================================================
+ * 滚动条
  * ====================================================== */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  width: 6px;
+  height: 6px;
 }
-::-webkit-scrollbar-track { background: transparent; border-radius: 4px; }
+::-webkit-scrollbar-track {
+  background: transparent;
+}
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--heroui-default-300) / 0.5);
-  border-radius: 4px;
-  transition: background 0.2s ease, opacity 0.2s ease;
+  background: hsl(var(--heroui-default-300) / 0.4);
+  border-radius: 3px;
+  transition: background 0.2s ease;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--heroui-default-400) / 0.7);
+  background: hsl(var(--heroui-default-400) / 0.6);
 }
 ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
-*:hover::-webkit-scrollbar { opacity: 1; }
-
-.dark ::-webkit-scrollbar-thumb { background: hsl(var(--heroui-default-600) / 0.5); }
-.dark ::-webkit-scrollbar-thumb:hover { background: hsl(var(--heroui-default-500) / 0.7); }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--heroui-default-300) / 0.5) transparent;
-}
-.dark * {
-  scrollbar-color: hsl(var(--heroui-default-600) / 0.5) transparent;
+  scrollbar-color: hsl(var(--heroui-default-300) / 0.4) transparent;
 }
 
 /* ======================================================
- * 状态指示灯 glow - 语义色 token 派生
+ * 玻璃态效果
+ * ====================================================== */
+.glass {
+  background: hsl(var(--heroui-background) / 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid hsl(var(--heroui-default-200) / 0.5);
+}
+
+.dark .glass {
+  background: hsl(var(--heroui-background) / 0.5);
+  border: 1px solid hsl(var(--heroui-default-100) / 0.15);
+}
+
+.glass-strong {
+  background: hsl(var(--heroui-background) / 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid hsl(var(--heroui-default-200) / 0.6);
+}
+
+.dark .glass-strong {
+  background: hsl(var(--heroui-background) / 0.65);
+  border: 1px solid hsl(var(--heroui-default-100) / 0.15);
+}
+
+/* ======================================================
+ * 卡片交互
+ * ====================================================== */
+.card-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px hsl(var(--heroui-foreground) / 0.08);
+}
+.dark .card-hover:hover {
+  box-shadow: 0 8px 25px hsl(var(--heroui-foreground) / 0.06);
+}
+
+.card-hover:active {
+  transform: translateY(0);
+}
+
+/* ======================================================
+ * 状态指示灯 glow
  * ====================================================== */
 .shadow-glow-success {
   box-shadow: 0 0 8px hsl(var(--heroui-success) / 0.6);
@@ -132,13 +289,12 @@
 .shadow-glow-warning {
   box-shadow: 0 0 8px hsl(var(--heroui-warning) / 0.6);
 }
-.dark .shadow-glow-success { box-shadow: 0 0 10px hsl(var(--heroui-success) / 0.8); }
-.dark .shadow-glow-danger { box-shadow: 0 0 10px hsl(var(--heroui-danger) / 0.8); }
-.dark .shadow-glow-warning { box-shadow: 0 0 10px hsl(var(--heroui-warning) / 0.8); }
+.dark .shadow-glow-success { box-shadow: 0 0 12px hsl(var(--heroui-success) / 0.7); }
+.dark .shadow-glow-danger { box-shadow: 0 0 12px hsl(var(--heroui-danger) / 0.7); }
+.dark .shadow-glow-warning { box-shadow: 0 0 12px hsl(var(--heroui-warning) / 0.7); }
 
 /* ======================================================
- * 技能描述标记 - 域语义色(游戏数据展示专用)
- * 规则: 设计系统色一律走 token,域语义色保留为常量
+ * 技能描述标记
  * ====================================================== */
 .ba-tag {
   display: inline-block;
@@ -148,7 +304,6 @@
   line-height: 1.4;
 }
 
-/* @ba. 属性标记 */
 .ba-at-cryst { color: hsl(204 70% 65%); }
 .ba-at-key { color: hsl(33 90% 55%); }
 .ba-at-vup { color: hsl(141 60% 45%); }
@@ -164,7 +319,6 @@
 .ba-at-purple { color: hsl(282 50% 55%); }
 .ba-at-orange { color: hsl(33 90% 55%); }
 
-/* #ba. 状态标记 */
 .ba-hash-cryst { color: hsl(204 70% 65%); }
 .ba-hash-key { color: hsl(33 90% 55%); }
 .ba-hash-vup { color: hsl(141 60% 45%); }
@@ -180,6 +334,5 @@
 .ba-hash-purple { color: hsl(282 50% 55%); }
 .ba-hash-orange { color: hsl(33 90% 55%); }
 
-/* @tips. 提示标记 */
 .ba-tips-purple { color: hsl(282 50% 55%); }
 .ba-tips-orange { color: hsl(33 90% 55%); }

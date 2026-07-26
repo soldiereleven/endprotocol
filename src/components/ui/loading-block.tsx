@@ -18,7 +18,7 @@ export function LoadingBlock({
   return (
     <div
       className={clsx(
-        "flex flex-col items-center justify-center gap-3 py-10",
+        "flex flex-col items-center justify-center gap-4 py-10",
         className,
       )}
       style={{ minHeight }}
@@ -30,7 +30,7 @@ export function LoadingBlock({
           <ProgressCircle.FillCircle />
         </ProgressCircle.Track>
       </ProgressCircle>
-      {label && <p className="text-sm text-muted">{label}</p>}
+      {label && <p className="text-sm text-muted/70 animate-pulse-soft">{label}</p>}
     </div>
   );
 }
@@ -63,25 +63,25 @@ export function SkeletonList({
 }: SkeletonListProps) {
   return (
     <div
-      className={clsx("space-y-1", className)}
+      className={clsx("space-y-3", className)}
       style={{ rowGap: gap }}
       aria-hidden
     >
       {Array.from({ length: count }).map((_, i) => (
         <Card
           key={i}
-          className="p-4 bg-content1"
+          className="p-4 bg-content1 border border-separator/60"
           style={{ height: rowHeight }}
         >
           <div className="flex items-center gap-4 h-full">
-            <div className="w-12 h-12 rounded-full bg-default-200 animate-pulse" />
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-default-200 to-default-300 animate-pulse" />
             <div className="flex-1 space-y-2">
-              <div className="w-32 h-4 rounded-lg bg-default-200 animate-pulse" />
-              <div className="w-24 h-3 rounded-lg bg-default-200 animate-pulse" />
+              <div className="w-32 h-4 rounded-lg bg-gradient-to-r from-default-200 to-default-100 animate-pulse" />
+              <div className="w-24 h-3 rounded-lg bg-gradient-to-r from-default-200 to-default-100 animate-pulse" />
             </div>
             <div className="flex gap-2">
-              <div className="w-20 h-8 rounded-lg bg-default-200 animate-pulse" />
-              <div className="w-20 h-8 rounded-lg bg-default-200 animate-pulse" />
+              <div className="w-20 h-8 rounded-lg bg-gradient-to-r from-default-200 to-default-100 animate-pulse" />
+              <div className="w-20 h-8 rounded-lg bg-gradient-to-r from-default-200 to-default-100 animate-pulse" />
             </div>
           </div>
         </Card>

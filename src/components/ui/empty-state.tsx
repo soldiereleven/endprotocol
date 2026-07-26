@@ -22,23 +22,23 @@ export function EmptyState({
   return (
     <div
       className={clsx(
-        "flex flex-col items-center justify-center text-center px-6 py-8",
+        "flex flex-col items-center justify-center text-center px-6 py-12",
         className,
       )}
       style={{ minHeight }}
     >
       {icon && (
-        <div className="mb-3 opacity-50 text-muted [&_svg]:w-12 [&_svg]:h-12">
+        <div className="mb-4 opacity-40 text-muted [&_svg]:w-14 [&_svg]:h-14 transition-transform duration-300 hover:scale-110">
           {icon}
         </div>
       )}
-      <p className="text-base lg:text-lg font-medium text-foreground">
+      <p className="text-base lg:text-lg font-semibold text-foreground">
         {title}
       </p>
       {description && (
-        <p className="text-sm text-muted mt-1 max-w-md">{description}</p>
+        <p className="text-sm text-muted/80 mt-1.5 max-w-md leading-relaxed">{description}</p>
       )}
-      {action && <div className="mt-4">{action}</div>}
+      {action && <div className="mt-6">{action}</div>}
     </div>
   );
 }

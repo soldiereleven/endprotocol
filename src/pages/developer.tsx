@@ -217,18 +217,19 @@ export default function DeveloperPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-12">
+    <div className="max-w-4xl mx-auto space-y-8 pb-12">
       <div>
-        <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+        <h1 className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight">
           {t("settings.developer.title")}
         </h1>
-        <p className="text-muted mt-1">{t("settings.developer.enable_desc")}</p>
+        <p className="text-muted/80 mt-1.5">{t("settings.developer.enable_desc")}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-6">
         {/* Image Cache Settings */}
-        <Card id="developer-cache" className="p-6 bg-content1 shadow-sm overflow-hidden">
-          <h2 className="text-lg font-semibold mb-6">
+        <Card id="developer-cache" className="p-6 bg-content1 border border-separator/80 overflow-hidden">
+          <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
+            <span className="w-1 h-5 bg-primary rounded-full" />
             {t("settings.cache.title")}
           </h2>
           {isConfigLoading ? (
@@ -423,9 +424,10 @@ export default function DeveloperPage() {
         </Card>
 
         {/* Log Viewer */}
-        <Card id="developer-logs" className="p-6 bg-content1 shadow-sm overflow-hidden">
+        <Card id="developer-logs" className="p-6 bg-content1 border border-separator/80 overflow-hidden">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <span className="w-1 h-5 bg-secondary rounded-full" />
               {t("settings.logs.title")}
             </h2>
             <div className="flex items-center gap-2">
@@ -439,7 +441,7 @@ export default function DeveloperPage() {
           </div>
 
           {/* Source tabs */}
-          <div className="flex gap-1 mb-3 bg-default-100 dark:bg-default-50 p-1 rounded-lg">
+          <div className="flex gap-1 mb-3 bg-default-100/60 p-1 rounded-xl">
             {(["all", "frontend", "backend"] as LogFilter[]).map((f) => {
               const isActive = logSourceFilter === f;
               const label =
@@ -452,9 +454,9 @@ export default function DeveloperPage() {
                 <button
                   key={f}
                   onClick={() => setLogSourceFilter(f)}
-                  className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                  className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 ${
                     isActive
-                      ? "bg-background text-foreground shadow-sm border border-separator"
+                      ? "bg-background text-foreground shadow-sm border border-separator/60"
                       : "text-muted hover:text-foreground"
                   }`}
                 >
@@ -472,7 +474,11 @@ export default function DeveloperPage() {
                 <button
                   key={String(l)}
                   onClick={() => setLogLevelFilter(l)}
-                  className={`px-2.5 py-1 text-xs rounded-md border transition-all font-medium border-separator ${isActive && l !== "all" ? `${LEVEL_TEXT[l]} ${LEVEL_BG_SOFT[l]} ${LEVEL_BORDER[l]}` : ""}`}
+                  className={`px-2.5 py-1 text-xs rounded-lg border transition-all duration-200 font-medium ${
+                    isActive && l !== "all"
+                      ? `${LEVEL_TEXT[l]} ${LEVEL_BG_SOFT[l]} ${LEVEL_BORDER[l]} bg-background`
+                      : "border-separator/60 text-muted hover:text-foreground hover:bg-default-50"
+                  }`}
                 >
                   {l === "all"
                     ? (i18n.language === "zh" ? "全部级别" : "All Levels")
@@ -488,11 +494,11 @@ export default function DeveloperPage() {
           {/* Log entries */}
           <div
             ref={logContainerRef}
-            className="bg-background rounded-lg border border-separator overflow-y-auto font-mono text-xs"
+            className="bg-background rounded-xl border border-separator/60 overflow-y-auto font-mono text-xs"
             style={{ maxHeight: "480px" }}
           >
             {filteredLogs.length === 0 ? (
-              <div className="flex items-center justify-center h-24 text-muted">
+              <div className="flex items-center justify-center h-24 text-muted/60">
                 {i18n.language === "zh" ? "暂无日志" : "No logs"}
               </div>
             ) : (
@@ -502,14 +508,18 @@ export default function DeveloperPage() {
                   return (
                     <div
                       key={`${entry.timestamp}-${idx}`}
-                      className={`flex items-start gap-1.5 px-2 py-1 rounded transition-colors ${entry.source === "backend" ? "bg-secondary/5 hover:bg-secondary/10" : "bg-success/5 hover:bg-success/10"}`}
+                      className={`flex items-start gap-1.5 px-2 py-1 rounded transition-colors ${
+                        entry.source === "backend"
+                          ? "hover:bg-secondary/5"
+                          : "hover:bg-success/5"
+                      }`}
                     >
                       <span
-                        className={`shrink-0 font-bold text-[10px] leading-5 px-1.5 rounded-sm text-white text-center min-w-[44px] ${LEVEL_BADGE_BG[entry.level]}`}
+                        className={`shrink-0 font-bold text-[10px] leading-5 px-1.5 rounded text-white text-center min-w-[44px] ${LEVEL_BADGE_BG[entry.level]}`}
                       >
                         {levelName}
                       </span>
-                      <span className="shrink-0 text-muted leading-5 whitespace-nowrap font-normal">
+                      <span className="shrink-0 text-muted/70 leading-5 whitespace-nowrap font-normal">
                         {entry.timestamp}
                       </span>
                       <span
@@ -517,7 +527,7 @@ export default function DeveloperPage() {
                       >
                         {entry.source === "backend" ? "Backend" : "Frontend"}
                       </span>
-                      <span className="shrink-0 leading-5 text-muted font-normal max-w-[100px] truncate">
+                      <span className="shrink-0 leading-5 text-muted/50 font-normal max-w-[100px] truncate">
                         {entry.module}
                       </span>
                       <span

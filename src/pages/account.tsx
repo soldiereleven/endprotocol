@@ -886,18 +886,18 @@ export default function AccountPage() {
         {[...Array(skeletonCount)].map((_, index) => (
           <Card
             key={index}
-            className="p-4 bg-content1"
+            className="p-4 bg-content1 border border-separator/60"
             style={{ height: `${CARD_HEIGHT}px` }}
           >
             <div className="flex items-center gap-4 h-full">
               <Skeleton className="w-12 h-12 rounded-full" />
               <div className="flex-1 space-y-2">
-                <Skeleton className="w-32 h-4 rounded-lg" />
-                <Skeleton className="w-24 h-3 rounded-lg" />
+                <Skeleton className="w-32 h-4 rounded-lg bg-gradient-to-r from-default-200 to-default-100 animate-pulse" />
+                <Skeleton className="w-24 h-3 rounded-lg bg-gradient-to-r from-default-200 to-default-100 animate-pulse" />
               </div>
               <div className="flex gap-2">
-                <Skeleton className="w-20 h-8 rounded-lg" />
-                <Skeleton className="w-20 h-8 rounded-lg" />
+                <Skeleton className="w-20 h-8 rounded-lg bg-gradient-to-r from-default-200 to-default-100 animate-pulse" />
+                <Skeleton className="w-20 h-8 rounded-lg bg-gradient-to-r from-default-200 to-default-100 animate-pulse" />
               </div>
             </div>
           </Card>
@@ -907,13 +907,13 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-12 relative">
+    <div className="max-w-6xl mx-auto space-y-8 pb-12 relative">
       {/* 全局 Alert - 浮动覆盖 */}
       {globalAlert && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-slide-down">
           <Alert
             status={globalAlert.type}
-            className="shadow-lg min-w-[300px] max-w-[500px]"
+            className="shadow-lg min-w-[300px] max-w-[500px] rounded-xl"
           >
             <Alert.Indicator />
             <Alert.Content>
@@ -926,10 +926,10 @@ export default function AccountPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight">
             {t("settings.account.title")}
           </h1>
-          <p className="text-muted mt-1">{t("settings.account.subtitle")}</p>
+          <p className="text-muted/80 mt-1.5">{t("settings.account.subtitle")}</p>
         </div>
 
         <div className="flex gap-2">
@@ -950,7 +950,7 @@ export default function AccountPage() {
 
       {/* Last refresh time */}
       {lastRefreshTime && (
-        <div className="text-sm text-muted">
+        <div className="text-sm text-muted/60">
           {t("settings.account.last_refresh")}:{" "}
           {lastRefreshTime.toLocaleString(
             i18n.language === "zh" ? "zh-CN" : "en-US",
@@ -961,8 +961,7 @@ export default function AccountPage() {
       {/* Accounts List */}
       {isLoading || isRefreshing ? (
         <div className="flex flex-col flex-1">
-          {/* 账户卡片区域 - 带外框 */}
-          <Card className="shadow-sm border-2 border-separator p-0 flex flex-col">
+          <Card className="border border-separator/80 p-0 flex flex-col">
             <div
               ref={containerRef}
               className="relative px-[15px] py-[15px] space-y-[5px]"
@@ -971,7 +970,7 @@ export default function AccountPage() {
             </div>
 
             {/* Card footer: pagination (disabled during refresh) */}
-            <div className="border-t border-separator px-3 py-3 w-full">
+            <div className="border-t border-separator/60 px-3 py-3 w-full">
               <div className="flex items-center justify-center w-full gap-3">
                 <Button
                   size="sm"

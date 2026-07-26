@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { CustomTitlebar } from "@/components/custom-titlebar";
 import { Sidebar } from "@/components/dashboard-sidebar";
 
@@ -7,6 +8,7 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -14,16 +16,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <CustomTitlebar />
 
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Desktop Sidebar - 静态定位 */}
-        <div className="hidden lg:flex w-72 shrink-0 border-r border-separator">
+        {/* Desktop Sidebar */}
+        <div className="hidden lg:flex w-72 shrink-0 border-r border-separator bg-content1/30">
           <Sidebar />
         </div>
 
-        {/* Mobile Drawer - fixed 滑入 */}
+        {/* Mobile Drawer */}
         {mobileOpen && (
           <>
             <div
-              className="lg:hidden fixed inset-0 z-40 bg-foreground/40 backdrop-blur-sm animate-fade-in"
+              className="lg:hidden fixed inset-0 z-40 bg-foreground/50 backdrop-blur-sm animate-fade-in"
               onClick={() => setMobileOpen(false)}
               aria-label="Close sidebar"
               role="button"
@@ -39,7 +41,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            className="lg:hidden fixed bottom-4 right-4 z-30 p-3 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-shadow"
+            className="lg:hidden fixed bottom-6 right-6 z-30 p-3.5 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200"
             aria-label="Open menu"
           >
             <svg
@@ -57,8 +59,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </svg>
           </button>
 
-          <main className="flex-1 overflow-y-auto p-4 lg:p-6 pt-6">
-            {children}
+          <main className="flex-1 overflow-y-auto p-4 lg:p-8 pt-6">
+            <div key={location.pathname} className="page-transition-enter min-h-full">
+              {children}
+            </div>
           </main>
         </div>
       </div>

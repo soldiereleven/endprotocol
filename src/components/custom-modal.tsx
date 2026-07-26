@@ -69,7 +69,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           scroll="inside"
         >
           <Modal.Dialog
-            className={`bg-background border border-separator rounded-2xl !p-0 ${config.widthClass} ${dialogHeightClass} flex flex-col`}
+            className={`bg-background border border-separator/80 rounded-2xl !p-0 shadow-2xl ${config.widthClass} ${dialogHeightClass} flex flex-col`}
           >
             {children}
           </Modal.Dialog>
@@ -94,17 +94,17 @@ export const CustomModalHeader: React.FC<ModalHeaderProps> = ({
 }) => {
   return (
     <Modal.Header
-      className={`relative flex items-center justify-between border-b border-separator px-6 py-3 shrink-0 ${className ?? ""}`}
+      className={`relative flex items-center justify-between border-b border-separator/60 px-6 py-3.5 shrink-0 ${className ?? ""}`}
     >
-      <div className="text-xl font-semibold text-foreground">{children}</div>
+      <div className="text-lg font-semibold text-foreground">{children}</div>
       <div className="flex items-center gap-2">{rightContent}</div>
       {onClose && (
         <button
           onClick={onClose}
-          className="absolute top-1/2 right-3 -translate-y-1/2 p-1 rounded-full bg-default-50 hover:bg-default-100 transition-colors text-muted hover:text-foreground shadow-sm"
+          className="absolute top-1/2 right-3 -translate-y-1/2 p-1.5 rounded-xl bg-default-50 hover:bg-default-100 transition-all duration-200 text-muted hover:text-foreground hover:scale-105 active:scale-95"
           aria-label="Close"
         >
-          <CloseIcon size={20} />
+          <CloseIcon size={18} />
         </button>
       )}
     </Modal.Header>

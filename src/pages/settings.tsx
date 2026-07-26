@@ -114,18 +114,19 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-12">
+    <div className="max-w-4xl mx-auto space-y-8 pb-12">
       <div>
-        <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+        <h1 className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight">
           {t("settings.title")}
         </h1>
-        <p className="text-muted mt-1">{t("common.managePreferences")}</p>
+        <p className="text-muted/80 mt-1.5">{t("common.managePreferences")}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-6">
         {/* General Settings */}
-        <Card id="settings-general" className="p-6 bg-content1 shadow-sm">
-          <h2 className="text-lg font-semibold mb-6">
+        <Card id="settings-general" className="p-6 bg-content1 border border-separator/80">
+          <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
+            <span className="w-1 h-5 bg-primary rounded-full" />
             {t("settings.general.title")}
           </h2>
           {isConfigLoading ? (
@@ -183,7 +184,7 @@ export default function SettingsPage() {
                     : "Choose your preferred language"}
                 </p>
               </div>
-              <div className="w-full sm:w-48" ref={langDropdownRef}>
+              <div className="w-full sm:w-44" ref={langDropdownRef}>
                 <div className="relative">
                   <Button
                     variant="outline"
@@ -196,7 +197,7 @@ export default function SettingsPage() {
                         (i18n.language === "zh" ? "简体中文" : "English")}
                     </span>
                     <svg
-                      className={`w-4 h-4 transition-transform ${isLangDropdownOpen ? "rotate-180" : ""}`}
+                      className={`w-4 h-4 transition-transform duration-200 ${isLangDropdownOpen ? "rotate-180" : ""}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -211,7 +212,7 @@ export default function SettingsPage() {
                   </Button>
 
                   {isLangDropdownOpen && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-content1 border border-separator rounded-lg shadow-lg z-50 min-w-[200px]">
+                    <div className="absolute left-0 right-0 mt-2 bg-background border border-separator/80 rounded-xl shadow-xl z-50 overflow-hidden animate-scale-in">
                       <div className="py-1">
                         {languages.map((lang) => (
                           <button
@@ -222,7 +223,7 @@ export default function SettingsPage() {
                             <span className="text-sm">{lang.label}</span>
                             {i18n.language === lang.key && (
                               <svg
-                                className="w-4 h-4 text-success"
+                                className="w-4 h-4 text-primary"
                                 fill="currentColor"
                                 viewBox="0 0 20 20"
                               >
@@ -259,7 +260,9 @@ export default function SettingsPage() {
                     : "Toggle light or dark mode"}
                 </p>
               </div>
-              <ThemeSwitch />
+              <div className="p-1.5 rounded-xl bg-default-100/60">
+                <ThemeSwitch />
+              </div>
             </div>
 
             <div className="h-px bg-separator w-full" />
@@ -348,7 +351,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* Developer Mode */}
-        <Card id="settings-developer" className="p-6 bg-content1 shadow-sm">
+        <Card id="settings-developer" className="p-6 bg-content1 border border-separator/80">
           {isConfigLoading ? (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
@@ -361,7 +364,8 @@ export default function SettingsPage() {
             </div>
           ) : (
           <>
-          <h2 className="text-lg font-semibold mb-6">
+          <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
+            <span className="w-1 h-5 bg-warning rounded-full" />
             {t("settings.developer.title")}
           </h2>
           <div className="space-y-6">

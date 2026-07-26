@@ -306,7 +306,7 @@ export default function DashboardPage() {
 
   if (isLoading && view === "loading") {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="flex items-center justify-center py-24">
         <ProgressCircle isIndeterminate size="lg" aria-label="Loading">
           <ProgressCircle.Track>
             <ProgressCircle.TrackCircle />
@@ -356,6 +356,7 @@ export default function DashboardPage() {
               size="sm"
               onPress={handleBackToSelector}
               aria-label="Back"
+              className="rounded-xl hover:bg-default-100"
             >
               <ChevronLeftIcon size={20} />
             </Button>
@@ -366,11 +367,11 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center gap-2">
               {IconComponent && <IconComponent size={24} className="text-primary" />}
-              <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+              <h1 className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight">
                 {activeTab?.name ?? t("nav.dashboard")}
               </h1>
             </div>
-            <p className="text-muted mt-1">
+            <p className="text-muted/70 mt-1">
               {t("dashboard.customize_hint") ||
                 "Customize your dashboard with cards"}
             </p>
@@ -384,7 +385,7 @@ export default function DashboardPage() {
               size="sm"
               onPress={handleRefresh}
               isDisabled={isRefreshing}
-              className="text-muted hover:text-foreground"
+              className="text-muted hover:text-foreground hover:bg-default-100 rounded-xl"
               aria-label={t("common.refresh") || "Refresh"}
             >
               <RefreshIcon size={20} className={isRefreshing ? "animate-spin" : ""} />
@@ -397,14 +398,14 @@ export default function DashboardPage() {
       </div>
 
       {isRefreshing ? (
-        <div className="flex flex-col items-center justify-center py-20 space-y-4">
+        <div className="flex flex-col items-center justify-center py-24 space-y-5">
           <ProgressCircle isIndeterminate size="lg" aria-label="Loading">
             <ProgressCircle.Track>
               <ProgressCircle.TrackCircle />
               <ProgressCircle.FillCircle />
             </ProgressCircle.Track>
           </ProgressCircle>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted/70 animate-pulse-soft">
             {t("common.refreshing") || "Refreshing..."}
           </p>
         </div>

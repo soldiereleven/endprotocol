@@ -71,14 +71,15 @@ export const CustomTitlebar = () => {
 
   return (
     <div
-      className="h-12 bg-background border-b border-separator flex items-center px-6 relative"
+      className="h-11 bg-background border-b border-separator/60 flex items-center px-5 relative"
       style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
     >
       <div
-        className="flex items-center gap-3"
+        className="flex items-center gap-2.5"
         style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
       >
-        <h1 className="text-xl font-bold text-foreground">ENDPROTOCOL</h1>
+        <div className="w-2 h-2 rounded-full bg-primary/60" />
+        <h1 className="text-sm font-bold text-foreground tracking-widest">ENDPROTOCOL</h1>
       </div>
 
       <div
@@ -87,7 +88,7 @@ export const CustomTitlebar = () => {
       />
 
       <div
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-default-100/80 hover:bg-default-200/80 transition-colors"
+        className="flex items-center gap-1 px-2 py-1 rounded-xl bg-default-100/60 hover:bg-default-100/80 transition-colors"
         style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
       >
         <Button
@@ -96,9 +97,9 @@ export const CustomTitlebar = () => {
           variant="ghost"
           onPress={handleMinimize}
           aria-label="Minimize"
-          className="h-8 w-8 min-w-8 rounded-xl"
+          className="h-7 w-7 min-w-7 rounded-lg hover:bg-default-200/60"
         >
-          <MinimizeIcon size={16} />
+          <MinimizeIcon size={14} />
         </Button>
 
         <Button
@@ -107,20 +108,20 @@ export const CustomTitlebar = () => {
           variant="ghost"
           onPress={handleMaximize}
           aria-label={isMaximized ? "Restore" : "Maximize"}
-          className="h-8 w-8 min-w-8 rounded-xl"
+          className="h-7 w-7 min-w-7 rounded-lg hover:bg-default-200/60"
         >
-          {isMaximized ? <RestoreIcon size={16} /> : <MaximizeIcon size={16} />}
+          {isMaximized ? <RestoreIcon size={14} /> : <MaximizeIcon size={14} />}
         </Button>
 
         <Button
           isIconOnly
           size="sm"
-          variant="danger-soft"
+          variant="ghost"
           onPress={handleClose}
           aria-label="Close"
-          className="h-8 w-8 min-w-8 rounded-xl"
+          className="h-7 w-7 min-w-7 rounded-lg hover:bg-danger/20 hover:text-danger transition-colors"
         >
-          <CloseIcon size={16} />
+          <CloseIcon size={14} />
         </Button>
       </div>
     </div>
