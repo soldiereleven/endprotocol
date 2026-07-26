@@ -4,6 +4,7 @@ import { ThemeSwitch } from "@/components/theme-switch";
 import { useState, useEffect, useRef } from "react";
 import { getConfig, setConfig } from "@/utils/configService";
 import { roleDetailService } from "@/utils/roleDetailService";
+import { SettingsDivider } from "@/components/ui/settings-row";
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -125,50 +126,55 @@ export default function SettingsPage() {
       <div className="grid grid-cols-1 gap-6">
         {/* General Settings */}
         <Card id="settings-general" className="p-6 glass-surface border border-separator/90">
-          <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
-            <span className="w-1 h-5 bg-primary rounded-full" />
+          <h2 className="text-lg font-semibold mb-6 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
+              <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+              </svg>
+            </div>
             {t("settings.general.title")}
           </h2>
           {isConfigLoading ? (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-2">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-2 flex-1">
                   <Skeleton className="w-32 h-4 rounded-lg" />
                   <Skeleton className="w-48 h-3 rounded-lg" />
                 </div>
-                <Skeleton className="w-40 h-10 rounded-lg" />
+                <Skeleton className="w-40 h-10 rounded-lg shrink-0" />
               </div>
-              <div className="h-px bg-separator w-full" />
-              <div className="flex items-center justify-between">
-                <div className="space-y-2">
+              <SettingsDivider />
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-2 flex-1">
                   <Skeleton className="w-24 h-4 rounded-lg" />
                   <Skeleton className="w-40 h-3 rounded-lg" />
                 </div>
-                <Skeleton className="w-12 h-6 rounded-full" />
+                <Skeleton className="w-12 h-6 rounded-full shrink-0" />
               </div>
-              <div className="h-px bg-separator w-full" />
-              <div className="flex items-center justify-between">
-                <div className="space-y-2">
+              <SettingsDivider />
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-2 flex-1">
                   <Skeleton className="w-36 h-4 rounded-lg" />
                   <Skeleton className="w-56 h-3 rounded-lg" />
                 </div>
-                <Skeleton className="w-12 h-6 rounded-full" />
+                <Skeleton className="w-12 h-6 rounded-full shrink-0" />
               </div>
-              <div className="h-px bg-separator w-full" />
-              <div className="flex items-center justify-between">
-                <div className="space-y-2">
+              <SettingsDivider />
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-2 flex-1">
                   <Skeleton className="w-28 h-4 rounded-lg" />
                   <Skeleton className="w-44 h-3 rounded-lg" />
                 </div>
-                <Skeleton className="w-12 h-6 rounded-full" />
+                <Skeleton className="w-12 h-6 rounded-full shrink-0" />
               </div>
-              <div className="h-px bg-separator w-full" />
-              <div className="flex items-center justify-between">
-                <div className="space-y-2">
+              <SettingsDivider />
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-2 flex-1">
                   <Skeleton className="w-36 h-4 rounded-lg" />
                   <Skeleton className="w-56 h-3 rounded-lg" />
                 </div>
-                <Skeleton className="w-12 h-6 rounded-full" />
+                <Skeleton className="w-12 h-6 rounded-full shrink-0" />
               </div>
             </div>
           ) : (
@@ -184,20 +190,27 @@ export default function SettingsPage() {
                     : "Choose your preferred language"}
                 </p>
               </div>
-              <div className="w-full sm:w-44" ref={langDropdownRef}>
+              <div className="w-full sm:w-48" ref={langDropdownRef}>
                 <div className="relative">
                   <Button
                     variant="outline"
-                    className="w-full justify-between"
+                    className="w-full justify-between gap-2"
                     onPress={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
                   >
-                    <span>
-                      {languages.find((lang) => lang.key === i18n.language)
-                        ?.label ||
-                        (i18n.language === "zh" ? "简体中文" : "English")}
+                    <span className="flex items-center gap-2 min-w-0">
+                      <svg className="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M2 12h20" />
+                        <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+                      </svg>
+                      <span className="truncate">
+                        {languages.find((lang) => lang.key === i18n.language)
+                          ?.label ||
+                          (i18n.language === "zh" ? "简体中文" : "English")}
+                      </span>
                     </span>
                     <svg
-                      className={`w-4 h-4 transition-transform duration-200 ${isLangDropdownOpen ? "rotate-180" : ""}`}
+                      className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isLangDropdownOpen ? "rotate-180" : ""}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -243,14 +256,13 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="h-px bg-separator w-full" />
+            <SettingsDivider />
 
             <div
               key={themeChangeKey}
-              id="settings-theme"
               className="flex items-center justify-between"
             >
-              <div>
+              <div id="settings-theme">
                 <p className="font-medium text-foreground">
                   {t("settings.general.theme")}
                 </p>
@@ -260,18 +272,18 @@ export default function SettingsPage() {
                     : "Toggle light or dark mode"}
                 </p>
               </div>
-              <div className="p-1.5 rounded-xl bg-default-100/60">
+              <div className="shrink-0 p-1.5 rounded-xl bg-default-100/60 ring-1 ring-default-200/50">
                 <ThemeSwitch />
               </div>
             </div>
 
-            <div className="h-px bg-separator w-full" />
+            <SettingsDivider />
 
             <div
               id="settings-refresh-on-switch"
-              className="flex items-center justify-between"
+              className="flex items-center justify-between gap-4"
             >
-              <div>
+              <div className="min-w-0">
                 <p className="font-medium text-foreground">
                   {i18n.language === "zh"
                     ? "切换账户时刷新数据"
@@ -293,13 +305,13 @@ export default function SettingsPage() {
               </Switch>
             </div>
 
-            <div className="h-px bg-separator w-full" />
+            <SettingsDivider />
 
             <div
               id="settings-lazy-load"
-              className="flex items-center justify-between"
+              className="flex items-center justify-between gap-4"
             >
-              <div>
+              <div className="min-w-0">
                 <p className="font-medium text-foreground">
                   {i18n.language === "zh" ? "懒加载模式" : "Lazy Load Mode"}
                 </p>
@@ -319,13 +331,13 @@ export default function SettingsPage() {
               </Switch>
             </div>
 
-            <div className="h-px bg-separator w-full" />
+            <SettingsDivider />
 
             <div
               id="settings-wiki-detail-preload"
-              className="flex items-center justify-between"
+              className="flex items-center justify-between gap-4"
             >
-              <div>
+              <div className="min-w-0">
                 <p className="font-medium text-foreground">
                   {i18n.language === "zh"
                     ? "启动时预加载 Wiki 详情"
@@ -354,23 +366,28 @@ export default function SettingsPage() {
         <Card id="settings-developer" className="p-6 glass-surface border border-separator/90">
           {isConfigLoading ? (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-2">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-2 flex-1">
                   <Skeleton className="w-32 h-4 rounded-lg" />
                   <Skeleton className="w-48 h-3 rounded-lg" />
                 </div>
-                <Skeleton className="w-12 h-6 rounded-full" />
+                <Skeleton className="w-12 h-6 rounded-full shrink-0" />
               </div>
             </div>
           ) : (
           <>
-          <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
-            <span className="w-1 h-5 bg-warning rounded-full" />
+          <h2 className="text-lg font-semibold mb-6 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-warning/10 flex items-center justify-center ring-1 ring-warning/20">
+              <svg className="w-4 h-4 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                <polyline points="16 18 22 12 16 6" />
+                <polyline points="8 6 2 12 8 18" />
+              </svg>
+            </div>
             {t("settings.developer.title")}
           </h2>
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
                 <p className="font-medium text-foreground">
                   {t("settings.developer.enable")}
                 </p>
