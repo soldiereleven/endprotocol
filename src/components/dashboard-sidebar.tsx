@@ -27,7 +27,7 @@ import {
   type Account,
 } from "@/utils/accountService";
 import { usePinImages } from "@/utils/imageCacheManager";
-import { getConfig } from "@/utils/configService";
+import { getConfig, setConfig } from "@/utils/configService";
 import { getAllTabs, addTab, removeTab, updateTab, getActiveTabId, setActiveTabId } from "@/utils/tabService";
 import { getTabIcon } from "@/utils/tabIcons";
 import { CardContextMenu } from "@/components/cards/card-context-menu";
@@ -131,6 +131,15 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
       setDeveloperMode(value ?? false);
     };
     loadDevMode();
+  }, []);
+
+  // 加载侧边栏折叠状态
+  useEffect(() => {
+    const loadCollapsed = async () => {
+      const value = await getConfig<boolean>("sidebar_collapsed");
+      setIsDashboardCollapsed(value ?? false);
+    };
+    loadCollapsed();
   }, []);
 
   // 监听开发者模式变化
@@ -1054,7 +1063,11 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
               </Link>
               <button
                 type="button"
-                onClick={() => setIsDashboardCollapsed(!isDashboardCollapsed)}
+                onClick={() => {
+                  const next = !isDashboardCollapsed;
+                  setIsDashboardCollapsed(next);
+                  setConfig("sidebar_collapsed", next);
+                }}
                 className={clsx(
                   "p-1 rounded-lg transition-colors",
                   location.pathname === "/"
