@@ -1,4 +1,5 @@
-import { Route, Routes } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import DashboardPage from "@/pages/dashboard";
 import SettingsPage from "@/pages/settings";
@@ -6,51 +7,80 @@ import DeveloperPage from "@/pages/developer";
 import AccountPage from "@/pages/account";
 import CharactersPage from "@/pages/characters";
 import DashboardLayout from "@/layouts/dashboard";
+import { getConfig, setConfig } from "@/utils/configService";
+
+const ROUTES = ["/", "/settings", "/account", "/characters", "/developer"];
+
+function RouteRestore() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const restored = useRef(false);
+
+  useEffect(() => {
+    getConfig<string>("last_route").then((savedPath) => {
+      restored.current = true;
+      if (savedPath && ROUTES.includes(savedPath) && savedPath !== location.pathname) {
+        navigate(savedPath, { replace: true });
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (restored.current) {
+      setConfig("last_route", location.pathname);
+    }
+  }, [location.pathname]);
+
+  return null;
+}
 
 function App() {
   return (
-    <Routes>
-      <Route
-        element={
-          <DashboardLayout>
-            <DashboardPage />
-          </DashboardLayout>
-        }
-        path="/"
-      />
-      <Route
-        element={
-          <DashboardLayout>
-            <SettingsPage />
-          </DashboardLayout>
-        }
-        path="/settings"
-      />
-      <Route
-        element={
-          <DashboardLayout>
-            <AccountPage />
-          </DashboardLayout>
-        }
-        path="/account"
-      />
-      <Route
-        element={
-          <DashboardLayout>
-            <CharactersPage />
-          </DashboardLayout>
-        }
-        path="/characters"
-      />
-      <Route
-        element={
-          <DashboardLayout>
-            <DeveloperPage />
-          </DashboardLayout>
-        }
-        path="/developer"
-      />
-    </Routes>
+    <>
+      <RouteRestore />
+      <Routes>
+        <Route
+          element={
+            <DashboardLayout>
+              <DashboardPage />
+            </DashboardLayout>
+          }
+          path="/"
+        />
+        <Route
+          element={
+            <DashboardLayout>
+              <SettingsPage />
+            </DashboardLayout>
+          }
+          path="/settings"
+        />
+        <Route
+          element={
+            <DashboardLayout>
+              <AccountPage />
+            </DashboardLayout>
+          }
+          path="/account"
+        />
+        <Route
+          element={
+            <DashboardLayout>
+              <CharactersPage />
+            </DashboardLayout>
+          }
+          path="/characters"
+        />
+        <Route
+          element={
+            <DashboardLayout>
+              <DeveloperPage />
+            </DashboardLayout>
+          }
+          path="/developer"
+        />
+      </Routes>
+    </>
   );
 }
 
