@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Button, Card, ProgressCircle } from "@heroui/react";
 import { Img } from "@/utils/imageLoader";
@@ -57,11 +58,16 @@ function FloatSelect({
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
 
   useEffect(() => {
     if (!open) return;
     const onDocClick = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      if (dropdownRef.current?.contains(e.target as Node)) return;
+      if (wrapRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
@@ -69,15 +75,25 @@ function FloatSelect({
 
   const current = options.find((o) => o.value === value) ?? options[0];
 
+  const handleToggle = () => {
+    const next = !open;
+    if (next && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+    }
+    setOpen(next);
+  };
+
   return (
     <div ref={wrapRef} className="relative shrink-0">
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-1.5 h-9 pl-3 pr-2.5 rounded-xl border text-xs transition-all duration-200 cursor-pointer
+        onClick={handleToggle}
+        className={`flex items-center gap-1 h-8 pl-2 pr-1.5 rounded-xl border text-[11px] transition-all duration-200 cursor-pointer
           ${open ? "border-primary bg-primary/5" : "border-separator/60 bg-background hover:border-primary/40 hover:bg-default-50"}`}
       >
-        <span className="text-muted">{label}</span>
+        <span className="text-muted whitespace-nowrap">{label}</span>
         <span
           className={`font-semibold ${current?.tone ? rarityToneClass[current.tone] : "text-foreground"}`}
         >
@@ -87,7 +103,7 @@ function FloatSelect({
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 12 12"
-          className={`w-3 h-3 text-default-500 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`w-2.5 h-2.5 text-default-500 transition-transform ${open ? "rotate-180" : ""}`}
         >
           <path
             fill="currentColor"
@@ -97,9 +113,12 @@ function FloatSelect({
           />
         </svg>
       </button>
-      {open && (
+
+      {open && createPortal(
         <div
-          className="absolute left-0 top-full mt-1.5 z-50 min-w-full max-h-64 overflow-y-auto rounded-xl border border-separator/60 bg-background shadow-xl animate-scale-in"
+          ref={dropdownRef}
+          className="fixed z-[999] max-h-64 overflow-y-auto rounded-xl border border-separator/60 bg-background glass-surface-strong shadow-xl animate-scale-in"
+          style={{ top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}
           onClick={(e) => e.stopPropagation()}
         >
           {options.map((opt) => {
@@ -123,7 +142,8 @@ function FloatSelect({
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
@@ -245,28 +265,35 @@ export default function CharactersPage() {
       subAttr: "all",
     });
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        const id = await getSelectedAccount();
-        if (!id) {
-          setIsLoading(false);
-          return;
-        }
-        setAccountId(id);
-        const detail = await roleDataService.getFullCharDetail(id);
-        if (detail) {
-          setCharDetail(detail);
-        }
-      } catch (error) {
-        logError("Failed to load character data:", error);
-      } finally {
+  const loadData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const id = await getSelectedAccount();
+      if (!id) {
         setIsLoading(false);
+        return;
       }
-    };
-    loadData();
+      setAccountId(id);
+      const detail = await roleDataService.getFullCharDetail(id);
+      if (detail) {
+        setCharDetail(detail);
+      }
+    } catch (error) {
+      logError("Failed to load character data:", error);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    const handleAccountChange = () => loadData();
+    window.addEventListener("accountChanged", handleAccountChange);
+    return () => window.removeEventListener("accountChanged", handleAccountChange);
+  }, [loadData]);
 
   const sortedCharacters = useMemo(() => {
     if (!charDetail) return [];
@@ -411,7 +438,7 @@ export default function CharactersPage() {
         </Card>
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2 glass-surface p-3 rounded-xl border border-separator/90">
+          <div className="flex flex-nowrap items-center gap-1.5 glass-surface p-2 rounded-xl border border-separator/90">
             <FloatSelect
               label={t("filters.profession")}
               value={filters.profession}
@@ -502,7 +529,7 @@ export default function CharactersPage() {
               <p className="text-sm text-muted/60">{t("common.no_results_found")}</p>
             </div>
           ) : (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3">
               {filteredCharacters.map((char) => (
                 <OperatorCard
                   key={char.charData.id}

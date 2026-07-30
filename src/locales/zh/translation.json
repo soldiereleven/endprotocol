@@ -66,7 +66,8 @@
     "clear": "重置筛选",
     "refresh": "刷新",
     "refreshing": "刷新中...",
-    "delete": "删除"
+    "delete": "删除",
+    "characters": "个角色"
   },
   "filters": {
     "title": "筛选角色",
