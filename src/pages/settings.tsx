@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Card, Button, Switch, AlertDialog, Skeleton } from "@heroui/react";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { getConfig, setConfig } from "@/utils/configService";
 import { roleDetailService } from "@/utils/roleDetailService";
 import { SettingsDivider } from "@/components/ui/settings-row";
@@ -10,6 +11,9 @@ export default function SettingsPage() {
   const { t, i18n } = useTranslation();
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const langDropdownRef = useRef<HTMLDivElement>(null);
+  const langBtnRef = useRef<HTMLButtonElement>(null);
+  const langDropdownMenuRef = useRef<HTMLDivElement>(null);
+  const [langDropdownPos, setLangDropdownPos] = useState({ top: 0, left: 0, width: 0 });
   const [refreshOnSwitch, setRefreshOnSwitch] = useState(false);
   const [lazyLoadEnabled, setLazyLoadEnabled] = useState(true);
   const [wikiDetailPreload, setWikiDetailPreload] = useState(false);
@@ -54,18 +58,13 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
+    if (!isLangDropdownOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        langDropdownRef.current &&
-        !langDropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsLangDropdownOpen(false);
-      }
+      if (langDropdownMenuRef.current?.contains(event.target as Node)) return;
+      if (langDropdownRef.current?.contains(event.target as Node)) return;
+      setIsLangDropdownOpen(false);
     };
-
-    if (isLangDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
+    document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isLangDropdownOpen]);
 
@@ -191,68 +190,80 @@ export default function SettingsPage() {
                 </p>
               </div>
               <div className="w-full sm:w-48" ref={langDropdownRef}>
-                <div className="relative">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between gap-2"
-                    onPress={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
-                  >
-                    <span className="flex items-center gap-2 min-w-0">
-                      <svg className="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M2 12h20" />
-                        <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
-                      </svg>
-                      <span className="truncate">
-                        {languages.find((lang) => lang.key === i18n.language)
-                          ?.label ||
-                          (i18n.language === "zh" ? "简体中文" : "English")}
-                      </span>
-                    </span>
-                    <svg
-                      className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isLangDropdownOpen ? "rotate-180" : ""}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
+                <Button
+                  ref={langBtnRef}
+                  variant="outline"
+                  className="w-full justify-between gap-2"
+                  onPress={() => {
+                    const next = !isLangDropdownOpen;
+                    if (next && langBtnRef.current) {
+                      const r = langBtnRef.current.getBoundingClientRect();
+                      setLangDropdownPos({ top: r.bottom + 8, left: r.left, width: r.width });
+                    }
+                    setIsLangDropdownOpen(next);
+                  }}
+                >
+                  <span className="flex items-center gap-2 min-w-0">
+                    <svg className="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M2 12h20" />
+                      <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
                     </svg>
-                  </Button>
+                    <span className="truncate">
+                      {languages.find((lang) => lang.key === i18n.language)
+                        ?.label ||
+                        (i18n.language === "zh" ? "简体中文" : "English")}
+                    </span>
+                  </span>
+                  <svg
+                    className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isLangDropdownOpen ? "rotate-180" : ""}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </Button>
 
-                  {isLangDropdownOpen && (
-                    <div className="absolute left-0 right-0 mt-2 glass-surface border border-separator/80 rounded-xl shadow-xl z-50 overflow-hidden animate-scale-in">
-                      <div className="py-1">
-                        {languages.map((lang) => (
-                          <button
-                            key={lang.key}
-                            className="w-full px-4 py-2.5 text-left hover:bg-default-100 transition-colors flex items-center justify-between"
-                            onClick={() => handleLanguageChange(lang.key)}
-                          >
-                            <span className="text-sm">{lang.label}</span>
-                            {i18n.language === lang.key && (
-                              <svg
-                                className="w-4 h-4 text-primary"
-                                fill="currentColor"
-                                viewBox="0 0 20 20"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            )}
-                          </button>
-                        ))}
-                      </div>
+                {isLangDropdownOpen && createPortal(
+                  <div
+                    ref={langDropdownMenuRef}
+                    className="fixed z-[9999] overflow-y-auto rounded-xl border border-separator/60 bg-background glass-surface-strong shadow-xl animate-scale-in"
+                    style={{ top: langDropdownPos.top, left: langDropdownPos.left, width: langDropdownPos.width }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="py-1">
+                      {languages.map((lang) => (
+                        <button
+                          key={lang.key}
+                          className="w-full px-4 py-2.5 text-left hover:bg-default-100 transition-colors flex items-center justify-between"
+                          onClick={() => handleLanguageChange(lang.key)}
+                        >
+                          <span className="text-sm">{lang.label}</span>
+                          {i18n.language === lang.key && (
+                            <svg
+                              className="w-4 h-4 text-primary"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          )}
+                        </button>
+                      ))}
                     </div>
-                  )}
-                </div>
+                  </div>,
+                  document.body,
+                )}
               </div>
             </div>
 

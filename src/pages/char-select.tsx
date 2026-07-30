@@ -6,6 +6,7 @@ import {
   useMemo,
   useCallback,
 } from "react";
+import { createPortal } from "react-dom";
 import { Button, Alert, ProgressCircle, Meter, Chip } from "@heroui/react";
 import {
   CustomModal,
@@ -96,11 +97,15 @@ export function FloatSelect({
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 0 });
 
   useEffect(() => {
     if (!open) return;
     const onDocClick = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      if (menuRef.current?.contains(e.target as Node)) return;
+      if (wrapRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
@@ -108,11 +113,20 @@ export function FloatSelect({
 
   const current = options.find((o) => o.value === value) ?? options[0];
 
+  const handleToggle = () => {
+    const next = !open;
+    if (next && wrapRef.current) {
+      const r = wrapRef.current.getBoundingClientRect();
+      setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    }
+    setOpen(next);
+  };
+
   return (
     <div ref={wrapRef} className="relative shrink-0">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={handleToggle}
         className={`flex items-center gap-1.5 h-8 pl-2.5 pr-2 rounded-md border text-xs transition-colors cursor-pointer
           ${open ? "border-blue-500 bg-white dark:bg-neutral-800" : "border-separator bg-white dark:bg-neutral-800 hover:border-blue-400/60"}`}
       >
@@ -136,9 +150,11 @@ export function FloatSelect({
           />
         </svg>
       </button>
-      {open && (
+      {open && createPortal(
         <div
-          className="absolute left-0 top-full mt-1 z-50 min-w-full max-h-64 overflow-y-auto rounded-md border border-separator bg-white dark:bg-neutral-900 shadow-lg"
+          ref={menuRef}
+          className="fixed z-[9999] min-w-[120px] max-h-64 overflow-y-auto rounded-md border border-separator bg-background glass-surface-strong shadow-lg"
+          style={{ top: menuPos.top, left: menuPos.left, width: Math.max(120, menuPos.width || 0) }}
           onClick={(e) => e.stopPropagation()}
         >
           {options.map((opt) => {
@@ -162,7 +178,8 @@ export function FloatSelect({
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

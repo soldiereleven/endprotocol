@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import { useState, useEffect, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Button, Kbd, Skeleton } from "@heroui/react";
 import {
@@ -69,6 +70,8 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
   const [themeChangeKey, setThemeChangeKey] = useState(0);
   const { t, i18n } = useTranslation();
   const searchRef = useRef<HTMLDivElement>(null);
+  const searchMenuRef = useRef<HTMLDivElement>(null);
+  const [searchMenuPos, setSearchMenuPos] = useState({ top: 0, left: 0, width: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -640,18 +643,13 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
 
   // Close results when clicking outside
   useEffect(() => {
+    if (!showResults) return;
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        searchRef.current &&
-        !searchRef.current.contains(event.target as Node)
-      ) {
-        setShowResults(false);
-      }
+      if (searchMenuRef.current?.contains(event.target as Node)) return;
+      if (searchRef.current?.contains(event.target as Node)) return;
+      setShowResults(false);
     };
-
-    if (showResults) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
+    document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showResults]);
 
@@ -864,10 +862,26 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
-                    setShowResults(true);
+                    if (!showResults) {
+                      setShowResults(true);
+                      requestAnimationFrame(() => {
+                        if (searchRef.current) {
+                          const r = searchRef.current.getBoundingClientRect();
+                          setSearchMenuPos({ top: r.bottom, left: r.left, width: r.width });
+                        }
+                      });
+                    }
                     setSelectedIndex(-1);
                   }}
-                  onFocus={() => searchQuery.trim() && setShowResults(true)}
+                  onFocus={() => {
+                    if (searchQuery.trim() && !showResults) {
+                      setShowResults(true);
+                      if (searchRef.current) {
+                        const r = searchRef.current.getBoundingClientRect();
+                        setSearchMenuPos({ top: r.bottom, left: r.left, width: r.width });
+                      }
+                    }
+                  }}
                   className="bg-transparent border-none outline-none text-sm w-full text-foreground placeholder:text-muted"
                   aria-label="Search"
                 />
@@ -905,8 +919,13 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
               </div>
 
               {/* Search Results Dropdown */}
-              {showResults && searchQuery.trim() && (
-                <div className="absolute top-full left-0 right-0 mt-2 glass-surface-strong border-2 border-separator/80 rounded-lg shadow-2xl z-50 max-h-[400px] overflow-y-auto">
+              {showResults && searchQuery.trim() && createPortal(
+                <div
+                  ref={searchMenuRef}
+                  className="fixed z-[9999] bg-background glass-surface-strong border-2 border-separator/80 rounded-lg shadow-2xl max-h-[400px] overflow-y-auto"
+                  style={{ top: searchMenuPos.top + 8, left: searchMenuPos.left, width: searchMenuPos.width || 320 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {searchResults.length === 0 ? (
                     <div className="py-6 text-center">
                       <SearchIcon className="w-8 h-8 text-muted mx-auto mb-2 opacity-50" />
@@ -1030,7 +1049,8 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                       {i18n.language === "zh" ? "个结果" : "results"}
                     </span>
                   </div>
-                </div>
+                </div>,
+                document.body,
               )}
             </div>
           </div>

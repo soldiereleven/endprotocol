@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Button, Input } from "@heroui/react";
 import { setConfig } from "@/utils/configService";
@@ -40,11 +41,10 @@ export const LanguageSwitch = () => {
   const { i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [dropdownPosition, setDropdownPosition] = useState<"top" | "bottom">(
-    "bottom",
-  );
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 220 });
 
   const languages = [
     { key: "en", label: "English", code: "US", flag: <USFlag /> },
@@ -56,35 +56,14 @@ export const LanguageSwitch = () => {
 
   // Close dropdown when clicking outside
   useEffect(() => {
+    if (!isOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
+      if (menuRef.current?.contains(event.target as Node)) return;
+      if (wrapperRef.current?.contains(event.target as Node)) return;
+      setIsOpen(false);
     };
-
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
+    document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
-
-  // Calculate dropdown position to avoid going off-screen
-  useEffect(() => {
-    if (isOpen && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      const spaceBelow = viewportHeight - rect.bottom;
-      const dropdownHeight = 280; // Approximate height of dropdown
-
-      if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
-        setDropdownPosition("top");
-      } else {
-        setDropdownPosition("bottom");
-      }
-    }
   }, [isOpen]);
 
   const handleLanguageChange = async (langKey: string) => {
@@ -100,15 +79,28 @@ export const LanguageSwitch = () => {
       lang.code.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  const handleToggle = () => {
+    const next = !isOpen;
+    if (next && buttonRef.current) {
+      const r = buttonRef.current.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const spaceBelow = vh - r.bottom;
+      const menuH = 280;
+      const top = spaceBelow < menuH && r.top > menuH ? r.top - menuH : r.bottom + 4;
+      setDropdownPos({ top, left: r.left, width: Math.max(220, r.width) });
+    }
+    setIsOpen(next);
+  };
+
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative" ref={wrapperRef}>
       <div className="flex items-center">
         <Button
           ref={buttonRef}
           variant="tertiary"
           size="sm"
           className="min-w-[120px] h-9 px-3 gap-2"
-          onPress={() => setIsOpen(!isOpen)}
+          onPress={handleToggle}
         >
           {selectedLang.flag}
           <span className="text-sm font-medium">{selectedLang.label}</span>
@@ -128,11 +120,12 @@ export const LanguageSwitch = () => {
         </Button>
       </div>
 
-      {isOpen && (
+      {isOpen && createPortal(
         <div
-          className={`absolute left-0 w-[220px] glass-surface border border-separator/80 rounded-lg shadow-xl z-50 ${
-            dropdownPosition === "bottom" ? "top-full mt-2" : "bottom-full mb-2"
-          }`}
+          ref={menuRef}
+          className="fixed z-[9999] w-[220px] bg-background glass-surface-strong border border-separator/80 rounded-lg shadow-xl overflow-hidden"
+          style={{ top: dropdownPos.top, left: dropdownPos.left }}
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="p-2 border-b border-separator">
             <Input
@@ -172,7 +165,8 @@ export const LanguageSwitch = () => {
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

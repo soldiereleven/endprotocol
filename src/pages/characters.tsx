@@ -69,8 +69,17 @@ function FloatSelect({
       if (wrapRef.current?.contains(e.target as Node)) return;
       setOpen(false);
     };
+    const onScroll = (e: Event) => {
+      // Don't close when scrolling inside the dropdown itself.
+      if (e.target instanceof Node && dropdownRef.current?.contains(e.target)) return;
+      setOpen(false);
+    };
     document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      window.removeEventListener("scroll", onScroll, true);
+    };
   }, [open]);
 
   const current = options.find((o) => o.value === value) ?? options[0];
@@ -117,8 +126,8 @@ function FloatSelect({
       {open && createPortal(
         <div
           ref={dropdownRef}
-          className="fixed z-[999] max-h-64 overflow-y-auto rounded-xl border border-separator/60 bg-background glass-surface-strong shadow-xl animate-scale-in"
-          style={{ top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}
+          className="fixed z-[999] min-w-[120px] max-h-64 overflow-y-auto rounded-xl border border-separator/60 bg-background glass-surface-strong shadow-xl animate-scale-in"
+          style={{ top: dropdownPos.top, left: dropdownPos.left, width: Math.max(120, dropdownPos.width || 0) }}
           onClick={(e) => e.stopPropagation()}
         >
           {options.map((opt) => {

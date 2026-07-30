@@ -6,6 +6,7 @@ import {
   useMemo,
   useCallback,
 } from "react";
+import { createPortal } from "react-dom";
 import { Button, Alert, ProgressCircle } from "@heroui/react";
 import { invoke } from "@tauri-apps/api/core";
 import {
@@ -97,23 +98,71 @@ function FloatSelect({
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  // Portal target — the nearest .glass-surface-strong ancestor.
+  // This keeps the dropdown inside the modal's overlay tree so React Aria
+  // doesn't treat clicks on it as "outside" interactions.
+  const portalTargetRef = useRef<HTMLElement | null>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
 
   useEffect(() => {
     if (!open) return;
     const onDocClick = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      if (dropdownRef.current?.contains(e.target as Node)) return;
+      if (wrapRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    const onScroll = (e: Event) => {
+      // Don't close when scrolling inside the dropdown itself.
+      if (e.target instanceof Node && dropdownRef.current?.contains(e.target)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      window.removeEventListener("scroll", onScroll, true);
+    };
   }, [open]);
 
   const current = options.find((o) => o.value === value) ?? options[0];
 
+  const handleToggle = () => {
+    const next = !open;
+    if (next && btnRef.current) {
+      const btnRect = btnRef.current.getBoundingClientRect();
+      // Find the modal dialog (glass-surface-strong) to use as both the
+      // portal target and the positioning reference. When rendered inside a
+      // HeroUI Modal, the dialog's backdrop-filter creates a containing block,
+      // so we must position relative to the dialog, not the viewport.
+      const dialog = btnRef.current.closest(".glass-surface-strong") as HTMLElement | null;
+      portalTargetRef.current = dialog;
+      if (dialog) {
+        const dialogRect = dialog.getBoundingClientRect();
+        setDropdownPos({
+          top: btnRect.bottom - dialogRect.top + 6,
+          left: btnRect.left - dialogRect.left,
+          width: Math.max(btnRect.width, 120),
+        });
+      } else {
+        // Fallback: no modal dialog found, use viewport coordinates.
+        setDropdownPos({
+          top: btnRect.bottom + 6,
+          left: btnRect.left,
+          width: Math.max(btnRect.width, 120),
+        });
+      }
+    }
+    setOpen(next);
+  };
+
   return (
     <div ref={wrapRef} className="relative shrink-0">
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={handleToggle}
         className={`flex items-center gap-1.5 h-8 pl-2.5 pr-2 rounded-md border text-xs transition-colors cursor-pointer
           ${open ? "border-blue-500 bg-white dark:bg-neutral-800" : "border-separator bg-white dark:bg-neutral-800 hover:border-blue-400/60"}`}
       >
@@ -137,10 +186,16 @@ function FloatSelect({
           />
         </svg>
       </button>
-      {open && (
+      {open && createPortal(
         <div
-          className="absolute left-0 top-full mt-1 z-50 min-w-full max-h-64 overflow-y-auto rounded-md border border-separator bg-white dark:bg-neutral-900 shadow-lg"
+          ref={dropdownRef}
+          className="fixed z-[999] min-w-[120px] max-h-64 overflow-y-auto rounded-xl border border-separator/60 bg-background glass-surface-strong shadow-xl animate-scale-in"
+          style={{ top: dropdownPos.top, left: dropdownPos.left, width: Math.max(120, dropdownPos.width || 0) }}
           onClick={(e) => e.stopPropagation()}
+          onWheel={(e) => {
+            // Block wheel events from propagating to the modal body behind.
+            e.stopPropagation();
+          }}
         >
           {options.map((opt) => {
             const active = opt.value === value;
@@ -163,7 +218,8 @@ function FloatSelect({
               </button>
             );
           })}
-        </div>
+        </div>,
+        portalTargetRef.current || document.body,
       )}
     </div>
   );
