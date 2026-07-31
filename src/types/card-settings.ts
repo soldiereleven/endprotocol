@@ -22,7 +22,7 @@ export interface AttendanceCardSettings {
 }
 
 /**
- * 成就奖章卡片配置
+ * 蚀刻章卡片配置
  */
 export interface AchievementCardSettings {
   selectedMedalIds?: string[];

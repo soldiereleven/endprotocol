@@ -5,7 +5,7 @@
     "en": "Glory Road"
   },
   "description": {
-    "zh": "展示已获得的成就奖章",
+    "zh": "展示已获得的蚀刻章",
     "en": "Display earned achievement medals"
   },
   "icon": "🏅",
@@ -14,7 +14,7 @@
   "allowMultiple": true,
   "tags": [
     { "id": "achievement", "label": { "zh": "成就", "en": "Achievement" } },
-    { "id": "medal", "label": { "zh": "奖章", "en": "Medal" } },
+    { "id": "medal", "label": { "zh": "蚀刻章", "en": "Medal" } },
     { "id": "display", "label": { "zh": "显示", "en": "Display" } }
   ]
 }

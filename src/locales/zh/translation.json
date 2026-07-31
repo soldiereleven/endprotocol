@@ -21,7 +21,7 @@
     "account": "账户",
     "settings": "设置",
     "developer": "开发者",
-    "characters": "角色",
+    "characters": "干员",
     "help": "帮助与反馈"
   },
   "common": {
@@ -67,10 +67,10 @@
     "refresh": "刷新",
     "refreshing": "刷新中...",
     "delete": "删除",
-    "characters": "个角色"
+    "characters": "个干员"
   },
   "filters": {
-    "title": "筛选角色",
+    "title": "筛选干员",
     "profession": "职业",
     "property": "属性",
     "rarity": "星级",
@@ -193,10 +193,10 @@
       "source_backend": "后端"
     },
     "characters": {
-      "pin_characters": "固定角色（最多 {{max}} 个）",
+      "pin_characters": "固定干员（最多 {{max}} 个）",
       "pinned_count": "{{count}} / {{max}} 已固定",
       "select_slot": "为 {{name}} 选择槽位",
-      "choose_slot": "选择一个槽位来固定此角色",
+      "choose_slot": "选择一个槽位来固定此干员",
       "click_to_select": "点击槽位进行选择，然后点击确认来固定。",
       "confirm_pin": "确认固定",
       "cancel": "取消",
@@ -207,7 +207,7 @@
       "details": "详情",
       "pin": "固定",
       "unpin": "取消固定",
-      "characters_count": "角色（{{count}}/3）",
+      "characters_count": "干员（{{count}}/3）",
       "passive_skills": "被动技能",
       "ability_talents": "能力天赋",
       "cultivation_talents": "基建技能"

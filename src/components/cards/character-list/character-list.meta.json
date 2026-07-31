@@ -13,7 +13,7 @@
   "version": "1.0.0",
   "allowMultiple": true,
   "tags": [
-    { "id": "character", "label": { "zh": "角色", "en": "Character" } },
+    { "id": "character", "label": { "zh": "干员", "en": "Character" } },
     { "id": "display", "label": { "zh": "显示", "en": "Display" } },
     { "id": "data", "label": { "zh": "数据", "en": "Data" } }
   ]

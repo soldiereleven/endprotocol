@@ -15,7 +15,7 @@ pub enum ImageType {
     AttendanceIcon,  // 签到奖励图标
     GemIcon,         // 基质图标
     ItemIcon,        // 物品/材料图标
-    AchievementIcon, // 成就奖章图标
+    AchievementIcon, // 蚀刻章图标
 }
 
 impl ImageType {
