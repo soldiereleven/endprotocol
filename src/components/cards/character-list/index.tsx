@@ -28,10 +28,6 @@ const DISPLAY_MODE_CONFIG: Record<CharacterListDisplayMode, { slotCount: number;
   triple: { slotCount: 3, gridCols: 3 },
 };
 
-function getDefaultSelectedCharIds(chars: CharacterItem[], count: number): string[] {
-  return chars.slice(0, count).map((c) => c.charData.id);
-}
-
 function getSelectedCharacters(
   charDetail: CharDetailData | null,
   ids: string[],
@@ -102,9 +98,6 @@ export default function CharacterListCard({
 
       logDebug(`Loaded settings for card ${cardId}:`, settings);
 
-      const mode = settings.displayMode || "triple";
-      const count = DISPLAY_MODE_CONFIG[mode].slotCount;
-
       if (settings.displayMode) {
         setDisplayMode(settings.displayMode);
       }
@@ -121,19 +114,9 @@ export default function CharacterListCard({
         );
         setSelectedCharIds(validIds);
         logDebug("Filtered valid IDs:", validIds);
-      } else if (processedCharDetail) {
-        const defaultIds = getDefaultSelectedCharIds(
-          processedCharDetail.chars,
-          count,
-        );
-        setSelectedCharIds(defaultIds);
-        logDebug("Using default IDs:", defaultIds);
-
-        await CardConfigService.updateCardSetting(
-          cardId,
-          "selectedCharIds",
-          defaultIds,
-        );
+      } else {
+        setSelectedCharIds([]);
+        logDebug("No saved IDs, using empty selection");
       }
     } catch (error) {
       logError("Failed to load settings:", error);
@@ -197,20 +180,12 @@ export default function CharacterListCard({
     setCustomRoleId(newRoleId);
     setIsRoleSelectModalOpen(false);
     try {
-      // 获取新角色的干员数据，自动选中前N位
-      const newCharDetail = await roleDataService.getFullCharDetail(newRoleId);
-      const mode = displayMode;
-      const count = DISPLAY_MODE_CONFIG[mode].slotCount;
-      const defaultIds = newCharDetail
-        ? getDefaultSelectedCharIds(newCharDetail.chars, count)
-        : [];
-
-      setSelectedCharIds(defaultIds);
+      setSelectedCharIds([]);
       await Promise.all([
         CardConfigService.updateCardSetting(cardId, "roleId", newRoleId),
-        CardConfigService.updateCardSetting(cardId, "selectedCharIds", defaultIds),
+        CardConfigService.updateCardSetting(cardId, "selectedCharIds", []),
       ]);
-      logDebug(`Updated roleId for card ${cardId}, selected ${defaultIds.length} chars:`, newRoleId);
+      logDebug(`Updated roleId for card ${cardId}, empty selection:`, newRoleId);
     } catch (error) {
       logError("Failed to save roleId:", error);
     }
