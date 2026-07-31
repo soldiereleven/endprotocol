@@ -112,6 +112,14 @@ export interface SkillInfo {
   desc: string;
   descParams: Record<string, any>;
   descLevelParams: Record<string, any>;
+  forms?: SkillForm[];
+}
+
+export interface SkillForm {
+  type: string;
+  name: string;
+  iconUrl: string;
+  descs: string[];
 }
 
 export interface SkillTypeInfo {
@@ -314,7 +322,7 @@ export interface WeeklyMission {
   total: number;
 }
 
-// ====== 成就/奖章相关类型 ======
+// ====== 成就/蚀刻章相关类型 ======
 
 export interface AchievementData {
   id: string;

@@ -286,6 +286,22 @@ impl CharDetailService {
                                 }
                             }
                         }
+                        for form in skill.forms.iter_mut() {
+                            if !form.icon_url.is_empty()
+                                && !form.icon_url.starts_with("http://asset.localhost")
+                            {
+                                let url_clone = form.icon_url.clone();
+                                match image_cache
+                                    .get_or_download_image(&url_clone, ImageType::SkillIcon)
+                                    .await
+                                {
+                                    Ok(p) => form.icon_url = p,
+                                    Err(e) => {
+                                        log_warn!("Failed to cache skill form icon for {}: {}", char_name, e);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 

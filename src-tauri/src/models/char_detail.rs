@@ -243,6 +243,20 @@ pub struct SkillInfo {
     pub desc: String,
     pub desc_params: serde_json::Value,
     pub desc_level_params: serde_json::Value,
+    #[serde(default)]
+    pub forms: Vec<SkillForm>,
+}
+
+/// 技能形态信息（多形态技能，如阵诀·智/阵诀·意）
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillForm {
+    #[serde(rename = "type")]
+    pub form_type: String,
+    pub name: String,
+    pub icon_url: String,
+    #[serde(default)]
+    pub descs: Vec<String>,
 }
 
 /// 技能类型信息
