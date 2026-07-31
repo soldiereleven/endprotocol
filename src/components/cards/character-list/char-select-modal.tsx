@@ -8,7 +8,6 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Button, Alert, ProgressCircle } from "@heroui/react";
-import { invoke } from "@tauri-apps/api/core";
 import {
   CustomModal,
   CustomModalHeader,
@@ -248,6 +247,7 @@ function OperatorCard({
     <div
       className={`group relative aspect-[3/4] rounded-lg overflow-hidden border bg-content1 cursor-pointer transition-all duration-200
         ${isPinned ? "border-blue-500 ring-1 ring-blue-500/40" : "border-separator hover:border-blue-400/60 hover:shadow-md"}`}
+      onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => {
         isDraggingRef.current = false;
         onDragMouseDown(char.charData.id, e);
@@ -408,7 +408,6 @@ export function CharSelectModal({
   const wikiPreloadRef = useRef(false);
   const [wikiDetail, setWikiDetail] = useState<any>(null);
   const [itemNameMap, setItemNameMap] = useState<Map<string, { name: string; cover: string }> | null>(null);
-  const [wikiIconCache, setWikiIconCache] = useState<Record<string, string>>({});
 
   // 从 Wiki detail 中提取潜能数据（在 widgetCommonMap 中按 title="干员潜能" 查找）
   // 从 Wiki detail 中提取潜能数据（通过 chapterGroup 查找"干员潜能"章节的 widgetId）
@@ -591,7 +590,6 @@ export function CharSelectModal({
     setWikiLoading(false);
     setWikiDetail(null);
     setMaterialCoverMap({});
-    setWikiIconCache({});
     fetchedCoverIdsRef.current.clear();
   }, []);
 
@@ -710,37 +708,45 @@ export function CharSelectModal({
     return t?.name || "";
   }, [selectedDetailItem, detailCharId]);
 
-  // 从 wiki 中提取技能的多个形态标签页（同一技能名有多个标签页，如诀的摧玉网格/应龙四式/破晦）
+  // 多形态技能标签页：图标取自 char detail 的 forms，正文/描述仍从 wiki 匹配（按顺序对应）
   const skillFormTabs = useMemo(() => {
-    if (!selectedDetailItem || selectedDetailItem.type !== "skill" || !wikiDetail?.document) return null;
-    const doc = wikiDetail.document;
-    const commonMap = doc.widgetCommonMap;
-    if (!commonMap) return null;
+    if (!selectedDetailItem || selectedDetailItem.type !== "skill") return null;
     const char = charDetail.chars.find((c: any) => c.charData.id === detailCharId)?.charData;
     if (!char) return null;
     const skill = char.skills.find((s: any) => s.id === selectedDetailItem.id);
     if (!skill) return null;
-    const skillName = skill.name;
-    const matchingTabs: { iconUrl: string; contentId: string; descriptionId: string }[] = [];
-    for (const docKey of Object.keys(commonMap)) {
-      const wdoc = commonMap[docKey];
-      if (wdoc?.type !== "common") continue;
-      const tabMap = wdoc.tabDataMap;
-      if (!tabMap) continue;
-      const tabList = wdoc.tabList || [];
-      for (const tab of tabList) {
-        const tabData = tabMap[tab.tabId];
-        if (!tabData?.intro?.name) continue;
-        if (tabData.intro.name !== skillName) continue;
-        matchingTabs.push({
-          iconUrl: wikiIconCache[tab.icon] || tab.icon || skill.iconUrl,
-          contentId: tabData.content || "",
-          descriptionId: tabData.intro.description || "",
-        });
+    const forms = skill.forms;
+    if (!forms || forms.length < 2) return null;
+
+    const doc = wikiDetail?.document;
+    const commonMap = doc?.widgetCommonMap;
+    const wikiTabs: { contentId: string; descriptionId: string }[] = [];
+    if (commonMap) {
+      for (const docKey of Object.keys(commonMap)) {
+        const wdoc = commonMap[docKey];
+        if (wdoc?.type !== "common") continue;
+        const tabMap = wdoc.tabDataMap;
+        if (!tabMap) continue;
+        const tabList = wdoc.tabList || [];
+        for (const tab of tabList) {
+          const tabData = tabMap[tab.tabId];
+          if (!tabData?.intro?.name) continue;
+          if (tabData.intro.name !== skill.name) continue;
+          wikiTabs.push({
+            contentId: tabData.content || "",
+            descriptionId: tabData.intro.description || "",
+          });
+        }
       }
     }
-    return matchingTabs.length > 1 ? matchingTabs : null;
-  }, [selectedDetailItem, wikiDetail, charDetail, detailCharId, wikiIconCache]);
+
+    return forms.map((form, fi) => ({
+      iconUrl: form.iconUrl,
+      name: form.name,
+      contentId: wikiTabs[fi]?.contentId || "",
+      descriptionId: wikiTabs[fi]?.descriptionId || "",
+    }));
+  }, [selectedDetailItem, wikiDetail, charDetail, detailCharId]);
 
   // 加载升级材料的封面图
   const fetchedCoverIdsRef = useRef(new Set<string>());
@@ -885,44 +891,6 @@ export function CharSelectModal({
     fetchCovers();
     return () => { cancelled = true; };
   }, [selectedDetailItem, wikiDetail, roleId, itemNameMap]);
-
-  // 下载 Wiki 技能标签页图标到本地缓存
-  useEffect(() => {
-    if (!wikiDetail?.document?.widgetCommonMap || !cacheDirRef.current) return;
-    const urls = new Set<string>();
-    const commonMap = wikiDetail.document.widgetCommonMap;
-    for (const docKey of Object.keys(commonMap)) {
-      const wdoc = commonMap[docKey];
-      if (wdoc?.type !== "common") continue;
-      const tabList = wdoc.tabList || [];
-      for (const tab of tabList) {
-        if (tab.icon) urls.add(tab.icon);
-      }
-    }
-    if (urls.size === 0) return;
-    let cancelled = false;
-    const downloadIcons = async () => {
-      const newCache: Record<string, string> = {};
-      for (const url of urls) {
-        if (wikiIconCache[url]) continue;
-        try {
-          const localPath = await invoke<string>('download_image', {
-            url,
-            cacheDir: cacheDirRef.current,
-            subDir: 'wiki_tab_icons',
-          });
-          if (!cancelled) newCache[url] = localPath;
-        } catch (e) {
-          console.error('[WikiIconCache] Failed to download', url, e);
-        }
-      }
-      if (!cancelled && Object.keys(newCache).length > 0) {
-        setWikiIconCache(prev => ({ ...prev, ...newCache }));
-      }
-    };
-    downloadIcons();
-    return () => { cancelled = true; };
-  }, [wikiDetail]);
 
   // 离开 detail view 时重置 Wiki 状态
   const prevViewMode = useRef(viewMode);
@@ -2416,16 +2384,49 @@ export function CharSelectModal({
                                               : "hover:bg-black/10"
                                           }`}
                                         >
-                                          <div className="relative w-12 h-12 rounded-full overflow-hidden" style={{ backgroundColor: SKILL_BG_CIRCLE }}>
-                                            <div className="absolute inset-[2px] rounded-full" style={{
-                                              background: `conic-gradient(from 112.5deg, ${SKILL_BG_COLORS[(selectedItem as any).property?.key] || "#5e5e5e"} 0deg, ${SKILL_BG_COLORS[(selectedItem as any).property?.key] || "#5e5e5e"} 135deg, transparent 135deg)`,
-                                            }} />
+                                          <div
+                                            className="relative w-12 h-12 rounded-full"
+                                            style={{
+                                              backgroundColor: SKILL_BG_CIRCLE,
+                                            }}
+                                          >
+                                            <div
+                                              className="absolute rounded-full"
+                                              style={
+                                                (selectedItem as any).type?.key ===
+                                                "skill_type_ultimate_skill"
+                                                  ? {
+                                                      top: 1,
+                                                      right: 1,
+                                                      bottom: 1,
+                                                      left: 1,
+                                                      backgroundColor:
+                                                        SKILL_BG_COLORS[
+                                                          (selectedItem as any).property?.key
+                                                        ] || "#5e5e5e",
+                                                    }
+                                                  : {
+                                                      top: 1,
+                                                      right: 1,
+                                                      bottom: 1,
+                                                      left: 1,
+                                                      background: `conic-gradient(from 112.5deg, ${SKILL_BG_COLORS[(selectedItem as any).property?.key] || "#5e5e5e"} 0deg, ${SKILL_BG_COLORS[(selectedItem as any).property?.key] || "#5e5e5e"} 135deg, transparent 135deg)`,
+                                                    }
+                                              }
+                                            />
                                             <Img
                                               src={formTab.iconUrl}
                                               alt={selectedItem.name}
-                                              className="relative z-10 w-full h-full object-contain p-1 rounded-full"
+                                              className="relative z-10 w-full h-full object-contain p-1.5 rounded-full"
+                                              style={{
+                                                boxShadow:
+                                                  "0 0 14px rgba(0,0,0,0.35)",
+                                              }}
                                             />
                                           </div>
+                                          <span className="text-xs leading-none text-[#222222]">
+                                            {formTab.name}
+                                          </span>
                                         </button>
                                       ))}
                                     </div>
@@ -2501,29 +2502,7 @@ export function CharSelectModal({
                                             {selectedItem.type.value}
                                           </span>
                                         )}
-                                        {hasSkillForms && (
-                                          <div className="flex gap-2 ml-1">
-                                            {skillFormTabs!.map((_formTab, fi) => (
-                                              <button
-                                                key={fi}
-                                                onClick={() => {
-                                                  setSelectedDetailItem(
-                                                    sel ? { ...sel, formIndex: fi } : null,
-                                                  );
-                                                }}
-                                                className={`text-xs leading-none px-2.5 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
-                                                  fi === currentFormIndex
-                                                    ? "bg-[#777] text-white"
-                                                    : "bg-[#b0b0b0] text-white hover:bg-[#999]"
-                                                }`}
-                                              >
-                                                形态 {fi + 1}
-                                              </button>
-                                            ))}
-                                          </div>
-                                        )}
-                                        {sel?.id && charItem?.userSkills?.[sel.id] && (() => {
-                                          const sl = charItem.userSkills[sel.id].level;
+                                        {sel?.id && charItem?.userSkills?.[sel.id] && (() => {                                          const sl = charItem.userSkills[sel.id].level;
                                           return (
                                             <span className="inline-flex items-center gap-1 bg-[#999999] text-white text-sm leading-none px-3 py-1.5 rounded-md font-medium">
                                               {sl >= 10 ? (
