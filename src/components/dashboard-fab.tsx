@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 import {
@@ -26,7 +27,7 @@ export function DashboardFAB({
     if (isEditMode) setIsExpanded(true);
   }, [isEditMode]);
 
-  return (
+  return createPortal(
     <div className="fixed bottom-6 right-6 z-50">
       {isExpanded && (
         <div className="absolute bottom-16 right-0 flex flex-col gap-2 animate-fade-in">
@@ -66,6 +67,7 @@ export function DashboardFAB({
       >
         {isExpanded ? <CloseIcon size={24} /> : <PlusIcon size={24} />}
       </Button>
-    </div>
+    </div>,
+    document.body,
   );
 }
