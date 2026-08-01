@@ -31,7 +31,7 @@ import {
 } from "@/utils/accountService";
 import { usePinImages } from "@/utils/imageCacheManager";
 import { getConfig, setConfig } from "@/utils/configService";
-import { getAllTabs, addTab, removeTab, updateTab, getActiveTabId, setActiveTabId } from "@/utils/tabService";
+import { getAllTabs, addTab, removeTab, updateTab, getActiveTabId, setActiveTabId, saveTabs } from "@/utils/tabService";
 import { getTabIcon } from "@/utils/tabIcons";
 import { CardContextMenu } from "@/components/cards/card-context-menu";
 import { TabEditorModal } from "@/components/tab-editor-modal";
@@ -63,6 +63,39 @@ interface SidebarProps {
   onNavigate?: () => void;
 }
 
+type NavKey = "dashboard" | "characters" | "medals" | "attendance";
+
+const NAV_KEYS: NavKey[] = ["dashboard", "characters", "medals", "attendance"];
+
+function GripHandle({
+  onPointerDown,
+  isDragging,
+}: {
+  onPointerDown: (e: React.PointerEvent) => void;
+  isDragging?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onPointerDown={onPointerDown}
+      onPointerUp={(e) => e.stopPropagation()}
+      className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-all duration-150 cursor-grab text-muted hover:text-foreground hover:bg-default-100 active:cursor-grabbing ${
+        isDragging ? "opacity-100 cursor-grabbing" : ""
+      }`}
+      aria-label="Drag to reorder"
+    >
+      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+        <circle cx="9" cy="6" r="1.5" />
+        <circle cx="15" cy="6" r="1.5" />
+        <circle cx="9" cy="12" r="1.5" />
+        <circle cx="15" cy="12" r="1.5" />
+        <circle cx="9" cy="18" r="1.5" />
+        <circle cx="15" cy="18" r="1.5" />
+      </svg>
+    </button>
+  );
+}
+
 export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -92,18 +125,98 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
   const [expectedAccountCount, setExpectedAccountCount] =
     useState<number>(3); // 预期的账户数量（保留以兼容 manualRefresh 事件）
   const [developerMode, setDeveloperMode] = useState(false);
-  const [sidebarTabs, setSidebarTabs] = useState<Array<{ id: string; name: string; icon: string }>>([]);
+  const [sidebarTabs, setSidebarTabs] = useState<DashboardTab[]>([]);
   const [sidebarActiveTab, setSidebarActiveTab] = useState<string | null>(null);
   const [isDashboardCollapsed, setIsDashboardCollapsed] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tabId: string; tabName: string } | null>(null);
   const [isTabEditorOpen, setIsTabEditorOpen] = useState(false);
   const [editingTabForSidebar, setEditingTabForSidebar] = useState<DashboardTab | undefined>();
+  const [navOrder, setNavOrder] = useState<NavKey[]>(NAV_KEYS);
+  const [draggingNav, setDraggingNav] = useState<NavKey | null>(null);
+  const [draggingTab, setDraggingTab] = useState<string | null>(null);
+  const navDragRef = useRef<NavKey | null>(null);
+  const tabDragRef = useRef<string | null>(null);
+  const navOrderRef = useRef(navOrder);
+  const sidebarTabsRef = useRef(sidebarTabs);
+
+  useEffect(() => {
+    navOrderRef.current = navOrder;
+  }, [navOrder]);
+
+  useEffect(() => {
+    sidebarTabsRef.current = sidebarTabs;
+  }, [sidebarTabs]);
+
+  // Load persisted sidebar nav order
+  useEffect(() => {
+    getConfig<string[]>("sidebar_nav_order").then((order) => {
+      if (Array.isArray(order) && order.length > 0) {
+        const valid = order.filter((k): k is NavKey =>
+          (NAV_KEYS as string[]).includes(k),
+        );
+        for (const k of NAV_KEYS) {
+          if (!valid.includes(k)) valid.push(k);
+        }
+        setNavOrder(valid);
+      }
+    });
+  }, []);
+
+  const swapNav = (from: NavKey, to: NavKey) => {
+    setNavOrder((prev) => {
+      const i = prev.indexOf(from);
+      const j = prev.indexOf(to);
+      if (i === -1 || j === -1 || i === j) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  };
+
+  const swapTab = (fromId: string, toId: string) => {
+    setSidebarTabs((prev) => {
+      const i = prev.findIndex((t) => t.id === fromId);
+      const j = prev.findIndex((t) => t.id === toId);
+      if (i === -1 || j === -1 || i === j) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  };
+
+  const startNavDrag = (key: NavKey, e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navDragRef.current = key;
+    setDraggingNav(key);
+    const handleUp = () => {
+      setConfig("sidebar_nav_order", navOrderRef.current);
+      navDragRef.current = null;
+      setDraggingNav(null);
+      window.removeEventListener("pointerup", handleUp);
+    };
+    window.addEventListener("pointerup", handleUp);
+  };
+
+  const startTabDrag = (id: string, e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    tabDragRef.current = id;
+    setDraggingTab(id);
+    const handleUp = () => {
+      saveTabs(sidebarTabsRef.current);
+      tabDragRef.current = null;
+      setDraggingTab(null);
+      window.removeEventListener("pointerup", handleUp);
+    };
+    window.addEventListener("pointerup", handleUp);
+  };
 
   // Load tabs for sidebar
   useEffect(() => {
     const loadTabs = async () => {
       const tabs = await getAllTabs();
-      setSidebarTabs(tabs.map(t => ({ id: t.id, name: t.name, icon: t.icon })));
+      setSidebarTabs(tabs);
       const active = await getActiveTabId();
       setSidebarActiveTab(active);
     };
@@ -1059,189 +1172,262 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
         )}
 
         {/* Main Navigation */}
-        <nav className="flex-1 overflow-y-auto px-3">
+        <nav className="flex-1 overflow-y-auto px-3 select-none">
           <div className="space-y-0.5 py-2">
-            {/* Dashboard link with collapse toggle */}
-            <div
-              className={clsx(
-                "flex items-center gap-1 px-3 py-2.5 rounded-xl transition-all duration-200 group",
-                location.pathname === "/"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-foreground hover:bg-default-100",
-              )}
-            >
-              <Link
-                to="/"
-                onClick={onNavigate}
-                className="flex items-center gap-3 flex-1 min-w-0"
-              >
-                <HomeIcon
-                  className={clsx(
-                    "w-5 h-5 transition-transform duration-200",
-                    location.pathname === "/" ? "" : "group-hover:scale-110",
-                  )}
-                />
-                <span className="text-sm font-semibold">{t("sidebar.dashboard")}</span>
-              </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  const next = !isDashboardCollapsed;
-                  setIsDashboardCollapsed(next);
-                  setConfig("sidebar_collapsed", next);
-                }}
-                className={clsx(
-                  "p-1 rounded-lg transition-colors",
-                  location.pathname === "/"
-                    ? "text-primary-foreground/70 hover:text-primary-foreground hover:bg-white/10"
-                    : "text-muted hover:text-foreground hover:bg-default-200",
-                )}
-                aria-label={isDashboardCollapsed ? "Expand tabs" : "Collapse tabs"}
-              >
-                <ChevronDownIcon
-                  size={16}
-                  className={clsx(
-                    "transition-transform duration-300",
-                    isDashboardCollapsed && "-rotate-90",
-                  )}
-                />
-              </button>
-            </div>
-
-            {/* Tab list */}
-            <div
-              className="grid transition-all duration-300 ease-in-out"
-              style={{
-                gridTemplateRows: isDashboardCollapsed ? "0fr" : "1fr",
-                opacity: isDashboardCollapsed ? 0 : 1,
-              }}
-            >
-              <div className="overflow-hidden">
-                <div className="ml-6 pl-3 border-l-2 border-default-200/60 dark:border-default-700/40 space-y-0.5 pt-0">
-                  <div className="flex items-center justify-between px-3 py-1 mt-1.5">
-                    <span className="text-[11px] font-semibold text-muted uppercase tracking-wider">
-                      {i18n.language === "zh" ? "标签页" : "Tabs"}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingTabForSidebar(undefined);
-                        setIsTabEditorOpen(true);
-                      }}
-                      className="p-1 rounded-lg hover:bg-default-100 text-muted hover:text-foreground transition-all duration-200 hover:scale-105 active:scale-95"
-                      aria-label="Add tab"
+            {navOrder.map((key) => {
+              switch (key) {
+                case "dashboard":
+                  return (
+                    <div
+                      key="dashboard"
+                      onMouseEnter={() =>
+                        draggingNav && draggingNav !== "dashboard" && swapNav(draggingNav, "dashboard")
+                      }
                     >
-                      <PlusIcon size={15} />
-                    </button>
-                  </div>
-                  {sidebarTabs.length > 0 && (
-                    <div className="space-y-0.5 pb-2">
-                      {sidebarTabs.map((tab) => {
-                        const Icon = getTabIcon(tab.icon);
-                        const isTabActive = location.pathname === "/" && sidebarActiveTab === tab.id;
-                        return (
-                          <div
-                            key={tab.id}
-                            onContextMenu={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id, tabName: tab.name });
-                            }}
-                          >
-                            <Link
-                              to="/"
-                              onClick={async () => {
-                                await setActiveTabId(tab.id);
-                                setSidebarActiveTab(tab.id);
-                                window.dispatchEvent(new CustomEvent("accountChanged"));
-                                onNavigate?.();
-                              }}
-                              className={clsx(
-                                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative",
-                                isTabActive
-                                  ? "bg-primary/15 text-primary font-medium"
-                                  : "text-muted hover:text-foreground hover:bg-default-50",
-                              )}
-                            >
-                              {isTabActive && (
-                                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary rounded-full" />
-                              )}
-                              <Icon className="w-4 h-4 flex-shrink-0" />
-                              <span className="text-sm truncate">{tab.name}</span>
-                            </Link>
+                      {/* Dashboard link with collapse toggle */}
+                      <div
+                        className={clsx(
+                          "relative flex items-center gap-1 pl-3 pr-8 py-2.5 rounded-xl transition-all duration-200 group",
+                          draggingNav === "dashboard" ? "opacity-60" : "",
+                          location.pathname === "/"
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-foreground hover:bg-default-100",
+                        )}
+                      >
+                        <Link
+                          to="/"
+                          onClick={onNavigate}
+                          className="flex items-center gap-3 flex-1 min-w-0"
+                        >
+                          <HomeIcon
+                            className={clsx(
+                              "w-5 h-5 transition-transform duration-200",
+                              location.pathname === "/" ? "" : "group-hover:scale-110",
+                            )}
+                          />
+                          <span className="text-sm font-semibold">{t("sidebar.dashboard")}</span>
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = !isDashboardCollapsed;
+                            setIsDashboardCollapsed(next);
+                            setConfig("sidebar_collapsed", next);
+                          }}
+                          className={clsx(
+                            "p-1 rounded-lg transition-colors",
+                            location.pathname === "/"
+                              ? "text-primary-foreground/70 hover:text-primary-foreground hover:bg-white/10"
+                              : "text-muted hover:text-foreground hover:bg-default-200",
+                          )}
+                          aria-label={isDashboardCollapsed ? "Expand tabs" : "Collapse tabs"}
+                        >
+                          <ChevronDownIcon
+                            size={16}
+                            className={clsx(
+                              "transition-transform duration-300",
+                              isDashboardCollapsed && "-rotate-90",
+                            )}
+                          />
+                        </button>
+                        <GripHandle
+                          onPointerDown={(e) => startNavDrag("dashboard", e)}
+                          isDragging={draggingNav === "dashboard"}
+                        />
+                      </div>
+
+                      {/* Tab list */}
+                      <div
+                        className="grid transition-all duration-300 ease-in-out"
+                        style={{
+                          gridTemplateRows: isDashboardCollapsed ? "0fr" : "1fr",
+                          opacity: isDashboardCollapsed ? 0 : 1,
+                        }}
+                      >
+                        <div className="overflow-hidden">
+                          <div className="ml-6 pl-3 border-l-2 border-default-200/60 dark:border-default-700/40 space-y-0.5 pt-0">
+                            <div className="flex items-center justify-between px-3 py-1 mt-1.5">
+                              <span className="text-[11px] font-semibold text-muted uppercase tracking-wider">
+                                {i18n.language === "zh" ? "标签页" : "Tabs"}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingTabForSidebar(undefined);
+                                  setIsTabEditorOpen(true);
+                                }}
+                                className="p-1 rounded-lg hover:bg-default-100 text-muted hover:text-foreground transition-all duration-200 hover:scale-105 active:scale-95"
+                                aria-label="Add tab"
+                              >
+                                <PlusIcon size={15} />
+                              </button>
+                            </div>
+                            {sidebarTabs.length > 0 && (
+                              <div className="space-y-0.5 pb-2">
+                                {sidebarTabs.map((tab) => {
+                                  const Icon = getTabIcon(tab.icon);
+                                  const isTabActive = location.pathname === "/" && sidebarActiveTab === tab.id;
+                                  return (
+                                    <div
+                                      key={tab.id}
+                                      className="relative group"
+                                      onContextMenu={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id, tabName: tab.name });
+                                      }}
+                                      onMouseEnter={() =>
+                                        draggingTab && draggingTab !== tab.id && swapTab(draggingTab, tab.id)
+                                      }
+                                    >
+                                      <Link
+                                        to="/"
+                                        onClick={async () => {
+                                          await setActiveTabId(tab.id);
+                                          setSidebarActiveTab(tab.id);
+                                          window.dispatchEvent(new CustomEvent("accountChanged"));
+                                          onNavigate?.();
+                                        }}
+                                        className={clsx(
+                                          "flex items-center gap-3 px-3 pr-8 py-2 rounded-lg transition-all duration-200",
+                                          draggingTab === tab.id ? "opacity-60" : "",
+                                          isTabActive
+                                            ? "bg-primary/15 text-primary font-medium"
+                                            : "text-muted hover:text-foreground hover:bg-default-50",
+                                        )}
+                                      >
+                                        {isTabActive && (
+                                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary rounded-full" />
+                                        )}
+                                        <Icon className="w-4 h-4 flex-shrink-0" />
+                                        <span className="text-sm truncate">{tab.name}</span>
+                                      </Link>
+                                      <GripHandle
+                                        onPointerDown={(e) => startTabDrag(tab.id, e)}
+                                        isDragging={draggingTab === tab.id}
+                                      />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {sidebarTabs.length === 0 && (
+                              <div className="px-3 py-4 text-center">
+                                <p className="text-xs text-muted/60">{i18n.language === "zh" ? "暂无标签页" : "No tabs yet"}</p>
+                              </div>
+                            )}
                           </div>
-                        );
-                      })}
+                        </div>
+                      </div>
                     </div>
-                  )}
-                  {sidebarTabs.length === 0 && (
-                    <div className="px-3 py-4 text-center">
-                      <p className="text-xs text-muted/60">{i18n.language === "zh" ? "暂无标签页" : "No tabs yet"}</p>
+                  );
+
+                case "characters":
+                  return (
+                    <div
+                      key="characters"
+                      className="relative group"
+                      onMouseEnter={() =>
+                        draggingNav && draggingNav !== "characters" && swapNav(draggingNav, "characters")
+                      }
+                    >
+                      <Link
+                        to="/characters"
+                        onClick={onNavigate}
+                        className={clsx(
+                          "flex items-center gap-3 pl-3 pr-8 py-2.5 rounded-xl transition-all duration-200",
+                          draggingNav === "characters" ? "opacity-60" : "",
+                          location.pathname === "/characters"
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-foreground hover:bg-default-100",
+                        )}
+                      >
+                        <UsersIcon
+                          className={clsx(
+                            "w-5 h-5 transition-transform duration-200",
+                            location.pathname === "/characters" ? "" : "group-hover:scale-110",
+                          )}
+                        />
+                        <span className="text-sm font-semibold">{t("sidebar.characters") || "Characters"}</span>
+                      </Link>
+                      <GripHandle
+                        onPointerDown={(e) => startNavDrag("characters", e)}
+                        isDragging={draggingNav === "characters"}
+                      />
                     </div>
-                  )}
-                </div>
-              </div>
-            </div>
+                  );
 
-            {/* Characters link */}
-            <Link
-              to="/characters"
-              onClick={onNavigate}
-              className={clsx(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
-                location.pathname === "/characters"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-foreground hover:bg-default-100",
-              )}
-            >
-              <UsersIcon
-                className={clsx(
-                  "w-5 h-5 transition-transform duration-200",
-                  location.pathname === "/characters" ? "" : "group-hover:scale-110",
-                )}
-              />
-              <span className="text-sm font-semibold">{t("sidebar.characters") || "Characters"}</span>
-            </Link>
+                case "medals":
+                  return (
+                    <div
+                      key="medals"
+                      className="relative group"
+                      onMouseEnter={() =>
+                        draggingNav && draggingNav !== "medals" && swapNav(draggingNav, "medals")
+                      }
+                    >
+                      <Link
+                        to="/medals"
+                        onClick={onNavigate}
+                        className={clsx(
+                          "flex items-center gap-3 pl-3 pr-8 py-2.5 rounded-xl transition-all duration-200",
+                          draggingNav === "medals" ? "opacity-60" : "",
+                          location.pathname === "/medals"
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-foreground hover:bg-default-100",
+                        )}
+                      >
+                        <MedalIcon
+                          className={clsx(
+                            "w-5 h-5 transition-transform duration-200",
+                            location.pathname === "/medals" ? "" : "group-hover:scale-110",
+                          )}
+                        />
+                        <span className="text-sm font-semibold">{t("sidebar.medals") || "Medals"}</span>
+                      </Link>
+                      <GripHandle
+                        onPointerDown={(e) => startNavDrag("medals", e)}
+                        isDragging={draggingNav === "medals"}
+                      />
+                    </div>
+                  );
 
-            {/* Medals link */}
-            <Link
-              to="/medals"
-              onClick={onNavigate}
-              className={clsx(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
-                location.pathname === "/medals"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-foreground hover:bg-default-100",
-              )}
-            >
-              <MedalIcon
-                className={clsx(
-                  "w-5 h-5 transition-transform duration-200",
-                  location.pathname === "/medals" ? "" : "group-hover:scale-110",
-                )}
-              />
-              <span className="text-sm font-semibold">{t("sidebar.medals") || "Medals"}</span>
-            </Link>
-
-            {/* Attendance link */}
-            <Link
-              to="/attendance"
-              onClick={onNavigate}
-              className={clsx(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
-                location.pathname === "/attendance"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-foreground hover:bg-default-100",
-              )}
-            >
-              <CalendarIcon
-                className={clsx(
-                  "w-5 h-5 transition-transform duration-200",
-                  location.pathname === "/attendance" ? "" : "group-hover:scale-110",
-                )}
-              />
-              <span className="text-sm font-semibold">{t("sidebar.attendance") || "Attendance"}</span>
-            </Link>
+                case "attendance":
+                  return (
+                    <div
+                      key="attendance"
+                      className="relative group"
+                      onMouseEnter={() =>
+                        draggingNav && draggingNav !== "attendance" && swapNav(draggingNav, "attendance")
+                      }
+                    >
+                      <Link
+                        to="/attendance"
+                        onClick={onNavigate}
+                        className={clsx(
+                          "flex items-center gap-3 pl-3 pr-8 py-2.5 rounded-xl transition-all duration-200",
+                          draggingNav === "attendance" ? "opacity-60" : "",
+                          location.pathname === "/attendance"
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-foreground hover:bg-default-100",
+                        )}
+                      >
+                        <CalendarIcon
+                          className={clsx(
+                            "w-5 h-5 transition-transform duration-200",
+                            location.pathname === "/attendance" ? "" : "group-hover:scale-110",
+                          )}
+                        />
+                        <span className="text-sm font-semibold">{t("sidebar.attendance") || "Attendance"}</span>
+                      </Link>
+                      <GripHandle
+                        onPointerDown={(e) => startNavDrag("attendance", e)}
+                        isDragging={draggingNav === "attendance"}
+                      />
+                    </div>
+                  );
+              }
+            })}
           </div>
         </nav>
 
@@ -1280,7 +1466,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                   if (!confirmed) return;
                   await removeTab(contextMenu.tabId);
                   const tabs = await getAllTabs();
-                  setSidebarTabs(tabs.map((t) => ({ id: t.id, name: t.name, icon: t.icon })));
+                  setSidebarTabs(tabs);
                   window.dispatchEvent(new CustomEvent("tabsChanged"));
                 },
               },
@@ -1305,7 +1491,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
             setIsTabEditorOpen(false);
             setEditingTabForSidebar(undefined);
             const tabs = await getAllTabs();
-            setSidebarTabs(tabs.map((t) => ({ id: t.id, name: t.name, icon: t.icon })));
+            setSidebarTabs(tabs);
             window.dispatchEvent(new CustomEvent("tabsChanged"));
           }}
           initialData={editingTabForSidebar}
