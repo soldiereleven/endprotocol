@@ -67,11 +67,17 @@ export const CustomModal: React.FC<CustomModalProps> = ({
           placement="center"
           scroll="inside"
         >
-          <Modal.Dialog
-            className={`glass-surface-strong border border-separator/90 rounded-2xl !p-0 ${config.widthClass} ${dialogHeightClass} flex flex-col`}
-          >
-            {children}
-          </Modal.Dialog>
+          <div className="relative w-fit my-auto">
+            <div
+              aria-hidden
+              className="absolute inset-0 rounded-2xl bg-white/40 dark:bg-black/40 pointer-events-none"
+            />
+            <Modal.Dialog
+              className={`glass-surface-strong border border-separator/90 rounded-2xl !p-0 ${config.widthClass} ${dialogHeightClass} flex flex-col`}
+            >
+              {children}
+            </Modal.Dialog>
+          </div>
         </Modal.Container>
       </Modal.Backdrop>
     </Modal>
