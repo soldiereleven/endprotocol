@@ -14,5 +14,6 @@
   "ach_sort": "Sort",
   "ach_default": "Default",
   "ach_time": "Newest",
-  "ach_level_sort": "Highest"
+  "ach_level_sort": "Highest",
+  "ach_search": "Search medal name"
 }

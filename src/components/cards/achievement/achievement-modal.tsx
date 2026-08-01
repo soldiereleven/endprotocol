@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@heroui/react";
-import { PlusIcon } from "@/components/ui/app-icon";
+import { PlusIcon, CloseIcon } from "@/components/ui/app-icon";
+import { SearchIcon } from "@/components/icons";
 import {
   CustomModal,
   CustomModalHeader,
@@ -515,6 +516,8 @@ export function AchievementModal({
   const [levelFilter, setLevelFilter] = useState(0);
   const [platedFilter, setPlatedFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("time");
+  const [globalQuery, setGlobalQuery] = useState("");
+  const [scrollTargetId, setScrollTargetId] = useState<string | null>(null);
 
   const categories = useMemo(() => {
     const catMap = new Map<string, string>();
@@ -558,6 +561,32 @@ export function AchievementModal({
     });
     return result;
   }, [medals, activeCategory, levelFilter, platedFilter, sortBy]);
+
+  const globalResults = useMemo(() => {
+    const q = globalQuery.trim().toLowerCase();
+    if (!q) return [];
+    return medals
+      .filter((m) => m.achievementData.name.toLowerCase().includes(q))
+      .sort((a, b) => a.achievementData.name.localeCompare(b.achievementData.name));
+  }, [medals, globalQuery]);
+
+  const handleLocate = (medal: AchieveMedal) => {
+    setActiveCategory(medal.achievementData.cate);
+    setLevelFilter(0);
+    setPlatedFilter("all");
+    setGlobalQuery("");
+    setScrollTargetId(medal.achievementData.id);
+  };
+
+  useEffect(() => {
+    if (!scrollTargetId) return;
+    const timer = setTimeout(() => {
+      const el = document.querySelector(`[data-medal-id="${CSS.escape(scrollTargetId)}"]`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setScrollTargetId(null);
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [scrollTargetId, view]);
 
   const imagePaths = useMemo(
     () => filteredMedals.map((m) => getMedalIcon(m)).filter(Boolean),
@@ -672,21 +701,66 @@ export function AchievementModal({
         <>
           <CustomModalBody>
             <div className="flex gap-1 h-full overflow-hidden">
-              <div className="w-44 shrink-0 border-r border-separator flex flex-col overflow-y-auto pr-2 space-y-1">
-                {categories.map((cat) => (
-                  <button
-                    key={cat.key}
-                    type="button"
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                      activeCategory === cat.key
-                        ? "bg-accent/10 text-accent font-medium"
-                        : "text-foreground hover:bg-default-100"
-                    }`}
-                    onClick={() => setActiveCategory(cat.key)}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
+              <div className="w-44 shrink-0 border-r border-separator flex flex-col pr-2">
+                <div className="relative mb-2 shrink-0">
+                  <div className="relative p-1.5">
+                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none text-sm" />
+                    <input
+                      type="text"
+                      value={globalQuery}
+                      onChange={(e) => setGlobalQuery(e.target.value)}
+                      placeholder={t("card:ach_search")}
+                      className="w-full px-2 py-1.5 pl-7 pr-6 rounded-lg bg-default-100 border border-separator text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all"
+                    />
+                    {globalQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setGlobalQuery("")}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-muted hover:text-foreground transition-colors"
+                        aria-label="Clear search"
+                      >
+                        <CloseIcon size={12} />
+                      </button>
+                    )}
+                  </div>
+                  {globalQuery.trim() && (
+                    <div className="absolute left-1.5 right-1.5 top-full z-20 max-h-72 overflow-y-auto rounded-lg border border-separator bg-background shadow-xl dark:shadow-white/15 py-1">
+                      {globalResults.length > 0 ? (
+                        globalResults.slice(0, 50).map((medal) => (
+                          <button
+                            key={medal.achievementData.id}
+                            type="button"
+                            onClick={() => handleLocate(medal)}
+                            className="w-full text-left px-3 py-1.5 rounded-md text-xs truncate text-foreground hover:bg-default-100 transition-colors"
+                            title={medal.achievementData.name}
+                          >
+                            {medal.achievementData.name}
+                          </button>
+                        ))
+                      ) : (
+                        <p className="text-xs text-muted text-center py-2">
+                          {t("card:ach_no_medals")}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-1">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.key}
+                      type="button"
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                        activeCategory === cat.key
+                          ? "bg-accent/10 text-accent font-medium"
+                          : "text-foreground hover:bg-default-100"
+                      }`}
+                      onClick={() => setActiveCategory(cat.key)}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="flex-1 flex flex-col min-w-0">
@@ -757,6 +831,7 @@ export function AchievementModal({
                       return (
                         <div
                           key={id}
+                          data-medal-id={id}
                           className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer border transition-all ${
                             isSelected
                               ? "border-accent bg-accent/5"
@@ -766,7 +841,7 @@ export function AchievementModal({
                         >
                           {icon ? (
                             <div
-                              className="w-14 h-14 shrink-0 overflow-hidden bg-[#999999]"
+                              className="w-14 h-14 shrink-0 overflow-hidden"
                               style={{ clipPath: HEX_CLIP, WebkitClipPath: HEX_CLIP }}
                             >
                               <Img
