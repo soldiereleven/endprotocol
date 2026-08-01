@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Button, Switch } from "@heroui/react";
+import { Button } from "@heroui/react";
+import { PlusIcon } from "@/components/ui/app-icon";
 import {
   CustomModal,
   CustomModalHeader,
@@ -25,8 +26,8 @@ interface AchievementModalProps {
 const HEX_CLIP = "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)";
 const HEX_W = 82;
 const HEX_H = 95;
-const STRIP_HEX_W = 52;
-const STRIP_HEX_H = 60;
+const STRIP_HEX_W = 72;
+const STRIP_HEX_H = 83;
 const DRAG_THRESHOLD = 5;
 const SLOT_COUNT = 10;
 
@@ -271,12 +272,18 @@ export function AchievementModal({
 
   const [localUseDisplayList, setLocalUseDisplayList] = useState(initialUseDisplayList);
   const [listSelectedIds, setListSelectedIds] = useState<string[]>([]);
+  const [stripSortBy, setStripSortBy] = useState<"default" | "time" | "level">("default");
 
   const [drag, setDrag] = useState<DragState | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<DropTarget>(null);
   const dragRef = useRef<DragState | null>(null);
   const hasDragged = useRef(false);
   const dropTargetRef = useRef<DropTarget>(null);
+  const slotsRef = useRef<(string | null)[]>(slots);
+
+  useEffect(() => {
+    slotsRef.current = slots;
+  }, [slots]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -318,8 +325,27 @@ export function AchievementModal({
   }, [localUseDisplayList, slots, displayMedals, medals]);
 
   const stripMedals = useMemo(() => {
-    return strip.map((id) => medals.find((m) => m.achievementData.id === id)).filter(Boolean) as AchieveMedal[];
-  }, [strip, medals]);
+    const result = strip
+      .map((id) => medals.find((m) => m.achievementData.id === id))
+      .filter(Boolean) as AchieveMedal[];
+    if (stripSortBy === "time") {
+      return [...result].sort((a, b) => {
+        const byTime = Number(b.obtainTs) - Number(a.obtainTs);
+        if (byTime !== 0) return byTime;
+        return a.achievementData.name.localeCompare(b.achievementData.name);
+      });
+    }
+    if (stripSortBy === "level") {
+      return [...result].sort((a, b) => {
+        const byLevel = effectiveLevel(b) - effectiveLevel(a);
+        if (byLevel !== 0) return byLevel;
+        const byTime = Number(b.obtainTs) - Number(a.obtainTs);
+        if (byTime !== 0) return byTime;
+        return a.achievementData.name.localeCompare(b.achievementData.name);
+      });
+    }
+    return result;
+  }, [strip, medals, stripSortBy]);
 
   const handleToggle = () => {
     const newVal = !localUseDisplayList;
@@ -351,27 +377,29 @@ export function AchievementModal({
       return;
     }
     const targetIndex = target.index;
-    setSlots((prevSlots) => {
-      const fromSlotIdx = prevSlots.indexOf(medalId);
-      const isInStrip = fromSlotIdx < 0;
-      if (isInStrip) {
-        setStrip((prevStrip) => {
-          const next = prevStrip.filter((id) => id !== medalId);
-          const displaced = prevSlots[targetIndex];
-          if (displaced) {
-            next.push(displaced);
-          }
-          return next;
-        });
+    const fromSlotIdx = slotsRef.current.indexOf(medalId);
+    if (fromSlotIdx === targetIndex) return;
+    if (fromSlotIdx >= 0) {
+      setSlots((prevSlots) => {
         const next = [...prevSlots];
+        const displaced = next[targetIndex];
         next[targetIndex] = medalId;
+        next[fromSlotIdx] = displaced || null;
         return next;
-      }
-      if (fromSlotIdx === targetIndex) return prevSlots;
+      });
+      return;
+    }
+    const displaced = slotsRef.current[targetIndex];
+    setSlots((prevSlots) => {
       const next = [...prevSlots];
-      const displaced = next[targetIndex];
       next[targetIndex] = medalId;
-      next[fromSlotIdx] = displaced || null;
+      return next;
+    });
+    setStrip((prevStrip) => {
+      const next = prevStrip.filter((id) => id !== medalId);
+      if (displaced && !next.includes(displaced)) {
+        next.push(displaced);
+      }
       return next;
     });
   }, []);
@@ -553,19 +581,29 @@ export function AchievementModal({
       {view === "main" ? (
         <CustomModalBody>
           <div className="flex flex-col items-center gap-4 py-4" ref={modalBodyRef}>
-            <div className="flex items-center gap-2 self-end">
-              <span className="text-xs text-muted">
-                {localUseDisplayList ? t("card:ach_use_display_list") : t("card:ach_manual_select")}
-              </span>
-              <Switch
-                isSelected={!localUseDisplayList}
-                onChange={handleToggle}
-                size="sm"
+            <div className="flex items-center gap-1 self-end p-1 rounded-full border border-separator bg-default-100/50">
+              <button
+                type="button"
+                className={`text-xs px-3 py-1 rounded-full transition-colors font-medium ${
+                  !localUseDisplayList
+                    ? "bg-primary text-white shadow-sm"
+                    : "text-muted hover:text-foreground"
+                }`}
+                onClick={() => localUseDisplayList && handleToggle()}
               >
-                <Switch.Control>
-                  <Switch.Thumb />
-                </Switch.Control>
-              </Switch>
+                {t("card:ach_manual_select")}
+              </button>
+              <button
+                type="button"
+                className={`text-xs px-3 py-1 rounded-full transition-colors font-medium ${
+                  localUseDisplayList
+                    ? "bg-primary text-white shadow-sm"
+                    : "text-muted hover:text-foreground"
+                }`}
+                onClick={() => !localUseDisplayList && handleToggle()}
+              >
+                {t("card:ach_use_display_list")}
+              </button>
             </div>
 
             <SlotHoneycomb
@@ -577,13 +615,38 @@ export function AchievementModal({
 
             {!localUseDisplayList && (
               <div className="w-full flex flex-col items-center gap-3">
-                <Button size="sm" variant="secondary" onPress={handleOpenList}>
-                  {t("card:ach_select_medals")}
-                </Button>
+                <div className="w-full flex items-center justify-between gap-2 px-1">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted mr-1 shrink-0">{t("card:ach_sort")}:</span>
+                    {(["default", "time", "level"] as const).map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        className={`text-xs px-2 py-0.5 rounded-full border transition-colors font-medium ${
+                          stripSortBy === opt
+                            ? "bg-primary text-white border-primary shadow-sm"
+                            : "border-separator text-muted hover:border-foreground hover:text-foreground"
+                        }`}
+                        onClick={() => setStripSortBy(opt)}
+                      >
+                        {opt === "default"
+                          ? t("card:ach_default")
+                          : opt === "time"
+                            ? t("card:ach_time")
+                            : t("card:ach_level_sort")}
+                      </button>
+                    ))}
+                  </div>
+
+                  <Button size="sm" variant="secondary" onPress={handleOpenList}>
+                    <PlusIcon size={14} />
+                    {t("card:ach_select_medals")}
+                  </Button>
+                </div>
 
                 <div
                   data-drop-target="strip"
-                  className={`w-full overflow-x-auto scrollbar-hide min-h-[60px] flex items-center rounded-lg transition-colors ${dragOverTarget?.type === "strip" ? "bg-primary/10 ring-2 ring-primary ring-offset-1" : ""}`}
+                  className={`w-full overflow-x-auto scrollbar-hide min-h-[92px] flex items-center rounded-lg transition-colors ${dragOverTarget?.type === "strip" ? "bg-primary/10 ring-2 ring-primary ring-offset-1" : ""}`}
                 >
                   {stripMedals.length > 0 ? (
                     <div className="flex items-center gap-2 justify-start px-2 pb-1">
