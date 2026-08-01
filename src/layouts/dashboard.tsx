@@ -38,7 +38,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <main className="flex-1 overflow-y-auto p-4 lg:p-8 pt-6">
-            <div key={location.pathname} className="page-transition-enter min-h-full">
+            <div key={location.pathname} className="page-transition-enter h-full min-h-full">
               {children}
             </div>
           </main>

@@ -10,6 +10,7 @@ import {
   AccountIcon,
   DeveloperIcon,
   UsersIcon,
+  MedalIcon,
   GithubIcon,
   HeartFilledIcon,
   SearchIcon,
@@ -1199,6 +1200,26 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                 )}
               />
               <span className="text-sm font-semibold">{t("sidebar.characters") || "Characters"}</span>
+            </Link>
+
+            {/* Medals link */}
+            <Link
+              to="/medals"
+              onClick={onNavigate}
+              className={clsx(
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
+                location.pathname === "/medals"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-foreground hover:bg-default-100",
+              )}
+            >
+              <MedalIcon
+                className={clsx(
+                  "w-5 h-5 transition-transform duration-200",
+                  location.pathname === "/medals" ? "" : "group-hover:scale-110",
+                )}
+              />
+              <span className="text-sm font-semibold">{t("sidebar.medals") || "Medals"}</span>
             </Link>
           </div>
         </nav>

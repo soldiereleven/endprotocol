@@ -577,6 +577,39 @@ export const StarIcon = ({
   </svg>
 );
 
+export const MedalIcon = ({
+  size = 24,
+  width,
+  height,
+  ...props
+}: IconSvgProps) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    focusable="false"
+    height={size || height}
+    role="presentation"
+    viewBox="0 0 24 24"
+    width={size || width}
+    {...props}
+  >
+    <polygon
+      points="12 2 20 6 20 12 12 22 4 12 4 6 12 2"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+    />
+    <path
+      d="M12 7.5v4M12 11.5h2.5M12 11.5H9.5M12 15.5v-1.5"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+    />
+  </svg>
+);
+
 export const BookmarkIcon = ({
   size = 24,
   width,

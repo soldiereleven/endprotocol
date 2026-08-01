@@ -1,0 +1,342 @@
+import { useState, useMemo, useEffect } from "react";
+import { CloseIcon } from "@/components/ui/app-icon";
+import { SearchIcon } from "@/components/icons";
+import { AchieveMedal } from "@/types/charDetail";
+import { useTranslation } from "react-i18next";
+import { Img } from "@/utils/imageLoader";
+import { useImageRequest } from "@/utils/imageCacheManager";
+
+const HEX_CLIP = "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)";
+
+export function effectiveLevel(medal: AchieveMedal): number {
+  return Math.min(medal.achievementData.initLevel + medal.level - 1, 3);
+}
+
+export function getMedalIcon(medal: AchieveMedal): string {
+  if (medal.isPlated && medal.achievementData.platedIcon) {
+    return medal.achievementData.platedIcon;
+  }
+  const lv = effectiveLevel(medal);
+  if (lv >= 3 && medal.achievementData.reforge3Icon) return medal.achievementData.reforge3Icon;
+  if (lv >= 2 && medal.achievementData.reforge2Icon) return medal.achievementData.reforge2Icon;
+  return medal.achievementData.initIcon || "";
+}
+
+export function formatTimestamp(ts: string): string {
+  if (!ts) return "";
+  const num = parseInt(ts, 10);
+  if (isNaN(num)) return ts;
+  const d = new Date(num * 1000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+const LEVEL_NAMES: Record<number, string> = { 1: "一级", 2: "二级", 3: "三级" };
+
+function ReforgeLevel({ medal }: { medal: AchieveMedal }) {
+  const lv = effectiveLevel(medal);
+  return (
+    <span className="text-foreground font-medium">
+      {LEVEL_NAMES[lv] ?? `Lv.${lv}`}
+    </span>
+  );
+}
+
+interface MedalBrowserProps {
+  medals: AchieveMedal[];
+  selectedIds?: string[];
+  onToggle?: (id: string) => void;
+  headerLeft?: React.ReactNode;
+}
+
+export function MedalBrowser({
+  medals,
+  selectedIds,
+  onToggle,
+  headerLeft,
+}: MedalBrowserProps) {
+  const { t } = useTranslation();
+  const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [levelFilter, setLevelFilter] = useState(0);
+  const [platedFilter, setPlatedFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("time");
+  const [globalQuery, setGlobalQuery] = useState("");
+  const [scrollTargetId, setScrollTargetId] = useState<string | null>(null);
+
+  const categories = useMemo(() => {
+    const catMap = new Map<string, string>();
+    catMap.set("all", t("card:ach_all"));
+    for (const m of medals) {
+      if (!catMap.has(m.achievementData.cate)) {
+        catMap.set(m.achievementData.cate, m.achievementData.cateName);
+      }
+    }
+    return Array.from(catMap.entries()).map(([key, label]) => ({ key, label }));
+  }, [medals, t]);
+
+  const levelOptions = useMemo(() => {
+    const set = new Set<number>();
+    for (const m of medals) set.add(effectiveLevel(m));
+    return [0, ...[1, 2, 3].filter((l) => set.has(l))];
+  }, [medals]);
+
+  const LEVEL_LABELS: Record<number, string> = { 0: t("card:ach_all"), 1: "一级", 2: "二级", 3: "三级" };
+
+  const filteredMedals = useMemo(() => {
+    let result = medals;
+    if (activeCategory !== "all") result = result.filter((m) => m.achievementData.cate === activeCategory);
+    if (levelFilter > 0) result = result.filter((m) => effectiveLevel(m) === levelFilter);
+    if (platedFilter === "plated") result = result.filter((m) => m.isPlated);
+    else if (platedFilter === "unplated") result = result.filter((m) => !m.isPlated);
+    result = [...result].sort((a, b) => {
+      const byName = a.achievementData.name.localeCompare(b.achievementData.name);
+      if (sortBy === "time") {
+        const byTime = Number(b.obtainTs) - Number(a.obtainTs);
+        if (byTime !== 0) return byTime;
+        const byLevel = effectiveLevel(b) - effectiveLevel(a);
+        if (byLevel !== 0) return byLevel;
+        return byName;
+      }
+      const byLevel = effectiveLevel(b) - effectiveLevel(a);
+      if (byLevel !== 0) return byLevel;
+      const byTime = Number(b.obtainTs) - Number(a.obtainTs);
+      if (byTime !== 0) return byTime;
+      return byName;
+    });
+    return result;
+  }, [medals, activeCategory, levelFilter, platedFilter, sortBy]);
+
+  const globalResults = useMemo(() => {
+    const q = globalQuery.trim().toLowerCase();
+    if (!q) return [];
+    return medals
+      .filter((m) => m.achievementData.name.toLowerCase().includes(q))
+      .sort((a, b) => a.achievementData.name.localeCompare(b.achievementData.name));
+  }, [medals, globalQuery]);
+
+  const handleLocate = (medal: AchieveMedal) => {
+    setActiveCategory(medal.achievementData.cate);
+    setLevelFilter(0);
+    setPlatedFilter("all");
+    setGlobalQuery("");
+    setScrollTargetId(medal.achievementData.id);
+  };
+
+  useEffect(() => {
+    if (!scrollTargetId) return;
+    const timer = setTimeout(() => {
+      const el = document.querySelector(`[data-medal-id="${CSS.escape(scrollTargetId)}"]`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setScrollTargetId(null);
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [scrollTargetId]);
+
+  const imagePaths = useMemo(
+    () => filteredMedals.map((m) => getMedalIcon(m)).filter(Boolean),
+    [filteredMedals],
+  );
+  useImageRequest(imagePaths, [imagePaths]);
+
+  const selectable = selectedIds != null;
+
+  return (
+    <div className="flex gap-1 h-full overflow-hidden">
+      <div className="w-44 shrink-0 border-r border-separator flex flex-col pr-2">
+        <div className="relative mb-2 shrink-0">
+          <div className="relative p-1.5">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none text-sm" />
+            <input
+              type="text"
+              value={globalQuery}
+              onChange={(e) => setGlobalQuery(e.target.value)}
+              placeholder={t("card:ach_search")}
+              className="w-full px-2 py-1.5 pl-7 pr-6 rounded-lg bg-default-100 border border-separator text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all"
+            />
+            {globalQuery && (
+              <button
+                type="button"
+                onClick={() => setGlobalQuery("")}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-muted hover:text-foreground transition-colors"
+                aria-label="Clear search"
+              >
+                <CloseIcon size={12} />
+              </button>
+            )}
+          </div>
+          {globalQuery.trim() && (
+            <div className="absolute left-1.5 right-1.5 top-full z-20 max-h-72 overflow-y-auto rounded-lg border border-separator bg-background shadow-xl dark:shadow-white/15 py-1">
+              {globalResults.length > 0 ? (
+                globalResults.slice(0, 50).map((medal) => (
+                  <button
+                    key={medal.achievementData.id}
+                    type="button"
+                    onClick={() => handleLocate(medal)}
+                    className="w-full text-left px-3 py-1.5 rounded-md text-xs truncate text-foreground hover:bg-default-100 transition-colors"
+                    title={medal.achievementData.name}
+                  >
+                    {medal.achievementData.name}
+                  </button>
+                ))
+              ) : (
+                <p className="text-xs text-muted text-center py-2">
+                  {t("card:ach_no_medals")}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="flex-1 overflow-y-auto space-y-1">
+          {categories.map((cat) => (
+            <button
+              key={cat.key}
+              type="button"
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                activeCategory === cat.key
+                  ? "bg-accent/10 text-accent font-medium"
+                  : "text-foreground hover:bg-default-100"
+              }`}
+              onClick={() => setActiveCategory(cat.key)}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex items-center justify-between mb-3 shrink-0">
+          {headerLeft != null ? (
+            headerLeft
+          ) : (
+            <span className="text-sm text-muted">
+              {selectable
+                ? t("card:ach_selected_count", { count: selectedIds!.length })
+                : `${filteredMedals.length} / ${medals.length}`}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 mb-3 shrink-0 flex-wrap">
+          <span className="text-xs text-muted mr-1">{t("card:ach_level")}:</span>
+          {levelOptions.map((lv) => (
+            <button
+              key={lv}
+              type="button"
+              className={`text-xs px-2.5 py-1 rounded-full border transition-colors font-medium ${
+                levelFilter === lv
+                  ? "bg-accent text-white border-accent shadow-sm"
+                  : "border-separator text-muted hover:border-foreground hover:text-foreground"
+              }`}
+              onClick={() => setLevelFilter(lv)}
+            >
+              {LEVEL_LABELS[lv]}
+            </button>
+          ))}
+          <span className="text-xs text-muted ml-2 mr-1">{t("card:ach_plated")}:</span>
+          {(["all", "plated", "unplated"] as const).map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              className={`text-xs px-2.5 py-1 rounded-full border transition-colors font-medium ${
+                platedFilter === opt
+                  ? "bg-accent text-white border-accent shadow-sm"
+                  : "border-separator text-muted hover:border-foreground hover:text-foreground"
+              }`}
+              onClick={() => setPlatedFilter(opt)}
+            >
+              {opt === "all" ? t("card:ach_all") : opt === "plated" ? t("card:ach_plated") : t("card:ach_unplated")}
+            </button>
+          ))}
+          <span className="text-xs text-muted ml-2 mr-1">{t("card:ach_sort")}:</span>
+          {(["time", "level"] as const).map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              className={`text-xs px-2.5 py-1 rounded-full border transition-colors font-medium ${
+                sortBy === opt
+                  ? "bg-accent text-white border-accent shadow-sm"
+                  : "border-separator text-muted hover:border-foreground hover:text-foreground"
+              }`}
+              onClick={() => setSortBy(opt)}
+            >
+              {opt === "time" ? t("card:ach_time") : t("card:ach_level_sort")}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1 overflow-y-auto space-y-1 min-h-[420px] pb-16">
+          {filteredMedals.length === 0 ? (
+            <div className="text-center text-muted py-12">
+              {t("card:ach_no_medals")}
+            </div>
+          ) : (
+            filteredMedals.map((medal) => {
+              const id = medal.achievementData.id;
+              const isSelected = selectable && selectedIds!.includes(id);
+              const icon = getMedalIcon(medal);
+              return (
+                <div
+                  key={id}
+                  data-medal-id={id}
+                  className={`flex items-center gap-3 p-2 rounded-lg border transition-all ${
+                    selectable ? "cursor-pointer" : ""
+                  } ${
+                    isSelected
+                      ? "border-accent bg-accent/5"
+                      : "border-transparent hover:bg-default-100"
+                  }`}
+                  onClick={() => selectable && onToggle?.(id)}
+                >
+                  {icon ? (
+                    <div
+                      className="w-14 h-14 shrink-0 overflow-hidden"
+                      style={{ clipPath: HEX_CLIP, WebkitClipPath: HEX_CLIP }}
+                    >
+                      <Img
+                        src={icon}
+                        alt={medal.achievementData.name}
+                        className="w-full h-full object-cover"
+                        draggable={false}
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-14 h-14 shrink-0 bg-default-200" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">
+                      {medal.achievementData.name}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs mt-0.5">
+                      <ReforgeLevel medal={medal} />
+                      <span className="text-yellow-500 font-medium inline-block w-7 text-center">
+                        {medal.isPlated ? t("card:ach_plated") : ""}
+                      </span>
+                      <span className="text-muted">
+                        {medal.obtainTs ? formatTimestamp(medal.obtainTs) : ""}
+                      </span>
+                    </div>
+                  </div>
+                  {selectable && (
+                    <div
+                      className={`w-5 h-5 rounded shrink-0 flex items-center justify-center transition-colors ${
+                        isSelected
+                          ? "bg-accent text-white"
+                          : "border-2 border-default-300"
+                      }`}
+                    >
+                      {isSelected && (
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

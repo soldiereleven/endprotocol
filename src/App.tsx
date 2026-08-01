@@ -6,10 +6,11 @@ import SettingsPage from "@/pages/settings";
 import DeveloperPage from "@/pages/developer";
 import AccountPage from "@/pages/account";
 import CharactersPage from "@/pages/characters";
+import MedalsPage from "@/pages/medals";
 import DashboardLayout from "@/layouts/dashboard";
 import { getConfig, setConfig } from "@/utils/configService";
 
-const ROUTES = ["/", "/settings", "/account", "/characters", "/developer"];
+const ROUTES = ["/", "/settings", "/account", "/characters", "/medals", "/developer"];
 
 function RouteRestore() {
   const location = useLocation();
@@ -70,6 +71,14 @@ function App() {
             </DashboardLayout>
           }
           path="/characters"
+        />
+        <Route
+          element={
+            <DashboardLayout>
+              <MedalsPage />
+            </DashboardLayout>
+          }
+          path="/medals"
         />
         <Route
           element={
