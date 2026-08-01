@@ -69,16 +69,26 @@ const NAV_KEYS: NavKey[] = ["dashboard", "characters", "medals", "attendance"];
 
 function GripHandle({
   onPointerDown,
+  onDragEnd,
   isDragging,
 }: {
   onPointerDown: (e: React.PointerEvent) => void;
+  onDragEnd?: () => void;
   isDragging?: boolean;
 }) {
   return (
     <button
       type="button"
       onPointerDown={onPointerDown}
-      onPointerUp={(e) => e.stopPropagation()}
+      onPointerUp={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onDragEnd?.();
+      }}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
       className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-all duration-150 cursor-grab text-muted hover:text-foreground hover:bg-default-100 active:cursor-grabbing ${
         isDragging ? "opacity-100 cursor-grabbing" : ""
       }`}
@@ -184,15 +194,27 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
     });
   };
 
+  const endNavDrag = () => {
+    if (!navDragRef.current) return;
+    setConfig("sidebar_nav_order", navOrderRef.current);
+    navDragRef.current = null;
+    setDraggingNav(null);
+  };
+
+  const endTabDrag = () => {
+    if (!tabDragRef.current) return;
+    saveTabs(sidebarTabsRef.current);
+    tabDragRef.current = null;
+    setDraggingTab(null);
+  };
+
   const startNavDrag = (key: NavKey, e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
     navDragRef.current = key;
     setDraggingNav(key);
     const handleUp = () => {
-      setConfig("sidebar_nav_order", navOrderRef.current);
-      navDragRef.current = null;
-      setDraggingNav(null);
+      endNavDrag();
       window.removeEventListener("pointerup", handleUp);
     };
     window.addEventListener("pointerup", handleUp);
@@ -204,9 +226,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
     tabDragRef.current = id;
     setDraggingTab(id);
     const handleUp = () => {
-      saveTabs(sidebarTabsRef.current);
-      tabDragRef.current = null;
-      setDraggingTab(null);
+      endTabDrag();
       window.removeEventListener("pointerup", handleUp);
     };
     window.addEventListener("pointerup", handleUp);
@@ -1232,6 +1252,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                         </button>
                         <GripHandle
                           onPointerDown={(e) => startNavDrag("dashboard", e)}
+                          onDragEnd={endNavDrag}
                           isDragging={draggingNav === "dashboard"}
                         />
                       </div>
@@ -1304,6 +1325,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                                       </Link>
                                       <GripHandle
                                         onPointerDown={(e) => startTabDrag(tab.id, e)}
+                                        onDragEnd={endTabDrag}
                                         isDragging={draggingTab === tab.id}
                                       />
                                     </div>
@@ -1352,6 +1374,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                       </Link>
                       <GripHandle
                         onPointerDown={(e) => startNavDrag("characters", e)}
+                        onDragEnd={endNavDrag}
                         isDragging={draggingNav === "characters"}
                       />
                     </div>
@@ -1387,6 +1410,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                       </Link>
                       <GripHandle
                         onPointerDown={(e) => startNavDrag("medals", e)}
+                        onDragEnd={endNavDrag}
                         isDragging={draggingNav === "medals"}
                       />
                     </div>
@@ -1422,6 +1446,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                       </Link>
                       <GripHandle
                         onPointerDown={(e) => startNavDrag("attendance", e)}
+                        onDragEnd={endNavDrag}
                         isDragging={draggingNav === "attendance"}
                       />
                     </div>
