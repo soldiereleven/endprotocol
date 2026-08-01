@@ -11,6 +11,7 @@ import {
   DeveloperIcon,
   UsersIcon,
   MedalIcon,
+  CalendarIcon,
   GithubIcon,
   HeartFilledIcon,
   SearchIcon,
@@ -1220,6 +1221,26 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                 )}
               />
               <span className="text-sm font-semibold">{t("sidebar.medals") || "Medals"}</span>
+            </Link>
+
+            {/* Attendance link */}
+            <Link
+              to="/attendance"
+              onClick={onNavigate}
+              className={clsx(
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
+                location.pathname === "/attendance"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-foreground hover:bg-default-100",
+              )}
+            >
+              <CalendarIcon
+                className={clsx(
+                  "w-5 h-5 transition-transform duration-200",
+                  location.pathname === "/attendance" ? "" : "group-hover:scale-110",
+                )}
+              />
+              <span className="text-sm font-semibold">{t("sidebar.attendance") || "Attendance"}</span>
             </Link>
           </div>
         </nav>

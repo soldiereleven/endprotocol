@@ -45,7 +45,7 @@ export interface AttendanceData {
 type AttendanceState = "loading" | "signed" | "unsigned" | "error";
 type SignPhase = "idle" | "spinning" | "completing" | "done";
 
-function parseAttendanceData(json: any): AttendanceData | null {
+export function parseAttendanceData(json: any): AttendanceData | null {
   try {
     const data = json?.data;
     if (!data?.calendar || !data?.resourceInfoMap) return null;

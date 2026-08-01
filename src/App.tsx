@@ -7,10 +7,11 @@ import DeveloperPage from "@/pages/developer";
 import AccountPage from "@/pages/account";
 import CharactersPage from "@/pages/characters";
 import MedalsPage from "@/pages/medals";
+import AttendancePage from "@/pages/attendance";
 import DashboardLayout from "@/layouts/dashboard";
 import { getConfig, setConfig } from "@/utils/configService";
 
-const ROUTES = ["/", "/settings", "/account", "/characters", "/medals", "/developer"];
+const ROUTES = ["/", "/settings", "/account", "/characters", "/medals", "/attendance", "/developer"];
 
 function RouteRestore() {
   const location = useLocation();
@@ -79,6 +80,14 @@ function App() {
             </DashboardLayout>
           }
           path="/medals"
+        />
+        <Route
+          element={
+            <DashboardLayout>
+              <AttendancePage />
+            </DashboardLayout>
+          }
+          path="/attendance"
         />
         <Route
           element={
