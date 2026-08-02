@@ -188,12 +188,6 @@ export default function AccountProgressCard({
 
   const barSections = [
     {
-      label: t("card:account_progress_bp"),
-      value: bpMax > 0 ? `${bpCur}/${bpMax}` : `${bpCur}`,
-      suffix: bpMax > 0 && bpCur >= bpMax ? t("card:account_progress_full") : "",
-      percent: bpMax > 0 ? bpCur / bpMax : 0,
-    },
-    {
       label: t("card:account_progress_daily"),
       value: `${dailyCur}/${dailyMax}`,
       suffix: "",
@@ -204,6 +198,12 @@ export default function AccountProgressCard({
       value: `${weeklyCur}/${weeklyMax}`,
       suffix: "",
       percent: weeklyMax > 0 ? weeklyCur / weeklyMax : 0,
+    },
+    {
+      label: t("card:account_progress_bp"),
+      value: bpMax > 0 ? `${bpCur}/${bpMax}` : `${bpCur}`,
+      suffix: bpMax > 0 && bpCur >= bpMax ? t("card:account_progress_full") : "",
+      percent: bpMax > 0 ? bpCur / bpMax : 0,
     },
   ];
 

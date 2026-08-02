@@ -5,8 +5,8 @@
     "en": "Account Progress"
   },
   "description": {
-    "zh": "展示账户的理智、通行证、每日/每周任务进度",
-    "en": "Display account stamina, battle pass, daily/weekly mission progress"
+    "zh": "展示账户的理智、日常活跃度、每周事务、通行证等级进度",
+    "en": "Display account stamina, daily activity, weekly affairs, battle pass level progress"
   },
   "icon": "📈",
   "defaultSize": { "w": 4, "h": 2 },
