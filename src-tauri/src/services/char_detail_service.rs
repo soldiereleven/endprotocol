@@ -388,6 +388,9 @@ impl CharDetailService {
         // Cache achievement medal icons
         Self::cache_achieve_icons(&image_cache, &mut detail.achieve).await;
 
+        // Cache domain settlement officer avatars
+        Self::cache_domain_avatars(&image_cache, &mut detail.domain).await;
+
         log_debug!("Completed image processing");
         Ok(())
     }
@@ -643,6 +646,57 @@ impl CharDetailService {
                 Ok(p) => update_gem_icon_path(weapon, p),
                 Err(e) => {
                     log_warn!("Failed to cache gem cover for {}: {}", char_name, e);
+                }
+            }
+        }
+    }
+
+    /// Cache domain settlement officer avatars (officerCharAvatar)
+    async fn cache_domain_avatars(
+        image_cache: &ImageCacheService,
+        domain: &mut Option<serde_json::Value>,
+    ) {
+        let domains = match domain {
+            Some(serde_json::Value::Array(arr)) => arr,
+            _ => return,
+        };
+
+        for domain_item in domains.iter_mut() {
+            let domain_obj = match domain_item.as_object_mut() {
+                Some(obj) => obj,
+                None => continue,
+            };
+            let settlements = match domain_obj.get_mut("settlements") {
+                Some(serde_json::Value::Array(arr)) => arr,
+                _ => continue,
+            };
+
+            for settlement in settlements.iter_mut() {
+                let settlement_obj = match settlement.as_object_mut() {
+                    Some(obj) => obj,
+                    None => continue,
+                };
+                if let Some(serde_json::Value::String(url)) =
+                    settlement_obj.get("officerCharAvatar")
+                {
+                    if url.is_empty() || url.starts_with("http://asset.localhost") {
+                        continue;
+                    }
+                    let url_clone = url.clone();
+                    match image_cache
+                        .get_or_download_image(&url_clone, ImageType::Avatar)
+                        .await
+                    {
+                        Ok(p) => {
+                            settlement_obj.insert(
+                                "officerCharAvatar".to_string(),
+                                serde_json::Value::String(p),
+                            );
+                        }
+                        Err(e) => {
+                            log_warn!("Failed to cache domain officer avatar: {}", e);
+                        }
+                    }
                 }
             }
         }
