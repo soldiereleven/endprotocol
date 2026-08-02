@@ -31,16 +31,12 @@ export interface ProgressData {
   weeklyMission?: { score?: number; total?: number };
 }
 
-function formatRecoverCountdown(ts: string, now: number): string {
-  if (!ts) return "--";
-  const num = parseInt(ts, 10);
-  if (isNaN(num)) return "--";
-  const diff = num * 1000 - now;
-  if (diff <= 0) return "00:00:00";
-  const totalSeconds = Math.floor(diff / 1000);
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
+function formatRecoverCountdownFromSec(totalSeconds: number): string {
+  if (totalSeconds <= 0) return "00:00:00";
+  const sec = Math.floor(totalSeconds);
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
@@ -145,7 +141,7 @@ export default function AccountProgressCard({
 
   const curStamina = Number(data?.dungeon?.curStamina) || 0;
   const maxStamina = Number(data?.dungeon?.maxStamina) || 0;
-  const maxTs = data?.dungeon?.maxTs ?? "";
+  const maxTsSec = Math.round(Number(data?.dungeon?.maxTs) || 0);
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -153,8 +149,27 @@ export default function AccountProgressCard({
     return () => window.clearInterval(timer);
   }, []);
 
-  const isStaminaFull = maxStamina > 0 && curStamina >= maxStamina;
-  const recoverCountdown = isStaminaFull ? "" : formatRecoverCountdown(maxTs, now);
+  const REFILL_INTERVAL = 432;
+
+  const { liveStamina, recoverCountdown, isStaminaFull } = useMemo(() => {
+    if (maxStamina <= 0 || maxTsSec <= 0) {
+      return { liveStamina: curStamina, recoverCountdown: "", isStaminaFull: maxStamina > 0 && curStamina >= maxStamina };
+    }
+    const nowSec = now / 1000;
+    const unitsBelowMax = (maxTsSec - nowSec) / REFILL_INTERVAL;
+    let live = Math.floor(maxStamina - unitsBelowMax);
+    if (live < 0) live = 0;
+    if (live > maxStamina) live = maxStamina;
+
+    if (live >= maxStamina) {
+      return { liveStamina: live, recoverCountdown: "", isStaminaFull: true };
+    }
+
+    const nextTsSec = maxTsSec - (maxStamina - live - 1) * REFILL_INTERVAL;
+    const countdownSec = Math.max(0, nextTsSec - nowSec);
+    const cd = formatRecoverCountdownFromSec(countdownSec);
+    return { liveStamina: live, recoverCountdown: cd, isStaminaFull: false };
+  }, [curStamina, maxStamina, maxTsSec, now]);
 
   const bpCur = data?.bpSystem?.curLevel ?? 0;
   const bpMax = data?.bpSystem?.maxLevel ?? 0;
@@ -231,7 +246,7 @@ export default function AccountProgressCard({
           <div className="w-24 shrink-0 flex flex-col items-center justify-center gap-1 border-r border-separator/60 pr-3">
             <span className="text-[10px] text-muted">{t("card:account_progress_stamina")}</span>
             <span className="text-xl font-bold text-foreground font-mono leading-none">
-              {curStamina}
+              {liveStamina}
               <span className="text-[11px] font-normal text-muted">/{maxStamina}</span>
             </span>
             <span className="text-[9px] text-muted text-center leading-tight">
