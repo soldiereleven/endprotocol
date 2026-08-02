@@ -151,9 +151,14 @@ export default function AccountProgressCard({
 
   const REFILL_INTERVAL = 432;
 
-  const { liveStamina, recoverCountdown, isStaminaFull } = useMemo(() => {
+  const { liveStamina, refillCountdown, recoverCountdown, isStaminaFull } = useMemo(() => {
     if (maxStamina <= 0 || maxTsSec <= 0) {
-      return { liveStamina: curStamina, recoverCountdown: "", isStaminaFull: maxStamina > 0 && curStamina >= maxStamina };
+      return {
+        liveStamina: curStamina,
+        refillCountdown: "",
+        recoverCountdown: "",
+        isStaminaFull: maxStamina > 0 && curStamina >= maxStamina,
+      };
     }
     const nowSec = now / 1000;
     const unitsBelowMax = (maxTsSec - nowSec) / REFILL_INTERVAL;
@@ -162,13 +167,14 @@ export default function AccountProgressCard({
     if (live > maxStamina) live = maxStamina;
 
     if (live >= maxStamina) {
-      return { liveStamina: live, recoverCountdown: "", isStaminaFull: true };
+      return { liveStamina: live, refillCountdown: "", recoverCountdown: "", isStaminaFull: true };
     }
 
-    const nextTsSec = maxTsSec - (maxStamina - live - 1) * REFILL_INTERVAL;
-    const countdownSec = Math.max(0, nextTsSec - nowSec);
-    const cd = formatRecoverCountdownFromSec(countdownSec);
-    return { liveStamina: live, recoverCountdown: cd, isStaminaFull: false };
+    const nextRefillTs = maxTsSec - (maxStamina - live - 1) * REFILL_INTERVAL;
+    const refillCd = formatRecoverCountdownFromSec(nextRefillTs - nowSec);
+    const fullCountdownSec = Math.max(0, maxTsSec - nowSec);
+    const fullCd = formatRecoverCountdownFromSec(fullCountdownSec);
+    return { liveStamina: live, refillCountdown: refillCd, recoverCountdown: fullCd, isStaminaFull: false };
   }, [curStamina, maxStamina, maxTsSec, now]);
 
   const bpCur = data?.bpSystem?.curLevel ?? 0;
@@ -249,12 +255,19 @@ export default function AccountProgressCard({
               {liveStamina}
               <span className="text-[11px] font-normal text-muted">/{maxStamina}</span>
             </span>
-            <span className="text-[9px] text-muted text-center leading-tight">
-              {isStaminaFull
-                ? t("card:account_progress_full")
-                : recoverCountdown
-                  ? `${t("card:account_progress_recover_in")} ${recoverCountdown}`
-                  : ""}
+            <span className="flex flex-col items-center gap-0.5 text-center leading-tight">
+              {isStaminaFull ? (
+                <span className="text-[10px] text-muted">{t("card:account_progress_full")}</span>
+              ) : (
+                <>
+                  <span className="text-[9px] text-muted">
+                    {t("card:account_progress_recover_in")}: {recoverCountdown}
+                  </span>
+                  <span className="text-[9px] text-muted">
+                    {t("card:account_progress_next_refill")}: {refillCountdown}
+                  </span>
+                </>
+              )}
             </span>
           </div>
 
