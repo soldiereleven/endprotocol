@@ -215,7 +215,7 @@ function FreeDragCard({
           );
         },
       });
-    } else if (card.type === "account_info" || card.type === "account_progress") {
+    } else if (card.type === "account_info" || card.type === "account_progress" || card.type === "domain_info") {
       items.push({
         key: "change-role",
         label: t("card:change_role"),
@@ -227,6 +227,30 @@ function FreeDragCard({
           );
         },
       });
+      if (card.type === "domain_info") {
+        items.push({
+          key: "view-list",
+          label: t("card:domain_info_view_list"),
+          onPress: () => {
+            window.dispatchEvent(
+              new CustomEvent("cardAction", {
+                detail: { cardId: card.id, action: "view-list" },
+              }),
+            );
+          },
+        });
+        items.push({
+          key: "switch-domain",
+          label: t("card:domain_info_switch_domain"),
+          onPress: () => {
+            window.dispatchEvent(
+              new CustomEvent("cardAction", {
+                detail: { cardId: card.id, action: "switch-domain" },
+              }),
+            );
+          },
+        });
+      }
     }
 
     items.push({

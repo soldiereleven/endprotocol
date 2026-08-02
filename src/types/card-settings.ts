@@ -46,6 +46,14 @@ export interface AccountProgressCardSettings {
 }
 
 /**
+ * 区域(domain)信息卡片配置
+ */
+export interface DomainInfoCardSettings {
+  roleId?: string;   // 自定义角色ID（独立于dashboard的defaultRoleId）
+  domainId?: string; // 选中的区域ID（默认第一个）
+}
+
+/**
  * TestCard 卡片配置（示例）
  */
 export interface TestCardSettings {
@@ -61,6 +69,7 @@ export type CardSettingsMap = {
   achievement: AchievementCardSettings;
   account_info: AccountInfoCardSettings;
   account_progress: AccountProgressCardSettings;
+  domain_info: DomainInfoCardSettings;
   test_card: TestCardSettings;
   // 未来添加新卡片时在此注册
 };

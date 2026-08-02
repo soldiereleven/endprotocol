@@ -1,0 +1,20 @@
+{
+  "id": "domain_info",
+  "name": {
+    "zh": "区域信息",
+    "en": "Domain Info"
+  },
+  "description": {
+    "zh": "展示大世界区域信息（等级、货币、基建建设点）",
+    "en": "Display domain info (level, money, base settlements)"
+  },
+  "icon": "🗺️",
+  "defaultSize": { "w": 4, "h": 2 },
+  "version": "1.0.0",
+  "allowMultiple": true,
+  "tags": [
+    { "id": "account", "label": { "zh": "账户", "en": "Account" } },
+    { "id": "domain", "label": { "zh": "区域", "en": "Domain" } },
+    { "id": "display", "label": { "zh": "显示", "en": "Display" } }
+  ]
+}
