@@ -16,8 +16,8 @@
   "view_list": "查看列表",
   "confirm_delete_title": "删除卡片",
   "confirm_delete_body": "确定要删除该卡片吗？",
-  "change_role": "更改角色",
-  "select_role": "选择角色",
+  "change_role": "更改账号",
+  "select_role": "选择账号",
   "no_accounts": "无可用账户",
   "current": "当前"
 }

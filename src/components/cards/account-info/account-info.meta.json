@@ -1,0 +1,20 @@
+{
+  "id": "account_info",
+  "name": {
+    "zh": "账户信息",
+    "en": "Account Info"
+  },
+  "description": {
+    "zh": "展示账户的基础信息（等级、世界等级、干员/武器数量等）",
+    "en": "Display account base info (level, world level, characters/weapons count, etc.)"
+  },
+  "icon": "🪪",
+  "defaultSize": { "w": 4, "h": 2 },
+  "version": "1.0.0",
+  "allowMultiple": true,
+  "tags": [
+    { "id": "account", "label": { "zh": "账户", "en": "Account" } },
+    { "id": "info", "label": { "zh": "信息", "en": "Info" } },
+    { "id": "display", "label": { "zh": "显示", "en": "Display" } }
+  ]
+}

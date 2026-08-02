@@ -387,7 +387,7 @@ export default function CharacterListCard({
         size="md"
       >
         <CustomModalHeader onClose={() => setIsRoleSelectModalOpen(false)}>
-          {t("card:change_role") || "Change Role"}
+          {t("card:change_role") || "Change Account"}
         </CustomModalHeader>
         <CustomModalBody>
           <div className="space-y-3">

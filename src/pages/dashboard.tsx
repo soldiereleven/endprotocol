@@ -462,7 +462,7 @@ export default function DashboardPage() {
             setPendingDisplayMode(null);
           }}
         >
-          {t("card:select_role") || "Select Role"}
+          {t("card:select_role") || "Select Account"}
         </CustomModalHeader>
         <CustomModalBody>
           <div className="space-y-3">

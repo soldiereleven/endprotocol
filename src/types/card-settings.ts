@@ -32,6 +32,13 @@ export interface AchievementCardSettings {
 }
 
 /**
+ * 账户信息卡片配置
+ */
+export interface AccountInfoCardSettings {
+  roleId?: string;  // 自定义角色ID（独立于dashboard的defaultRoleId）
+}
+
+/**
  * TestCard 卡片配置（示例）
  */
 export interface TestCardSettings {
@@ -45,6 +52,7 @@ export type CardSettingsMap = {
   character_list: CharacterListCardSettings;
   attendance: AttendanceCardSettings;
   achievement: AchievementCardSettings;
+  account_info: AccountInfoCardSettings;
   test_card: TestCardSettings;
   // 未来添加新卡片时在此注册
 };

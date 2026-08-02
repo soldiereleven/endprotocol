@@ -215,6 +215,18 @@ function FreeDragCard({
           );
         },
       });
+    } else if (card.type === "account_info") {
+      items.push({
+        key: "change-role",
+        label: t("card:change_role"),
+        onPress: () => {
+          window.dispatchEvent(
+            new CustomEvent("cardAction", {
+              detail: { cardId: card.id, action: "change-role" },
+            }),
+          );
+        },
+      });
     }
 
     items.push({

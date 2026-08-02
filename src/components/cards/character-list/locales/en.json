@@ -16,8 +16,8 @@
   "view_list": "View List",
   "confirm_delete_title": "Delete Card",
   "confirm_delete_body": "Are you sure you want to delete this card?",
-  "change_role": "Change Role",
-  "select_role": "Select Role",
+  "change_role": "Change Account",
+  "select_role": "Select Account",
   "no_accounts": "No accounts available",
   "current": "Current"
 }
