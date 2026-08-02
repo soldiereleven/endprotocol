@@ -1,0 +1,20 @@
+{
+  "id": "account_progress",
+  "name": {
+    "zh": "账户进度",
+    "en": "Account Progress"
+  },
+  "description": {
+    "zh": "展示账户的理智、通行证、每日/每周任务进度",
+    "en": "Display account stamina, battle pass, daily/weekly mission progress"
+  },
+  "icon": "📈",
+  "defaultSize": { "w": 4, "h": 2 },
+  "version": "1.0.0",
+  "allowMultiple": true,
+  "tags": [
+    { "id": "account", "label": { "zh": "账户", "en": "Account" } },
+    { "id": "progress", "label": { "zh": "进度", "en": "Progress" } },
+    { "id": "display", "label": { "zh": "显示", "en": "Display" } }
+  ]
+}

@@ -215,7 +215,7 @@ function FreeDragCard({
           );
         },
       });
-    } else if (card.type === "account_info") {
+    } else if (card.type === "account_info" || card.type === "account_progress") {
       items.push({
         key: "change-role",
         label: t("card:change_role"),
