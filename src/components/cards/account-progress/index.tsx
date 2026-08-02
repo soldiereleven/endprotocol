@@ -165,17 +165,7 @@ export default function AccountProgressCard({
   const weeklyCur = data?.weeklyMission?.score ?? 0;
   const weeklyMax = data?.weeklyMission?.total ?? 0;
 
-  const sections = [
-    {
-      label: t("card:account_progress_stamina"),
-      value: `${curStamina}/${maxStamina}`,
-      suffix: recoverCountdown
-        ? `${t("card:account_progress_recover_in")}: ${recoverCountdown}`
-        : isStaminaFull
-          ? t("card:account_progress_full")
-          : "",
-      percent: maxStamina > 0 ? curStamina / maxStamina : 0,
-    },
+  const barSections = [
     {
       label: t("card:account_progress_bp"),
       value: bpMax > 0 ? `${bpCur}/${bpMax}` : `${bpCur}`,
@@ -237,29 +227,46 @@ export default function AccountProgressCard({
           </button>
         </div>
 
-        <div className="space-y-2.5">
-          {sections.map((s, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <span className="w-16 shrink-0 text-[10px] text-muted truncate">{s.label}</span>
-              <Meter
-                aria-label={s.label}
-                value={Math.min(100, Math.max(0, Math.round(s.percent * 100)))}
-                className="flex-1 min-w-0"
-              >
-                <Meter.Track className="h-1.5 rounded-full bg-default-100">
-                  <Meter.Fill className="h-full rounded-full bg-gradient-to-r from-primary/70 to-primary transition-all duration-500" />
-                </Meter.Track>
-              </Meter>
-              <span className="w-14 shrink-0 text-right text-[11px] text-foreground font-mono truncate">
-                {s.value}
-              </span>
-              {s.suffix && (
-                <span className="shrink-0 text-[9px] text-muted truncate max-w-[110px] text-right">
-                  {s.suffix}
+        <div className="flex items-stretch gap-3 min-h-0">
+          <div className="w-24 shrink-0 flex flex-col items-center justify-center gap-1 border-r border-separator/60 pr-3">
+            <span className="text-[10px] text-muted">{t("card:account_progress_stamina")}</span>
+            <span className="text-xl font-bold text-foreground font-mono leading-none">
+              {curStamina}
+              <span className="text-[11px] font-normal text-muted">/{maxStamina}</span>
+            </span>
+            <span className="text-[9px] text-muted text-center leading-tight">
+              {isStaminaFull
+                ? t("card:account_progress_full")
+                : recoverCountdown
+                  ? `${t("card:account_progress_recover_in")} ${recoverCountdown}`
+                  : ""}
+            </span>
+          </div>
+
+          <div className="flex-1 min-w-0 flex flex-col justify-between gap-2 py-0.5">
+            {barSections.map((s, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <span className="w-14 shrink-0 text-[10px] text-muted truncate">{s.label}</span>
+                <Meter
+                  aria-label={s.label}
+                  value={Math.min(100, Math.max(0, Math.round(s.percent * 100)))}
+                  className="flex-1 min-w-0"
+                >
+                  <Meter.Track className="h-1.5 rounded-full bg-default-100">
+                    <Meter.Fill className="h-full rounded-full bg-gradient-to-r from-primary/70 to-primary transition-all duration-500" />
+                  </Meter.Track>
+                </Meter>
+                <span className="w-12 shrink-0 text-right text-[11px] text-foreground font-mono truncate">
+                  {s.value}
                 </span>
-              )}
-            </div>
-          ))}
+                {s.suffix && (
+                  <span className="shrink-0 text-[9px] text-muted truncate max-w-[50px] text-right">
+                    {s.suffix}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </Card>
 
