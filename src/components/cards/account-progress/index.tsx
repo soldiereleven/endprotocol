@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, Button, ProgressCircle } from "@heroui/react";
+import { Card, Button, ProgressCircle, Meter } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 import { BaseCardProps } from "../registry/types";
 import { useCardData } from "../base/use-card-data";
@@ -241,14 +241,15 @@ export default function AccountProgressCard({
           {sections.map((s, idx) => (
             <div key={idx} className="flex items-center gap-2">
               <span className="w-16 shrink-0 text-[10px] text-muted truncate">{s.label}</span>
-              <div className="flex-1 min-w-0">
-                <div className="h-1.5 rounded-full bg-default-100 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-primary/70 to-primary transition-all duration-500"
-                    style={{ width: `${Math.min(100, Math.max(0, s.percent * 100))}%` }}
-                  />
-                </div>
-              </div>
+              <Meter
+                aria-label={s.label}
+                value={Math.min(100, Math.max(0, Math.round(s.percent * 100)))}
+                className="flex-1 min-w-0"
+              >
+                <Meter.Track className="h-1.5 rounded-full bg-default-100">
+                  <Meter.Fill className="h-full rounded-full bg-gradient-to-r from-primary/70 to-primary transition-all duration-500" />
+                </Meter.Track>
+              </Meter>
               <span className="w-14 shrink-0 text-right text-[11px] text-foreground font-mono truncate">
                 {s.value}
               </span>
