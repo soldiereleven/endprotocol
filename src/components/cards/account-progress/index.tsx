@@ -31,16 +31,17 @@ export interface ProgressData {
   weeklyMission?: { score?: number; total?: number };
 }
 
-function formatStaminaTs(ts: string): string {
+function formatRecoverCountdown(ts: string, now: number): string {
   if (!ts) return "--";
   const num = parseInt(ts, 10);
   if (isNaN(num)) return "--";
-  const diff = num * 1000 - Date.now();
-  if (diff <= 0) return "00:00";
-  const totalMinutes = Math.floor(diff / 60000);
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  const diff = num * 1000 - now;
+  if (diff <= 0) return "00:00:00";
+  const totalSeconds = Math.floor(diff / 1000);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 export default function AccountProgressCard({
@@ -146,6 +147,15 @@ export default function AccountProgressCard({
   const maxStamina = Number(data?.dungeon?.maxStamina) || 0;
   const maxTs = data?.dungeon?.maxTs ?? "";
 
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const isStaminaFull = maxStamina > 0 && curStamina >= maxStamina;
+  const recoverCountdown = isStaminaFull ? "" : formatRecoverCountdown(maxTs, now);
+
   const bpCur = data?.bpSystem?.curLevel ?? 0;
   const bpMax = data?.bpSystem?.maxLevel ?? 0;
 
@@ -159,7 +169,11 @@ export default function AccountProgressCard({
     {
       label: t("card:account_progress_stamina"),
       value: `${curStamina}/${maxStamina}`,
-      suffix: maxStamina > 0 ? `${t("card:account_progress_loaded")}: ${formatStaminaTs(maxTs)}` : "",
+      suffix: recoverCountdown
+        ? `${t("card:account_progress_recover_in")}: ${recoverCountdown}`
+        : isStaminaFull
+          ? t("card:account_progress_full")
+          : "",
       percent: maxStamina > 0 ? curStamina / maxStamina : 0,
     },
     {
@@ -239,7 +253,7 @@ export default function AccountProgressCard({
                 {s.value}
               </span>
               {s.suffix && (
-                <span className="shrink-0 text-[9px] text-muted truncate max-w-[70px]">
+                <span className="shrink-0 text-[9px] text-muted truncate max-w-[110px] text-right">
                   {s.suffix}
                 </span>
               )}
