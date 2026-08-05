@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
+use crate::services::avatar_cache_service::{all_sub_dir_names, resolve_url_subdir};
 use crate::utils::paths;
 use crate::{log_info, log_warn};
 
@@ -21,6 +22,8 @@ pub fn get_image_cache_dir() -> Result<String, String> {
 
 /// 下载图片到本地缓存目录，返回本地文件路径
 /// 如果已缓存则直接返回路径
+/// sub_dir 可为空：此时根据 URL 注册表确定子目录，未命中则扫描所有子目录，
+/// 仍未命中时下载到默认子目录。
 #[tauri::command]
 pub async fn download_image(
     url: String,
@@ -48,6 +51,30 @@ pub async fn download_image(
             msg
         })?;
     log_info!("[download_image] Extracted filename: {}", filename);
+
+    // 空 sub_dir：解析图片类型
+    let sub_dir = if sub_dir.is_empty() {
+        match resolve_url_subdir(&url) {
+            Some(sd) => {
+                log_info!("[download_image] Resolved sub_dir from registry: {}", sd);
+                sd
+            }
+            None => {
+                // 扫描所有子目录，命中已缓存文件则直接返回
+                for name in all_sub_dir_names() {
+                    let p = PathBuf::from(&cache_dir).join(name).join(&filename);
+                    if p.exists() {
+                        log_info!("[download_image] Cache hit in {}: {}", name, p.display());
+                        return Ok(p.to_string_lossy().to_string());
+                    }
+                }
+                log_warn!("[download_image] No registry entry, falling back to default sub_dir");
+                "misc".to_string()
+            }
+        }
+    } else {
+        sub_dir
+    };
 
     // 构建本地路径
     let type_dir = PathBuf::from(&cache_dir).join(&sub_dir);

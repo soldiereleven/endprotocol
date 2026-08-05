@@ -29,6 +29,19 @@ class ImageCacheManager {
 
   private totalSizeBytes = 0;
 
+  private cacheDirPromise: Promise<string> | null = null;
+
+  private getCacheDir(): Promise<string> {
+    if (!this.cacheDirPromise) {
+      this.cacheDirPromise = invoke<string>("get_image_cache_dir").catch((e) => {
+        console.error("[imageCache] Failed to get cache dir:", e);
+        this.cacheDirPromise = null;
+        throw e;
+      });
+    }
+    return this.cacheDirPromise;
+  }
+
   configure(cfg: Partial<CacheConfig>) {
     if (cfg.mode !== undefined) this.config.mode = cfg.mode;
     if (cfg.maxEntries !== undefined) this.config.maxEntries = cfg.maxEntries;
@@ -69,8 +82,11 @@ class ImageCacheManager {
 
   async load(path: string): Promise<string> {
     if (!path) return "";
-    if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("blob:") || path.startsWith("data:")) {
+    if (path.startsWith("blob:") || path.startsWith("data:")) {
       return path;
+    }
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return this.loadRemote(path);
     }
 
     const hit = this.cache.get(path);
@@ -98,6 +114,44 @@ class ImageCacheManager {
       .finally(() => this.loading.delete(path));
 
     this.loading.set(path, promise);
+    return promise;
+  }
+
+  /**
+   * 按需下载远程图片到本地缓存，返回 blob URL。
+   * 已缓存则直接读取本地文件，未缓存则先调用后端 download_image。
+   */
+  private async loadRemote(url: string): Promise<string> {
+    const hit = this.cache.get(url);
+    if (hit) {
+      this.cancelEviction(url);
+      this.touch(url);
+      return hit;
+    }
+
+    const inflight = this.loading.get(url);
+    if (inflight) return inflight;
+
+    const promise = (async () => {
+      const cacheDir = await this.getCacheDir();
+      const localPath = await invoke<string>("download_image", {
+        url,
+        cacheDir,
+        subDir: "",
+      });
+      const bytes = await invoke<number[]>("read_image_file", { path: localPath });
+      const blob = new Blob([new Uint8Array(bytes)]);
+      const objectUrl = URL.createObjectURL(blob);
+      const byteSize = bytes.length;
+      this.evictFor(byteSize);
+      this.cache.set(url, objectUrl);
+      this.sizes.set(url, byteSize);
+      this.totalSizeBytes += byteSize;
+      this.touch(url);
+      return objectUrl;
+    })().finally(() => this.loading.delete(url));
+
+    this.loading.set(url, promise);
     return promise;
   }
 

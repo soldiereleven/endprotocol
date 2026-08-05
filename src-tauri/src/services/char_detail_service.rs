@@ -2,10 +2,24 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use crate::models::char_detail::CharDetailData;
-use crate::services::avatar_cache_service::{AvatarCacheService, ImageCacheService, ImageType};
+use crate::services::avatar_cache_service::{
+    register_url_subdir, AvatarCacheService, ImageCacheService, ImageType,
+};
 use crate::services::skland_service::SklandService;
 use crate::utils::AppError;
 use crate::{log_debug, log_error, log_info, log_warn};
+
+/// 懒加载本地化：登记 URL 对应的缓存类型；若图片已缓存在本地则替换为本地路径，
+/// 否则保留远程 URL（由前端按需下载）。
+fn localize_or_keep(url: &mut String, image_cache: &ImageCacheService, image_type: ImageType) {
+    if url.is_empty() || url.starts_with("http://asset.localhost") {
+        return;
+    }
+    register_url_subdir(url, image_type.dir_name());
+    if let Some(p) = image_cache.local_path_if_cached(url) {
+        *url = p;
+    }
+}
 
 /// 用于预加载的角色信息
 pub struct PreloadRoleInfo {
@@ -212,7 +226,8 @@ impl CharDetailService {
         Ok(json_value)
     }
 
-    /// 处理角色详情中的所有图片URL，替换为本地缓存路径
+    /// 处理角色详情中的所有图片URL：
+    /// 已缓存的替换为本地路径，未缓存的保留远程URL由前端按需下载（懒加载）。
     async fn process_images(&self, detail: &mut CharDetailData, cred: &str, token: &str) -> Result<(), AppError> {
         log_debug!("Processing images for {} chars", detail.chars.len());
 
@@ -228,79 +243,20 @@ impl CharDetailService {
                 let char_name = char_data.name.as_deref().unwrap_or("unknown");
 
                 if let Some(ref mut url) = char_data.avatar_sq_url {
-                    if !url.is_empty() && !url.starts_with("http://asset.localhost") {
-                        let url_clone = url.clone();
-                        match image_cache
-                            .get_or_download_image(&url_clone, ImageType::Avatar)
-                            .await
-                        {
-                            Ok(p) => *url = p,
-                            Err(e) => {
-                                log_warn!("Failed to cache square avatar for {}: {}", char_name, e);
-                            }
-                        }
-                    }
+                    localize_or_keep(url, &image_cache, ImageType::Avatar);
                 }
                 if let Some(ref mut url) = char_data.avatar_rt_url {
-                    if !url.is_empty() && !url.starts_with("http://asset.localhost") {
-                        let url_clone = url.clone();
-                        match image_cache
-                            .get_or_download_image(&url_clone, ImageType::Avatar)
-                            .await
-                        {
-                            Ok(p) => *url = p,
-                            Err(e) => {
-                                log_warn!("Failed to cache rectangular avatar for {}: {}", char_name, e);
-                            }
-                        }
-                    }
+                    localize_or_keep(url, &image_cache, ImageType::Avatar);
                 }
                 if let Some(ref mut url) = char_data.illustration_url {
-                    if !url.is_empty() && !url.starts_with("http://asset.localhost") {
-                        let url_clone = url.clone();
-                        match image_cache
-                            .get_or_download_image(&url_clone, ImageType::Illustration)
-                            .await
-                        {
-                            Ok(p) => *url = p,
-                            Err(e) => {
-                                log_warn!("Failed to cache illustration for {}: {}", char_name, e);
-                            }
-                        }
-                    }
+                    localize_or_keep(url, &image_cache, ImageType::Illustration);
                 }
 
                 if let Some(ref mut skills) = char_data.skills {
                     for skill in skills.iter_mut() {
-                        if !skill.icon_url.is_empty()
-                            && !skill.icon_url.starts_with("http://asset.localhost")
-                        {
-                            let url_clone = skill.icon_url.clone();
-                            match image_cache
-                                .get_or_download_image(&url_clone, ImageType::SkillIcon)
-                                .await
-                            {
-                                Ok(p) => skill.icon_url = p,
-                                Err(e) => {
-                                    log_warn!("Failed to cache skill icon for {}: {}", char_name, e);
-                                }
-                            }
-                        }
+                        localize_or_keep(&mut skill.icon_url, &image_cache, ImageType::SkillIcon);
                         for form in skill.forms.iter_mut() {
-                            if !form.icon_url.is_empty()
-                                && !form.icon_url.starts_with("http://asset.localhost")
-                            {
-                                let url_clone = form.icon_url.clone();
-                                match image_cache
-                                    .get_or_download_image(&url_clone, ImageType::SkillIcon)
-                                    .await
-                                {
-                                    Ok(p) => form.icon_url = p,
-                                    Err(e) => {
-                                        log_warn!("Failed to cache skill form icon for {}: {}", char_name, e);
-                                    }
-                                }
-                            }
+                            localize_or_keep(&mut form.icon_url, &image_cache, ImageType::SkillIcon);
                         }
                     }
                 }
@@ -308,79 +264,27 @@ impl CharDetailService {
                 for talents in [&mut char_data.ability_talents, &mut char_data.combat_talents] {
                     if let Some(ref mut list) = talents {
                         for t in list.iter_mut() {
-                            if !t.icon_url.is_empty()
-                                && !t.icon_url.starts_with("http://asset.localhost")
-                            {
-                                let url_clone = t.icon_url.clone();
-                                match image_cache
-                                    .get_or_download_image(&url_clone, ImageType::SkillIcon)
-                                    .await
-                                {
-                                    Ok(p) => t.icon_url = p,
-                                    Err(e) => {
-                                        log_warn!("Failed to cache talent icon for {}: {}", char_name, e);
-                                    }
-                                }
-                            }
-                            if !t.locked_icon_url.is_empty()
-                                && !t.locked_icon_url.starts_with("http://asset.localhost")
-                            {
-                                let url_clone = t.locked_icon_url.clone();
-                                match image_cache
-                                    .get_or_download_image(&url_clone, ImageType::SkillIcon)
-                                    .await
-                                {
-                                    Ok(p) => t.locked_icon_url = p,
-                                    Err(e) => {
-                                        log_warn!("Failed to cache locked talent icon for {}: {}", char_name, e);
-                                    }
-                                }
-                            }
+                            localize_or_keep(&mut t.icon_url, &image_cache, ImageType::SkillIcon);
+                            localize_or_keep(&mut t.locked_icon_url, &image_cache, ImageType::SkillIcon);
                         }
                     }
                 }
 
                 if let Some(ref mut list) = char_data.cultivation_talents {
                     for t in list.iter_mut() {
-                        if !t.icon_url.is_empty()
-                            && !t.icon_url.starts_with("http://asset.localhost")
-                        {
-                            let url_clone = t.icon_url.clone();
-                            match image_cache
-                                .get_or_download_image(&url_clone, ImageType::SkillIcon)
-                                .await
-                            {
-                                Ok(p) => t.icon_url = p,
-                                Err(e) => {
-                                    log_warn!("Failed to cache cultivation talent icon for {}: {}", char_name, e);
-                                }
-                            }
-                        }
-                        if !t.locked_icon_url.is_empty()
-                            && !t.locked_icon_url.starts_with("http://asset.localhost")
-                        {
-                            let url_clone = t.locked_icon_url.clone();
-                            match image_cache
-                                .get_or_download_image(&url_clone, ImageType::SkillIcon)
-                                .await
-                            {
-                                Ok(p) => t.locked_icon_url = p,
-                                Err(e) => {
-                                    log_warn!("Failed to cache locked cultivation talent icon for {}: {}", char_name, e);
-                                }
-                            }
-                        }
+                        localize_or_keep(&mut t.icon_url, &image_cache, ImageType::SkillIcon);
+                        localize_or_keep(&mut t.locked_icon_url, &image_cache, ImageType::SkillIcon);
                     }
                 }
 
-                        // Process equipment icon URLs
+                // Process equipment icon URLs
                 Self::cache_equip_icon(&image_cache, &mut char.weapon, "weaponData", char_name, ImageType::WeaponIcon).await;
                 Self::cache_equip_icon(&image_cache, &mut char.body_equip, "equipData", char_name, ImageType::EquipIcon).await;
                 Self::cache_equip_icon(&image_cache, &mut char.arm_equip, "equipData", char_name, ImageType::EquipIcon).await;
                 Self::cache_equip_icon(&image_cache, &mut char.first_accessory, "equipData", char_name, ImageType::EquipIcon).await;
                 Self::cache_equip_icon(&image_cache, &mut char.second_accessory, "equipData", char_name, ImageType::EquipIcon).await;
                 Self::cache_equip_icon(&image_cache, &mut char.tactical_item, "tacticalItemData", char_name, ImageType::EquipIcon).await;
-                // Cache gem icon from weapon
+                // Cache gem icon from weapon (保持现有目录解析机制)
                 Self::cache_gem_icon(&image_cache, &self.skland_service, &mut char.weapon, char_name, cred, token).await;
             }
         }
@@ -403,32 +307,15 @@ impl CharDetailService {
         char_name: &str,
         image_type: ImageType,
     ) {
+        let _ = char_name;
         if let Some(ref mut value) = equip {
             if let Some(obj) = value.as_object_mut() {
                 if let Some(data) = obj.get_mut(data_key) {
                     if let Some(data_obj) = data.as_object_mut() {
                         if let Some(serde_json::Value::String(url)) = data_obj.get("iconUrl") {
-                            if !url.is_empty() && !url.starts_with("http://asset.localhost") {
-                                let url_clone = url.clone();
-                                match image_cache
-                                    .get_or_download_image(&url_clone, image_type)
-                                    .await
-                                {
-                                    Ok(p) => {
-                                        data_obj.insert(
-                                            "iconUrl".to_string(),
-                                            serde_json::Value::String(p),
-                                        );
-                                    }
-                                    Err(e) => {
-                                        log_warn!(
-                                            "Failed to cache equipment icon for {}: {}",
-                                            char_name,
-                                            e
-                                        );
-                                    }
-                                }
-                            }
+                            let mut url_mut = url.clone();
+                            localize_or_keep(&mut url_mut, image_cache, image_type);
+                            data_obj.insert("iconUrl".to_string(), serde_json::Value::String(url_mut));
                         }
                     }
                 }
@@ -651,7 +538,7 @@ impl CharDetailService {
         }
     }
 
-    /// Cache domain settlement officer avatars (officerCharAvatar)
+    /// Cache domain settlement officer avatars (officerCharAvatar) - 懒加载
     async fn cache_domain_avatars(
         image_cache: &ImageCacheService,
         domain: &mut Option<serde_json::Value>,
@@ -679,30 +566,18 @@ impl CharDetailService {
                 if let Some(serde_json::Value::String(url)) =
                     settlement_obj.get("officerCharAvatar")
                 {
-                    if url.is_empty() || url.starts_with("http://asset.localhost") {
-                        continue;
-                    }
-                    let url_clone = url.clone();
-                    match image_cache
-                        .get_or_download_image(&url_clone, ImageType::Avatar)
-                        .await
-                    {
-                        Ok(p) => {
-                            settlement_obj.insert(
-                                "officerCharAvatar".to_string(),
-                                serde_json::Value::String(p),
-                            );
-                        }
-                        Err(e) => {
-                            log_warn!("Failed to cache domain officer avatar: {}", e);
-                        }
-                    }
+                    let mut url_mut = url.clone();
+                    localize_or_keep(&mut url_mut, image_cache, ImageType::Avatar);
+                    settlement_obj.insert(
+                        "officerCharAvatar".to_string(),
+                        serde_json::Value::String(url_mut),
+                    );
                 }
             }
         }
     }
 
-    /// Cache achievement medal icons (initIcon, reforge2Icon, reforge3Icon, platedIcon)
+    /// Cache achievement medal icons (initIcon, reforge2Icon, reforge3Icon, platedIcon) - 懒加载
     async fn cache_achieve_icons(
         image_cache: &ImageCacheService,
         achieve: &mut Option<serde_json::Value>,
@@ -734,21 +609,9 @@ impl CharDetailService {
 
             for field in &icon_fields {
                 if let Some(serde_json::Value::String(url)) = data_obj.get(*field) {
-                    if url.is_empty() || url.starts_with("http://asset.localhost") {
-                        continue;
-                    }
-                    let url_clone = url.clone();
-                    match image_cache
-                        .get_or_download_image(&url_clone, ImageType::AchievementIcon)
-                        .await
-                    {
-                        Ok(p) => {
-                            data_obj.insert((*field).to_string(), serde_json::Value::String(p));
-                        }
-                        Err(e) => {
-                            log_warn!("Failed to cache achievement icon {}: {}", field, e);
-                        }
-                    }
+                    let mut url_mut = url.clone();
+                    localize_or_keep(&mut url_mut, image_cache, ImageType::AchievementIcon);
+                    data_obj.insert((*field).to_string(), serde_json::Value::String(url_mut));
                 }
             }
         }

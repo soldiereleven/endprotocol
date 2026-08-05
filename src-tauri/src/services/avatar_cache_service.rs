@@ -1,8 +1,50 @@
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::{Mutex, OnceLock};
 
 use crate::utils::{paths, AppError};
 use crate::{log_debug, log_info};
+
+/// URL → 缓存子目录的注册表，供按需下载（download_image 空 sub_dir 时）确定图片类型。
+/// process_images 在遍历时登记每个 URL 所属的 ImageType。
+static URL_SUBDIR_REGISTRY: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
+
+/// 登记 URL 对应的缓存子目录
+pub fn register_url_subdir(url: &str, subdir: &str) {
+    if url.is_empty() {
+        return;
+    }
+    let map = URL_SUBDIR_REGISTRY.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Ok(mut guard) = map.lock() {
+        guard.insert(url.to_string(), subdir.to_string());
+    }
+}
+
+/// 查询 URL 对应的缓存子目录
+pub fn resolve_url_subdir(url: &str) -> Option<String> {
+    let map = URL_SUBDIR_REGISTRY.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Ok(guard) = map.lock() {
+        return guard.get(url).cloned();
+    }
+    None
+}
+
+/// 所有图片类型的缓存子目录名（含下载兜底目录 misc）
+pub fn all_sub_dir_names() -> &'static [&'static str] {
+    &[
+        "avatars",
+        "skill_icons",
+        "weapon_icons",
+        "equip_icons",
+        "illustrations",
+        "attendance",
+        "gem_icons",
+        "item_icons",
+        "achv_icons",
+        "misc",
+    ]
+}
 
 /// 图片缓存类型
 #[derive(Debug, Clone, Copy)]
@@ -81,6 +123,22 @@ impl ImageCacheService {
                 Some(s.to_string())
             }
         })
+    }
+
+    /// 仅当图片已缓存在本地时返回其路径，不触发下载。
+    /// 扫描所有已知子目录，命中任一即返回。
+    pub fn local_path_if_cached(&self, url: &str) -> Option<String> {
+        if url.starts_with("file://") || url.starts_with("http://asset.localhost") {
+            return Some(url.to_string());
+        }
+        let filename = self.extract_filename_from_url(url)?;
+        for sub_dir in all_sub_dir_names() {
+            let file_path = self.cache_dir.join(sub_dir).join(&filename);
+            if file_path.exists() {
+                return Some(file_path.to_string_lossy().to_string());
+            }
+        }
+        None
     }
 
     /// 获取或下载图片，返回本地文件路径
