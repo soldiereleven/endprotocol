@@ -204,28 +204,32 @@ body {
 .animate-list-item:nth-child(8) { animation-delay: 280ms; }
 
 /* ======================================================
- * 滚动条
+ * 滚动条 — 原生 overlay 滚动条（不占空间、可拖动）
+ * 轨道透明，滑块默认隐藏，鼠标接近滚动区域时浮出
  * ====================================================== */
-::-webkit-scrollbar {
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+*::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track {
   background: transparent;
 }
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--heroui-default-300) / 0.4);
+*::-webkit-scrollbar-thumb {
+  background: transparent;
   border-radius: 3px;
-  transition: background 0.2s ease;
+}
+[data-ovs]:hover::-webkit-scrollbar-thumb {
+  background: rgba(80, 82, 90, 0.9);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--heroui-default-400) / 0.6);
+  background: rgba(55, 57, 65, 1);
 }
-::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
-
-* {
-  scrollbar-width: thin;
-  scrollbar-color: hsl(var(--heroui-default-300) / 0.4) transparent;
+[data-ovs]:hover {
+  scrollbar-color: rgba(80, 82, 90, 0.9) transparent;
 }
 
 /* ======================================================
