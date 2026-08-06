@@ -326,9 +326,9 @@ function OperatorCard({
         </div>
       )}
 
-      {/* 底栏：白色条带 + 名字 + 稀有度色条（WIKI 风格） */}
+      {/* 底栏：透明 + 名字 + 稀有度色条 */}
       <div className="absolute inset-x-0 bottom-0 z-10">
-        <div className="bg-white dark:bg-black px-2 py-1 flex items-center gap-1.5">
+        <div className="px-2 py-1 flex items-center gap-1.5">
           <div className="flex items-center gap-1 shrink-0">
             {char.evolvePhase != null && (
               <img
@@ -338,7 +338,7 @@ function OperatorCard({
               />
             )}
             {char.level != null && (
-              <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
+              <span className="text-xs font-bold text-gray-800 drop-shadow-[0_1px_1px_rgba(255,255,255,0.5)]">
                 Lv.{char.level}
               </span>
             )}

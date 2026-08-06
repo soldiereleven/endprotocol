@@ -260,9 +260,9 @@ export default function CharacterListCard({
           </div>
         )}
 
-        {/* 底栏：渐变背景 + 等级/phase（左侧）+ 名字（右侧）+ 稀有度色条 */}
+        {/* 底栏：透明背景 + 等级/phase（左侧）+ 名字（右侧）+ 稀有度色条 */}
         <div className="absolute inset-x-0 bottom-0 z-10">
-          <div className="bg-gradient-to-t from-black/85 via-black/55 to-transparent px-1.5 pt-4 pb-1 flex items-end gap-2">
+          <div className="px-1.5 pt-4 pb-1 flex items-end gap-2">
             <div className="flex items-center gap-1 shrink-0">
               {char.evolvePhase != null && (
                 <img
@@ -272,7 +272,7 @@ export default function CharacterListCard({
                 />
               )}
               {char.level != null && (
-                <span className="text-sm text-gray-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">Lv.{char.level}</span>
+                <span className="text-sm font-bold text-gray-800 drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]">Lv.{char.level}</span>
               )}
             </div>
             <span className="flex-1 min-w-0 text-xs font-medium text-white truncate text-right drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]">
@@ -325,14 +325,14 @@ export default function CharacterListCard({
             }).map((_, index) => (
               <div
                 key={`empty-${index}`}
-                className="h-full border-2 border-dashed border-separator flex flex-col items-center justify-center bg-default-50 cursor-pointer hover:border-blue-400/60 first:rounded-l-[10px] last:rounded-r-[10px]"
+                className="h-full flex flex-col items-center justify-center cursor-pointer hover:bg-default-50/60 first:rounded-l-[10px] last:rounded-r-[10px]"
                 onClick={(e) => {
                   e.stopPropagation();
                   !isEditMode && setIsModalOpen(true);
                 }}
               >
                 <svg
-                  className="w-6 h-6 mb-1 text-muted opacity-50"
+                  className="w-6 h-6 mb-1 text-foreground opacity-70"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -344,7 +344,7 @@ export default function CharacterListCard({
                     d="M12 4v16m8-8H4"
                   />
                 </svg>
-                <span className="text-muted text-xs">
+                <span className="text-foreground text-xs">
                   {t("card:empty_slot")}
                 </span>
               </div>

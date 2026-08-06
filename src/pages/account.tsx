@@ -929,7 +929,7 @@ export default function AccountPage() {
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight">
             {t("settings.account.title")}
           </h1>
-          <p className="text-muted/80 mt-1.5">{t("settings.account.subtitle")}</p>
+          <p className="text-foreground/70 mt-1.5">{t("settings.account.subtitle")}</p>
         </div>
 
         <div className="flex gap-2">

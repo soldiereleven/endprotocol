@@ -218,7 +218,7 @@ function OperatorCard({ char, onClick }: { char: CharacterItem; onClick: () => v
       )}
 
       <div className="absolute inset-x-0 bottom-0 z-10">
-        <div className="bg-white dark:bg-black px-2 py-1 flex items-center gap-1.5">
+        <div className="px-2 py-1 flex items-center gap-1.5">
           <div className="flex items-center gap-1 shrink-0">
             {char.evolvePhase != null && (
               <img
@@ -228,7 +228,7 @@ function OperatorCard({ char, onClick }: { char: CharacterItem; onClick: () => v
               />
             )}
             {char.level != null && (
-              <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
+              <span className="text-xs font-bold text-gray-800 drop-shadow-[0_1px_1px_rgba(255,255,255,0.5)]">
                 Lv.{char.level}
               </span>
             )}
@@ -409,7 +409,7 @@ export default function CharactersPage() {
           {t("sidebar.characters")}
         </h1>
         {charDetail && (
-          <p className="text-muted/70 mt-1.5 text-sm">
+          <p className="text-foreground/70 mt-1.5 text-sm">
             {filteredCharacters.length} / {charDetail.chars.length} {t("common.characters")}
           </p>
         )}

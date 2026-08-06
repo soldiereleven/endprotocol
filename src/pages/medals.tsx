@@ -50,7 +50,7 @@ export default function MedalsPage() {
           {t("sidebar.medals")}
         </h1>
         {medals.length > 0 && (
-          <p className="text-muted/70 mt-1.5 text-sm">
+          <p className="text-foreground/70 mt-1.5 text-sm">
             {medals.length} {t("sidebar.medals")}
           </p>
         )}

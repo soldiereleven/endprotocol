@@ -371,7 +371,7 @@ export default function DashboardPage() {
                 {activeTab?.name ?? t("nav.dashboard")}
               </h1>
             </div>
-            <p className="text-muted/70 mt-1">
+            <p className="text-foreground/70 mt-1">
               {t("dashboard.customize_hint") ||
                 "Customize your dashboard with cards"}
             </p>

@@ -222,7 +222,7 @@ export default function DeveloperPage() {
         <h1 className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight">
           {t("settings.developer.title")}
         </h1>
-        <p className="text-muted/80 mt-1.5">{t("settings.developer.enable_desc")}</p>
+        <p className="text-foreground/70 mt-1.5">{t("settings.developer.enable_desc")}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-6">

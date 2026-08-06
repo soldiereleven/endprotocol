@@ -68,7 +68,7 @@ export default function AttendancePage() {
           {t("sidebar.attendance")}
         </h1>
         {selectedAccount && (
-          <p className="text-muted/70 mt-1.5 text-sm">
+          <p className="text-foreground/70 mt-1.5 text-sm">
             {selectedAccount.nickname} ·{" "}
             {resolveServerLabel(selectedAccount.server, i18n.language)} · Lv.
             {selectedAccount.level}
