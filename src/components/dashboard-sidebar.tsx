@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Button, Kbd, Skeleton } from "@heroui/react";
+import { Kbd, Skeleton } from "@heroui/react";
 import {
   HomeIcon,
   SettingsIcon,
@@ -13,7 +13,6 @@ import {
   MedalIcon,
   CalendarIcon,
   GithubIcon,
-  HeartFilledIcon,
   SearchIcon,
   PlusIcon,
 } from "@/components/icons";
@@ -925,9 +924,9 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
         className="w-full h-full flex flex-col"
       >
         {/* Selected Account Display */}
-        <div className="px-4 py-3 border-b border-separator/60">
+        <div className="px-3 py-2">
           {isLoadingAccount || isManualRefreshing ? (
-            <div className="flex items-center gap-3 p-2 rounded-lg">
+            <div className="glass-surface flex items-center gap-3 p-2 rounded-xl">
               <Skeleton className="w-10 h-10 rounded-full" />
               <div className="flex-1 space-y-2">
                 <Skeleton className="w-24 h-4 rounded-lg" />
@@ -935,7 +934,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
               </div>
             </div>
           ) : selectedAccount ? (
-            <div className="flex items-center gap-3 p-2 rounded-xl transition-all duration-200 hover:bg-default-50 group">
+            <div className="glass-surface flex items-center gap-3 p-2 rounded-xl transition-all duration-200 group">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <AccountAvatar
                   src={selectedAccount.avatar}
@@ -964,7 +963,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-default-50 border border-dashed border-separator/60">
+            <div className="glass-surface flex items-center gap-3 p-2.5 rounded-xl border border-dashed border-separator/60">
               <div className="w-10 h-10 rounded-full bg-muted/20 flex items-center justify-center">
                 <AccountIcon className="w-5 h-5 text-muted" />
               </div>
@@ -1210,7 +1209,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                           "relative flex items-center gap-1 pl-3 pr-8 py-2.5 rounded-xl transition-all duration-200 group",
                           draggingNav === "dashboard" ? "opacity-60" : "",
                           location.pathname === "/"
-                            ? "bg-primary text-primary-foreground shadow-sm"
+                            ? "glass-surface text-foreground"
                             : "text-foreground hover:bg-default-100",
                         )}
                       >
@@ -1236,9 +1235,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                           }}
                           className={clsx(
                             "p-1 rounded-lg transition-colors",
-                            location.pathname === "/"
-                              ? "text-primary-foreground/70 hover:text-primary-foreground hover:bg-white/10"
-                              : "text-muted hover:text-foreground hover:bg-default-200",
+                            "text-muted hover:text-foreground hover:bg-default-200",
                           )}
                           aria-label={isDashboardCollapsed ? "Expand tabs" : "Collapse tabs"}
                         >
@@ -1360,7 +1357,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                           "flex items-center gap-3 pl-3 pr-8 py-2.5 rounded-xl transition-all duration-200",
                           draggingNav === "characters" ? "opacity-60" : "",
                           location.pathname === "/characters"
-                            ? "bg-primary text-primary-foreground shadow-sm"
+                            ? "glass-surface text-foreground"
                             : "text-foreground hover:bg-default-100",
                         )}
                       >
@@ -1396,7 +1393,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                           "flex items-center gap-3 pl-3 pr-8 py-2.5 rounded-xl transition-all duration-200",
                           draggingNav === "medals" ? "opacity-60" : "",
                           location.pathname === "/medals"
-                            ? "bg-primary text-primary-foreground shadow-sm"
+                            ? "glass-surface text-foreground"
                             : "text-foreground hover:bg-default-100",
                         )}
                       >
@@ -1432,7 +1429,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                           "flex items-center gap-3 pl-3 pr-8 py-2.5 rounded-xl transition-all duration-200",
                           draggingNav === "attendance" ? "opacity-60" : "",
                           location.pathname === "/attendance"
-                            ? "bg-primary text-primary-foreground shadow-sm"
+                            ? "glass-surface text-foreground"
                             : "text-foreground hover:bg-default-100",
                         )}
                       >
@@ -1538,7 +1535,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                   className={clsx(
                     "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-sm"
+                      ? "glass-surface text-foreground"
                       : "text-foreground hover:bg-default-100",
                   )}
                 >
@@ -1555,30 +1552,20 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
           </div>
 
           <div className="flex items-center justify-between px-1 pt-1">
-            <div className="flex items-center gap-1">
-              <a
-                aria-label="Github"
-                href={siteConfig.links.github}
-                rel="noopener noreferrer"
-                target="_blank"
-                className="p-2 rounded-lg hover:bg-default-100 transition-all duration-200 hover:scale-105 active:scale-95"
-              >
-                <GithubIcon className="text-muted w-4 h-4 hover:text-foreground transition-colors" />
-              </a>
-              <ThemeSwitch />
-              <LanguageSwitch />
-            </div>
+          <div className="flex items-center gap-1">
+            <a
+              aria-label="Github"
+              href={siteConfig.links.github}
+              rel="noopener noreferrer"
+              target="_blank"
+              className="glass-surface p-2 rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
+            >
+              <GithubIcon className="text-muted w-4 h-4 hover:text-foreground transition-colors" />
+            </a>
+            <ThemeSwitch />
+            <LanguageSwitch />
           </div>
-
-          <Button
-            className="w-full font-medium"
-            variant="danger-soft"
-            size="sm"
-            onPress={() => window.open(siteConfig.links.sponsor, "_blank")}
-          >
-            <HeartFilledIcon className="w-4 h-4 mr-1.5" />
-            {t("common.sponsor")}
-          </Button>
+        </div>
         </div>
       </aside>
 

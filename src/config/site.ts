@@ -7,7 +7,7 @@ export const siteConfig = {
   description:
     "A cross-platform desktop client for Skland account management.",
   links: {
-    github: "https://github.com/anomalyco/opencode",
+    github: "https://github.com/soldiereleven/endprotocol",
     docs: "https://heroui.com",
     sponsor: "https://patreon.com/jrgarciadev",
   },

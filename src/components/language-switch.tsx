@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Button, Input } from "@heroui/react";
+import { Input } from "@heroui/react";
 import { setConfig } from "@/utils/configService";
 
 // SVG flag components
@@ -83,24 +83,41 @@ export const LanguageSwitch = () => {
     const next = !isOpen;
     if (next && buttonRef.current) {
       const r = buttonRef.current.getBoundingClientRect();
-      const vh = window.innerHeight;
-      const spaceBelow = vh - r.bottom;
-      const menuH = 280;
-      const top = spaceBelow < menuH && r.top > menuH ? r.top - menuH : r.bottom + 4;
-      setDropdownPos({ top, left: r.left, width: Math.max(220, r.width) });
+      setDropdownPos({
+        top: r.bottom + 4,
+        left: r.left,
+        width: Math.max(220, r.width),
+      });
     }
     setIsOpen(next);
   };
 
+  // 根据实际渲染高度校准位置，避免浮出框溢出或悬在离按钮很远的上方
+  useEffect(() => {
+    if (!isOpen || !menuRef.current || !buttonRef.current) return;
+    const menu = menuRef.current;
+    const btn = buttonRef.current.getBoundingClientRect();
+    const mh = menu.offsetHeight;
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+    setDropdownPos((prev) => {
+      let top = prev.top;
+      if (btn.bottom + 4 + mh > vh) {
+        top = Math.max(8, btn.top - mh - 4);
+      }
+      const left = Math.max(8, Math.min(prev.left, vw - prev.width - 8));
+      return { ...prev, top, left };
+    });
+  }, [isOpen]);
+
   return (
     <div className="relative" ref={wrapperRef}>
       <div className="flex items-center">
-        <Button
+        <button
           ref={buttonRef}
-          variant="tertiary"
-          size="sm"
-          className="min-w-[120px] h-9 px-3 gap-2"
-          onPress={handleToggle}
+          type="button"
+          onClick={handleToggle}
+          className="glass-surface h-9 px-3 rounded-full flex items-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95 text-foreground"
         >
           {selectedLang.flag}
           <span className="text-sm font-medium">{selectedLang.label}</span>
@@ -117,7 +134,7 @@ export const LanguageSwitch = () => {
               d="M19 9l-7 7-7-7"
             />
           </svg>
-        </Button>
+        </button>
       </div>
 
       {isOpen && createPortal(
