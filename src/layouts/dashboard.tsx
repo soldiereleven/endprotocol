@@ -12,12 +12,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen glass-window">
       <CustomTitlebar />
 
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Desktop Sidebar */}
-        <div className="hidden lg:flex w-72 shrink-0 border-r border-separator/70 glass-surface">
+        {/* Desktop Sidebar — 与标题栏同一液态玻璃容器，不再单独设玻璃/边框 */}
+        <div className="hidden lg:flex w-72 shrink-0">
           <Sidebar />
         </div>
 

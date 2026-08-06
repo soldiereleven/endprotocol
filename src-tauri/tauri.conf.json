@@ -17,7 +17,12 @@
         "height": 700,
         "resizable": true,
         "center": true,
-        "decorations": false
+        "decorations": false,
+        "transparent": true,
+        "windowEffects": {
+          "effects": ["acrylic"],
+          "color": [18, 18, 20, 100]
+        }
       }
     ],
     "security": {

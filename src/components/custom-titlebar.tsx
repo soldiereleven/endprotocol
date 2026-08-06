@@ -71,7 +71,7 @@ export const CustomTitlebar = () => {
 
   return (
     <div
-      className="h-11 glass-surface border-b border-separator/70 flex items-center px-5 relative"
+      className="h-11 flex items-center px-5 relative"
       style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
     >
       <div

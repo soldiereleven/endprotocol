@@ -20,6 +20,7 @@
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
     "@types/uuid": "^11.0.0",
+    "aura-glass": "^3.5.0",
     "clsx": "2.1.1",
     "i18next": "^26.0.8",
     "react": "^19.0.0",

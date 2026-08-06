@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 
 import App from "./App.tsx";
 import { Provider } from "./provider.tsx";
+import "aura-glass/tokens/css";
 import "@/styles/globals.css";
 import { setInitialLanguage } from "./i18n";
 import { getConfig } from "./utils/configService";
