@@ -12,7 +12,7 @@ import {
   type DragEndEvent,
   type DragMoveEvent,
 } from "@dnd-kit/core";
-import { ProgressCircle } from "@heroui/react";
+import { GlassProgressCircle } from "@/components/ui/glass";
 import { CardConfig } from "@/types/dashboard";
 import { updateCardLayout } from "@/utils/dashboardConfig";
 import { useLongPressDrag } from "@/hooks/useLongPressDrag";
@@ -331,17 +331,17 @@ function FreeDragCard({
       {/* Long Press Progress Circle - Top Right Corner */}
       {!isEditMode && !isDragging && longPressProgress > 0 && (
         <div className="absolute top-2 right-2 z-50 pointer-events-none">
-          <ProgressCircle
+          <GlassProgressCircle
             aria-label="Loading"
             value={longPressProgress}
             size="sm"
-            className="w-12 h-12"
+            className="w-12 h-12 text-primary"
           >
-            <ProgressCircle.Track>
-              <ProgressCircle.TrackCircle />
-              <ProgressCircle.FillCircle />
-            </ProgressCircle.Track>
-          </ProgressCircle>
+            <GlassProgressCircle.Track>
+              <GlassProgressCircle.TrackCircle />
+              <GlassProgressCircle.FillCircle />
+            </GlassProgressCircle.Track>
+          </GlassProgressCircle>
           {/* Progress percentage text */}
           <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-primary drop-shadow-md">
             {Math.round(longPressProgress)}%

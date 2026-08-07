@@ -1,5 +1,5 @@
 import { Component, Suspense, type ErrorInfo, type ReactNode } from "react";
-import { Card } from "@heroui/react";
+import { GlassCard } from "@/components/ui/glass";
 import { LoadingBlock } from "@/components/ui/loading-block";
 
 interface CardWrapperProps {
@@ -43,16 +43,16 @@ export function CardWrapper({ children, fallback }: CardWrapperProps) {
 
 function LoadingSkeleton() {
   return (
-    <Card className="p-6 glass-surface border border-separator/80">
+    <GlassCard className="p-6 glass-surface border border-separator/80">
       <LoadingBlock label="" minHeight={120} />
-    </Card>
+    </GlassCard>
   );
 }
 
 function ErrorState() {
   return (
-    <Card className="p-6 glass-surface border border-separator/80">
+    <GlassCard className="p-6 glass-surface border border-separator/80">
       <p className="text-danger text-center">加载失败</p>
-    </Card>
+    </GlassCard>
   );
 }

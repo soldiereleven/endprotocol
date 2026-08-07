@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Card, ProgressCircle } from "@heroui/react";
+import { GlassCard, GlassProgressCircle } from "@/components/ui/glass";
 import { invoke } from "@tauri-apps/api/core";
 import { getSelectedAccount, getAccounts, type Account } from "@/utils/accountService";
 import { resolveServerLabel } from "@/types";
@@ -78,29 +78,29 @@ export default function AttendancePage() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-24">
-          <ProgressCircle isIndeterminate size="lg" aria-label="Loading">
-            <ProgressCircle.Track>
-              <ProgressCircle.TrackCircle />
-              <ProgressCircle.FillCircle />
-            </ProgressCircle.Track>
-          </ProgressCircle>
+          <GlassProgressCircle isIndeterminate size="lg" aria-label="Loading" className="text-primary">
+            <GlassProgressCircle.Track>
+              <GlassProgressCircle.TrackCircle />
+              <GlassProgressCircle.FillCircle />
+            </GlassProgressCircle.Track>
+          </GlassProgressCircle>
         </div>
       ) : error ? (
-        <Card className="p-16 glass-surface border border-separator/90">
+        <GlassCard className="p-16 glass-surface border border-separator/90">
           <div className="text-center text-muted">
             <p>{error}</p>
           </div>
-        </Card>
+        </GlassCard>
       ) : !attendanceData ? (
-        <Card className="p-16 glass-surface border border-separator/90">
+        <GlassCard className="p-16 glass-surface border border-separator/90">
           <div className="text-center text-muted">
             <p>{t("card:attendance_no_account")}</p>
           </div>
-        </Card>
+        </GlassCard>
       ) : (
-        <Card className="p-6 glass-surface border border-separator/90">
+        <GlassCard className="p-6 glass-surface border border-separator/90">
           <AttendanceRewards attendanceData={attendanceData} />
-        </Card>
+        </GlassCard>
       )}
     </div>
   );

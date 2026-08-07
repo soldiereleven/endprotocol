@@ -1,4 +1,4 @@
-import { Card, ProgressCircle, Spinner } from "@heroui/react";
+import { GlassCard, GlassProgressCircle, GlassSpinner } from "@/components/ui/glass";
 import clsx from "clsx";
 
 interface LoadingBlockProps {
@@ -24,12 +24,12 @@ export function LoadingBlock({
       style={{ minHeight }}
       role="status"
     >
-      <ProgressCircle isIndeterminate size="lg" aria-label="Loading">
-        <ProgressCircle.Track>
-          <ProgressCircle.TrackCircle />
-          <ProgressCircle.FillCircle />
-        </ProgressCircle.Track>
-      </ProgressCircle>
+      <GlassProgressCircle isIndeterminate size="lg" aria-label="Loading">
+        <GlassProgressCircle.Track>
+          <GlassProgressCircle.TrackCircle />
+          <GlassProgressCircle.FillCircle />
+        </GlassProgressCircle.Track>
+      </GlassProgressCircle>
       {label && <p className="text-sm text-muted/70 animate-pulse-soft">{label}</p>}
     </div>
   );
@@ -39,7 +39,7 @@ export function LoadingBlock({
 export function LoadingInline({ label }: { label?: React.ReactNode }) {
   return (
     <span className="inline-flex items-center gap-2" role="status">
-      <Spinner size="sm" color="current" />
+      <GlassSpinner size="sm" color="current" />
       {label && <span>{label}</span>}
     </span>
   );
@@ -68,7 +68,7 @@ export function SkeletonList({
       aria-hidden
     >
       {Array.from({ length: count }).map((_, i) => (
-        <Card
+        <GlassCard
           key={i}
           className="p-4 glass-surface border border-separator/80"
           style={{ height: rowHeight }}
@@ -84,7 +84,7 @@ export function SkeletonList({
               <div className="w-20 h-8 rounded-lg bg-gradient-to-r from-default-200 to-default-100 animate-pulse" />
             </div>
           </div>
-        </Card>
+        </GlassCard>
       ))}
     </div>
   );

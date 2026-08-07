@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Button, Input, Chip } from "@heroui/react";
+import { GlassButton, GlassChip, GlassInput } from "@/components/ui/glass";
 import {
   CustomModal,
   CustomModalHeader,
@@ -101,7 +101,7 @@ export function TabEditorModal({
             <label className="text-sm font-medium">
               {i18n.language === "zh" ? "名称" : "Name"}
             </label>
-            <Input
+            <GlassInput
               placeholder={
                 i18n.language === "zh" ? "输入标签页名称" : "Enter tab name"
               }
@@ -144,7 +144,7 @@ export function TabEditorModal({
               {i18n.language === "zh" ? "标签" : "Tags"}
             </label>
             <div className="flex gap-2 mb-2">
-              <Input
+              <GlassInput
                 placeholder={
                   i18n.language === "zh"
                     ? "输入标签后按回车"
@@ -159,14 +159,14 @@ export function TabEditorModal({
                   }
                 }}
               />
-              <Button variant="outline" onPress={handleAddTag}>
+              <GlassButton variant="outline" onPress={handleAddTag}>
                 {i18n.language === "zh" ? "添加" : "Add"}
-              </Button>
+              </GlassButton>
             </div>
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {tags.map((tag) => (
-                  <Chip key={tag} variant="soft" color="accent">
+                  <GlassChip key={tag} variant="soft" color="accent">
                     <div className="flex items-center gap-1">
                       <span>{tag}</span>
                       <button
@@ -179,7 +179,7 @@ export function TabEditorModal({
                         </svg>
                       </button>
                     </div>
-                  </Chip>
+                  </GlassChip>
                 ))}
               </div>
             )}
@@ -230,16 +230,16 @@ export function TabEditorModal({
         </div>
       </CustomModalBody>
       <CustomModalFooter>
-        <Button variant="ghost" onPress={onClose}>
+        <GlassButton variant="ghost" onPress={onClose}>
           {i18n.language === "zh" ? "取消" : "Cancel"}
-        </Button>
-        <Button
+        </GlassButton>
+        <GlassButton
           variant="primary"
           onPress={handleSave}
           isDisabled={!name.trim() || !defaultRoleId}
         >
           {i18n.language === "zh" ? "保存" : "Save"}
-        </Button>
+        </GlassButton>
       </CustomModalFooter>
     </CustomModal>
   );

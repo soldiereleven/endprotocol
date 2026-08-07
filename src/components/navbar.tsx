@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Link, TextField, InputGroup, Button, Kbd } from "@heroui/react";
+import { GlassButton, GlassKbd, GlassLink } from "@/components/ui/glass";
 import { useTranslation } from "react-i18next";
 
 import { siteConfig } from "@/config/site";
@@ -18,58 +18,56 @@ export const Navbar = () => {
   const { t } = useTranslation();
 
   const searchInput = (
-    <TextField aria-label="Search" type="search">
-      <InputGroup>
-        <InputGroup.Prefix>
-          <SearchIcon className="text-base text-muted pointer-events-none flex-shrink-0" />
-        </InputGroup.Prefix>
-        <InputGroup.Input className="text-sm" placeholder={t('common.search')} />
-        <InputGroup.Suffix>
-          <Kbd className="hidden lg:inline-flex">
-            <Kbd.Abbr keyValue="command" />
-            <Kbd.Content>K</Kbd.Content>
-          </Kbd>
-        </InputGroup.Suffix>
-      </InputGroup>
-    </TextField>
+    <div className="glass-field flex h-9 w-56 items-center gap-2 rounded-xl px-3 transition-all duration-200 focus-within:ring-2 focus-within:ring-primary/40">
+      <SearchIcon className="text-base text-muted pointer-events-none flex-shrink-0" />
+      <input
+        type="search"
+        placeholder={t('common.search')}
+        className="h-full w-full min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted/70 outline-none"
+      />
+      <GlassKbd className="hidden lg:inline-flex">
+        <GlassKbd.Abbr keyValue="command" />
+        <GlassKbd.Content>K</GlassKbd.Content>
+      </GlassKbd>
+    </div>
   );
 
   return (
     <nav className="sticky top-0 z-40 w-full border-b border-separator glass-surface">
       <header className="mx-auto flex h-16 max-w-[1280px] items-center justify-end gap-4 px-6">
         <div className="flex items-center gap-2">
-          <Link
+          <GlassLink
             aria-label="Github"
             href={siteConfig.links.github}
             rel="noopener noreferrer"
             target="_blank"
           >
             <GithubIcon className="text-muted" />
-          </Link>
+          </GlassLink>
           <ThemeSwitch />
           <LanguageSwitch />
           <div className="hidden lg:flex">{searchInput}</div>
           <div className="hidden md:flex">
-            <Button
+            <GlassButton
               className="text-sm font-normal"
               variant="tertiary"
               onPress={() => window.open(siteConfig.links.sponsor, "_blank")}
             >
               <HeartFilledIcon className="text-danger" />
               {t('common.sponsor')}
-            </Button>
+            </GlassButton>
           </div>
         </div>
 
         <div className="flex sm:hidden items-center gap-2">
-          <Link
+          <GlassLink
             aria-label="Github"
             href={siteConfig.links.github}
             rel="noopener noreferrer"
             target="_blank"
           >
             <GithubIcon className="text-muted" />
-          </Link>
+          </GlassLink>
           <ThemeSwitch />
           <LanguageSwitch />
           <button

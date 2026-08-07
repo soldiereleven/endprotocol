@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Button, Card, Input } from "@heroui/react";
+import { GlassButton, GlassCard, GlassInput } from "@/components/ui/glass";
 import {
   CustomModal,
   CustomModalHeader,
@@ -110,27 +110,27 @@ export function AddCardModal({
       <CustomModalBody>
         <div className="space-y-3">
           {/* Search box */}
-          <div className="relative">
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <Input
-              placeholder={t("common.search") || "Search..."}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              className="w-full pl-8 h-8"
-            />
-          </div>
+          <GlassInput
+            placeholder={t("common.search") || "Search..."}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            size="sm"
+            startContent={
+              <svg
+                className="w-4 h-4 text-muted pointer-events-none"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            }
+          />
 
           {/* Filter toggle and tags */}
           {allTags.length > 0 && (
@@ -197,14 +197,15 @@ export function AddCardModal({
               const isSelected = selectedType === card.id;
 
               return (
-                <Card
+                <GlassCard
                   key={card.id}
+                  isPressable
+                  onPress={() => setSelectedType(card.id)}
                   className={`p-4 cursor-pointer transition-all ${
                     isSelected
                       ? "border-[3px] border-blue-500 bg-blue-50 dark:bg-blue-900/40 shadow-md scale-[1.02]"
                       : "hover:border-blue-400/50 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-2 border-transparent"
                   }`}
-                  onClick={() => setSelectedType(card.id)}
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">{card.icon}</span>
@@ -229,23 +230,23 @@ export function AddCardModal({
                       )}
                     </div>
                   </div>
-                </Card>
+                </GlassCard>
               );
             })
           )}
         </div>
       </CustomModalBody>
       <CustomModalFooter>
-        <Button variant="secondary" onPress={handleClose}>
+        <GlassButton variant="secondary" onPress={handleClose}>
           {t("common.cancel") || "Cancel"}
-        </Button>
-        <Button
+        </GlassButton>
+        <GlassButton
           variant="primary"
           isDisabled={!selectedType}
           onPress={handleConfirm}
         >
           {t("common.confirm") || "Confirm"}
-        </Button>
+        </GlassButton>
       </CustomModalFooter>
     </CustomModal>
   );

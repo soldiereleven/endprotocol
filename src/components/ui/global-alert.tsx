@@ -1,4 +1,4 @@
-import { Alert } from "@heroui/react";
+import { GlassAlert } from "@/components/ui/glass";
 import { useEffect, useState } from "react";
 
 type GlobalAlertTone = "success" | "danger" | "warning" | "default";
@@ -49,15 +49,15 @@ export function GlobalAlertHost() {
 
   return (
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-slide-down">
-      <Alert
+      <GlassAlert
         status={current.tone}
         className="shadow-lg min-w-[300px] max-w-[500px]"
       >
-        <Alert.Indicator />
-        <Alert.Content>
-          <Alert.Description>{current.message}</Alert.Description>
-        </Alert.Content>
-      </Alert>
+        <GlassAlert.Indicator />
+        <GlassAlert.Content>
+          <GlassAlert.Description>{current.message}</GlassAlert.Description>
+        </GlassAlert.Content>
+      </GlassAlert>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { BaseCardProps } from "../registry/types";
 import { useCardData } from "../base/use-card-data";
 import { useTranslation } from "react-i18next";
-import { Card, ProgressCircle } from "@heroui/react";
+import { GlassCard, GlassProgressCircle } from "@/components/ui/glass";
 import logger from "@/utils/logger";
 
 /**
@@ -68,31 +68,31 @@ export default function TemplateCard({
   // 加载状态
   if (isLoading) {
     return (
-      <Card className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
-        <ProgressCircle isIndeterminate size="md" aria-label="Loading">
-          <ProgressCircle.Track>
-            <ProgressCircle.TrackCircle />
-            <ProgressCircle.FillCircle />
-          </ProgressCircle.Track>
-        </ProgressCircle>
-      </Card>
+      <GlassCard className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
+        <GlassProgressCircle isIndeterminate size="md" aria-label="Loading" className="text-primary">
+          <GlassProgressCircle.Track>
+            <GlassProgressCircle.TrackCircle />
+            <GlassProgressCircle.FillCircle />
+          </GlassProgressCircle.Track>
+        </GlassProgressCircle>
+      </GlassCard>
     );
   }
 
   // 错误状态
   if (error) {
     return (
-      <Card className="p-6 glass-surface border border-separator/90">
+      <GlassCard className="p-6 glass-surface border border-separator/90">
         <p className="text-danger text-center">
           {t("common.load_error") || "加载失败"}
         </p>
-      </Card>
+      </GlassCard>
     );
   }
 
   // 正常渲染
   return (
-    <Card className="p-6 glass-surface border border-separator/90 h-full w-full">
+    <GlassCard className="p-6 glass-surface border border-separator/90 h-full w-full">
       <div className="space-y-4">
         <h3 className="font-semibold text-foreground text-base">
           {t("template_card.title") || "Template Card"}
@@ -110,6 +110,6 @@ export default function TemplateCard({
           </div>
         )}
       </div>
-    </Card>
+    </GlassCard>
   );
 }

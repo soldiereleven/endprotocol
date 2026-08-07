@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Card, ProgressCircle } from "@heroui/react";
+import { GlassCard, GlassProgressCircle } from "@/components/ui/glass";
 import { getSelectedAccount } from "@/utils/accountService";
 import { roleDataService } from "@/utils/roleDataService";
 import { MedalBrowser } from "@/components/cards/achievement/medal-browser";
@@ -58,19 +58,19 @@ export default function MedalsPage() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-24">
-          <ProgressCircle isIndeterminate size="lg" aria-label="Loading">
-            <ProgressCircle.Track>
-              <ProgressCircle.TrackCircle />
-              <ProgressCircle.FillCircle />
-            </ProgressCircle.Track>
-          </ProgressCircle>
+          <GlassProgressCircle isIndeterminate size="lg" aria-label="Loading" className="text-primary">
+            <GlassProgressCircle.Track>
+              <GlassProgressCircle.TrackCircle />
+              <GlassProgressCircle.FillCircle />
+            </GlassProgressCircle.Track>
+          </GlassProgressCircle>
         </div>
       ) : medals.length === 0 ? (
-        <Card className="p-16 glass-surface border border-separator/90">
+        <GlassCard className="p-16 glass-surface border border-separator/90">
           <div className="text-center text-muted">
             <p>{t("card:ach_no_medals")}</p>
           </div>
-        </Card>
+        </GlassCard>
       ) : (
         <div className="flex-1 min-h-0">
           <MedalBrowser medals={medals} />

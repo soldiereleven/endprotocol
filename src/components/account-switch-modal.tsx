@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Card, Input } from "@heroui/react";
+import { GlassCard, GlassInput } from "@/components/ui/glass";
 import {
   CustomModal,
   CustomModalHeader,
@@ -103,15 +103,16 @@ export default function AccountSwitchModal({
       </CustomModalHeader>
       <CustomModalBody>
         {/* Search */}
-        <div className="mb-4 bg-default-100 hover:bg-default-200 transition-colors rounded-lg h-10 flex items-center px-3 gap-2">
-          <SearchIcon className="text-base text-muted pointer-events-none flex-shrink-0" />
-          <Input
+        <div className="mb-4">
+          <GlassInput
             type="search"
             placeholder={t("account_switch.search_placeholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 h-8 bg-transparent border-0 shadow-none"
-            variant="primary"
+            className="h-10"
+            startContent={
+              <SearchIcon className="text-base text-muted pointer-events-none flex-shrink-0" />
+            }
           />
         </div>
 
@@ -129,14 +130,15 @@ export default function AccountSwitchModal({
               const isSelected = account.id === currentAccountId;
               const isSwitching = switchingId === account.id;
               return (
-                <Card
+                <GlassCard
                   key={account.id}
                   className={`p-3 cursor-pointer transition-all hover:shadow-md ${
                     isSelected
                       ? "border-2 border-primary bg-primary-50 dark:bg-primary-900/20"
                       : "border border-separator hover:border-content3/50"
                   }`}
-                  onClick={() =>
+                  isPressable
+                  onPress={() =>
                     !isSwitching && handleSwitchAccount(account.id)
                   }
                 >
@@ -167,7 +169,7 @@ export default function AccountSwitchModal({
                       <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                     )}
                   </div>
-                </Card>
+                </GlassCard>
               );
             })
           )}

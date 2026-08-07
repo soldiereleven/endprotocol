@@ -1,4 +1,4 @@
-import { Pagination } from "@heroui/react";
+import { cn } from "@/lib/cn";
 
 interface SimplePaginationProps {
   total: number;
@@ -9,8 +9,7 @@ interface SimplePaginationProps {
 }
 
 /**
- * 统一的分页组件
- * 基于 HeroUI v3 Pagination compound API 构建
+ * 统一的分页组件（液态玻璃风格）
  */
 export const SimplePagination: React.FC<SimplePaginationProps> = ({
   total,
@@ -49,49 +48,63 @@ export const SimplePagination: React.FC<SimplePaginationProps> = ({
     }
   }
 
+  const itemClass = (active: boolean) =>
+    cn(
+      "glass-surface flex h-8 min-w-8 items-center justify-center rounded-xl border px-2 text-xs transition-all duration-200",
+      "cursor-pointer select-none hover:border-primary/50 hover:text-primary",
+      active
+        ? "border-primary bg-primary/15 text-primary font-semibold"
+        : "border-separator/70 text-foreground",
+    );
+
   return (
-    <Pagination size="sm">
-      <Pagination.Content>
-        {showControls && (
-          <Pagination.Item>
-            <Pagination.Previous
-              isDisabled={page === 1}
-              onPress={() => onChange(Math.max(1, page - 1))}
-            >
-              <Pagination.PreviousIcon />
-            </Pagination.Previous>
-          </Pagination.Item>
-        )}
-        {pages.map((p, idx) => {
-          if (p === "ellipsis-start" || p === "ellipsis-end") {
-            return (
-              <Pagination.Item key={`${p}-${idx}`}>
-                <Pagination.Ellipsis />
-              </Pagination.Item>
-            );
-          }
+    <nav className="inline-flex items-center gap-1.5" aria-label="Pagination">
+      {showControls && (
+        <button
+          type="button"
+          className={cn(itemClass(false), "px-2.5", page === 1 && "pointer-events-none opacity-40")}
+          onClick={() => onChange(Math.max(1, page - 1))}
+          aria-label="Previous page"
+          disabled={page === 1}
+        >
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M7.5 2.5 4 6l3.5 3.5" />
+          </svg>
+        </button>
+      )}
+      {pages.map((p, idx) => {
+        if (p === "ellipsis-start" || p === "ellipsis-end") {
           return (
-            <Pagination.Item key={p}>
-              <Pagination.Link
-                isActive={p === page}
-                onPress={() => onChange(p)}
-              >
-                {p}
-              </Pagination.Link>
-            </Pagination.Item>
+            <span key={`${p}-${idx}`} className="flex h-8 w-6 items-center justify-center text-muted">
+              …
+            </span>
           );
-        })}
-        {showControls && (
-          <Pagination.Item>
-            <Pagination.Next
-              isDisabled={page === last}
-              onPress={() => onChange(Math.min(last, page + 1))}
-            >
-              <Pagination.NextIcon />
-            </Pagination.Next>
-          </Pagination.Item>
-        )}
-      </Pagination.Content>
-    </Pagination>
+        }
+        return (
+          <button
+            key={p}
+            type="button"
+            className={itemClass(p === page)}
+            onClick={() => onChange(p)}
+            aria-current={p === page ? "page" : undefined}
+          >
+            {p}
+          </button>
+        );
+      })}
+      {showControls && (
+        <button
+          type="button"
+          className={cn(itemClass(false), "px-2.5", page === last && "pointer-events-none opacity-40")}
+          onClick={() => onChange(Math.min(last, page + 1))}
+          aria-label="Next page"
+          disabled={page === last}
+        >
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4.5 2.5 8 6l-3.5 3.5" />
+          </svg>
+        </button>
+      )}
+    </nav>
   );
 };

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Button, Input, Chip } from "@heroui/react";
+import { GlassButton, GlassChip, GlassInput } from "@/components/ui/glass";
 import { useTranslation } from "react-i18next";
 import { DashboardTab } from "@/types/dashboard";
 import { getTabIcon } from "@/utils/tabIcons";
@@ -53,8 +53,8 @@ export function TabSelector({
 
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-4 h-4" />
-            <Input
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-4 h-4 z-10" />
+            <GlassInput
               placeholder={
                 i18n.language === "zh" ? "搜索标签页..." : "Search tabs..."
               }
@@ -63,13 +63,13 @@ export function TabSelector({
               className="pl-10"
             />
           </div>
-          <Button
+          <GlassButton
             variant="primary"
             onPress={onCreateTab}
           >
             <PlusIcon size={18} />
             {i18n.language === "zh" ? "新建标签页" : "New Tab"}
-          </Button>
+          </GlassButton>
         </div>
 
         {filteredTabs.length === 0 ? (
@@ -90,13 +90,13 @@ export function TabSelector({
                     : "Click 'New Tab' to create your first tab")}
             </p>
             {!searchQuery && (
-              <Button
+              <GlassButton
                 variant="outline"
                 onPress={onCreateTab}
               >
                 <PlusIcon size={18} />
                 {i18n.language === "zh" ? "创建第一个标签页" : "Create First Tab"}
-              </Button>
+              </GlassButton>
             )}
           </div>
         ) : (
@@ -131,14 +131,14 @@ export function TabSelector({
 
                   <div className="flex flex-wrap gap-1 mt-3">
                     {tab.defaultRoleId && (
-                      <Chip variant="soft" size="sm" color="success">
+                      <GlassChip variant="soft" size="sm" color="success">
                         {i18n.language === "zh" ? "已绑定角色" : "Role set"}
-                      </Chip>
+                      </GlassChip>
                     )}
                     {tab.tags.map((tag) => (
-                      <Chip key={tag} variant="soft" size="sm">
+                      <GlassChip key={tag} variant="soft" size="sm">
                         {tag}
-                      </Chip>
+                      </GlassChip>
                     ))}
                   </div>
 

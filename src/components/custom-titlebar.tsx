@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Button } from "@heroui/react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
@@ -71,7 +70,7 @@ export const CustomTitlebar = () => {
 
   return (
     <div
-      className="h-11 flex items-center px-5 relative"
+      className="h-11 flex items-center pl-5 pr-2 relative"
       style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
     >
       <div
@@ -88,41 +87,35 @@ export const CustomTitlebar = () => {
       />
 
       <div
-        className="flex items-center gap-1 px-2 py-1 rounded-xl bg-default-100/60 hover:bg-default-100/80 transition-colors"
+        className="flex items-center gap-1 px-2 rounded-xl glass-surface border border-separator/60"
         style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
       >
-        <Button
-          isIconOnly
-          size="sm"
-          variant="ghost"
-          onPress={handleMinimize}
+        <button
+          type="button"
+          onClick={handleMinimize}
           aria-label="Minimize"
-          className="h-7 w-7 min-w-7 rounded-lg hover:bg-default-200/60"
+          className="flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-muted transition-colors duration-200 hover:border-separator/70 hover:text-foreground cursor-pointer"
         >
           <MinimizeIcon size={14} />
-        </Button>
+        </button>
 
-        <Button
-          isIconOnly
-          size="sm"
-          variant="ghost"
-          onPress={handleMaximize}
+        <button
+          type="button"
+          onClick={handleMaximize}
           aria-label={isMaximized ? "Restore" : "Maximize"}
-          className="h-7 w-7 min-w-7 rounded-lg hover:bg-default-200/60"
+          className="flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-muted transition-colors duration-200 hover:border-separator/70 hover:text-foreground cursor-pointer"
         >
           {isMaximized ? <RestoreIcon size={14} /> : <MaximizeIcon size={14} />}
-        </Button>
+        </button>
 
-        <Button
-          isIconOnly
-          size="sm"
-          variant="ghost"
-          onPress={handleClose}
+        <button
+          type="button"
+          onClick={handleClose}
           aria-label="Close"
-          className="h-7 w-7 min-w-7 rounded-lg hover:bg-danger/20 hover:text-danger transition-colors"
+          className="flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-muted transition-colors duration-200 hover:border-danger/40 hover:text-danger cursor-pointer"
         >
           <CloseIcon size={14} />
-        </Button>
+        </button>
       </div>
     </div>
   );

@@ -1,5 +1,14 @@
 import { useTranslation } from "react-i18next";
-import { Card, Button, Switch, NumberField, Label, Meter, Table, Skeleton } from "@heroui/react";
+import {
+  GlassButton,
+  GlassCard,
+  GlassLabel,
+  GlassMeter,
+  GlassNumberField,
+  GlassSkeleton,
+  GlassSwitch,
+  GlassTable,
+} from "@/components/ui/glass";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { getConfig, setConfig } from "@/utils/configService";
 import { cacheManager, CacheMode } from "@/utils/imageCacheManager";
@@ -227,7 +236,7 @@ export default function DeveloperPage() {
 
       <div className="grid grid-cols-1 gap-6">
         {/* Image Cache Settings */}
-        <Card id="developer-cache" className="p-6 glass-surface border border-separator/90 overflow-hidden">
+        <GlassCard id="developer-cache" className="p-6 glass-surface border border-separator/90 overflow-hidden">
           <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
             <span className="w-1 h-5 bg-primary rounded-full" />
             {t("settings.cache.title")}
@@ -236,10 +245,10 @@ export default function DeveloperPage() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-2">
-                  <Skeleton className="w-32 h-4 rounded-lg" />
-                  <Skeleton className="w-48 h-3 rounded-lg" />
+                  <GlassSkeleton className="w-32 h-4 rounded-lg" />
+                  <GlassSkeleton className="w-48 h-3 rounded-lg" />
                 </div>
-                <Skeleton className="w-12 h-6 rounded-full" />
+                <GlassSkeleton className="w-12 h-6 rounded-full" />
               </div>
             </div>
           ) : (
@@ -255,15 +264,15 @@ export default function DeveloperPage() {
                     : t("settings.cache.mode_manual_desc")}
                 </p>
               </div>
-              <Switch
+              <GlassSwitch
                 isSelected={cacheMode === "smart"}
-                onChange={(v) => handleCacheModeChange(v ? "smart" : "manual")}
+                onValueChange={(v) => handleCacheModeChange(v ? "smart" : "manual")}
                 className="shrink-0"
               >
-                <Switch.Control>
-                  <Switch.Thumb />
-                </Switch.Control>
-              </Switch>
+                <GlassSwitch.Control>
+                  <GlassSwitch.Thumb />
+                </GlassSwitch.Control>
+              </GlassSwitch>
             </div>
 
             {cacheMode === "manual" && (
@@ -279,7 +288,7 @@ export default function DeveloperPage() {
                       {t("settings.cache.max_entries_desc")}
                     </p>
                   </div>
-                    <NumberField
+                    <GlassNumberField
                       value={cacheMaxEntries}
                       onChange={(v) => handleCacheMaxEntriesChange(v)}
                       minValue={10}
@@ -287,12 +296,12 @@ export default function DeveloperPage() {
                       aria-label={t("settings.cache.max_entries")}
                       className="shrink-0"
                     >
-                      <NumberField.Group className="text-foreground">
-                        <NumberField.DecrementButton aria-label="Decrease" className="text-foreground" />
-                        <NumberField.Input className="w-[120px]" />
-                        <NumberField.IncrementButton aria-label="Increase" className="text-foreground" />
-                      </NumberField.Group>
-                    </NumberField>
+                      <GlassNumberField.Group className="text-foreground">
+                        <GlassNumberField.DecrementButton aria-label="Decrease" className="text-foreground" />
+                        <GlassNumberField.Input className="w-[120px]" />
+                        <GlassNumberField.IncrementButton aria-label="Increase" className="text-foreground" />
+                      </GlassNumberField.Group>
+                    </GlassNumberField>
                 </div>
 
                 <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -304,7 +313,7 @@ export default function DeveloperPage() {
                       {t("settings.cache.max_size_mb_desc")}
                     </p>
                   </div>
-                    <NumberField
+                    <GlassNumberField
                       value={cacheMaxSizeMB}
                       onChange={(v) => handleCacheMaxSizeMBChange(v)}
                       minValue={10}
@@ -312,12 +321,12 @@ export default function DeveloperPage() {
                       aria-label={t("settings.cache.max_size_mb")}
                       className="shrink-0"
                     >
-                      <NumberField.Group className="text-foreground">
-                        <NumberField.DecrementButton aria-label="Decrease" className="text-foreground" />
-                        <NumberField.Input className="w-[120px]" />
-                        <NumberField.IncrementButton aria-label="Increase" className="text-foreground" />
-                      </NumberField.Group>
-                    </NumberField>
+                      <GlassNumberField.Group className="text-foreground">
+                        <GlassNumberField.DecrementButton aria-label="Decrease" className="text-foreground" />
+                        <GlassNumberField.Input className="w-[120px]" />
+                        <GlassNumberField.IncrementButton aria-label="Increase" className="text-foreground" />
+                      </GlassNumberField.Group>
+                    </GlassNumberField>
                 </div>
               </>
             )}
@@ -332,34 +341,34 @@ export default function DeveloperPage() {
                         {t("settings.cache.current_cache")}
                       </p>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onPress={cleanInactive}>
+                        <GlassButton variant="outline" size="sm" onPress={cleanInactive}>
                           {t("settings.cache.clean_inactive")}
-                        </Button>
-                        <Button variant="outline" size="sm" onPress={refreshCacheStats} className="shrink-0">
+                        </GlassButton>
+                        <GlassButton variant="outline" size="sm" onPress={refreshCacheStats} className="shrink-0">
                           {t("common.refresh")}
-                        </Button>
+                        </GlassButton>
                       </div>
                     </div>
 
-                  <Meter aria-label="entries-usage" value={Math.round((cacheStats.entries / Math.max(cacheStats.maxEntries, 1)) * 100)} className="w-full">
-                    <Label>
+                  <GlassMeter aria-label="entries-usage" value={Math.round((cacheStats.entries / Math.max(cacheStats.maxEntries, 1)) * 100)} className="w-full">
+                    <GlassLabel>
                       {t("settings.cache.entries_count")}: {cacheStats.entries} / {cacheStats.maxEntries}
-                    </Label>
-                    <Meter.Output />
-                    <Meter.Track>
-                      <Meter.Fill />
-                    </Meter.Track>
-                  </Meter>
+                    </GlassLabel>
+                    <GlassMeter.Output />
+                    <GlassMeter.Track>
+                      <GlassMeter.Fill />
+                    </GlassMeter.Track>
+                  </GlassMeter>
 
-                  <Meter aria-label="size-usage" value={cacheStats.maxSizeMB > 0 ? Math.round((cacheStats.totalSizeMB / cacheStats.maxSizeMB) * 100) : 0} className="w-full">
-                    <Label>
+                  <GlassMeter aria-label="size-usage" value={cacheStats.maxSizeMB > 0 ? Math.round((cacheStats.totalSizeMB / cacheStats.maxSizeMB) * 100) : 0} className="w-full">
+                    <GlassLabel>
                       {t("settings.cache.size_usage")}: {cacheStats.totalSizeMB} MB / {cacheStats.maxSizeMB} MB
-                    </Label>
-                    <Meter.Output />
-                    <Meter.Track>
-                      <Meter.Fill />
-                    </Meter.Track>
-                  </Meter>
+                    </GlassLabel>
+                    <GlassMeter.Output />
+                    <GlassMeter.Track>
+                      <GlassMeter.Fill />
+                    </GlassMeter.Track>
+                  </GlassMeter>
                 </div>
 
                 <div className="space-y-2">
@@ -377,18 +386,18 @@ export default function DeveloperPage() {
                   </button>
 
                   {showCacheTable && cacheEntries.length > 0 && (
-                    <Table>
-                      <Table.ScrollContainer>
-                        <Table.Content aria-label="Cached images" className="min-w-[400px]">
-                          <Table.Header>
-                            <Table.Column isRowHeader>{t("settings.cache.filename")}</Table.Column>
-                            <Table.Column>{t("settings.cache.size")}</Table.Column>
-                            <Table.Column>{t("settings.cache.status")}</Table.Column>
-                          </Table.Header>
-                          <Table.Body>
+                    <GlassTable>
+                      <GlassTable.ScrollContainer>
+                        <GlassTable.Content aria-label="Cached images" className="min-w-[400px]">
+                          <GlassTable.Header>
+                            <GlassTable.Column isRowHeader>{t("settings.cache.filename")}</GlassTable.Column>
+                            <GlassTable.Column>{t("settings.cache.size")}</GlassTable.Column>
+                            <GlassTable.Column>{t("settings.cache.status")}</GlassTable.Column>
+                          </GlassTable.Header>
+                          <GlassTable.Body>
                             {cacheEntries.map((entry) => (
-                              <Table.Row key={entry.path}>
-                                <Table.Cell className="font-mono text-xs truncate max-w-[200px]">
+                              <GlassTable.Row key={entry.path}>
+                                <GlassTable.Cell className="font-mono text-xs truncate max-w-[200px]">
                                   <button
                                     className="hover:text-primary transition-colors truncate block w-full text-left"
                                     onClick={() => revealItemInDir(entry.path)}
@@ -396,21 +405,21 @@ export default function DeveloperPage() {
                                   >
                                     {entry.path.split(/[\\/]/).pop()}
                                   </button>
-                                </Table.Cell>
-                                <Table.Cell>{entry.sizeKB} KB</Table.Cell>
-                                <Table.Cell>
+                                </GlassTable.Cell>
+                                <GlassTable.Cell>{entry.sizeKB} KB</GlassTable.Cell>
+                                <GlassTable.Cell>
                                   {entry.pinned
                                     ? t("settings.cache.status_pinned")
                                     : entry.refCount > 0
                                       ? t("settings.cache.status_active")
                                       : t("settings.cache.status_inactive")}
-                                </Table.Cell>
-                              </Table.Row>
+                                </GlassTable.Cell>
+                              </GlassTable.Row>
                             ))}
-                          </Table.Body>
-                        </Table.Content>
-                      </Table.ScrollContainer>
-                    </Table>
+                          </GlassTable.Body>
+                        </GlassTable.Content>
+                      </GlassTable.ScrollContainer>
+                    </GlassTable>
                   )}
 
                   {showCacheTable && cacheEntries.length === 0 && (
@@ -421,22 +430,22 @@ export default function DeveloperPage() {
             )}
           </div>
           )}
-        </Card>
+        </GlassCard>
 
         {/* Log Viewer */}
-        <Card id="developer-logs" className="p-6 glass-surface border border-separator/90 overflow-hidden">
+        <GlassCard id="developer-logs" className="p-6 glass-surface border border-separator/90 overflow-hidden">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <span className="w-1 h-5 bg-secondary rounded-full" />
               {t("settings.logs.title")}
             </h2>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onPress={fetchBackendLogs}>
+              <GlassButton variant="outline" size="sm" onPress={fetchBackendLogs}>
                 {t("common.refresh")}
-              </Button>
-              <Button variant="outline" size="sm" onPress={clearLogs}>
+              </GlassButton>
+              <GlassButton variant="outline" size="sm" onPress={clearLogs}>
                 {i18n.language === "zh" ? "清除" : "Clear"}
-              </Button>
+              </GlassButton>
             </div>
           </div>
 
@@ -542,7 +551,7 @@ export default function DeveloperPage() {
               </div>
             )}
           </div>
-        </Card>
+        </GlassCard>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "@heroui/react";
+import { GlassButton } from "@/components/ui/glass";
 import {
   CustomModal,
   CustomModalHeader,
@@ -142,16 +142,16 @@ export function CharacterListSizeModal({
         </div>
       </CustomModalBody>
       <CustomModalFooter>
-        <Button variant="secondary" onPress={handleClose}>
+        <GlassButton variant="secondary" onPress={handleClose}>
           {t("common.cancel") || "Cancel"}
-        </Button>
-        <Button
+        </GlassButton>
+        <GlassButton
           variant="primary"
           isDisabled={!selectedMode}
           onPress={handleConfirm}
         >
           {t("common.confirm") || "Confirm"}
-        </Button>
+        </GlassButton>
       </CustomModalFooter>
     </CustomModal>
   );

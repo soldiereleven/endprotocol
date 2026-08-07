@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Button, Card, ProgressCircle } from "@heroui/react";
+import { GlassButton, GlassCard, GlassProgressCircle } from "@/components/ui/glass";
 import { Img } from "@/utils/imageLoader";
 import { useImageRequest } from "@/utils/imageCacheManager";
 import { getSelectedAccount } from "@/utils/accountService";
@@ -174,7 +174,7 @@ function OperatorCard({ char, onClick }: { char: CharacterItem; onClick: () => v
 
   return (
     <div
-      className="group relative aspect-[3/4] rounded-xl overflow-hidden border border-separator/60 bg-content1 cursor-pointer transition-all duration-300 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5"
+      className="group relative aspect-[3/4] rounded-xl overflow-hidden border border-separator/60 glass-surface cursor-pointer transition-all duration-300 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5"
       onClick={onClick}
     >
       <Img
@@ -417,15 +417,15 @@ export default function CharactersPage() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-24">
-          <ProgressCircle isIndeterminate size="lg" aria-label="Loading">
-            <ProgressCircle.Track>
-              <ProgressCircle.TrackCircle />
-              <ProgressCircle.FillCircle />
-            </ProgressCircle.Track>
-          </ProgressCircle>
+          <GlassProgressCircle isIndeterminate size="lg" aria-label="Loading" className="text-primary">
+            <GlassProgressCircle.Track>
+              <GlassProgressCircle.TrackCircle />
+              <GlassProgressCircle.FillCircle />
+            </GlassProgressCircle.Track>
+          </GlassProgressCircle>
         </div>
       ) : !charDetail || charDetail.chars.length === 0 ? (
-        <Card className="p-16 glass-surface border border-separator/90">
+        <GlassCard className="p-16 glass-surface border border-separator/90">
           <div className="text-center">
             <svg
               className="w-16 h-16 mx-auto mb-4 opacity-30 text-muted"
@@ -444,7 +444,7 @@ export default function CharactersPage() {
               {t("common.no_results_found")}
             </p>
           </div>
-        </Card>
+        </GlassCard>
       ) : (
         <>
           <div className="flex flex-nowrap items-center gap-1.5 glass-surface p-2 rounded-xl border border-separator/90">
@@ -507,7 +507,7 @@ export default function CharactersPage() {
               onChange={(v) => setFilter("subAttr", v)}
             />
 
-            <Button
+            <GlassButton
               size="sm"
               variant="outline"
               isIconOnly
@@ -527,7 +527,7 @@ export default function CharactersPage() {
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                 />
               </svg>
-            </Button>
+            </GlassButton>
           </div>
 
           {filteredCharacters.length === 0 ? (

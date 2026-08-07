@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { Button } from "@heroui/react";
+import { GlassButton } from "@/components/ui/glass";
 import { EmptyStateUserIcon } from "@/components/ui/empty-state";
 
 interface ErrorBoundaryProps {
@@ -53,9 +53,9 @@ function DefaultErrorFallback({ onReset }: { onReset: () => void }) {
         <p className="text-sm text-muted">
           An unexpected error occurred. Please try again.
         </p>
-        <Button variant="primary" onPress={onReset}>
+        <GlassButton variant="primary" onPress={onReset}>
           Reload
-        </Button>
+        </GlassButton>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, Button, ProgressCircle } from "@heroui/react";
+import { GlassButton, GlassCard, GlassProgressCircle } from "@/components/ui/glass";
 import { useTranslation } from "react-i18next";
 import { BaseCardProps } from "../registry/types";
 import { useCardData } from "../base/use-card-data";
@@ -157,22 +157,22 @@ export default function AccountInfoCard({
 
   if (isLoading) {
     return (
-      <Card className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
-        <ProgressCircle isIndeterminate size="md" aria-label="Loading">
-          <ProgressCircle.Track>
-            <ProgressCircle.TrackCircle />
-            <ProgressCircle.FillCircle />
-          </ProgressCircle.Track>
-        </ProgressCircle>
-      </Card>
+      <GlassCard className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
+        <GlassProgressCircle isIndeterminate size="md" aria-label="Loading" className="text-primary">
+          <GlassProgressCircle.Track>
+            <GlassProgressCircle.TrackCircle />
+            <GlassProgressCircle.FillCircle />
+          </GlassProgressCircle.Track>
+        </GlassProgressCircle>
+      </GlassCard>
     );
   }
 
   if (!base) {
     return (
-      <Card className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
+      <GlassCard className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
         <p className="text-muted text-center text-sm">{t("card:no_data")}</p>
-      </Card>
+      </GlassCard>
     );
   }
 
@@ -185,7 +185,7 @@ export default function AccountInfoCard({
 
   return (
     <>
-      <Card
+      <GlassCard
         className="p-2.5 glass-surface border border-separator/90 h-full w-full select-none rounded-[10px] overflow-hidden"
       >
         <div className="flex items-start gap-2.5">
@@ -267,7 +267,7 @@ export default function AccountInfoCard({
             </div>
           ))}
         </div>
-      </Card>
+      </GlassCard>
 
       <CustomModal
         isOpen={isRoleSelectOpen}
@@ -314,9 +314,9 @@ export default function AccountInfoCard({
           </div>
         </CustomModalBody>
         <CustomModalFooter>
-          <Button variant="secondary" onPress={() => setIsRoleSelectOpen(false)}>
+          <GlassButton variant="secondary" onPress={() => setIsRoleSelectOpen(false)}>
             {t("common.cancel") || "Cancel"}
-          </Button>
+          </GlassButton>
         </CustomModalFooter>
       </CustomModal>
     </>

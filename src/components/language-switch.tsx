@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Input } from "@heroui/react";
+import { GlassInput } from "@/components/ui/glass";
 import { setConfig } from "@/utils/configService";
 
 // SVG flag components
@@ -145,11 +145,11 @@ export const LanguageSwitch = () => {
           onClick={(e) => e.stopPropagation()}
         >
           <div className="p-2 border-b border-separator">
-            <Input
+            <GlassInput
               placeholder="Search language..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8"
+              size="sm"
             />
           </div>
           <div className="max-h-[200px] overflow-y-auto py-1">

@@ -1,4 +1,4 @@
-import { Chip } from "@heroui/react";
+import { GlassChip } from "@/components/ui/glass";
 import clsx from "clsx";
 import type { AccountSyncStatus } from "@/types";
 
@@ -26,13 +26,13 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ config, className }: StatusBadgeProps) {
   return (
-    <Chip
+    <GlassChip
       size="sm"
       variant="soft"
       color={config.tone}
       className={clsx("font-bold tracking-wider text-[10px] h-5", className)}
     >
       {config.label}
-    </Chip>
+    </GlassChip>
   );
 }

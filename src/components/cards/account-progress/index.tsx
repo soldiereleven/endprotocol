@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, Button, ProgressCircle, Meter } from "@heroui/react";
+import { GlassButton, GlassCard, GlassMeter, GlassProgressCircle } from "@/components/ui/glass";
 import { useTranslation } from "react-i18next";
 import { BaseCardProps } from "../registry/types";
 import { useCardData } from "../base/use-card-data";
@@ -209,20 +209,20 @@ export default function AccountProgressCard({
 
   if (isLoading) {
     return (
-      <Card className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
-        <ProgressCircle isIndeterminate size="md" aria-label="Loading">
-          <ProgressCircle.Track>
-            <ProgressCircle.TrackCircle />
-            <ProgressCircle.FillCircle />
-          </ProgressCircle.Track>
-        </ProgressCircle>
-      </Card>
+      <GlassCard className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
+        <GlassProgressCircle isIndeterminate size="md" aria-label="Loading" className="text-primary">
+          <GlassProgressCircle.Track>
+            <GlassProgressCircle.TrackCircle />
+            <GlassProgressCircle.FillCircle />
+          </GlassProgressCircle.Track>
+        </GlassProgressCircle>
+      </GlassCard>
     );
   }
 
   return (
     <>
-      <Card className="p-2.5 glass-surface border border-separator/90 h-full w-full select-none rounded-[10px] overflow-hidden">
+      <GlassCard className="p-2.5 glass-surface border border-separator/90 h-full w-full select-none rounded-[10px] overflow-hidden">
         <div className="flex items-center justify-between gap-2 min-w-0 mb-2">
           <div className="flex items-center gap-2 min-w-0">
             <AccountAvatar
@@ -275,15 +275,15 @@ export default function AccountProgressCard({
             {barSections.map((s, idx) => (
               <div key={idx} className="flex items-center gap-2">
                 <span className="w-14 shrink-0 text-[10px] text-muted truncate">{s.label}</span>
-                <Meter
+                <GlassMeter
                   aria-label={s.label}
                   value={Math.min(100, Math.max(0, Math.round(s.percent * 100)))}
                   className="flex-1 min-w-0"
                 >
-                  <Meter.Track className="h-1.5 rounded-full bg-default-100">
-                    <Meter.Fill className="h-full rounded-full bg-gradient-to-r from-primary/70 to-primary transition-all duration-500" />
-                  </Meter.Track>
-                </Meter>
+                  <GlassMeter.Track className="bg-default-100">
+                    <GlassMeter.Fill className="bg-gradient-to-r from-primary/70 to-primary" />
+                  </GlassMeter.Track>
+                </GlassMeter>
                 <span className="w-12 shrink-0 text-right text-[11px] text-foreground font-mono truncate">
                   {s.value}
                 </span>
@@ -296,7 +296,7 @@ export default function AccountProgressCard({
             ))}
           </div>
         </div>
-      </Card>
+      </GlassCard>
 
       <CustomModal
         isOpen={isRoleSelectOpen}
@@ -343,9 +343,9 @@ export default function AccountProgressCard({
           </div>
         </CustomModalBody>
         <CustomModalFooter>
-          <Button variant="secondary" onPress={() => setIsRoleSelectOpen(false)}>
+          <GlassButton variant="secondary" onPress={() => setIsRoleSelectOpen(false)}>
             {t("common.cancel") || "Cancel"}
-          </Button>
+          </GlassButton>
         </CustomModalFooter>
       </CustomModal>
     </>

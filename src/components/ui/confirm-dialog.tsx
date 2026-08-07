@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { AlertDialog, Button, Modal } from "@heroui/react";
+import { GlassAlertDialog, GlassButton, GlassModal } from "@/components/ui/glass";
 
 type ConfirmTone = "primary" | "danger" | "warning";
 
@@ -54,29 +54,29 @@ export function ConfirmDialogHost() {
   const variant = opts.tone === "danger" ? "danger" : "primary";
 
   return (
-    <Modal
+    <GlassModal
       isOpen={open}
       onOpenChange={(o) => !o && close(false)}
     >
-      <Modal.Backdrop variant="blur" className="z-[100]">
-        <Modal.Container size="sm" placement="center" scroll="outside">
-          <Modal.Dialog className="glass-surface-strong border border-separator/90">
-            <Modal.Header>
-              <Modal.Heading>{opts.title}</Modal.Heading>
-            </Modal.Header>
-            <Modal.Body>{opts.body}</Modal.Body>
-            <Modal.Footer>
-              <Button variant="tertiary" onPress={() => close(false)}>
+      <GlassModal.Backdrop variant="blur" className="z-[100]">
+        <GlassModal.Container size="sm" placement="center" scroll="outside">
+          <GlassModal.Dialog className="glass-surface-strong border border-separator/90 p-0">
+            <GlassModal.Header>
+              <GlassModal.Heading>{opts.title}</GlassModal.Heading>
+            </GlassModal.Header>
+            <GlassModal.Body className="px-6 py-4">{opts.body}</GlassModal.Body>
+            <GlassModal.Footer className="flex items-center justify-end gap-2 px-6 py-4 border-t border-separator">
+              <GlassButton variant="tertiary" onPress={() => close(false)}>
                 {opts.cancelText ?? "Cancel"}
-              </Button>
-              <Button variant={variant} onPress={() => close(true)}>
+              </GlassButton>
+              <GlassButton variant={variant} onPress={() => close(true)}>
                 {opts.confirmText ?? "Confirm"}
-              </Button>
-            </Modal.Footer>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+              </GlassButton>
+            </GlassModal.Footer>
+          </GlassModal.Dialog>
+        </GlassModal.Container>
+      </GlassModal.Backdrop>
+    </GlassModal>
   );
 }
 
@@ -101,26 +101,26 @@ export function DevWarningDialog({
   cancelText,
 }: DevWarningDialogProps) {
   return (
-    <AlertDialog isOpen={isOpen} onOpenChange={onOpenChange}>
-      <AlertDialog.Backdrop>
-        <AlertDialog.Container>
-          <AlertDialog.Dialog className="sm:max-w-[400px]">
-            <AlertDialog.CloseTrigger />
-            <AlertDialog.Header>
-              <AlertDialog.Icon status="warning" />
-              <AlertDialog.Heading>{title}</AlertDialog.Heading>
-            </AlertDialog.Header>
-            <AlertDialog.Body>
+    <GlassAlertDialog isOpen={isOpen} onOpenChange={onOpenChange}>
+      <GlassAlertDialog.Backdrop>
+        <GlassAlertDialog.Container>
+          <GlassAlertDialog.Dialog className="sm:max-w-[400px]">
+            <GlassAlertDialog.CloseTrigger />
+            <GlassAlertDialog.Header>
+              <GlassAlertDialog.Icon status="warning" />
+              <GlassAlertDialog.Heading>{title}</GlassAlertDialog.Heading>
+            </GlassAlertDialog.Header>
+            <GlassAlertDialog.Body>
               <p>{body}</p>
-            </AlertDialog.Body>
-            <AlertDialog.Footer>
-              <Button
+            </GlassAlertDialog.Body>
+            <GlassAlertDialog.Footer>
+              <GlassButton
                 variant="tertiary"
                 onPress={() => onOpenChange(false)}
               >
                 {cancelText}
-              </Button>
-              <Button
+              </GlassButton>
+              <GlassButton
                 variant="primary"
                 onPress={() => {
                   onConfirm();
@@ -128,11 +128,11 @@ export function DevWarningDialog({
                 }}
               >
                 {confirmText}
-              </Button>
-            </AlertDialog.Footer>
-          </AlertDialog.Dialog>
-        </AlertDialog.Container>
-      </AlertDialog.Backdrop>
-    </AlertDialog>
+              </GlassButton>
+            </GlassAlertDialog.Footer>
+          </GlassAlertDialog.Dialog>
+        </GlassAlertDialog.Container>
+      </GlassAlertDialog.Backdrop>
+    </GlassAlertDialog>
   );
 }

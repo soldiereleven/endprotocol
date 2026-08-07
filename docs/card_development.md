@@ -223,7 +223,7 @@ const { t } = useTranslation();
 
 ### 4. 样式规范
 
-- 使用 HeroUI 组件保持视觉一致
+- 使用玻璃组件（`@/components/ui/glass`）保持视觉一致
 - 遵循项目的颜色系统
 - 支持深色模式
 
@@ -237,7 +237,7 @@ const { t } = useTranslation();
 
 ```typescript
 import { useState } from "react";
-import { Card, Button } from "@heroui/react";
+import { GlassButton, GlassCard } from "@/components/ui/glass";
 import { useTranslation } from "react-i18next";
 import { BaseCardProps } from "../registry/types";
 import { useCardData } from "../base/use-card-data";
@@ -280,15 +280,15 @@ export default function ExampleCard({
   }
 
   return (
-    <Card className="p-4">
+    <GlassCard className="p-4 glass-surface border border-separator/90">
       <h3>{data?.title || t("example.default_title")}</h3>
       <p>Count: {count}</p>
       {!isEditMode && (
-        <Button onPress={handleUpdate}>
+        <GlassButton onPress={handleUpdate}>
           Increment
-        </Button>
+        </GlassButton>
       )}
-    </Card>
+    </GlassCard>
   );
 }
 ```

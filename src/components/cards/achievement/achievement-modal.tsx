@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Button } from "@heroui/react";
+import { GlassButton } from "@/components/ui/glass";
 import { PlusIcon } from "@/components/ui/app-icon";
 import {
   CustomModal,
@@ -570,10 +570,10 @@ export function AchievementModal({
                     ))}
                   </div>
 
-                  <Button size="sm" variant="secondary" onPress={handleOpenList}>
+                  <GlassButton size="sm" variant="secondary" onPress={handleOpenList}>
                     <PlusIcon size={14} />
                     {t("card:ach_select_medals")}
-                  </Button>
+                  </GlassButton>
                 </div>
 
                 <div
@@ -615,12 +615,12 @@ export function AchievementModal({
             />
           </CustomModalBody>
           <CustomModalFooter>
-            <Button variant="secondary" onPress={handleListCancel}>
+            <GlassButton variant="secondary" onPress={handleListCancel}>
               {t("card:ach_cancel")}
-            </Button>
-            <Button variant="primary" onPress={handleListSave}>
+            </GlassButton>
+            <GlassButton variant="primary" onPress={handleListSave}>
               {t("card:ach_save")}
-            </Button>
+            </GlassButton>
           </CustomModalFooter>
         </>
       )}

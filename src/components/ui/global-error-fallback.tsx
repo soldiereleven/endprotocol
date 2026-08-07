@@ -1,4 +1,4 @@
-import { Button } from "@heroui/react";
+import { GlassButton } from "@/components/ui/glass";
 import { EmptyStateUserIcon } from "@/components/ui/empty-state";
 
 /** 应用根 ErrorBoundary 兜底 */
@@ -13,12 +13,12 @@ export function GlobalErrorFallback() {
         <p className="text-sm text-muted">
           The application encountered a critical error and cannot continue.
         </p>
-        <Button
+        <GlassButton
           variant="primary"
           onPress={() => window.location.reload()}
         >
           Reload Application
-        </Button>
+        </GlassButton>
       </div>
     </div>
   );

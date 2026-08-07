@@ -1,4 +1,4 @@
-import { Card } from "@heroui/react";
+import { GlassCard } from "@/components/ui/glass";
 import clsx from "clsx";
 
 interface SectionCardProps {
@@ -25,7 +25,7 @@ export function SectionCard({
   children,
 }: SectionCardProps) {
   return (
-    <Card
+    <GlassCard
       id={id}
       className={clsx(
         "glass-surface border border-separator/90 overflow-hidden transition-all duration-200 hover:shadow-md",
@@ -63,6 +63,6 @@ export function SectionCard({
       >
         {children}
       </div>
-    </Card>
+    </GlassCard>
   );
 }
