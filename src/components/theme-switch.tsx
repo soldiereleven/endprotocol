@@ -1,84 +1,103 @@
 import { FC, useState, useEffect, useCallback, useRef } from "react";
+import { SunFilledIcon, MoonFilledIcon, ComputerIcon } from "@/components/icons";
+import { getConfig } from "@/utils/configService";
 
-import { SunFilledIcon, MoonFilledIcon } from "@/components/icons";
+type ThemeMode = "light" | "dark" | "system";
 
 export interface ThemeSwitchProps {
   className?: string;
 }
 
+function applyThemeMode(mode: ThemeMode) {
+  const root = document.documentElement;
+  const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const isDark = mode === "dark" || (mode === "system" && systemDark);
+
+  root.classList.toggle("dark", isDark);
+  root.setAttribute("data-aura-mode", isDark ? "dark" : "light");
+}
+
 export const ThemeSwitch: FC<ThemeSwitchProps> = ({ className }) => {
   const [isMounted, setIsMounted] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">(
-    window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
-  );
+  const [themeMode, setThemeMode] = useState<ThemeMode>("system");
   const btnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    const root = document.documentElement;
-    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
-    const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initialTheme = savedTheme || (systemDark ? "dark" : "light");
-
-    setTheme(initialTheme);
-    root.classList.toggle("dark", initialTheme === "dark");
-    root.setAttribute("data-aura-mode", initialTheme);
-    setIsMounted(true);
+    const init = async () => {
+      const savedMode = await getConfig<ThemeMode>("theme_mode");
+      const mode = savedMode ?? "system";
+      setThemeMode(mode);
+      applyThemeMode(mode);
+      setIsMounted(true);
+    };
+    init();
   }, []);
 
-  const toggleTheme = useCallback(() => {
-    const newTheme = theme === "light" ? "dark" : "light";
+  useEffect(() => {
+    if (themeMode !== "system") return;
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = () => applyThemeMode("system");
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, [themeMode]);
 
-    const apply = () => {
-      setTheme(newTheme);
-      localStorage.setItem("theme", newTheme);
-      document.documentElement.classList.toggle("dark", newTheme === "dark");
-      document.documentElement.setAttribute("data-aura-mode", newTheme);
-      window.dispatchEvent(
-        new CustomEvent("themeChange", { detail: { theme: newTheme } }),
-      );
-    };
+  const cycleTheme = useCallback(() => {
+    const modes: ThemeMode[] = ["light", "dark", "system"];
+    const currentIdx = modes.indexOf(themeMode);
+    const nextMode = modes[(currentIdx + 1) % modes.length];
 
-    // 淡出 → 切换 → 淡入。透明玻璃下快照无法覆盖内容，View Transition 的
-    // 揭示动画会直接看到已切换的新主题，故改为对 #root 做透明度过渡，任何
-    // 背景（含透明 acrylic）下都稳定可见。
     const rootEl = document.getElementById("root");
-    if (!rootEl) {
-      apply();
-      return;
-    }
-
-    rootEl.style.transition = "opacity 0.16s ease";
-    rootEl.style.opacity = "0";
-    setTimeout(() => {
-      apply();
-      requestAnimationFrame(() => {
+    if (rootEl) {
+      rootEl.style.transition = "opacity 0.16s ease";
+      rootEl.style.opacity = "0";
+      setTimeout(() => {
+        setThemeMode(nextMode);
+        applyThemeMode(nextMode);
+        localStorage.setItem("theme_mode", nextMode);
+        window.dispatchEvent(
+          new CustomEvent("themeChange", { detail: { theme: nextMode } }),
+        );
         requestAnimationFrame(() => {
-          rootEl.style.opacity = "1";
+          requestAnimationFrame(() => {
+            rootEl.style.opacity = "1";
+          });
         });
-      });
-    }, 170);
-    setTimeout(() => {
-      rootEl.style.transition = "";
-    }, 380);
-  }, [theme]);
+      }, 170);
+      setTimeout(() => {
+        rootEl.style.transition = "";
+      }, 380);
+    } else {
+      setThemeMode(nextMode);
+      applyThemeMode(nextMode);
+    }
+  }, [themeMode]);
 
   if (!isMounted) return <div className="w-6 h-6" />;
+
+  const icons: Record<ThemeMode, JSX.Element> = {
+    light: <SunFilledIcon size={20} />,
+    dark: <MoonFilledIcon size={20} />,
+    system: <ComputerIcon size={20} />,
+  };
+
+  const labels: Record<ThemeMode, string> = {
+    light: "Switch to dark mode",
+    dark: "Switch to system mode",
+    system: "Switch to light mode",
+  };
 
   return (
     <button
       ref={btnRef}
-      aria-label={
-        theme === "light" ? "Switch to dark mode" : "Switch to light mode"
-      }
+      aria-label={labels[themeMode]}
       className={`glass-surface p-1.5 rounded-full transition-all duration-200 hover:scale-105 active:scale-90 cursor-pointer border-none ${className || ""}`}
-      onClick={toggleTheme}
+      onClick={cycleTheme}
     >
-      <span className="block transition-transform duration-500 ease-spring" style={{ transform: `rotate(${theme === 'light' ? '0deg' : '360deg'})` }}>
-        {theme === "light" ? (
-          <SunFilledIcon size={20} />
-        ) : (
-          <MoonFilledIcon size={20} />
-        )}
+      <span
+        className="block transition-transform duration-500 ease-spring"
+        style={{ transform: `rotate(${themeMode === "dark" ? "360deg" : "0deg"})` }}
+      >
+        {icons[themeMode]}
       </span>
     </button>
   );

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { Card, Button, Switch, AlertDialog, Skeleton } from "@heroui/react";
-import { ThemeSwitch } from "@/components/theme-switch";
+import { GlassAlertDialog, GlassButton, GlassCard, GlassSkeleton, GlassSwitch } from "@/components/ui/glass";
+import { AppearanceSettings } from "@/components/appearance-settings";
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { getConfig, setConfig } from "@/utils/configService";
@@ -17,7 +17,6 @@ export default function SettingsPage() {
   const [refreshOnSwitch, setRefreshOnSwitch] = useState(false);
   const [lazyLoadEnabled, setLazyLoadEnabled] = useState(true);
   const [wikiDetailPreload, setWikiDetailPreload] = useState(false);
-  const [themeChangeKey, setThemeChangeKey] = useState(0);
 
   const [developerMode, setDeveloperMode] = useState(false);
   const [showDevWarning, setShowDevWarning] = useState(false);
@@ -44,17 +43,6 @@ export default function SettingsPage() {
       setIsConfigLoading(false);
     };
     loadConfig();
-  }, []);
-
-  useEffect(() => {
-    const handleThemeChange = () => {
-      setThemeChangeKey((prev) => prev + 1);
-    };
-
-    window.addEventListener("themeChange", handleThemeChange);
-    return () => {
-      window.removeEventListener("themeChange", handleThemeChange);
-    };
   }, []);
 
   useEffect(() => {
@@ -124,7 +112,7 @@ export default function SettingsPage() {
 
       <div className="grid grid-cols-1 gap-6">
         {/* General Settings */}
-        <Card id="settings-general" className="p-6 glass-surface border border-separator/90">
+        <GlassCard id="settings-general" className="p-6 glass-surface border border-separator/90">
           <h2 className="text-lg font-semibold mb-6 flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
               <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
@@ -138,42 +126,42 @@ export default function SettingsPage() {
             <div className="space-y-6">
               <div className="flex items-center justify-between gap-4">
                 <div className="space-y-2 flex-1">
-                  <Skeleton className="w-32 h-4 rounded-lg" />
-                  <Skeleton className="w-48 h-3 rounded-lg" />
+                  <GlassSkeleton className="w-32 h-4 rounded-lg" />
+                  <GlassSkeleton className="w-48 h-3 rounded-lg" />
                 </div>
-                <Skeleton className="w-40 h-10 rounded-lg shrink-0" />
+                <GlassSkeleton className="w-40 h-10 rounded-lg shrink-0" />
               </div>
               <SettingsDivider />
               <div className="flex items-center justify-between gap-4">
                 <div className="space-y-2 flex-1">
-                  <Skeleton className="w-24 h-4 rounded-lg" />
-                  <Skeleton className="w-40 h-3 rounded-lg" />
+                  <GlassSkeleton className="w-24 h-4 rounded-lg" />
+                  <GlassSkeleton className="w-40 h-3 rounded-lg" />
                 </div>
-                <Skeleton className="w-12 h-6 rounded-full shrink-0" />
+                <GlassSkeleton className="w-12 h-6 rounded-full shrink-0" />
               </div>
               <SettingsDivider />
               <div className="flex items-center justify-between gap-4">
                 <div className="space-y-2 flex-1">
-                  <Skeleton className="w-36 h-4 rounded-lg" />
-                  <Skeleton className="w-56 h-3 rounded-lg" />
+                  <GlassSkeleton className="w-36 h-4 rounded-lg" />
+                  <GlassSkeleton className="w-56 h-3 rounded-lg" />
                 </div>
-                <Skeleton className="w-12 h-6 rounded-full shrink-0" />
+                <GlassSkeleton className="w-12 h-6 rounded-full shrink-0" />
               </div>
               <SettingsDivider />
               <div className="flex items-center justify-between gap-4">
                 <div className="space-y-2 flex-1">
-                  <Skeleton className="w-28 h-4 rounded-lg" />
-                  <Skeleton className="w-44 h-3 rounded-lg" />
+                  <GlassSkeleton className="w-28 h-4 rounded-lg" />
+                  <GlassSkeleton className="w-44 h-3 rounded-lg" />
                 </div>
-                <Skeleton className="w-12 h-6 rounded-full shrink-0" />
+                <GlassSkeleton className="w-12 h-6 rounded-full shrink-0" />
               </div>
               <SettingsDivider />
               <div className="flex items-center justify-between gap-4">
                 <div className="space-y-2 flex-1">
-                  <Skeleton className="w-36 h-4 rounded-lg" />
-                  <Skeleton className="w-56 h-3 rounded-lg" />
+                  <GlassSkeleton className="w-36 h-4 rounded-lg" />
+                  <GlassSkeleton className="w-56 h-3 rounded-lg" />
                 </div>
-                <Skeleton className="w-12 h-6 rounded-full shrink-0" />
+                <GlassSkeleton className="w-12 h-6 rounded-full shrink-0" />
               </div>
             </div>
           ) : (
@@ -190,7 +178,7 @@ export default function SettingsPage() {
                 </p>
               </div>
               <div className="w-full sm:w-48" ref={langDropdownRef}>
-                <Button
+                <GlassButton
                   ref={langBtnRef}
                   variant="outline"
                   className="w-full justify-between gap-2"
@@ -228,7 +216,7 @@ export default function SettingsPage() {
                       d="M19 9l-7 7-7-7"
                     />
                   </svg>
-                </Button>
+                </GlassButton>
 
                 {isLangDropdownOpen && createPortal(
                   <div
@@ -270,27 +258,6 @@ export default function SettingsPage() {
             <SettingsDivider />
 
             <div
-              key={themeChangeKey}
-              className="flex items-center justify-between"
-            >
-              <div id="settings-theme">
-                <p className="font-medium text-foreground">
-                  {t("settings.general.theme")}
-                </p>
-                <p className="text-sm text-muted mt-0.5">
-                  {i18n.language === "zh"
-                    ? "切换深色或浅色模式"
-                    : "Toggle light or dark mode"}
-                </p>
-              </div>
-              <div className="shrink-0 p-1.5 rounded-xl bg-default-100/60 ring-1 ring-default-200/50">
-                <ThemeSwitch />
-              </div>
-            </div>
-
-            <SettingsDivider />
-
-            <div
               id="settings-refresh-on-switch"
               className="flex items-center justify-between gap-4"
             >
@@ -306,14 +273,14 @@ export default function SettingsPage() {
                     : "Whether to fetch latest data from API when switching accounts"}
                 </p>
               </div>
-              <Switch
+              <GlassSwitch
                 isSelected={refreshOnSwitch}
-                onChange={handleRefreshOnSwitchChange}
+                onValueChange={handleRefreshOnSwitchChange}
               >
-                <Switch.Control>
-                  <Switch.Thumb />
-                </Switch.Control>
-              </Switch>
+                <GlassSwitch.Control>
+                  <GlassSwitch.Thumb />
+                </GlassSwitch.Control>
+              </GlassSwitch>
             </div>
 
             <SettingsDivider />
@@ -332,14 +299,14 @@ export default function SettingsPage() {
                     : "Only load current role's data when enabled, saving memory"}
                 </p>
               </div>
-              <Switch
+              <GlassSwitch
                 isSelected={lazyLoadEnabled}
-                onChange={handleLazyLoadChange}
+                onValueChange={handleLazyLoadChange}
               >
-                <Switch.Control>
-                  <Switch.Thumb />
-                </Switch.Control>
-              </Switch>
+                <GlassSwitch.Control>
+                  <GlassSwitch.Thumb />
+                </GlassSwitch.Control>
+              </GlassSwitch>
             </div>
 
             <SettingsDivider />
@@ -360,29 +327,42 @@ export default function SettingsPage() {
                     : "When disabled, wiki details load on demand per character"}
                 </p>
               </div>
-              <Switch
+              <GlassSwitch
                 isSelected={wikiDetailPreload}
-                onChange={handleWikiDetailPreloadChange}
+                onValueChange={handleWikiDetailPreloadChange}
               >
-                <Switch.Control>
-                  <Switch.Thumb />
-                </Switch.Control>
-              </Switch>
+                <GlassSwitch.Control>
+                  <GlassSwitch.Thumb />
+                </GlassSwitch.Control>
+              </GlassSwitch>
             </div>
           </div>
           )}
-        </Card>
+        </GlassCard>
+
+        {/* Appearance Settings */}
+        <GlassCard id="settings-appearance" className="p-6 glass-surface border border-separator/90">
+          <h2 className="text-lg font-semibold mb-6 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
+              <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                <path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z" />
+              </svg>
+            </div>
+            {t("settings.appearance.title")}
+          </h2>
+          <AppearanceSettings />
+        </GlassCard>
 
         {/* Developer Mode */}
-        <Card id="settings-developer" className="p-6 glass-surface border border-separator/90">
+        <GlassCard id="settings-developer" className="p-6 glass-surface border border-separator/90">
           {isConfigLoading ? (
             <div className="space-y-6">
               <div className="flex items-center justify-between gap-4">
                 <div className="space-y-2 flex-1">
-                  <Skeleton className="w-32 h-4 rounded-lg" />
-                  <Skeleton className="w-48 h-3 rounded-lg" />
+                  <GlassSkeleton className="w-32 h-4 rounded-lg" />
+                  <GlassSkeleton className="w-48 h-3 rounded-lg" />
                 </div>
-                <Skeleton className="w-12 h-6 rounded-full shrink-0" />
+                <GlassSkeleton className="w-12 h-6 rounded-full shrink-0" />
               </div>
             </div>
           ) : (
@@ -406,48 +386,48 @@ export default function SettingsPage() {
                   {t("settings.developer.enable_desc")}
                 </p>
               </div>
-              <Switch
+              <GlassSwitch
                 isSelected={developerMode}
-                onChange={handleDevModeToggle}
+                onValueChange={handleDevModeToggle}
               >
-                <Switch.Control>
-                  <Switch.Thumb />
-                </Switch.Control>
-              </Switch>
+                <GlassSwitch.Control>
+                  <GlassSwitch.Thumb />
+                </GlassSwitch.Control>
+              </GlassSwitch>
             </div>
           </div>
           </>
           )}
-        </Card>
+        </GlassCard>
       </div>
 
       {/* Developer Mode Warning Dialog */}
-      <AlertDialog isOpen={showDevWarning} onOpenChange={setShowDevWarning}>
-        <AlertDialog.Backdrop>
-          <AlertDialog.Container>
-            <AlertDialog.Dialog className="sm:max-w-[400px]">
-              <AlertDialog.CloseTrigger />
-              <AlertDialog.Header>
-                <AlertDialog.Icon status="warning" />
-                <AlertDialog.Heading>
+      <GlassAlertDialog isOpen={showDevWarning} onOpenChange={setShowDevWarning}>
+        <GlassAlertDialog.Backdrop>
+          <GlassAlertDialog.Container>
+            <GlassAlertDialog.Dialog className="sm:max-w-[400px]">
+              <GlassAlertDialog.CloseTrigger />
+              <GlassAlertDialog.Header>
+                <GlassAlertDialog.Icon status="warning" />
+                <GlassAlertDialog.Heading>
                   {t("settings.developer.warning_title")}
-                </AlertDialog.Heading>
-              </AlertDialog.Header>
-              <AlertDialog.Body>
+                </GlassAlertDialog.Heading>
+              </GlassAlertDialog.Header>
+              <GlassAlertDialog.Body>
                 <p>{t("settings.developer.warning_body")}</p>
-              </AlertDialog.Body>
-              <AlertDialog.Footer>
-                <Button variant="tertiary" onPress={() => setShowDevWarning(false)}>
+              </GlassAlertDialog.Body>
+              <GlassAlertDialog.Footer>
+                <GlassButton variant="tertiary" onPress={() => setShowDevWarning(false)}>
                   {t("settings.developer.warning_cancel")}
-                </Button>
-                <Button variant="primary" onPress={confirmDevMode}>
+                </GlassButton>
+                <GlassButton variant="primary" onPress={confirmDevMode}>
                   {t("settings.developer.warning_confirm")}
-                </Button>
-              </AlertDialog.Footer>
-            </AlertDialog.Dialog>
-          </AlertDialog.Container>
-        </AlertDialog.Backdrop>
-      </AlertDialog>
+                </GlassButton>
+              </GlassAlertDialog.Footer>
+            </GlassAlertDialog.Dialog>
+          </GlassAlertDialog.Container>
+        </GlassAlertDialog.Backdrop>
+      </GlassAlertDialog>
     </div>
   );
 }

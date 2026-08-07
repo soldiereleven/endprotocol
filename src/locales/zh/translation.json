@@ -96,6 +96,13 @@
       "theme_dark": "深色",
       "theme_system": "跟随系统"
     },
+    "appearance": {
+      "title": "外观",
+      "theme_mode": "主题模式",
+      "theme_mode_desc": "切换浅色、深色或跟随系统",
+      "theme_color": "主题色",
+      "theme_color_desc": "选择您偏好的主题色"
+    },
     "developer": {
       "title": "开发者模式",
       "enable": "启用开发者模式",

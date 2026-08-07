@@ -96,6 +96,13 @@
       "theme_dark": "Dark",
       "theme_system": "System"
     },
+    "appearance": {
+      "title": "Appearance",
+      "theme_mode": "Theme Mode",
+      "theme_mode_desc": "Switch between light, dark, or follow system",
+      "theme_color": "Accent Color",
+      "theme_color_desc": "Choose your preferred accent color"
+    },
     "developer": {
       "title": "Developer Mode",
       "enable": "Enable Developer Mode",
