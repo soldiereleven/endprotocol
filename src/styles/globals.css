@@ -1,7 +1,173 @@
 @import "tailwindcss";
-@import "@heroui/styles";
 
 @custom-variant dark (&:is(.dark *));
+
+/* ======================================================
+ * 主题 token — 自包含（替代 @heroui/styles），语义色对齐
+ * AuraGlass（primary #6366f1 / success #22c55e 等）
+ * ====================================================== */
+@layer base {
+  :root {
+    color-scheme: light;
+
+    /* 中性灰（slate 系） */
+    --default-50: #f8fafc;
+    --default-100: #f1f5f9;
+    --default-200: #e2e8f0;
+    --default-300: #cbd5e1;
+    --default-400: #94a3b8;
+    --default-500: #64748b;
+    --default-600: #475569;
+    --default-700: #334155;
+    --default-800: #1e293b;
+    --default-900: #0f172a;
+    --default: #f1f5f9;
+    --default-foreground: #0f172a;
+
+    /* 品牌色 — indigo（对齐 aura-color-semantic-primary #6366f1） */
+    --primary-50: #eef2ff;
+    --primary-100: #e0e7ff;
+    --primary-200: #c7d2fe;
+    --primary-300: #a5b4fc;
+    --primary-400: #818cf8;
+    --primary-500: #6366f1;
+    --primary-600: #4f46e5;
+    --primary-700: #4338ca;
+    --primary-800: #3730a3;
+    --primary-900: #312e81;
+    --primary: #6366f1;
+    --primary-foreground: #ffffff;
+
+    --accent: #8b5cf6;
+    --accent-foreground: #ffffff;
+
+    /* 卡片内容层 */
+    --content1: #ffffff;
+    --content2: #f4f5f7;
+    --content3: #e9eaee;
+
+    /* 状态色 */
+    --success: #22c55e;
+    --success-foreground: #052e16;
+    --warning: #f59e0b;
+    --warning-foreground: #451a03;
+    --warning-dark: #b45309;
+    --danger-50: #fef2f2;
+    --danger: #ef4444;
+    --danger-foreground: #ffffff;
+
+    /* 基底 */
+    --background: #fafafa;
+    --foreground: #171717;
+    --muted: oklch(0.55 0.014 286);
+    --separator: oklch(0.9 0.004 286);
+    --border: oklch(0.88 0.004 286);
+    --surface: #ffffff;
+    --overlay: #ffffff;
+    --field: #ffffff;
+
+    /* 兼容别名（残留的 var(--heroui-*) 引用） */
+    --heroui-primary: var(--primary);
+    --heroui-primary-300: var(--primary-300);
+    --heroui-foreground: var(--foreground);
+    --heroui-danger: var(--danger);
+    --heroui-success: var(--success);
+    --heroui-warning: var(--warning);
+    --heroui-default-400: var(--default-400);
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    --default-50: #0f172a;
+    --default-100: #1e293b;
+    --default-200: #334155;
+    --default-300: #475569;
+    --default-400: #64748b;
+    --default-500: #94a3b8;
+    --default-600: #cbd5e1;
+    --default-700: #e2e8f0;
+    --default-800: #f1f5f9;
+    --default-900: #f8fafc;
+    --default: #1e293b;
+    --default-foreground: #f8fafc;
+
+    --content1: oklch(0.24 0.006 286);
+    --content2: oklch(0.28 0.006 286);
+    --content3: oklch(0.33 0.006 286);
+
+    --background: #0b0b0d;
+    --foreground: #f8fafc;
+    --muted: oklch(0.7 0.015 286);
+    --separator: oklch(0.25 0.006 286);
+    --border: oklch(0.28 0.006 286);
+    --surface: oklch(0.21 0.006 286);
+    --overlay: oklch(0.21 0.006 286);
+    --field: oklch(0.21 0.006 286);
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-separator: var(--separator);
+  --color-border: var(--border);
+  --color-surface: var(--surface);
+  --color-overlay: var(--overlay);
+  --color-field: var(--field);
+  --color-content1: var(--content1);
+  --color-content2: var(--content2);
+  --color-content3: var(--content3);
+
+  --color-default: var(--default);
+  --color-default-foreground: var(--default-foreground);
+  --color-default-50: var(--default-50);
+  --color-default-100: var(--default-100);
+  --color-default-200: var(--default-200);
+  --color-default-300: var(--default-300);
+  --color-default-400: var(--default-400);
+  --color-default-500: var(--default-500);
+  --color-default-600: var(--default-600);
+  --color-default-700: var(--default-700);
+  --color-default-800: var(--default-800);
+  --color-default-900: var(--default-900);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-50: var(--primary-50);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+  --color-primary-300: var(--primary-300);
+  --color-primary-400: var(--primary-400);
+  --color-primary-500: var(--primary-500);
+  --color-primary-600: var(--primary-600);
+  --color-primary-700: var(--primary-700);
+  --color-primary-800: var(--primary-800);
+  --color-primary-900: var(--primary-900);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-dark: var(--warning-dark);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-danger-50: var(--danger-50);
+}
+
+/* 液态玻璃控件 — 小控件（按钮/输入框）用更轻的玻璃层 */
+.glass-field {
+  background: var(--aura-glass-neutral-level1-surface-base);
+  backdrop-filter: blur(var(--aura-glass-neutral-level1-backdrop-blur)) saturate(1.6);
+  -webkit-backdrop-filter: blur(var(--aura-glass-neutral-level1-backdrop-blur)) saturate(1.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, var(--aura-glass-neutral-level1-highlight-opacity)),
+    inset 0 0 0 var(--aura-glass-neutral-level1-border-width) var(--aura-glass-neutral-level1-border-color);
+}
 
 /* 全局平滑过渡 */
 html {
@@ -27,12 +193,12 @@ body {
 
 
 ::selection {
-  background: hsl(var(--heroui-primary) / 0.3);
+  background: color-mix(in oklab, var(--primary) 30%, transparent);
   color: inherit;
 }
 
 ::-moz-selection {
-  background: hsl(var(--heroui-primary) / 0.3);
+  background: color-mix(in oklab, var(--primary) 30%, transparent);
   color: inherit;
 }
 
@@ -242,14 +408,14 @@ body {
 
 /* 液态玻璃 — 整个窗口容器（覆盖全窗口，标题栏/侧边栏/内容区共用） */
 .glass-window {
-  background: var(--aura-glass-neutral-level1-surface-base);
+  background: transparent;
   backdrop-filter: blur(var(--aura-glass-neutral-level1-backdrop-blur)) saturate(1.6) brightness(1.02);
   -webkit-backdrop-filter: blur(var(--aura-glass-neutral-level1-backdrop-blur)) saturate(1.6) brightness(1.02);
 }
 
 /* 液态玻璃 — 背景层（neutral-level1：blur 16px） */
 .glass-surface {
-  background: var(--aura-glass-neutral-level1-surface-base);
+  background: transparent;
   backdrop-filter: blur(var(--aura-glass-neutral-level1-backdrop-blur)) saturate(1.8) brightness(1.05);
   -webkit-backdrop-filter: blur(var(--aura-glass-neutral-level1-backdrop-blur)) saturate(1.8) brightness(1.05);
   box-shadow:
@@ -261,7 +427,7 @@ body {
 
 /* 液态玻璃 — 强（neutral-level2：blur 24px，Modal、突出面板） */
 .glass-surface-strong {
-  background: var(--aura-glass-neutral-level2-surface-base);
+  background: color-mix(in oklab, var(--surface) 55%, transparent);
   backdrop-filter: blur(var(--aura-glass-neutral-level2-backdrop-blur)) saturate(1.8) brightness(1.05);
   -webkit-backdrop-filter: blur(var(--aura-glass-neutral-level2-backdrop-blur)) saturate(1.8) brightness(1.05);
   box-shadow:
@@ -273,23 +439,30 @@ body {
       var(--aura-glass-neutral-level2-shadow-spread) var(--aura-glass-neutral-level2-shadow-color);
 }
 
-/* 液态玻璃 — Modal 背景层（仅模糊，中性无蓝色调） */
+/* 液态玻璃 — Modal 背景层（透明液态玻璃 + 统一叠加色） */
 .glass-backdrop {
-  backdrop-filter: blur(12px) saturate(1.05);
-  -webkit-backdrop-filter: blur(12px) saturate(1.05);
+  background: color-mix(in oklab, var(--surface) 15%, transparent);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
 }
 
-/* 上下文菜单项悬停 — 参考 danger 的显式颜色定义 */
+/* 头像边缘羽化 */
+.avatar-feather {
+  mask-image: radial-gradient(ellipse 90% 90% at center, black 60%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 90% at center, black 60%, transparent 100%);
+}
+
+/* 上下文菜单项悬停 */
 .context-item-normal {
-  color: hsl(var(--heroui-foreground));
+  color: var(--foreground);
 }
 .context-item-normal:hover {
-  background: hsl(var(--heroui-primary) / 0.08);
-  color: hsl(var(--heroui-primary));
+  background: color-mix(in oklab, var(--primary) 8%, transparent);
+  color: var(--primary);
 }
 .dark .context-item-normal:hover {
-  background: hsl(var(--heroui-primary) / 0.12);
-  color: hsl(var(--heroui-primary-300, var(--heroui-primary)) / 1);
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
+  color: var(--primary-300, var(--primary));
 }
 
 /* 向后兼容 */
@@ -306,10 +479,10 @@ body {
 }
 .card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px hsl(var(--heroui-foreground) / 0.08);
+  box-shadow: 0 8px 25px color-mix(in oklab, var(--foreground) 8%, transparent);
 }
 .dark .card-hover:hover {
-  box-shadow: 0 8px 25px hsl(var(--heroui-foreground) / 0.06);
+  box-shadow: 0 8px 25px color-mix(in oklab, var(--foreground) 6%, transparent);
 }
 
 .card-hover:active {
@@ -320,17 +493,17 @@ body {
  * 状态指示灯 glow
  * ====================================================== */
 .shadow-glow-success {
-  box-shadow: 0 0 8px hsl(var(--heroui-success) / 0.6);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--success) 60%, transparent);
 }
 .shadow-glow-danger {
-  box-shadow: 0 0 8px hsl(var(--heroui-danger) / 0.6);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--danger) 60%, transparent);
 }
 .shadow-glow-warning {
-  box-shadow: 0 0 8px hsl(var(--heroui-warning) / 0.6);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--warning) 60%, transparent);
 }
-.dark .shadow-glow-success { box-shadow: 0 0 12px hsl(var(--heroui-success) / 0.7); }
-.dark .shadow-glow-danger { box-shadow: 0 0 12px hsl(var(--heroui-danger) / 0.7); }
-.dark .shadow-glow-warning { box-shadow: 0 0 12px hsl(var(--heroui-warning) / 0.7); }
+.dark .shadow-glow-success { box-shadow: 0 0 12px color-mix(in oklab, var(--success) 70%, transparent); }
+.dark .shadow-glow-danger { box-shadow: 0 0 12px color-mix(in oklab, var(--danger) 70%, transparent); }
+.dark .shadow-glow-warning { box-shadow: 0 0 12px color-mix(in oklab, var(--warning) 70%, transparent); }
 
 /* ======================================================
  * 技能描述标记
