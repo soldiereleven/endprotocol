@@ -12,7 +12,6 @@ function applyThemeMode(mode: ThemeMode) {
   const root = document.documentElement;
   const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   const isDark = mode === "dark" || (mode === "system" && systemDark);
-
   root.classList.toggle("dark", isDark);
   root.setAttribute("data-aura-mode", isDark ? "dark" : "light");
 }
@@ -33,12 +32,24 @@ export const ThemeSwitch: FC<ThemeSwitchProps> = ({ className }) => {
     init();
   }, []);
 
+  // Listen for themeChange events from settings page
+  useEffect(() => {
+    const handler = async () => {
+      const savedMode = await getConfig<ThemeMode>("theme_mode");
+      const mode = savedMode ?? "system";
+      setThemeMode(mode);
+      applyThemeMode(mode);
+    };
+    window.addEventListener("themeChange", handler);
+    return () => window.removeEventListener("themeChange", handler);
+  }, []);
+
   useEffect(() => {
     if (themeMode !== "system") return;
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = () => applyThemeMode("system");
-    mediaQuery.addEventListener("change", handler);
-    return () => mediaQuery.removeEventListener("change", handler);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
   }, [themeMode]);
 
   const cycleTheme = useCallback(() => {
@@ -53,22 +64,17 @@ export const ThemeSwitch: FC<ThemeSwitchProps> = ({ className }) => {
       setTimeout(() => {
         setThemeMode(nextMode);
         applyThemeMode(nextMode);
-        localStorage.setItem("theme_mode", nextMode);
-        window.dispatchEvent(
-          new CustomEvent("themeChange", { detail: { theme: nextMode } }),
-        );
+        setConfig("theme_mode", nextMode);
+        window.dispatchEvent(new CustomEvent("themeChange"));
         requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            rootEl.style.opacity = "1";
-          });
+          requestAnimationFrame(() => { rootEl.style.opacity = "1"; });
         });
       }, 170);
-      setTimeout(() => {
-        rootEl.style.transition = "";
-      }, 380);
+      setTimeout(() => { rootEl.style.transition = ""; }, 380);
     } else {
       setThemeMode(nextMode);
       applyThemeMode(nextMode);
+      setConfig("theme_mode", nextMode);
     }
   }, [themeMode]);
 
