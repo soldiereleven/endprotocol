@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Kbd, Skeleton } from "@heroui/react";
+import { GlassKbd, GlassSkeleton } from "@/components/ui/glass";
 import {
   HomeIcon,
   SettingsIcon,
@@ -927,10 +927,10 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
         <div className="px-3 py-2">
           {isLoadingAccount || isManualRefreshing ? (
             <div className="glass-surface flex items-center gap-3 p-2 rounded-xl">
-              <Skeleton className="w-10 h-10 rounded-full" />
+              <GlassSkeleton className="w-10 h-10 rounded-full" />
               <div className="flex-1 space-y-2">
-                <Skeleton className="w-24 h-4 rounded-lg" />
-                <Skeleton className="w-16 h-3 rounded-lg" />
+                <GlassSkeleton className="w-24 h-4 rounded-lg" />
+                <GlassSkeleton className="w-16 h-3 rounded-lg" />
               </div>
             </div>
           ) : selectedAccount ? (
@@ -964,7 +964,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
             </div>
           ) : (
             <div className="glass-surface flex items-center gap-3 p-2.5 rounded-xl border border-dashed border-separator/60">
-              <div className="w-10 h-10 rounded-full bg-muted/20 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center">
                 <AccountIcon className="w-5 h-5 text-muted" />
               </div>
               <div className="flex-1">
@@ -1045,10 +1045,10 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                   </button>
                 )}
                 {!searchQuery && (
-                  <Kbd className="hidden lg:inline-flex text-xs">
-                    <Kbd.Abbr keyValue="command" />
-                    <Kbd.Content>K</Kbd.Content>
-                  </Kbd>
+                  <GlassKbd className="hidden lg:inline-flex text-xs">
+                    <GlassKbd.Abbr keyValue="command" />
+                    <GlassKbd.Content>K</GlassKbd.Content>
+                  </GlassKbd>
                 )}
               </div>
 
@@ -1165,14 +1165,14 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                   <div className="border-t-2 border-separator px-3 py-2 flex items-center justify-between text-xs text-muted bg-default-50">
                     <div className="flex items-center gap-2">
                       <span className="flex items-center gap-1">
-                        <Kbd className="text-xs">↑</Kbd>
-                        <Kbd className="text-xs">↓</Kbd>
+                        <GlassKbd className="text-xs">↑</GlassKbd>
+                        <GlassKbd className="text-xs">↓</GlassKbd>
                         <span>
                           {i18n.language === "zh" ? "导航" : "Navigate"}
                         </span>
                       </span>
                       <span className="flex items-center gap-1">
-                        <Kbd className="text-xs">↵</Kbd>
+                        <GlassKbd className="text-xs">↵</GlassKbd>
                         <span>
                           {i18n.language === "zh" ? "选择" : "Select"}
                         </span>

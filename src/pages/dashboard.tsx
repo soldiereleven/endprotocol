@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Tooltip, ProgressCircle } from "@heroui/react";
+import { GlassButton, GlassProgressCircle, GlassTooltip } from "@/components/ui/glass";
 import { useTranslation } from "react-i18next";
 import { getSelectedAccount, refreshAccountData, getAccounts } from "@/utils/accountService";
 import type { Account } from "@/utils/accountService";
@@ -307,12 +307,12 @@ export default function DashboardPage() {
   if (isLoading && view === "loading") {
     return (
       <div className="flex items-center justify-center py-24">
-        <ProgressCircle isIndeterminate size="lg" aria-label="Loading">
-          <ProgressCircle.Track>
-            <ProgressCircle.TrackCircle />
-            <ProgressCircle.FillCircle />
-          </ProgressCircle.Track>
-        </ProgressCircle>
+        <GlassProgressCircle isIndeterminate size="lg" aria-label="Loading" className="text-primary">
+          <GlassProgressCircle.Track>
+            <GlassProgressCircle.TrackCircle />
+            <GlassProgressCircle.FillCircle />
+          </GlassProgressCircle.Track>
+        </GlassProgressCircle>
       </div>
     );
   }
@@ -349,8 +349,8 @@ export default function DashboardPage() {
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
       >
         <div className="flex items-center gap-3">
-          <Tooltip>
-            <Button
+          <GlassTooltip>
+            <GlassButton
               isIconOnly
               variant="ghost"
               size="sm"
@@ -359,11 +359,11 @@ export default function DashboardPage() {
               className="rounded-xl hover:bg-default-100"
             >
               <ChevronLeftIcon size={20} />
-            </Button>
-            <Tooltip.Content>
+            </GlassButton>
+            <GlassTooltip.Content>
               {t("settings.account.back") || "Back"}
-            </Tooltip.Content>
-          </Tooltip>
+            </GlassTooltip.Content>
+          </GlassTooltip>
           <div>
             <div className="flex items-center gap-2">
               {IconComponent && <IconComponent size={24} className="text-primary" />}
@@ -378,8 +378,8 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Tooltip>
-            <Button
+          <GlassTooltip>
+            <GlassButton
               isIconOnly
               variant="ghost"
               size="sm"
@@ -389,22 +389,22 @@ export default function DashboardPage() {
               aria-label={t("common.refresh") || "Refresh"}
             >
               <RefreshIcon size={20} className={isRefreshing ? "animate-spin" : ""} />
-            </Button>
-            <Tooltip.Content>
+            </GlassButton>
+            <GlassTooltip.Content>
               {t("common.refresh") || "Refresh"}
-            </Tooltip.Content>
-          </Tooltip>
+            </GlassTooltip.Content>
+          </GlassTooltip>
         </div>
       </div>
 
       {isRefreshing ? (
         <div className="flex flex-col items-center justify-center py-24 space-y-5">
-          <ProgressCircle isIndeterminate size="lg" aria-label="Loading">
-            <ProgressCircle.Track>
-              <ProgressCircle.TrackCircle />
-              <ProgressCircle.FillCircle />
-            </ProgressCircle.Track>
-          </ProgressCircle>
+          <GlassProgressCircle isIndeterminate size="lg" aria-label="Loading" className="text-primary">
+            <GlassProgressCircle.Track>
+              <GlassProgressCircle.TrackCircle />
+              <GlassProgressCircle.FillCircle />
+            </GlassProgressCircle.Track>
+          </GlassProgressCircle>
           <p className="text-sm text-muted/70 animate-pulse-soft">
             {t("common.refreshing") || "Refreshing..."}
           </p>
@@ -477,12 +477,12 @@ export default function DashboardPage() {
                   className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all hover:bg-default-100 border border-separator hover:border-primary/50"
                   onClick={() => handleRoleConfirm(account.id)}
                 >
-                  <div className="w-10 h-10 rounded-full overflow-hidden bg-default-200 shrink-0">
+                  <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
                     {account.avatar ? (
                       <Img
                         src={account.avatar}
                         alt={account.nickname}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full avatar-feather"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted text-sm">
@@ -504,7 +504,7 @@ export default function DashboardPage() {
           </div>
         </CustomModalBody>
         <CustomModalFooter>
-          <Button
+          <GlassButton
             variant="secondary"
             onPress={() => {
               setIsRoleSelectModalOpen(false);
@@ -513,7 +513,7 @@ export default function DashboardPage() {
             }}
           >
             {t("common.cancel") || "Cancel"}
-          </Button>
+          </GlassButton>
         </CustomModalFooter>
       </CustomModal>
     </div>

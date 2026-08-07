@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, ProgressCircle, Button } from "@heroui/react";
+import { GlassButton, GlassCard, GlassProgressCircle } from "@/components/ui/glass";
 import { CharDetailData, AchieveMedal } from "@/types/charDetail";
 import { logDebug, logError } from "@/utils/logger";
 import { useTranslation } from "react-i18next";
@@ -254,22 +254,22 @@ export default function AchievementCard({
 
   if (isLoading) {
     return (
-      <Card className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
-        <ProgressCircle isIndeterminate size="md" aria-label="Loading">
-          <ProgressCircle.Track>
-            <ProgressCircle.TrackCircle />
-            <ProgressCircle.FillCircle />
-          </ProgressCircle.Track>
-        </ProgressCircle>
-      </Card>
+      <GlassCard className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
+        <GlassProgressCircle isIndeterminate size="md" aria-label="Loading" className="text-primary">
+          <GlassProgressCircle.Track>
+            <GlassProgressCircle.TrackCircle />
+            <GlassProgressCircle.FillCircle />
+          </GlassProgressCircle.Track>
+        </GlassProgressCircle>
+      </GlassCard>
     );
   }
 
   if (!charDetail?.achieve?.achieveMedals) {
     return (
-      <Card className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
+      <GlassCard className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
         <p className="text-muted text-center text-sm">{t("card:no_data")}</p>
-      </Card>
+      </GlassCard>
     );
   }
 
@@ -277,14 +277,15 @@ export default function AchievementCard({
 
   return (
     <>
-      <Card
+      <GlassCard
         className="px-[3px] py-0 glass-surface border border-separator/90 h-full w-full select-none cursor-pointer hover:shadow-md transition-shadow rounded-[10px] overflow-hidden"
-        onClick={() => !isEditMode && setIsModalOpen(true)}
+        isPressable
+        onPress={() => !isEditMode && setIsModalOpen(true)}
       >
         <div className="flex items-center justify-center h-full">
           <Honeycomb displayMedals={displayMedals} shownMedals={shownMedals} />
         </div>
-      </Card>
+      </GlassCard>
 
       <AchievementModal
         isOpen={isModalOpen}
@@ -318,12 +319,12 @@ export default function AchievementCard({
                   className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all hover:bg-default-100 border border-separator hover:border-primary/50"
                   onClick={() => handleRoleConfirm(account.id)}
                 >
-                  <div className="w-10 h-10 rounded-full overflow-hidden bg-default-200 shrink-0">
+                   <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
                     {account.avatar ? (
                       <Img
                         src={account.avatar}
                         alt={account.nickname}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full avatar-feather"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted text-sm">
@@ -345,12 +346,12 @@ export default function AchievementCard({
           </div>
         </CustomModalBody>
         <CustomModalFooter>
-          <Button
+          <GlassButton
             variant="secondary"
             onPress={() => setIsRoleSelectOpen(false)}
           >
             {t("common.cancel") || "Cancel"}
-          </Button>
+          </GlassButton>
         </CustomModalFooter>
       </CustomModal>
     </>

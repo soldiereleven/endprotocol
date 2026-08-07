@@ -7,7 +7,7 @@ import {
   useCallback,
 } from "react";
 import { createPortal } from "react-dom";
-import { Button, Alert, ProgressCircle, Meter, Chip } from "@heroui/react";
+import { GlassAlert, GlassButton, GlassChip, GlassMeter, GlassProgressCircle } from "@/components/ui/glass";
 import {
   CustomModal,
   CustomModalHeader,
@@ -206,7 +206,7 @@ export function OperatorCard({
 
   return (
     <div
-      className={`group relative aspect-[3/4] rounded-lg overflow-hidden border bg-content1 cursor-pointer transition-all duration-200
+      className={`group relative aspect-[3/4] rounded-lg overflow-hidden border glass-surface cursor-pointer transition-all duration-200
         ${isPinned ? "border-blue-500 ring-1 ring-blue-500/40" : "border-separator hover:border-blue-400/60 hover:shadow-md"}`}
       onMouseDown={(e) => {
         isDraggingRef.current = false;
@@ -882,12 +882,12 @@ export function CharSelectModal({
       {/* Floating Success Alert — 窗口顶部固定浮窗 */}
       {successMessage && (
         <div className="fixed top-0 left-0 right-0 z-[10003] flex justify-center px-6 pt-4">
-          <Alert status="success" className="shadow-lg max-w-md">
-            <Alert.Indicator />
-            <Alert.Content>
-              <Alert.Description>{successMessage}</Alert.Description>
-            </Alert.Content>
-          </Alert>
+          <GlassAlert status="success" className="shadow-lg max-w-md">
+            <GlassAlert.Indicator />
+            <GlassAlert.Content>
+              <GlassAlert.Description>{successMessage}</GlassAlert.Description>
+            </GlassAlert.Content>
+          </GlassAlert>
         </div>
       )}
 
@@ -1157,16 +1157,17 @@ export function CharSelectModal({
 
               {showLoading ? (
                 <div className="flex items-center justify-center h-full">
-                  <ProgressCircle
+                  <GlassProgressCircle
                     isIndeterminate
                     size="lg"
                     aria-label="Loading wiki"
+                    className="text-primary"
                   >
-                    <ProgressCircle.Track>
-                      <ProgressCircle.TrackCircle />
-                      <ProgressCircle.FillCircle />
-                    </ProgressCircle.Track>
-                  </ProgressCircle>
+                    <GlassProgressCircle.Track>
+                      <GlassProgressCircle.TrackCircle />
+                      <GlassProgressCircle.FillCircle />
+                    </GlassProgressCircle.Track>
+                  </GlassProgressCircle>
                 </div>
               ) : (
                 <div
@@ -1217,7 +1218,7 @@ export function CharSelectModal({
                             <Img
                               src={char.avatarSqUrl}
                               alt={char.name}
-                              className="w-12 h-12 rounded-lg object-cover shadow-sm shrink-0"
+                              className="w-12 h-12 rounded-lg shadow-sm shrink-0 avatar-feather"
                             />
                             {charItem?.level != null && (
                               <span className="text-[13px] font-semibold text-gray-500 leading-none">
@@ -1901,28 +1902,28 @@ export function CharSelectModal({
                                               Lv.{skillLevel} / {maxSkillLevel}
                                             </span>
                                             {isMaxed && (
-                                              <Chip
+                                              <GlassChip
                                                 size="sm"
                                                 variant="soft"
                                                 color="success"
-                                                className="text-[10px] h-5"
+                                                className="text-[10px]"
                                               >
                                                 MAX
-                                              </Chip>
+                                              </GlassChip>
                                             )}
                                           </span>
                                         </div>
-                                        <Meter
+                                        <GlassMeter
                                           aria-label="Skill level progress"
                                           value={progress}
                                           className="w-full"
                                         >
-                                          <Meter.Track className="h-2 rounded-full bg-[#555]">
-                                            <Meter.Fill
+                                          <GlassMeter.Track className="h-2 rounded-full bg-[#555]">
+                                            <GlassMeter.Fill
                                               className={`h-2 rounded-full transition-all duration-500 ${isMaxed ? "bg-gradient-to-r from-green-500 to-emerald-400" : "bg-gradient-to-r from-yellow-500 to-orange-400"}`}
                                             />
-                                          </Meter.Track>
-                                        </Meter>
+                                          </GlassMeter.Track>
+                                        </GlassMeter>
                                         {!isMaxed && (
                                           <p className="text-[#a09070] text-[11px] mt-1">
                                             离满级还差{" "}
@@ -2133,14 +2134,14 @@ export function CharSelectModal({
                                               <span className="text-[#222222] font-mono text-right">
                                                 {p.value}
                                                 {!hasNext && isMaxed && (
-                                                  <Chip
+                                                  <GlassChip
                                                     size="sm"
                                                     variant="soft"
                                                     color="success"
-                                                    className="ml-1.5 text-[10px] h-5 min-w-0"
+                                                    className="ml-1.5 text-[10px] min-w-0"
                                                   >
                                                     MAX
-                                                  </Chip>
+                                                  </GlassChip>
                                                 )}
                                                 {hasNext && (
                                                   <>
@@ -2152,7 +2153,7 @@ export function CharSelectModal({
                                                     </span>
                                                     {showDelta &&
                                                       delta !== 0 && (
-                                                        <Chip
+                                                        <GlassChip
                                                           size="sm"
                                                           variant="soft"
                                                           color={
@@ -2160,14 +2161,14 @@ export function CharSelectModal({
                                                               ? "success"
                                                               : "accent"
                                                           }
-                                                          className="ml-1.5 text-[10px] h-5 min-w-0"
+                                                          className="ml-1.5 text-[10px] min-w-0"
                                                         >
                                                           {delta! > 0
                                                             ? "+"
                                                             : ""}
                                                           {delta}
                                                           {unit}
-                                                        </Chip>
+                                                        </GlassChip>
                                                       )}
                                                   </>
                                                 )}
@@ -2209,7 +2210,7 @@ export function CharSelectModal({
 
           {/* Slot Bar — 独立区域，不随内容滚动 */}
           {viewMode === "list" && (
-            <div className="px-6 py-3 border-b border-separator bg-content1">
+            <div className="px-6 py-3 border-b border-separator glass-surface">
               <div className="flex items-center gap-3">
                 {Array.from({ length: maxSlots }).map((_, slotIndex) => {
                   const currentCharId = tempSelectedIds[slotIndex];
@@ -2225,7 +2226,7 @@ export function CharSelectModal({
                         dragOverSlot === slotIndex
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-900/40 scale-105 shadow-md"
                           : currentChar
-                            ? "border-blue-400/60 bg-content1"
+                            ? "border-blue-400/60 glass-surface"
                             : "border-dashed border-separator bg-default-50"
                       }`}
                     >
@@ -2234,7 +2235,7 @@ export function CharSelectModal({
                           <Img
                             src={currentChar.avatarSqUrl}
                             alt={currentChar.name}
-                            className="w-10 h-10 rounded object-cover shrink-0"
+                            className="w-10 h-10 rounded shrink-0 avatar-feather"
                           />
                           <div className="min-w-0 flex-1">
                             <div className="text-xs font-medium truncate">
@@ -2358,7 +2359,7 @@ export function CharSelectModal({
                         onChange={(v) => setFilter("subAttr", v)}
                       />
 
-                      <Button
+                      <GlassButton
                         size="sm"
                         variant="outline"
                         isIconOnly
@@ -2378,7 +2379,7 @@ export function CharSelectModal({
                             d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                           />
                         </svg>
-                      </Button>
+                      </GlassButton>
                     </div>
                   </div>
                 )}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Button, Switch, ProgressCircle } from "@heroui/react";
+import { GlassButton, GlassProgressCircle, GlassSwitch } from "@/components/ui/glass";
 import {
   CustomModal,
   CustomModalHeader,
@@ -88,12 +88,12 @@ export function AttendanceSettingsModal({
       <CustomModalBody>
         {loading ? (
           <div className="flex items-center justify-center py-8">
-            <ProgressCircle isIndeterminate size="md" aria-label="Loading">
-              <ProgressCircle.Track>
-                <ProgressCircle.TrackCircle />
-                <ProgressCircle.FillCircle />
-              </ProgressCircle.Track>
-            </ProgressCircle>
+            <GlassProgressCircle isIndeterminate size="md" aria-label="Loading" className="text-primary">
+              <GlassProgressCircle.Track>
+                <GlassProgressCircle.TrackCircle />
+                <GlassProgressCircle.FillCircle />
+              </GlassProgressCircle.Track>
+            </GlassProgressCircle>
           </div>
         ) : accounts.length === 0 ? (
           <div className="text-center py-6">
@@ -110,14 +110,14 @@ export function AttendanceSettingsModal({
                   <p className="text-sm font-medium">{t("card:attendance_auto_sign")}</p>
                   <p className="text-xs text-muted">{t("card:attendance_auto_sign_desc")}</p>
                 </div>
-                <Switch
+                <GlassSwitch
                   isSelected={localAutoSign}
-                  onChange={setLocalAutoSign}
+                  onValueChange={setLocalAutoSign}
                 >
-                  <Switch.Control>
-                    <Switch.Thumb />
-                  </Switch.Control>
-                </Switch>
+                  <GlassSwitch.Control>
+                    <GlassSwitch.Thumb />
+                  </GlassSwitch.Control>
+                </GlassSwitch>
               </div>
             )}
 
@@ -138,12 +138,12 @@ export function AttendanceSettingsModal({
                       }`}
                       onClick={() => setLocalSelectedRoleId(acc.id)}
                     >
-                      <div className="w-10 h-10 rounded-full overflow-hidden bg-default-200 shrink-0">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
                         {acc.avatar ? (
                           <Img
                             src={acc.avatar}
                             alt={acc.nickname}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full avatar-feather"
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-muted text-sm font-semibold">
@@ -176,16 +176,16 @@ export function AttendanceSettingsModal({
         )}
       </CustomModalBody>
       <CustomModalFooter>
-        <Button variant="secondary" onPress={handleClose}>
+        <GlassButton variant="secondary" onPress={handleClose}>
           {t("common.cancel")}
-        </Button>
-        <Button
+        </GlassButton>
+        <GlassButton
           variant="primary"
           isDisabled={!localSelectedRoleId}
           onPress={handleConfirm}
         >
           {t("common.confirm")}
-        </Button>
+        </GlassButton>
       </CustomModalFooter>
     </CustomModal>
   );

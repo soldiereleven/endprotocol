@@ -1,13 +1,10 @@
-import { Button } from "@heroui/react";
+import { GlassButton, GlassCard, GlassCheckbox, GlassSkeleton } from "@/components/ui/glass";
 import {
   CustomModal,
   CustomModalHeader,
   CustomModalBody,
   CustomModalFooter,
 } from "@/components/custom-modal";
-import { Card } from "@heroui/react";
-import { Checkbox } from "@heroui/react";
-import { Skeleton } from "@heroui/react";
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
@@ -109,36 +106,37 @@ export default function RoleSelectModal({
         ) : (
           <div className="grid grid-cols-2 gap-4">
             {roles.map((role) => (
-              <Card
+              <GlassCard
                 key={role.roleId}
+                isPressable
+                onPress={() => handleRoleToggle(role.roleId)}
                 className={`cursor-pointer transition-all ${
                   selectedRoles.includes(role.roleId)
                     ? "border-2 border-primary"
                     : "border-2 border-transparent"
                 }`}
-                onClick={() => handleRoleToggle(role.roleId)}
               >
                 <div className="p-4">
                   <div className="flex items-start gap-3">
-                    <Checkbox
+                    <GlassCheckbox
                       isSelected={selectedRoles.includes(role.roleId)}
                       onChange={() => handleRoleToggle(role.roleId)}
                     />
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200">
+                        <div className="w-12 h-12 rounded-lg overflow-hidden">
                           {role.avatarUrl ? (
                             <Img
                               src={role.avatarUrl}
                               alt={role.nickname}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full avatar-feather"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src =
                                   "/tauri.svg";
                               }}
                             />
                           ) : (
-                            <Skeleton className="w-full h-full rounded-full" />
+                            <GlassSkeleton className="w-full h-full rounded-lg" />
                           )}
                         </div>
                         <div>
@@ -156,16 +154,16 @@ export default function RoleSelectModal({
                     </div>
                   </div>
                 </div>
-              </Card>
+              </GlassCard>
             ))}
           </div>
         )}
       </CustomModalBody>
       <CustomModalFooter>
-        <Button variant="outline" onPress={onClose}>
+        <GlassButton variant="outline" onPress={onClose}>
           {t("role_select.cancel")}
-        </Button>
-        <Button
+        </GlassButton>
+        <GlassButton
           variant="primary"
           onPress={handleConfirm}
           isDisabled={selectedRoles.length === 0 || isLoading}

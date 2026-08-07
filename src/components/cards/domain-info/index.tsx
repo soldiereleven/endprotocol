@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, Button, ProgressCircle } from "@heroui/react";
+import { GlassButton, GlassCard, GlassProgressCircle } from "@/components/ui/glass";
 import { useTranslation } from "react-i18next";
 import { BaseCardProps } from "../registry/types";
 import { useCardData } from "../base/use-card-data";
@@ -205,28 +205,28 @@ export default function DomainInfoCard({
 
   if (isLoading) {
     return (
-      <Card className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
-        <ProgressCircle isIndeterminate size="md" aria-label="Loading">
-          <ProgressCircle.Track>
-            <ProgressCircle.TrackCircle />
-            <ProgressCircle.FillCircle />
-          </ProgressCircle.Track>
-        </ProgressCircle>
-      </Card>
+      <GlassCard className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
+        <GlassProgressCircle isIndeterminate size="md" aria-label="Loading" className="text-primary">
+          <GlassProgressCircle.Track>
+            <GlassProgressCircle.TrackCircle />
+            <GlassProgressCircle.FillCircle />
+          </GlassProgressCircle.Track>
+        </GlassProgressCircle>
+      </GlassCard>
     );
   }
 
   if (!effectiveDomain) {
     return (
-      <Card className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
+      <GlassCard className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
         <p className="text-muted text-center text-sm">{t("card:domain_info_empty")}</p>
-      </Card>
+      </GlassCard>
     );
   }
 
   return (
     <>
-      <Card className="p-2.5 glass-surface border border-separator/90 h-full w-full select-none rounded-[10px] overflow-hidden">
+      <GlassCard className="p-2.5 glass-surface border border-separator/90 h-full w-full select-none rounded-[10px] overflow-hidden">
         <div className="flex items-center justify-between gap-2 min-w-0 mb-1.5">
           <div className="flex items-center gap-2 min-w-0">
             <AccountAvatar
@@ -302,7 +302,7 @@ export default function DomainInfoCard({
                       <Img
                         src={s.officerCharAvatar}
                         alt=""
-                        className="w-6 h-6 rounded-full object-cover border border-separator shrink-0"
+                        className="w-6 h-6 rounded border border-separator shrink-0 avatar-feather"
                       />
                     ) : null}
                     <span className="text-xs text-foreground truncate max-w-[110px]">
@@ -321,7 +321,7 @@ export default function DomainInfoCard({
             )}
           </div>
         </div>
-      </Card>
+      </GlassCard>
 
       <CustomModal
         isOpen={isListOpen}
@@ -379,7 +379,7 @@ export default function DomainInfoCard({
                             <Img
                               src={s.officerCharAvatar}
                               alt={s.officerCharIds ?? ""}
-                              className="w-8 h-8 rounded-full object-cover border border-separator shrink-0"
+                              className="w-8 h-8 rounded border border-separator shrink-0 avatar-feather"
                             />
                           ) : null}
                           <div className="flex-1 min-w-0">
@@ -453,9 +453,9 @@ export default function DomainInfoCard({
           </div>
         </CustomModalBody>
         <CustomModalFooter>
-          <Button variant="secondary" onPress={() => setIsListOpen(false)}>
+          <GlassButton variant="secondary" onPress={() => setIsListOpen(false)}>
             {t("common.close") || "Close"}
-          </Button>
+          </GlassButton>
         </CustomModalFooter>
       </CustomModal>
 
@@ -491,9 +491,9 @@ export default function DomainInfoCard({
           </div>
         </CustomModalBody>
         <CustomModalFooter>
-          <Button variant="secondary" onPress={() => setIsDomainSelectOpen(false)}>
+          <GlassButton variant="secondary" onPress={() => setIsDomainSelectOpen(false)}>
             {t("common.cancel") || "Cancel"}
-          </Button>
+          </GlassButton>
         </CustomModalFooter>
       </CustomModal>
 
@@ -542,9 +542,9 @@ export default function DomainInfoCard({
           </div>
         </CustomModalBody>
         <CustomModalFooter>
-          <Button variant="secondary" onPress={() => setIsRoleSelectOpen(false)}>
+          <GlassButton variant="secondary" onPress={() => setIsRoleSelectOpen(false)}>
             {t("common.cancel") || "Cancel"}
-          </Button>
+          </GlassButton>
         </CustomModalFooter>
       </CustomModal>
     </>

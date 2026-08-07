@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Card, ProgressCircle } from "@heroui/react";
+import { GlassButton, GlassCard, GlassProgressCircle } from "@/components/ui/glass";
 import { CharDetailData, CharacterItem } from "@/types/charDetail";
 import { CharSelectModal } from "./char-select-modal";
 import { logDebug, logError } from "@/utils/logger";
@@ -20,7 +20,6 @@ import {
   CustomModalBody,
   CustomModalFooter,
 } from "@/components/custom-modal";
-import { Button } from "@heroui/react";
 
 const DISPLAY_MODE_CONFIG: Record<CharacterListDisplayMode, { slotCount: number; gridCols: number }> = {
   single: { slotCount: 1, gridCols: 1 },
@@ -210,7 +209,7 @@ export default function CharacterListCard({
     return (
       <div
         key={data.id}
-        className="group relative h-full w-full overflow-hidden border border-separator bg-content1 transition-all duration-200 hover:border-blue-400/60 hover:shadow-md cursor-pointer first:rounded-l-[10px] last:rounded-r-[10px]"
+        className="group relative h-full w-full overflow-hidden border border-separator glass-surface transition-all duration-200 hover:border-blue-400/60 hover:shadow-md cursor-pointer first:rounded-l-[10px] last:rounded-r-[10px]"
         onClick={(e) => {
           if (isEditMode) return;
           e.stopPropagation();
@@ -289,33 +288,33 @@ export default function CharacterListCard({
 
   if (isLoading) {
     return (
-      <Card className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
-        <ProgressCircle isIndeterminate size="md" aria-label="Loading">
-          <ProgressCircle.Track>
-            <ProgressCircle.TrackCircle />
-            <ProgressCircle.FillCircle />
-          </ProgressCircle.Track>
-        </ProgressCircle>
-      </Card>
+      <GlassCard className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
+        <GlassProgressCircle isIndeterminate size="md" aria-label="Loading" className="text-primary">
+          <GlassProgressCircle.Track>
+            <GlassProgressCircle.TrackCircle />
+            <GlassProgressCircle.FillCircle />
+          </GlassProgressCircle.Track>
+        </GlassProgressCircle>
+      </GlassCard>
     );
   }
 
   if (!processedCharDetail) {
     return (
-      <Card className="p-6 glass-surface border border-separator/90">
+      <GlassCard className="p-6 glass-surface border border-separator/90">
         <p className="text-muted text-center">
           {t("card:no_data")}
         </p>
-      </Card>
+      </GlassCard>
     );
   }
 
   return (
     <>
-      <Card
-        radius="none"
+      <GlassCard
         className="p-0 glass-surface border border-separator/90 h-full w-full select-none cursor-pointer hover:shadow-md transition-shadow rounded-[10px] overflow-hidden"
-        onClick={() => !isEditMode && setIsModalOpen(true)}
+        isPressable
+        onPress={() => !isEditMode && setIsModalOpen(true)}
       >
         <div className="grid flex-1 min-h-0 h-full" style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}>
             {selectedCharacters.map(renderCharSlot)}
@@ -350,7 +349,7 @@ export default function CharacterListCard({
               </div>
             ))}
         </div>
-      </Card>
+      </GlassCard>
 
       <CharSelectModal
         isOpen={isModalOpen}
@@ -406,12 +405,12 @@ export default function CharacterListCard({
                   }`}
                   onClick={() => handleRoleSelect(account.id)}
                 >
-                  <div className="w-10 h-10 rounded-full overflow-hidden bg-default-200 shrink-0">
+                  <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
                     {account.avatar ? (
                       <Img
                         src={account.avatar}
                         alt={account.nickname}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full avatar-feather"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted text-sm">
@@ -438,12 +437,12 @@ export default function CharacterListCard({
           </div>
         </CustomModalBody>
         <CustomModalFooter>
-          <Button
+          <GlassButton
             variant="secondary"
             onPress={() => setIsRoleSelectModalOpen(false)}
           >
             {t("common.cancel") || "Cancel"}
-          </Button>
+          </GlassButton>
         </CustomModalFooter>
       </CustomModal>
     </>

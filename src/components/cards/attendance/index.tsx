@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { Card, Button, ProgressCircle } from "@heroui/react";
+import { GlassButton, GlassCard, GlassProgressCircle } from "@/components/ui/glass";
 import { useTranslation } from "react-i18next";
 import { BaseCardProps } from "../registry/types";
 import { CardConfigService } from "@/utils/cardConfigService";
@@ -329,14 +329,14 @@ export default function AttendanceCard({
 
   if (!settingsLoaded) {
     return (
-      <Card className="p-3 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
-        <ProgressCircle isIndeterminate size="sm" aria-label="Loading">
-          <ProgressCircle.Track>
-            <ProgressCircle.TrackCircle />
-            <ProgressCircle.FillCircle />
-          </ProgressCircle.Track>
-        </ProgressCircle>
-      </Card>
+      <GlassCard className="p-3 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
+        <GlassProgressCircle isIndeterminate size="sm" aria-label="Loading" className="text-primary">
+          <GlassProgressCircle.Track>
+            <GlassProgressCircle.TrackCircle />
+            <GlassProgressCircle.FillCircle />
+          </GlassProgressCircle.Track>
+        </GlassProgressCircle>
+      </GlassCard>
     );
   }
 
@@ -386,7 +386,7 @@ export default function AttendanceCard({
 
   return (
     <>
-      <Card className="p-0 glass-surface border border-separator/90 h-full w-full select-none rounded-[10px] overflow-hidden flex flex-col">
+      <GlassCard className="p-0 glass-surface border border-separator/90 h-full w-full select-none rounded-[10px] overflow-hidden flex flex-col">
         <div
           className="flex h-full p-2.5 gap-2.5 cursor-pointer"
           onClick={openRewardsModal}
@@ -397,18 +397,18 @@ export default function AttendanceCard({
                 <svg className="w-6 h-6 text-muted opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
-                <Button size="sm" variant="secondary" className="text-[9px] h-5 min-w-0 px-1.5" onPress={openSettings}>
+                <GlassButton size="sm" variant="secondary" className="text-[9px] !h-5 !min-w-0 !px-1.5" onPress={openSettings}>
                   {t("card:attendance_select_account")}
-                </Button>
+                </GlassButton>
               </div>
             ) : attendanceState === "error" && signPhase === "idle" ? (
               <div className="flex flex-col items-center gap-1.5">
                 <svg className="w-5 h-5 text-danger opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
-                <Button size="sm" variant="secondary" className="text-[9px] h-5 min-w-0 px-1.5" onPress={fetchAttendance}>
+                <GlassButton size="sm" variant="secondary" className="text-[9px] !h-5 !min-w-0 !px-1.5" onPress={fetchAttendance}>
                   {t("card:attendance_refresh")}
-                </Button>
+                </GlassButton>
               </div>
             ) : attendanceState === "loading" && signPhase === "idle" ? (
               <div className="relative w-[68px] h-[68px]">
@@ -505,12 +505,12 @@ export default function AttendanceCard({
                 className="flex items-center gap-1.5 cursor-pointer hover:opacity-70 transition-opacity"
                 onClick={(e) => { e.stopPropagation(); openSettings(); }}
               >
-                <div className="w-5 h-5 rounded-full overflow-hidden bg-default-200 shrink-0">
+                <div className="w-5 h-5 rounded overflow-hidden shrink-0">
                   {selectedAccount.avatar ? (
                     <Img
                       src={selectedAccount.avatar}
                       alt={selectedAccount.nickname}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full avatar-feather"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-[7px] text-muted font-semibold">
@@ -547,7 +547,7 @@ export default function AttendanceCard({
             </div>
           </div>
         </div>
-      </Card>
+      </GlassCard>
 
       <AttendanceSettingsModal
         isOpen={showSettingsModal}

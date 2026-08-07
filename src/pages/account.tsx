@@ -1,16 +1,16 @@
 import { useTranslation } from "react-i18next";
 import { Img } from "@/utils/imageLoader";
 import {
-  Card,
-  Button,
-  Skeleton,
-  Alert,
-  Checkbox,
-  InputOTP,
-  Label,
-  Link,
-  Spinner,
-} from "@heroui/react";
+  GlassAlert,
+  GlassButton,
+  GlassCard,
+  GlassCheckbox,
+  GlassInputOTP,
+  GlassLabel,
+  GlassLink,
+  GlassSkeleton,
+  GlassSpinner,
+} from "@/components/ui/glass";
 import { SimplePagination } from "@/components/simple-pagination";
 import { CONTAINER_HEIGHT } from "@/components/cards/card-container";
 import { StatusDot, type StatusDotTone } from "@/components/ui/status-dot";
@@ -884,23 +884,23 @@ export default function AccountPage() {
     return (
       <div className="space-y-[5px]">
         {[...Array(skeletonCount)].map((_, index) => (
-          <Card
+          <GlassCard
             key={index}
             className="p-4 glass-surface border border-separator/90"
             style={{ height: `${CARD_HEIGHT}px` }}
           >
             <div className="flex items-center gap-4 h-full">
-              <Skeleton className="w-12 h-12 rounded-full" />
+              <GlassSkeleton className="w-12 h-12 rounded-full" />
               <div className="flex-1 space-y-2">
-                <Skeleton className="w-32 h-4 rounded-lg bg-gradient-to-r from-default-200 to-default-100 animate-pulse" />
-                <Skeleton className="w-24 h-3 rounded-lg bg-gradient-to-r from-default-200 to-default-100 animate-pulse" />
+                <GlassSkeleton className="w-32 h-4 rounded-lg bg-gradient-to-r from-default-200 to-default-100 animate-pulse" />
+                <GlassSkeleton className="w-24 h-3 rounded-lg bg-gradient-to-r from-default-200 to-default-100 animate-pulse" />
               </div>
               <div className="flex gap-2">
-                <Skeleton className="w-20 h-8 rounded-lg bg-gradient-to-r from-default-200 to-default-100 animate-pulse" />
-                <Skeleton className="w-20 h-8 rounded-lg bg-gradient-to-r from-default-200 to-default-100 animate-pulse" />
+                <GlassSkeleton className="w-20 h-8 rounded-lg bg-gradient-to-r from-default-200 to-default-100 animate-pulse" />
+                <GlassSkeleton className="w-20 h-8 rounded-lg bg-gradient-to-r from-default-200 to-default-100 animate-pulse" />
               </div>
             </div>
-          </Card>
+          </GlassCard>
         ))}
       </div>
     );
@@ -911,15 +911,15 @@ export default function AccountPage() {
       {/* 全局 Alert - 浮动覆盖 */}
       {globalAlert && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-slide-down">
-          <Alert
+          <GlassAlert
             status={globalAlert.type}
             className="shadow-lg min-w-[300px] max-w-[500px] rounded-xl"
           >
-            <Alert.Indicator />
-            <Alert.Content>
-              <Alert.Description>{globalAlert.message}</Alert.Description>
-            </Alert.Content>
-          </Alert>
+            <GlassAlert.Indicator />
+            <GlassAlert.Content>
+              <GlassAlert.Description>{globalAlert.message}</GlassAlert.Description>
+            </GlassAlert.Content>
+          </GlassAlert>
         </div>
       )}
 
@@ -933,7 +933,7 @@ export default function AccountPage() {
         </div>
 
         <div className="flex gap-2">
-          <Button
+          <GlassButton
             variant="outline"
             onPress={refreshData}
             isDisabled={isRefreshing}
@@ -941,10 +941,10 @@ export default function AccountPage() {
             {isRefreshing
               ? t("settings.account.refreshing")
               : t("settings.account.refresh_data")}
-          </Button>
-          <Button variant="primary" onPress={handleOpenAddModal}>
+          </GlassButton>
+          <GlassButton variant="primary" onPress={handleOpenAddModal}>
             {t("settings.account.add_account")}
-          </Button>
+          </GlassButton>
         </div>
       </div>
 
@@ -961,7 +961,7 @@ export default function AccountPage() {
       {/* Accounts List */}
       {isLoading || isRefreshing ? (
         <div className="flex flex-col flex-1">
-          <Card className="border border-separator/80 p-0 flex flex-col">
+          <GlassCard className="border border-separator/80 p-0 flex flex-col">
             <div
               ref={containerRef}
               className="relative px-[15px] py-[15px] space-y-[5px]"
@@ -972,7 +972,7 @@ export default function AccountPage() {
             {/* Card footer: pagination (disabled during refresh) */}
             <div className="border-t border-separator/60 px-3 py-3 w-full">
               <div className="flex items-center justify-center w-full gap-3">
-                <Button
+                <GlassButton
                   size="sm"
                   variant="outline"
                   isDisabled={true}
@@ -992,7 +992,7 @@ export default function AccountPage() {
                     />
                   </svg>
                   {t("common.pagination.previous")}
-                </Button>
+                </GlassButton>
 
                 <div className="flex items-center">
                   <SimplePagination
@@ -1010,7 +1010,7 @@ export default function AccountPage() {
                   </div>
                 </div>
 
-                <Button
+                <GlassButton
                   size="sm"
                   variant="outline"
                   isDisabled={true}
@@ -1030,13 +1030,13 @@ export default function AccountPage() {
                       d="M9 5l7 7-7 7"
                     />
                   </svg>
-                </Button>
+                </GlassButton>
               </div>
             </div>
-          </Card>
+          </GlassCard>
         </div>
       ) : accounts.length === 0 ? (
-        <Card
+        <GlassCard
           className="p-12 glass-surface border border-separator/90"
           style={{ minHeight: `${CONTAINER_HEIGHT}px` }}
         >
@@ -1063,11 +1063,11 @@ export default function AccountPage() {
                 : "Click the button above to add an account"}
             </p>
           </div>
-        </Card>
+        </GlassCard>
       ) : (
         <div className="flex flex-col flex-1">
           {/* 账户卡片区域 - 带外框 */}
-          <Card className="shadow-sm border-2 border-separator p-0 flex flex-col">
+          <GlassCard className="shadow-sm border-2 border-separator p-0 flex flex-col">
             <div
               ref={containerRef}
               className="relative px-[15px] py-[15px] space-y-[5px]"
@@ -1131,7 +1131,7 @@ export default function AccountPage() {
                         : { tone: "default", label: "AVAILABLE" };
 
                 return (
-                  <Card
+                  <GlassCard
                     key={account.id}
                     data-account-card="true"
                     className={`cursor-pointer transition-all duration-300 ease-in-out bg-content1 ${borderColorClass} ${shadowClass} border-2 box-border ${animationClass}`}
@@ -1140,7 +1140,8 @@ export default function AccountPage() {
                       position: isAnimating ? "relative" : "static",
                       zIndex,
                     }}
-                    onClick={() => handleSelectAccount(account.id)}
+                    isPressable
+                    onPress={() => handleSelectAccount(account.id)}
                   >
                     <div className="flex items-center h-full px-3">
                       <div className="flex items-center justify-between w-full">
@@ -1154,12 +1155,12 @@ export default function AccountPage() {
                           )}
 
                           {/* Avatar */}
-                          <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-base font-bold text-primary flex-shrink-0 overflow-hidden">
+                          <div className="w-10 h-10 rounded-lg flex items-center justify-center text-base font-bold text-primary flex-shrink-0 overflow-hidden">
                                 {account.avatar ? (
                                 <Img
                                   src={account.avatar}
                                 alt={account.nickname}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full avatar-feather"
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).style.display =
                                     "none";
@@ -1202,26 +1203,26 @@ export default function AccountPage() {
                             <StatusBadge config={statusBadgeConfig} />
                           )}
 
-                          <Button
+                          <GlassButton
                             size="sm"
                             variant="outline"
                             onPress={() => handleViewDetails(account)}
                             className="!h-7 !px-2 text-xs"
                           >
                             {t("settings.account.view_details")}
-                          </Button>
-                          <Button
+                          </GlassButton>
+                          <GlassButton
                             size="sm"
                             variant="outline"
                             onPress={() => handleLogout(account.id)}
                             className="text-danger border-danger hover:bg-danger-50 !h-7 !px-2 text-xs"
                           >
                             {t("settings.account.logout")}
-                          </Button>
+                          </GlassButton>
                         </div>
                       </div>
                     </div>
-                  </Card>
+                  </GlassCard>
                 );
               })}
             </div>
@@ -1229,7 +1230,7 @@ export default function AccountPage() {
             {/* Card footer: pagination */}
             <div className="border-t border-separator px-3 py-3 w-full">
               <div className="flex items-center justify-center w-full gap-3">
-                <Button
+                <GlassButton
                   size="sm"
                   variant="outline"
                   isDisabled={currentPage === 1}
@@ -1250,7 +1251,7 @@ export default function AccountPage() {
                     />
                   </svg>
                   {t("common.pagination.previous")}
-                </Button>
+                </GlassButton>
 
                 <div className="flex items-center">
                   <SimplePagination
@@ -1259,14 +1260,13 @@ export default function AccountPage() {
                     onChange={setCurrentPage}
                     showControls={false}
                   />
-                  {/* keep HeroUI Pagination for compatibility (visually hidden) */}
                   {/* keep pagination for screen reader compatibility (visually hidden) */}
                   <div className="sr-only" aria-hidden="true">
                     <span>{totalPages} {i18n.language === "zh" ? "页" : "pages"}</span>
                   </div>
                 </div>
 
-                <Button
+                <GlassButton
                   size="sm"
                   variant="outline"
                   isDisabled={currentPage >= totalPages}
@@ -1289,10 +1289,10 @@ export default function AccountPage() {
                       d="M9 5l7 7-7 7"
                     />
                   </svg>
-                </Button>
+                </GlassButton>
               </div>
             </div>
-          </Card>
+          </GlassCard>
         </div>
       )}
 
@@ -1351,7 +1351,7 @@ export default function AccountPage() {
                     </p>
                   </div>
                   {/* 重试按钮 */}
-                  <Button
+                  <GlassButton
                     variant="secondary"
                     onPress={() => retrySyncAccount(selectedAccount.id)}
                     isDisabled={isRefreshing}
@@ -1359,7 +1359,7 @@ export default function AccountPage() {
                   >
                     {isRefreshing ? (
                       <>
-                        <Spinner size="sm" color="current" />
+                        <GlassSpinner size="sm" color="current" />
                         {i18n.language === "zh" ? "重试中..." : "Retrying..."}
                       </>
                     ) : (
@@ -1367,18 +1367,18 @@ export default function AccountPage() {
                         ↻ {i18n.language === "zh" ? "重试同步" : "Retry Sync"}
                       </>
                     )}
-                  </Button>
+                  </GlassButton>
                 </div>
               ) : (
                 /* 正常账户信息 */
                 <>
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-2xl font-bold text-primary overflow-hidden">
+                    <div className="w-16 h-16 rounded-lg flex items-center justify-center text-2xl font-bold text-primary overflow-hidden">
                         {selectedAccount.avatar ? (
                           <Img
                             src={selectedAccount.avatar}
                           alt={selectedAccount.nickname}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full avatar-feather"
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.display =
                               "none";
@@ -1439,12 +1439,12 @@ export default function AccountPage() {
           )}
         </CustomModalBody>
         <CustomModalFooter>
-          <Button
+          <GlassButton
             variant="outline"
             onPress={() => setIsDetailsModalOpen(false)}
           >
             {t("settings.account.close")}
-          </Button>
+          </GlassButton>
         </CustomModalFooter>
       </CustomModal>
 
@@ -1483,27 +1483,28 @@ export default function AccountPage() {
                   const avatarSrc = role.avatarUrl;
 
                   return (
-                    <Card
+                    <GlassCard
                       key={role.roleId}
                       className={`cursor-pointer transition-all duration-200 w-full ${
                         selectedRoles.includes(role.roleId)
                           ? "border-[3px] border-success bg-success/10 dark:bg-success/20 shadow-md"
                           : "border-2 border-separator hover:border-success/50 hover:shadow-sm hover:bg-content2 dark:hover:bg-content2/50"
                       }`}
-                      onClick={() => handleRoleToggle(role.roleId)}
+                      isPressable
+                      onPress={() => handleRoleToggle(role.roleId)}
                     >
                       <div className="p-4">
                         <div className="flex items-center gap-4">
-                          <Checkbox
+                          <GlassCheckbox
                             isSelected={selectedRoles.includes(role.roleId)}
                             onChange={() => handleRoleToggle(role.roleId)}
                           />
-                          <div className="w-16 h-16 rounded-full overflow-hidden bg-default-200 flex-shrink-0">
+                           <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
                               {avatarSrc ? (
                               <Img
                                 src={avatarSrc}
                                 alt={role.nickname}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full avatar-feather"
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).style.display =
                                     "none";
@@ -1514,12 +1515,12 @@ export default function AccountPage() {
                                       .charAt(0)
                                       .toUpperCase();
                                     parent.className =
-                                      "w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-lg font-bold text-primary";
+                                      "w-16 h-16 rounded-lg flex items-center justify-center text-lg font-bold text-primary";
                                   }
                                 }}
                               />
                             ) : (
-                              <div className="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-lg font-bold text-primary">
+                              <div className="w-16 h-16 rounded-lg flex items-center justify-center text-lg font-bold text-primary">
                                 {role.nickname.charAt(0).toUpperCase()}
                               </div>
                             )}
@@ -1539,7 +1540,7 @@ export default function AccountPage() {
                           </div>
                         </div>
                       </div>
-                    </Card>
+                    </GlassCard>
                   );
                 })}
               </div>
@@ -1629,26 +1630,26 @@ export default function AccountPage() {
 
               {/* 错误提示 */}
               {loginError && (
-                <Alert status="danger">
-                  <Alert.Indicator />
-                  <Alert.Content>
-                    <Alert.Description>{loginError}</Alert.Description>
-                  </Alert.Content>
-                </Alert>
+                <GlassAlert status="danger">
+                  <GlassAlert.Indicator />
+                  <GlassAlert.Content>
+                    <GlassAlert.Description>{loginError}</GlassAlert.Description>
+                  </GlassAlert.Content>
+                </GlassAlert>
               )}
 
               {/* 发送验证码成功提示 */}
               {codeSentSuccess && (
-                <Alert status="success">
-                  <Alert.Indicator />
-                  <Alert.Content>
-                    <Alert.Description>
+                <GlassAlert status="success">
+                  <GlassAlert.Indicator />
+                  <GlassAlert.Content>
+                    <GlassAlert.Description>
                       {i18n.language === "zh"
                         ? "验证码已发送，请注意查收"
                         : "Verification code sent"}
-                    </Alert.Description>
-                  </Alert.Content>
-                </Alert>
+                    </GlassAlert.Description>
+                  </GlassAlert.Content>
+                </GlassAlert>
               )}
 
               {/* 手机号和密码输入 */}
@@ -1727,12 +1728,12 @@ export default function AccountPage() {
 
               {/* 错误提示 */}
               {loginError && (
-                <Alert status="danger">
-                  <Alert.Indicator />
-                  <Alert.Content>
-                    <Alert.Description>{loginError}</Alert.Description>
-                  </Alert.Content>
-                </Alert>
+                <GlassAlert status="danger">
+                  <GlassAlert.Indicator />
+                  <GlassAlert.Content>
+                    <GlassAlert.Description>{loginError}</GlassAlert.Description>
+                  </GlassAlert.Content>
+                </GlassAlert>
               )}
 
               {!showOtpInput ? (
@@ -1775,7 +1776,7 @@ export default function AccountPage() {
                     </div>
                   </div>
 
-                  <Button
+                  <GlassButton
                     variant="primary"
                     onPress={handleSendCodeAndShowOtp}
                     isDisabled={isSendingCode || !phone}
@@ -1783,21 +1784,21 @@ export default function AccountPage() {
                   >
                     {isSendingCode ? (
                       <>
-                        <Spinner color="current" size="sm" />
+                        <GlassSpinner color="current" size="sm" />
                         {t("settings.account.sending")}
                       </>
                     ) : (
                       t("settings.account.confirm")
                     )}
-                  </Button>
+                  </GlassButton>
                 </div>
               ) : (
                 // 第二步：输入验证码
                 <div className="flex w-full flex-col gap-2">
                   <div className="flex flex-col gap-1">
-                    <Label>
+                    <GlassLabel>
                       {i18n.language === "zh" ? "验证账户" : "Verify account"}
-                    </Label>
+                    </GlassLabel>
                     <p className="text-sm text-muted">
                       {i18n.language === "zh"
                         ? `我们已向 ${phone} 发送验证码`
@@ -1805,7 +1806,7 @@ export default function AccountPage() {
                     </p>
                   </div>
 
-                  <InputOTP
+                  <GlassInputOTP
                     aria-describedby={isOtpInvalid ? "code-error" : undefined}
                     isInvalid={isOtpInvalid}
                     maxLength={6}
@@ -1824,18 +1825,18 @@ export default function AccountPage() {
                       }
                     }}
                   >
-                    <InputOTP.Group>
-                      <InputOTP.Slot index={0} />
-                      <InputOTP.Slot index={1} />
-                      <InputOTP.Slot index={2} />
-                    </InputOTP.Group>
-                    <InputOTP.Separator />
-                    <InputOTP.Group>
-                      <InputOTP.Slot index={3} />
-                      <InputOTP.Slot index={4} />
-                      <InputOTP.Slot index={5} />
-                    </InputOTP.Group>
-                  </InputOTP>
+                    <GlassInputOTP.Group>
+                      <GlassInputOTP.Slot index={0} />
+                      <GlassInputOTP.Slot index={1} />
+                      <GlassInputOTP.Slot index={2} />
+                    </GlassInputOTP.Group>
+                    <GlassInputOTP.Separator />
+                    <GlassInputOTP.Group>
+                      <GlassInputOTP.Slot index={3} />
+                      <GlassInputOTP.Slot index={4} />
+                      <GlassInputOTP.Slot index={5} />
+                    </GlassInputOTP.Group>
+                  </GlassInputOTP>
 
                   {isOtpInvalid && (
                     <span
@@ -1856,9 +1857,9 @@ export default function AccountPage() {
                           ? "没收到验证码？"
                           : "Didn't receive a code?"}
                       </p>
-                      <Link
+                      <GlassLink
                         className="text-foreground underline cursor-pointer"
-                        onPress={async () => {
+                        onClick={async () => {
                           if (countdown > 0) {
                             alert(
                               i18n.language === "zh"
@@ -1904,7 +1905,7 @@ export default function AccountPage() {
                         }}
                       >
                         {i18n.language === "zh" ? "重新发送" : "Resend"}
-                      </Link>
+                      </GlassLink>
                     </div>
 
                     {/* 返回手机号输入按钮 */}
@@ -1927,7 +1928,7 @@ export default function AccountPage() {
         <CustomModalFooter>
           {availableRoles.length > 0 ? (
             <>
-              <Button
+              <GlassButton
                 variant="outline"
                 onPress={() => {
                   // 放弃角色选择，清除所有登录状态
@@ -1940,8 +1941,8 @@ export default function AccountPage() {
                 }}
               >
                 {t("settings.account.back")}
-              </Button>
-              <Button
+              </GlassButton>
+              <GlassButton
                 variant="primary"
                 onPress={handleConfirmRoles}
                 isDisabled={selectedRoles.length === 0 || isLoading}
@@ -1949,15 +1950,15 @@ export default function AccountPage() {
                 {isLoading
                   ? t("settings.account.loading")
                   : `${t("settings.account.confirm")} (${selectedRoles.length})`}
-              </Button>
+              </GlassButton>
             </>
           ) : loginMethod === "phone" ? (
             // 密码登录显示确认按钮
             <>
-              <Button variant="outline" onPress={() => setLoginMethod(null)}>
+              <GlassButton variant="outline" onPress={() => setLoginMethod(null)}>
                 {t("settings.account.back")}
-              </Button>
-              <Button
+              </GlassButton>
+              <GlassButton
                 variant="primary"
                 onPress={handleLogin}
                 isDisabled={isLoggingIn || !phone || !password}
@@ -1965,12 +1966,12 @@ export default function AccountPage() {
                 {isLoggingIn
                   ? t("settings.account.loading")
                   : t("settings.account.login")}
-              </Button>
+              </GlassButton>
             </>
           ) : loginMethod === "qrcode" ? (
             // 验证码登录显示返回按钮
             <>
-              <Button
+              <GlassButton
                 variant="outline"
                 onPress={() => {
                   if (showOtpInput) {
@@ -1985,7 +1986,7 @@ export default function AccountPage() {
                 }}
               >
                 {t("settings.account.back")}
-              </Button>
+              </GlassButton>
             </>
           ) : null}
         </CustomModalFooter>

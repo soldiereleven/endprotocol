@@ -5,7 +5,6 @@ interface AccountAvatarProps {
   src?: string;
   alt: string;
   size?: "xs" | "sm" | "md" | "lg" | "xl";
-  /** 是否展示右下角绿点(ACTIVE 指示器) */
   showActiveIndicator?: boolean;
   className?: string;
 }
@@ -18,10 +17,7 @@ const SIZE_CLASS: Record<NonNullable<AccountAvatarProps["size"]>, string> = {
   xl: "w-20 h-20 text-3xl",
 };
 
-const INDICATOR_SIZE: Record<
-  NonNullable<AccountAvatarProps["size"]>,
-  string
-> = {
+const INDICATOR_SIZE: Record<NonNullable<AccountAvatarProps["size"]>, string> = {
   xs: "w-2 h-2",
   sm: "w-3 h-3",
   md: "w-3.5 h-3.5",
@@ -41,7 +37,7 @@ export function AccountAvatar({
   return (
     <div
       className={clsx(
-        "relative flex-shrink-0 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center font-bold text-primary overflow-hidden",
+        "relative flex-shrink-0 rounded-lg flex items-center justify-center font-bold text-primary overflow-hidden",
         SIZE_CLASS[size],
         className,
       )}
@@ -50,7 +46,7 @@ export function AccountAvatar({
         <Img
           src={src}
           alt={alt}
-          className="w-full h-full object-cover"
+          className="w-full h-full avatar-feather"
           onError={(e) => {
             const img = e.target as HTMLImageElement;
             img.style.display = "none";
