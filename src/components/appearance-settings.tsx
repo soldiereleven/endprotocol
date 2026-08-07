@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { SettingsDivider } from "@/components/ui/settings-row";
 import { getConfig, setConfig } from "@/utils/configService";
@@ -115,6 +116,7 @@ export function AppearanceSettings() {
   const [pickerHex, setPickerHex] = useState("#6366f1");
   const [pickerLabel, setPickerLabel] = useState("");
   const pickerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -139,6 +141,12 @@ export function AppearanceSettings() {
     if (color) applyThemeColor(color.colors);
     applyThemeModeLocal(themeMode);
   }, [themeMode, themeColor, customColors, isLoading]);
+
+  useEffect(() => {
+    if (showPicker && inputRef.current) {
+      inputRef.current.click();
+    }
+  }, [showPicker]);
 
   useEffect(() => {
     if (themeMode !== "system") return;
@@ -308,7 +316,7 @@ export function AppearanceSettings() {
           ))}
 
           {/* Add button */}
-          <div className="relative" ref={pickerRef}>
+          <div className="relative" ref={triggerRef}>
             <button
               onClick={() => setShowPicker(!showPicker)}
               className="w-10 h-10 rounded-full border-2 border-dashed border-default-300 hover:border-primary/60 flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-105 text-muted hover:text-primary"
@@ -319,8 +327,21 @@ export function AppearanceSettings() {
               </svg>
             </button>
 
-            {showPicker && (
-              <div className="absolute top-full left-0 mt-2 p-4 rounded-xl border border-separator bg-background glass-surface-strong shadow-xl animate-scale-in z-50 w-64">
+            {showPicker && createPortal(
+              <>
+                <div className="fixed inset-0 z-[9998]" onClick={() => setShowPicker(false)} />
+                <div
+                  ref={pickerRef}
+                  className="fixed p-4 rounded-xl border border-separator bg-background glass-surface-strong shadow-xl animate-scale-in z-[9999] w-64"
+                  style={{
+                    top: triggerRef.current
+                      ? triggerRef.current.getBoundingClientRect().bottom + 8
+                      : 0,
+                    left: triggerRef.current
+                      ? Math.min(triggerRef.current.getBoundingClientRect().left, window.innerWidth - 280)
+                      : 0,
+                  }}
+                >
                 <p className="text-sm font-medium text-foreground mb-3">Custom Color</p>
                 <div className="flex items-center gap-3 mb-3">
                   <input
@@ -363,6 +384,8 @@ export function AppearanceSettings() {
                   </button>
                 </div>
               </div>
+              </>,
+              document.body,
             )}
           </div>
         </div>
