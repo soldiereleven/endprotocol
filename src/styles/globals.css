@@ -179,18 +179,17 @@ html {
   -webkit-touch-callout: none;
 }
 
-/* 透明窗口背景 — 由系统 acrylic 效果模糊窗口后的桌面内容 */
+/* 透明窗口背景 — 由系统 acrylic 效果模糊窗口后的桌面内容。
+ * 叠加半透明底色 — 保证任何桌面背景下文字都清晰可读。
+ * 颜色跟随主题模式：浅色主题 → 半透明白，深色主题 → 半透明深灰/黑。
+ * 透明度较高，桌面内容仍隐约可见。 */
 body {
   min-height: 100vh;
-  background: transparent;
+  background: rgba(250, 250, 253, 0.25);
 }
-
-/* 卡片/次要文字统一为深灰色 — 玻璃透明背景下保证清晰可读
- * （:root 写在 heroui 主题之后，优先级覆盖 light/dark 两套 muted） */
-:root {
-  --muted: oklch(37% 0.008 286);
+.dark body {
+  background: rgba(10, 12, 16, 0.25);
 }
-
 
 ::selection {
   background: color-mix(in oklab, var(--primary) 30%, transparent);

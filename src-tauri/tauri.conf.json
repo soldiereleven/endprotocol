@@ -21,7 +21,7 @@
         "transparent": true,
         "windowEffects": {
           "effects": ["acrylic"],
-          "color": [18, 18, 20, 100]
+          "color": [18, 18, 20, 30]
         }
       }
     ],
