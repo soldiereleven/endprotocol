@@ -1,6 +1,6 @@
 import { FC, useState, useEffect, useCallback, useRef } from "react";
-import { SunFilledIcon, MoonFilledIcon, ComputerIcon } from "@/components/icons";
-import { getConfig } from "@/utils/configService";
+import { SunFilledIcon, MoonFilledIcon } from "@/components/icons";
+import { getConfig, setConfig } from "@/utils/configService";
 
 type ThemeMode = "light" | "dark" | "system";
 
@@ -8,12 +8,21 @@ export interface ThemeSwitchProps {
   className?: string;
 }
 
+function getSystemDark() {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
 function applyThemeMode(mode: ThemeMode) {
   const root = document.documentElement;
-  const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const isDark = mode === "dark" || (mode === "system" && systemDark);
+  const isDark = mode === "dark" || (mode === "system" && getSystemDark());
   root.classList.toggle("dark", isDark);
   root.setAttribute("data-aura-mode", isDark ? "dark" : "light");
+}
+
+// 有效模式：跟随系统时解析为当前实际生效的浅色/深色
+function resolveEffective(mode: ThemeMode): "light" | "dark" {
+  if (mode === "system") return getSystemDark() ? "dark" : "light";
+  return mode;
 }
 
 export const ThemeSwitch: FC<ThemeSwitchProps> = ({ className }) => {
@@ -32,7 +41,7 @@ export const ThemeSwitch: FC<ThemeSwitchProps> = ({ className }) => {
     init();
   }, []);
 
-  // Listen for themeChange events from settings page
+  // 监听 themeChange，与设置页双向同步
   useEffect(() => {
     const handler = async () => {
       const savedMode = await getConfig<ThemeMode>("theme_mode");
@@ -44,6 +53,7 @@ export const ThemeSwitch: FC<ThemeSwitchProps> = ({ className }) => {
     return () => window.removeEventListener("themeChange", handler);
   }, []);
 
+  // 跟随系统模式下，系统外观变化时同步切换
   useEffect(() => {
     if (themeMode !== "system") return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -52,58 +62,49 @@ export const ThemeSwitch: FC<ThemeSwitchProps> = ({ className }) => {
     return () => mq.removeEventListener("change", handler);
   }, [themeMode]);
 
-  const cycleTheme = useCallback(() => {
-    const modes: ThemeMode[] = ["light", "dark", "system"];
-    const currentIdx = modes.indexOf(themeMode);
-    const nextMode = modes[(currentIdx + 1) % modes.length];
+  // 侧边栏只做浅色↔深色切换，不进入跟随系统
+  const toggleTheme = useCallback(async () => {
+    const effective = resolveEffective(themeMode);
+    const nextMode: ThemeMode = effective === "light" ? "dark" : "light";
 
+    setThemeMode(nextMode);
+    await setConfig("theme_mode", nextMode);
+    window.dispatchEvent(new CustomEvent("themeChange"));
+
+    // 淡出 → 应用 → 淡入（与设置页一致的时序）
     const rootEl = document.getElementById("root");
     if (rootEl) {
       rootEl.style.transition = "opacity 0.16s ease";
       rootEl.style.opacity = "0";
       setTimeout(() => {
-        setThemeMode(nextMode);
         applyThemeMode(nextMode);
-        setConfig("theme_mode", nextMode);
-        window.dispatchEvent(new CustomEvent("themeChange"));
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => { rootEl.style.opacity = "1"; });
-        });
+        setTimeout(() => {
+          rootEl.style.opacity = "1";
+          rootEl.style.transition = "";
+        }, 40);
       }, 170);
-      setTimeout(() => { rootEl.style.transition = ""; }, 380);
     } else {
-      setThemeMode(nextMode);
       applyThemeMode(nextMode);
-      setConfig("theme_mode", nextMode);
     }
   }, [themeMode]);
 
   if (!isMounted) return <div className="w-6 h-6" />;
 
-  const icons: Record<ThemeMode, JSX.Element> = {
-    light: <SunFilledIcon size={20} />,
-    dark: <MoonFilledIcon size={20} />,
-    system: <ComputerIcon size={20} />,
-  };
-
-  const labels: Record<ThemeMode, string> = {
-    light: "Switch to dark mode",
-    dark: "Switch to system mode",
-    system: "Switch to light mode",
-  };
+  const effective = resolveEffective(themeMode);
+  const isDark = effective === "dark";
 
   return (
     <button
       ref={btnRef}
-      aria-label={labels[themeMode]}
+      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       className={`glass-surface p-1.5 rounded-full transition-all duration-200 hover:scale-105 active:scale-90 cursor-pointer border-none ${className || ""}`}
-      onClick={cycleTheme}
+      onClick={toggleTheme}
     >
       <span
         className="block transition-transform duration-500 ease-spring"
-        style={{ transform: `rotate(${themeMode === "dark" ? "360deg" : "0deg"})` }}
+        style={{ transform: `rotate(${isDark ? "360deg" : "0deg"})` }}
       >
-        {icons[themeMode]}
+        {isDark ? <MoonFilledIcon size={20} /> : <SunFilledIcon size={20} />}
       </span>
     </button>
   );

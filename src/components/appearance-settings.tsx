@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { SettingsDivider } from "@/components/ui/settings-row";
@@ -115,9 +115,56 @@ export function AppearanceSettings() {
   const [showPicker, setShowPicker] = useState(false);
   const [pickerHex, setPickerHex] = useState("#6366f1");
   const [pickerLabel, setPickerLabel] = useState("");
+  const [pickerPos, setPickerPos] = useState<{ top: number; left: number } | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [hexDraft, setHexDraft] = useState("");
+
+  const repositionPicker = useCallback(() => {
+    if (!showPicker) {
+      setPickerPos(null);
+      return;
+    }
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const panelWidth = 264;
+    const panelHeight = 240;
+    const gap = 8;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // 默认在触发器下方，空间不足时翻转到上方
+    let top = rect.bottom + gap;
+    let left = rect.left;
+    if (top + panelHeight > vh - 8) {
+      top = rect.top - panelHeight - gap;
+    }
+    top = Math.max(8, Math.min(top, vh - panelHeight - 8));
+    left = Math.max(8, Math.min(left, vw - panelWidth - 8));
+    setPickerPos({ top, left });
+  }, [showPicker]);
+
+  useEffect(() => {
+    if (showPicker) {
+      setHexDraft(pickerHex);
+    }
+  }, [showPicker, pickerHex]);
+
+  useLayoutEffect(() => {
+    repositionPicker();
+  }, [repositionPicker]);
+
+  useEffect(() => {
+    if (!showPicker) return;
+    window.addEventListener("resize", repositionPicker);
+    window.addEventListener("scroll", repositionPicker, true);
+    return () => {
+      window.removeEventListener("resize", repositionPicker);
+      window.removeEventListener("scroll", repositionPicker, true);
+    };
+  }, [showPicker, repositionPicker]);
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -134,6 +181,22 @@ export function AppearanceSettings() {
     loadConfig();
   }, []);
 
+  // 监听 themeChange（侧边栏切换主题时），保持设置页高亮同步
+  useEffect(() => {
+    const handler = async () => {
+      const [savedMode, savedColor, savedCustom] = await Promise.all([
+        getConfig<ThemeMode>("theme_mode"),
+        getConfig<string>("theme_color"),
+        getConfig<ThemeColor[]>("theme_custom_colors"),
+      ]);
+      setThemeMode(savedMode ?? "system");
+      setThemeColor(savedColor ?? "indigo");
+      setCustomColors(savedCustom ?? []);
+    };
+    window.addEventListener("themeChange", handler);
+    return () => window.removeEventListener("themeChange", handler);
+  }, []);
+
   useEffect(() => {
     if (isLoading) return;
     const allColors = getAllColors(customColors);
@@ -141,12 +204,6 @@ export function AppearanceSettings() {
     if (color) applyThemeColor(color.colors);
     applyThemeModeLocal(themeMode);
   }, [themeMode, themeColor, customColors, isLoading]);
-
-  useEffect(() => {
-    if (showPicker && inputRef.current) {
-      inputRef.current.click();
-    }
-  }, [showPicker]);
 
   useEffect(() => {
     if (themeMode !== "system") return;
@@ -178,11 +235,12 @@ export function AppearanceSettings() {
       rootEl.style.opacity = "0";
       setTimeout(() => {
         applyThemeModeLocal(mode);
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => { rootEl.style.opacity = "1"; });
-        });
+        // 恢复透明度：不依赖 rAF（透明窗口合成时可能不触发），用普通定时器兜底
+        setTimeout(() => {
+          rootEl.style.opacity = "1";
+          rootEl.style.transition = "";
+        }, 40);
       }, 170);
-      setTimeout(() => { rootEl.style.transition = ""; }, 380);
     } else {
       applyThemeModeLocal(mode);
     }
@@ -195,7 +253,8 @@ export function AppearanceSettings() {
   };
 
   const handleAddCustom = async () => {
-    const hex = pickerHex;
+    const normalized = pickerHex.replace(/^#?([0-9a-fA-F]{6})$/, "#$1");
+    const hex = /^#[0-9a-fA-F]{6}$/.test(normalized) ? normalized : "#6366f1";
     const label = pickerLabel.trim() || hex.toUpperCase();
     const name = `custom-${Date.now()}`;
     const newColor: ThemeColor = {
@@ -332,58 +391,83 @@ export function AppearanceSettings() {
                 <div className="fixed inset-0 z-[9998]" onClick={() => setShowPicker(false)} />
                 <div
                   ref={pickerRef}
-                  className="fixed p-4 rounded-xl border border-separator bg-background glass-surface-strong shadow-xl animate-scale-in z-[9999] w-64"
+                  className="fixed p-4 rounded-2xl glass-surface-strong shadow-2xl animate-scale-in z-[9999] w-64"
                   style={{
-                    top: triggerRef.current
-                      ? triggerRef.current.getBoundingClientRect().bottom + 8
-                      : 0,
-                    left: triggerRef.current
-                      ? Math.min(triggerRef.current.getBoundingClientRect().left, window.innerWidth - 280)
-                      : 0,
+                    top: pickerPos?.top ?? -9999,
+                    left: pickerPos?.left ?? -9999,
                   }}
                 >
-                <p className="text-sm font-medium text-foreground mb-3">Custom Color</p>
-                <div className="flex items-center gap-3 mb-3">
-                  <input
-                    ref={inputRef}
-                    type="color"
-                    value={pickerHex}
-                    onChange={(e) => setPickerHex(e.target.value)}
-                    className="w-10 h-10 rounded-lg border border-separator cursor-pointer shrink-0"
-                  />
+                  <p className="text-sm font-medium text-foreground mb-3">Custom Color</p>
+
+                  {/* 颜色预览 + 原生取色器 */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="relative w-10 h-10 shrink-0">
+                      <input
+                        ref={inputRef}
+                        type="color"
+                        value={pickerHex}
+                        onChange={(e) => {
+                          setPickerHex(e.target.value);
+                          setHexDraft(e.target.value);
+                        }}
+                        className="absolute inset-0 w-10 h-10 cursor-pointer opacity-0"
+                        aria-label="Pick color"
+                      />
+                      <div
+                        className="w-10 h-10 rounded-xl ring-1 ring-separator shadow-inner pointer-events-none"
+                        style={{ backgroundColor: pickerHex }}
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      value={hexDraft}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setHexDraft(v);
+                        if (/^#[0-9a-fA-F]{6}$/.test(v)) setPickerHex(v);
+                      }}
+                      onBlur={() => {
+                        if (/^#[0-9a-fA-F]{6}$/.test(hexDraft)) {
+                          setPickerHex(hexDraft);
+                        } else {
+                          setHexDraft(pickerHex);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && /^#[0-9a-fA-F]{6}$/.test(hexDraft)) {
+                          setPickerHex(hexDraft);
+                          handleAddCustom();
+                        }
+                      }}
+                      className="glass-field flex-1 min-w-0 h-9 px-3 rounded-xl text-sm text-foreground placeholder:text-muted/70 font-mono transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      placeholder="#000000"
+                      maxLength={7}
+                    />
+                  </div>
+
                   <input
                     type="text"
-                    value={pickerHex}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (/^#[0-9a-fA-F]{6}$/.test(v)) setPickerHex(v);
-                    }}
-                    className="flex-1 px-3 py-1.5 rounded-lg border border-separator bg-background text-sm text-foreground font-mono"
-                    placeholder="#000000"
+                    value={pickerLabel}
+                    onChange={(e) => setPickerLabel(e.target.value)}
+                    className="glass-field w-full min-w-0 h-9 px-3 rounded-xl text-sm text-foreground placeholder:text-muted/70 mb-3 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    placeholder="Color name (optional)"
                   />
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowPicker(false)}
+                      className="flex-1 h-9 px-3 rounded-xl glass-field text-sm text-muted hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleAddCustom}
+                      className="flex-1 h-9 px-3 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer"
+                    >
+                      Add
+                    </button>
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  value={pickerLabel}
-                  onChange={(e) => setPickerLabel(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded-lg border border-separator bg-background text-sm text-foreground mb-3"
-                  placeholder="Color name (optional)"
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowPicker(false)}
-                    className="flex-1 px-3 py-1.5 rounded-lg border border-separator text-sm text-muted hover:text-foreground hover:bg-default-100 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleAddCustom}
-                    className="flex-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
-                  >
-                    Add
-                  </button>
-                </div>
-              </div>
               </>,
               document.body,
             )}
