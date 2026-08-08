@@ -2363,6 +2363,7 @@ export function CharSelectModal({
                         size="sm"
                         variant="outline"
                         isIconOnly
+                        className="rounded-full!"
                         aria-label={t("common.clear")}
                         onPress={resetFilters}
                       >

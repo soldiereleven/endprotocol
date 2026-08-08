@@ -202,7 +202,7 @@ export default function AccountProgressCard({
     {
       label: t("card:account_progress_bp"),
       value: bpMax > 0 ? `${bpCur}/${bpMax}` : `${bpCur}`,
-      suffix: bpMax > 0 && bpCur >= bpMax ? t("card:account_progress_full") : "",
+      suffix: "",
       percent: bpMax > 0 ? bpCur / bpMax : 0,
     },
   ];
@@ -222,7 +222,7 @@ export default function AccountProgressCard({
 
   return (
     <>
-      <GlassCard className="p-2.5 glass-surface border border-separator/90 h-full w-full select-none rounded-[10px] overflow-hidden">
+      <GlassCard className="p-2.5 glass-surface border border-separator/90 h-full w-full select-none rounded-[10px] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between gap-2 min-w-0 mb-2">
           <div className="flex items-center gap-2 min-w-0">
             <AccountAvatar
@@ -248,7 +248,7 @@ export default function AccountProgressCard({
           </button>
         </div>
 
-        <div className="flex items-stretch gap-3 min-h-0">
+        <div className="flex-1 flex items-stretch gap-3 min-h-0">
           <div className="w-24 shrink-0 flex flex-col items-center justify-center gap-1 border-r border-separator/60 pr-3">
             <span className="text-[10px] text-muted">{t("card:account_progress_stamina")}</span>
             <span className="text-xl font-bold text-foreground font-mono leading-none">
@@ -271,7 +271,7 @@ export default function AccountProgressCard({
             </span>
           </div>
 
-          <div className="flex-1 min-w-0 flex flex-col justify-between gap-2 py-0.5">
+          <div className="flex-1 min-w-0 flex flex-col justify-center gap-2.5 py-0.5">
             {barSections.map((s, idx) => (
               <div key={idx} className="flex items-center gap-2">
                 <span className="w-14 shrink-0 text-[10px] text-muted truncate">{s.label}</span>

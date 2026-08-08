@@ -940,7 +940,6 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                   src={selectedAccount.avatar}
                   alt={selectedAccount.nickname}
                   size="sm"
-                  showActiveIndicator
                 />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">

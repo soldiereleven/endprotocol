@@ -186,7 +186,7 @@ export default function AccountInfoCard({
   return (
     <>
       <GlassCard
-        className="p-2.5 glass-surface border border-separator/90 h-full w-full select-none rounded-[10px] overflow-hidden"
+        className="p-2.5 glass-surface border border-separator/90 h-full w-full select-none rounded-[10px] overflow-hidden flex flex-col"
       >
         <div className="flex items-start gap-2.5">
           <AccountAvatar
@@ -243,17 +243,26 @@ export default function AccountInfoCard({
           </div>
         </div>
 
-        <div className="mt-2 flex items-center justify-between gap-2">
+        <div className="mt-2 flex-1 flex items-center justify-between gap-2 min-h-0">
           {base.mainMission?.description && (
-            <div className="min-w-0 flex-1 text-[11px] text-muted truncate">
-              <span className="text-default-400">{t("card:account_info_main_mission")}：</span>
-              {base.mainMission.description}
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] text-default-500">
+                {t("card:account_info_main_mission")}
+              </div>
+              <div className="text-[11px] font-medium text-foreground truncate">
+                {base.mainMission.description}
+              </div>
             </div>
           )}
           {base.level != null && (
-            <span className="shrink-0 text-[11px] font-medium text-primary">
-              {t("card:account_info_level")} Lv.{base.level}
-            </span>
+            <div className="shrink-0 flex flex-col items-end gap-0.5">
+              <span className="text-[11px] text-muted">
+                {t("card:account_info_level")}
+              </span>
+              <span className="text-[11px] font-medium text-primary">
+                LEVEL {base.level}
+              </span>
+            </div>
           )}
         </div>
 
