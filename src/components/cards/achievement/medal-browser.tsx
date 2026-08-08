@@ -1,10 +1,11 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { CloseIcon } from "@/components/ui/app-icon";
 import { SearchIcon } from "@/components/icons";
 import { AchieveMedal } from "@/types/charDetail";
 import { useTranslation } from "react-i18next";
 import { Img } from "@/utils/imageLoader";
 import { useImageRequest } from "@/utils/imageCacheManager";
+import { BackToTopFab } from "@/components/ui/back-to-top";
 
 const HEX_CLIP = "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)";
 
@@ -61,6 +62,8 @@ export function MedalBrowser({
   const [sortBy, setSortBy] = useState<string>("time");
   const [globalQuery, setGlobalQuery] = useState("");
   const [scrollTargetId, setScrollTargetId] = useState<string | null>(null);
+  const medalListRef = useRef<HTMLDivElement>(null);
+  const getMedalList = useCallback(() => medalListRef.current, []);
 
   const categories = useMemo(() => {
     const catMap = new Map<string, string>();
@@ -131,6 +134,11 @@ export function MedalBrowser({
     return () => clearTimeout(timer);
   }, [scrollTargetId]);
 
+  // 切换分类后，右侧列表回到新分类最上方
+  useEffect(() => {
+    if (medalListRef.current) medalListRef.current.scrollTop = 0;
+  }, [activeCategory]);
+
   const imagePaths = useMemo(
     () => filteredMedals.map((m) => getMedalIcon(m)).filter(Boolean),
     [filteredMedals],
@@ -140,6 +148,7 @@ export function MedalBrowser({
   const selectable = selectedIds != null;
 
   return (
+    <>
     <div className="flex gap-1 h-full overflow-hidden">
       <div className="w-44 shrink-0 border-r border-separator flex flex-col pr-2">
         <div className="relative mb-2 shrink-0">
@@ -264,7 +273,7 @@ export function MedalBrowser({
           ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-1 min-h-[420px] pb-16">
+        <div ref={medalListRef} className="flex-1 overflow-y-auto space-y-1 min-h-[420px] pb-16">
           {filteredMedals.length === 0 ? (
             <div className="text-center text-muted py-12">
               {t("card:ach_no_medals")}
@@ -338,5 +347,8 @@ export function MedalBrowser({
         </div>
       </div>
     </div>
+
+    <BackToTopFab getContainer={getMedalList} />
+    </>
   );
 }

@@ -9,6 +9,7 @@ import { roleDataService } from "@/utils/roleDataService";
 import { CharSelectModal } from "@/components/cards/character-list/char-select-modal";
 import type { CharDetailData, CharacterItem } from "@/types/charDetail";
 import { logError } from "@/utils/logger";
+import { BackToTopFab } from "@/components/ui/back-to-top";
 
 const ICON_BASE = "/assets/icons";
 const PROFESSION_ICON = (key: string) => `${ICON_BASE}/profession/${key}.png`;
@@ -253,6 +254,10 @@ export default function CharactersPage() {
   const [selectedChar, setSelectedChar] = useState<CharacterItem | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [accountId, setAccountId] = useState<string | null>(null);
+  const getPageScroller = useCallback(
+    () => document.querySelector(".page-transition-enter")?.closest("main") as HTMLElement | null,
+    [],
+  );
 
   const [filters, setFilters] = useState<Record<FilterKey, string>>({
     profession: "all",
@@ -564,6 +569,8 @@ export default function CharactersPage() {
           initialViewMode="detail"
         />
       )}
+
+      <BackToTopFab getContainer={getPageScroller} />
     </div>
   );
 }
