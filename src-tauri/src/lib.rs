@@ -60,6 +60,9 @@ pub fn run() {
             commands::window::minimize_window,
             commands::window::toggle_maximize_window,
             commands::window::close_window,
+            // Color picker commands
+            commands::color_picker::capture_screen,
+            commands::color_picker::finish_screen_pick,
             // Logger commands
             commands::logs::get_backend_logs,
         ])

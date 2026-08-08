@@ -69,6 +69,7 @@
     "refresh": "Refresh",
     "refreshing": "Refreshing...",
     "delete": "Delete",
+    "edit": "Edit",
     "characters": "Characters"
   },
   "filters": {
@@ -101,7 +102,9 @@
       "theme_mode": "Theme Mode",
       "theme_mode_desc": "Switch between light, dark, or follow system",
       "theme_color": "Accent Color",
-      "theme_color_desc": "Choose your preferred accent color"
+      "theme_color_desc": "Choose your preferred accent color",
+      "theme_color_preset": "Preset",
+      "theme_color_custom": "Custom"
     },
     "developer": {
       "title": "Developer Mode",

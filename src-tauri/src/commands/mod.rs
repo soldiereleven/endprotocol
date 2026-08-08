@@ -1,6 +1,7 @@
 pub mod account;
 pub mod attendance;
 pub mod card_config;
+pub mod color_picker;
 pub mod config;
 pub mod image;
 pub mod logs;

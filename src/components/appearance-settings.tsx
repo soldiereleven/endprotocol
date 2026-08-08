@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import { isTauri } from "@tauri-apps/api/core";
 import { SettingsDivider } from "@/components/ui/settings-row";
+import ScreenColorPicker from "@/components/screen-color-picker";
 import { getConfig, setConfig } from "@/utils/configService";
 
 type ThemeMode = "light" | "dark" | "system";
@@ -71,6 +73,89 @@ function hslToHex(h: number, s: number, l: number): string {
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const h = hex.replace(/^#/, "");
+  return {
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
+  };
+}
+
+function rgbToHex(rgb: { r: number; g: number; b: number }): string {
+  const f = (n: number) => n.toString(16).padStart(2, "0");
+  return `#${f(rgb.r)}${f(rgb.g)}${f(rgb.b)}`;
+}
+
+function hexToHsv(hex: string): { h: number; s: number; v: number } {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  let h = 0;
+  if (d !== 0) {
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+  const s = max === 0 ? 0 : d / max;
+  return { h: h * 360, s: s * 100, v: max * 100 };
+}
+
+function hsvToHex(h: number, s: number, v: number): string {
+  const ss = s / 100;
+  const vv = v / 100;
+  const c = vv * ss;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = vv - c;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) [r, g, b] = [c, x, 0];
+  else if (h < 120) [r, g, b] = [x, c, 0];
+  else if (h < 180) [r, g, b] = [0, c, x];
+  else if (h < 240) [r, g, b] = [0, x, c];
+  else if (h < 300) [r, g, b] = [x, 0, c];
+  else [r, g, b] = [c, 0, x];
+  const f = (n: number) => Math.round((n + m) * 255).toString(16).padStart(2, "0");
+  return `#${f(r)}${f(g)}${f(b)}`;
+}
+
+function useDragArea(onPosition: (left: number, top: number) => void) {
+  const ref = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+  const onPositionRef = useRef(onPosition);
+  onPositionRef.current = onPosition;
+
+  const move = useCallback((clientX: number, clientY: number) => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const left = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    const top = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
+    onPositionRef.current(left, top);
+  }, []);
+
+  const onPointerDown = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    dragging.current = true;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    move(e.clientX, e.clientY);
+  }, [move]);
+
+  const onPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!dragging.current) return;
+    e.preventDefault();
+    move(e.clientX, e.clientY);
+  }, [move]);
+
+  const end = useCallback(() => {
+    dragging.current = false;
+  }, []);
+
+  return { ref, onPointerDown, onPointerMove, onPointerUp: end, onPointerCancel: end };
+}
+
 function generateColorScale(hex: string): ThemeColor["colors"] {
   const [h, s] = hexToHsl(hex);
   const lighter = (l: number) => hslToHex(h, Math.max(s - 10, 10), l);
@@ -118,8 +203,50 @@ export function AppearanceSettings() {
   const [pickerPos, setPickerPos] = useState<{ top: number; left: number } | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
   const [hexDraft, setHexDraft] = useState("");
+  const [editingColor, setEditingColor] = useState<ThemeColor | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{ color: ThemeColor; x: number; y: number } | null>(null);
+  const [screenPickerOpen, setScreenPickerOpen] = useState(false);
+  const supportsEyeDropper = typeof window !== "undefined" && "EyeDropper" in window;
+  const [rgbDraft, setRgbDraft] = useState<{ r: string; g: string; b: string }>({
+    r: "99",
+    g: "102",
+    b: "241",
+  });
+
+  useEffect(() => {
+    const { r, g, b } = hexToRgb(pickerHex);
+    setRgbDraft({ r: String(r), g: String(g), b: String(b) });
+  }, [pickerHex]);
+
+  const applyHex = useCallback((hex: string) => {
+    setPickerHex(hex);
+    setHexDraft(hex.startsWith("#") ? hex.slice(1) : hex);
+  }, []);
+
+  const handleSatChange = useCallback((left: number, top: number) => {
+    const { h } = hexToHsv(pickerHex);
+    applyHex(hsvToHex(h, Math.round(left * 100), Math.round((1 - top) * 100)));
+  }, [pickerHex, applyHex]);
+
+  const handleHueChange = useCallback((left: number) => {
+    const { s, v } = hexToHsv(pickerHex);
+    applyHex(hsvToHex(Math.round(left * 360), s, v));
+  }, [pickerHex, applyHex]);
+
+  const satDrag = useDragArea(handleSatChange);
+  const hueDrag = useDragArea(handleHueChange);
+
+  const handleRgbChange = (ch: "r" | "g" | "b", value: string) => {
+    const clean = value.replace(/\D/g, "").slice(0, 3);
+    const next = { ...rgbDraft, [ch]: clean };
+    setRgbDraft(next);
+    if (clean === "") return;
+    const r = Math.max(0, Math.min(255, parseInt(next.r || "0", 10)));
+    const g = Math.max(0, Math.min(255, parseInt(next.g || "0", 10)));
+    const b = Math.max(0, Math.min(255, parseInt(next.b || "0", 10)));
+    applyHex(rgbToHex({ r, g, b }));
+  };
 
   const repositionPicker = useCallback(() => {
     if (!showPicker) {
@@ -130,7 +257,7 @@ export function AppearanceSettings() {
     if (!trigger) return;
     const rect = trigger.getBoundingClientRect();
     const panelWidth = 264;
-    const panelHeight = 240;
+    const panelHeight = 460;
     const gap = 8;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -148,7 +275,7 @@ export function AppearanceSettings() {
 
   useEffect(() => {
     if (showPicker) {
-      setHexDraft(pickerHex);
+      setHexDraft(pickerHex.startsWith("#") ? pickerHex.slice(1) : pickerHex);
     }
   }, [showPicker, pickerHex]);
 
@@ -216,13 +343,14 @@ export function AppearanceSettings() {
   useEffect(() => {
     if (!showPicker) return;
     const handleClick = (e: MouseEvent) => {
+      if (screenPickerOpen) return;
       if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
         setShowPicker(false);
       }
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [showPicker]);
+  }, [showPicker, screenPickerOpen]);
 
   const handleModeChange = async (mode: ThemeMode) => {
     setThemeMode(mode);
@@ -252,10 +380,26 @@ export function AppearanceSettings() {
     dispatchThemeChange();
   };
 
-  const handleAddCustom = async () => {
+  const handleSaveCustom = async () => {
     const normalized = pickerHex.replace(/^#?([0-9a-fA-F]{6})$/, "#$1");
     const hex = /^#[0-9a-fA-F]{6}$/.test(normalized) ? normalized : "#6366f1";
     const label = pickerLabel.trim() || hex.toUpperCase();
+
+    if (editingColor) {
+      const updated = customColors.map((c) =>
+        c.name === editingColor.name
+          ? { ...c, label, colors: generateColorScale(hex) }
+          : c,
+      );
+      setCustomColors(updated);
+      await setConfig("theme_custom_colors", updated);
+      dispatchThemeChange();
+      setShowPicker(false);
+      setEditingColor(null);
+      setPickerLabel("");
+      return;
+    }
+
     const name = `custom-${Date.now()}`;
     const newColor: ThemeColor = {
       name,
@@ -274,8 +418,7 @@ export function AppearanceSettings() {
     setPickerLabel("");
   };
 
-  const handleDeleteCustom = async (colorName: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeleteCustom = async (colorName: string) => {
     const updated = customColors.filter((c) => c.name !== colorName);
     setCustomColors(updated);
     if (themeColor === colorName) {
@@ -286,6 +429,58 @@ export function AppearanceSettings() {
     }
     await setConfig("theme_custom_colors", updated);
     dispatchThemeChange();
+    setCtxMenu(null);
+  };
+
+  const openPicker = (mode: "add" | "edit", color?: ThemeColor) => {
+    if (mode === "edit" && color) {
+      setPickerHex(color.colors[500]);
+      setHexDraft(color.colors[500].startsWith("#") ? color.colors[500].slice(1) : color.colors[500]);
+      setPickerLabel(color.label);
+      setEditingColor(color);
+    } else {
+      setPickerHex("#6366f1");
+      setHexDraft("6366f1");
+      setPickerLabel("");
+      setEditingColor(null);
+    }
+    setShowPicker(true);
+  };
+
+  const closePicker = () => {
+    setShowPicker(false);
+    setEditingColor(null);
+    setPickerLabel("");
+  };
+
+  const handleScreenPick = (hex: string) => {
+    setScreenPickerOpen(false);
+    setPickerHex(hex);
+    setHexDraft(hex.startsWith("#") ? hex.slice(1) : hex);
+  };
+
+  const handlePickFromScreen = () => {
+    // WebView2 中 EyeDropper API 存在但 open() 静默失效，Tauri 环境下改用原生截图 + 放大镜覆盖层
+    if (isTauri()) {
+      setScreenPickerOpen(true);
+      return;
+    }
+    if (typeof window === "undefined" || !("EyeDropper" in window)) return;
+    (async () => {
+      try {
+        const dropper = new (window as unknown as {
+          EyeDropper: new () => { open(): Promise<{ sRGBHex: string }> };
+        }).EyeDropper();
+        const result = await dropper.open();
+        if (result?.sRGBHex) {
+          const hex = result.sRGBHex;
+          setPickerHex(hex);
+          setHexDraft(hex.startsWith("#") ? hex.slice(1) : hex);
+        }
+      } catch {
+        // 用户取消取色
+      }
+    })();
   };
 
   if (isLoading) return null;
@@ -295,6 +490,8 @@ export function AppearanceSettings() {
     { value: "dark", label: t("settings.general.theme_dark"), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg> },
     { value: "system", label: t("settings.general.theme_system"), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></svg> },
   ];
+
+  const hsv = hexToHsv(pickerHex);
 
   return (
     <div className="space-y-6">
@@ -330,149 +527,343 @@ export function AppearanceSettings() {
           <p className="font-medium text-foreground">{t("settings.appearance.theme_color")}</p>
           <p className="text-sm text-muted mt-0.5">{t("settings.appearance.theme_color_desc")}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {PRESET_COLORS.map((color) => (
-            <button
-              key={color.name}
-              onClick={() => handleColorChange(color.name)}
-              className={`relative w-10 h-10 rounded-full transition-all duration-200 cursor-pointer ${
-                themeColor === color.name ? "ring-2 ring-offset-2 ring-offset-background scale-110" : "hover:scale-105"
-              }`}
-              style={{
-                backgroundColor: color.colors[500],
-                ["--tw-ring-color" as string]: themeColor === color.name ? color.colors[500] : undefined,
-              }}
-              title={color.label}
-            >
-              {themeColor === color.name && (
-                <svg className="absolute inset-0 m-auto w-5 h-5 drop-shadow-md" fill="none" stroke="white" viewBox="0 0 24 24" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              )}
-            </button>
-          ))}
-
-          {customColors.map((color) => (
-            <button
-              key={color.name}
-              onClick={() => handleColorChange(color.name)}
-              onContextMenu={(e) => handleDeleteCustom(color.name, e)}
-              className={`relative w-10 h-10 rounded-full transition-all duration-200 cursor-pointer ${
-                themeColor === color.name ? "ring-2 ring-offset-2 ring-offset-background scale-110" : "hover:scale-105"
-              }`}
-              style={{
-                backgroundColor: color.colors[500],
-                ["--tw-ring-color" as string]: themeColor === color.name ? color.colors[500] : undefined,
-              }}
-              title={`${color.label} (right-click to delete)`}
-            >
-              {themeColor === color.name && (
-                <svg className="absolute inset-0 m-auto w-5 h-5 drop-shadow-md" fill="none" stroke="white" viewBox="0 0 24 24" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              )}
-            </button>
-          ))}
-
-          {/* Add button */}
-          <div className="relative" ref={triggerRef}>
-            <button
-              onClick={() => setShowPicker(!showPicker)}
-              className="w-10 h-10 rounded-full border-2 border-dashed border-default-300 hover:border-primary/60 flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-105 text-muted hover:text-primary"
-              title="Add custom color"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
-              </svg>
-            </button>
-
-            {showPicker && createPortal(
-              <>
-                <div className="fixed inset-0 z-[9998]" onClick={() => setShowPicker(false)} />
-                <div
-                  ref={pickerRef}
-                  className="fixed p-4 rounded-2xl glass-surface-strong shadow-2xl animate-scale-in z-[9999] w-64"
+        <div className="space-y-4">
+          {/* Preset row */}
+          <div className="flex items-start gap-3">
+            <span className="w-14 shrink-0 text-sm text-muted pt-2.5">
+              {t("settings.appearance.theme_color_preset")}
+            </span>
+            <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
+              {PRESET_COLORS.map((color) => (
+                <button
+                  key={color.name}
+                  onClick={() => handleColorChange(color.name)}
+                  className={`relative w-10 h-10 rounded-full transition-all duration-200 cursor-pointer ${
+                    themeColor === color.name ? "ring-2 ring-offset-2 ring-offset-background scale-110" : "hover:scale-105"
+                  }`}
                   style={{
-                    top: pickerPos?.top ?? -9999,
-                    left: pickerPos?.left ?? -9999,
+                    backgroundColor: color.colors[500],
+                    ["--tw-ring-color" as string]: themeColor === color.name ? color.colors[500] : undefined,
                   }}
+                  title={color.label}
                 >
-                  <p className="text-sm font-medium text-foreground mb-3">Custom Color</p>
+                  {themeColor === color.name && (
+                    <svg className="absolute inset-0 m-auto w-5 h-5 drop-shadow-md" fill="none" stroke="white" viewBox="0 0 24 24" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
 
-                  {/* 颜色预览 + 原生取色器 */}
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="relative w-10 h-10 shrink-0">
+          {/* Custom row */}
+          <div className="flex items-start gap-3">
+            <span className="w-14 shrink-0 text-sm text-muted pt-2.5">
+              {t("settings.appearance.theme_color_custom")}
+            </span>
+            <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
+              {customColors.map((color) => (
+                <button
+                  key={color.name}
+                  onClick={() => handleColorChange(color.name)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setCtxMenu({ color, x: e.clientX, y: e.clientY });
+                  }}
+                  className={`relative w-10 h-10 rounded-full transition-all duration-200 cursor-pointer ${
+                    themeColor === color.name ? "ring-2 ring-offset-2 ring-offset-background scale-110" : "hover:scale-105"
+                  }`}
+                  style={{
+                    backgroundColor: color.colors[500],
+                    ["--tw-ring-color" as string]: themeColor === color.name ? color.colors[500] : undefined,
+                  }}
+                  title={color.label}
+                >
+                  {themeColor === color.name && (
+                    <svg className="absolute inset-0 m-auto w-5 h-5 drop-shadow-md" fill="none" stroke="white" viewBox="0 0 24 24" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+
+              {/* Add button */}
+              <div className="relative" ref={triggerRef}>
+                <button
+                  onClick={() => openPicker("add")}
+                  className="w-10 h-10 rounded-full border-2 border-dashed border-default-300 hover:border-primary/60 flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-105 text-muted hover:text-primary"
+                  title="Add custom color"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+
+                {showPicker && createPortal(
+                  <>
+                    <div className="fixed inset-0 z-[9998]" onClick={closePicker} />
+                    <div
+                      ref={pickerRef}
+                      className="fixed p-4 rounded-2xl glass-surface-strong shadow-2xl animate-scale-in z-[9999] w-64"
+                      style={{
+                        top: pickerPos?.top ?? -9999,
+                        left: pickerPos?.left ?? -9999,
+                      }}
+                    >
+                      <p className="text-sm font-medium text-foreground mb-3">
+                        {editingColor ? "Edit Color" : "Custom Color"}
+                      </p>
+
+                      {/* 取色面板：饱和度/亮度 */}
+                      <div className="relative w-full" style={{ height: 160, borderRadius: 12, overflow: "hidden" }}>
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            backgroundColor: `hsl(${hsv.h} 100% 50%)`,
+                            backgroundImage:
+                              "linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent)",
+                          }}
+                        />
+                        <div
+                          ref={satDrag.ref}
+                          onPointerDown={satDrag.onPointerDown}
+                          onPointerMove={satDrag.onPointerMove}
+                          onPointerUp={satDrag.onPointerUp}
+                          onPointerCancel={satDrag.onPointerCancel}
+                          className="absolute inset-0"
+                          style={{ touchAction: "none", cursor: "crosshair" }}
+                          role="slider"
+                          aria-label="Color"
+                          aria-valuetext={`Saturation ${Math.round(hsv.s)}%, Brightness ${Math.round(hsv.v)}%`}
+                        />
+                        <div
+                          className="absolute rounded-full"
+                          style={{
+                            width: 24,
+                            height: 24,
+                            left: `${hsv.s}%`,
+                            top: `${100 - hsv.v}%`,
+                            transform: "translate(-50%, -50%)",
+                            pointerEvents: "none",
+                            backgroundColor: "#ffffff",
+                            border: "2px solid #ffffff",
+                            boxShadow: "0 1px 3px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.15)",
+                          }}
+                        />
+                      </div>
+
+                      {/* 取色面板：色相 */}
+                      <div className="relative w-full mt-3" style={{ height: 20, borderRadius: 999, overflow: "hidden" }}>
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            background:
+                              "linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)",
+                          }}
+                        />
+                        <div
+                          ref={hueDrag.ref}
+                          onPointerDown={hueDrag.onPointerDown}
+                          onPointerMove={hueDrag.onPointerMove}
+                          onPointerUp={hueDrag.onPointerUp}
+                          onPointerCancel={hueDrag.onPointerCancel}
+                          className="absolute inset-0"
+                          style={{ touchAction: "none", cursor: "pointer" }}
+                          role="slider"
+                          aria-label="Hue"
+                          aria-valuenow={Math.round(hsv.h)}
+                          aria-valuemin={0}
+                          aria-valuemax={360}
+                        />
+                        <div
+                          className="absolute rounded-full"
+                          style={{
+                            width: 22,
+                            height: 22,
+                            left: `${(hsv.h / 360) * 100}%`,
+                            top: "50%",
+                            transform: "translate(-50%, -50%)",
+                            pointerEvents: "none",
+                            backgroundColor: "#ffffff",
+                            border: "2px solid #ffffff",
+                            boxShadow: "0 1px 3px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.15)",
+                          }}
+                        />
+                      </div>
+
+                      {/* 颜色预览 + Hex 输入 */}
+                      <div className="flex items-center gap-3 mt-3 mb-3">
+                        <div
+                          className="w-10 h-10 shrink-0 rounded-xl ring-1 ring-separator shadow-inner"
+                          style={{ backgroundColor: pickerHex }}
+                        />
+                        <div className="flex items-center gap-1 glass-field flex-1 min-w-0 h-9 px-3 rounded-xl">
+                          <span className="text-muted/70 font-mono text-sm shrink-0">#</span>
+                          <input
+                            type="text"
+                            value={hexDraft}
+                            onChange={(e) => {
+                              const v = e.target.value.replace(/[^0-9a-fA-F]/g, "").slice(0, 6);
+                              setHexDraft(v);
+                              if (/^[0-9a-fA-F]{6}$/.test(v)) setPickerHex(`#${v}`);
+                            }}
+                            onPaste={(e) => {
+                              e.preventDefault();
+                              const pasted = e.clipboardData.getData("text").trim();
+                              const clean = pasted
+                                .replace(/^#/, "")
+                                .replace(/^0x/, "")
+                                .replace(/[^0-9a-fA-F]/g, "")
+                                .slice(0, 6);
+                              setHexDraft(clean);
+                              if (/^[0-9a-fA-F]{6}$/.test(clean)) setPickerHex(`#${clean}`);
+                            }}
+                            onBlur={() => {
+                              if (/^[0-9a-fA-F]{6}$/.test(hexDraft)) {
+                                setPickerHex(`#${hexDraft}`);
+                              } else {
+                                setHexDraft(pickerHex.startsWith("#") ? pickerHex.slice(1) : pickerHex);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && /^[0-9a-fA-F]{6}$/.test(hexDraft)) {
+                                setPickerHex(`#${hexDraft}`);
+                                handleSaveCustom();
+                              }
+                            }}
+                            className="flex-1 min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted/70 font-mono focus:outline-none"
+                            placeholder="000000"
+                            maxLength={6}
+                          />
+                        </div>
+                        {(supportsEyeDropper || isTauri()) && (
+                          <button
+                            type="button"
+                            onClick={handlePickFromScreen}
+                            title="Pick color from screen"
+                            className="w-10 h-10 shrink-0 flex items-center justify-center glass-field rounded-xl text-muted hover:text-foreground transition-colors cursor-pointer"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* RGB 输入 */}
+                      <div className="flex items-center gap-2 mb-3">
+                        {(
+                          [
+                            ["r", "R"],
+                            ["g", "G"],
+                            ["b", "B"],
+                          ] as const
+                        ).map(([ch, label]) => (
+                          <div key={ch} className="flex items-center gap-1 glass-field flex-1 min-w-0 h-9 px-3 rounded-xl">
+                            <span className="text-muted/60 font-mono text-sm shrink-0">{label}</span>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={rgbDraft[ch]}
+                              onChange={(e) => handleRgbChange(ch, e.target.value)}
+                              onBlur={() => {
+                                if (rgbDraft[ch] === "") {
+                                  setRgbDraft({ ...rgbDraft, [ch]: "0" });
+                                  handleRgbChange(ch, "0");
+                                }
+                              }}
+                              className="flex-1 min-w-0 bg-transparent text-sm text-foreground font-mono focus:outline-none"
+                              maxLength={3}
+                            />
+                          </div>
+                        ))}
+                      </div>
+
                       <input
-                        ref={inputRef}
-                        type="color"
-                        value={pickerHex}
-                        onChange={(e) => {
-                          setPickerHex(e.target.value);
-                          setHexDraft(e.target.value);
-                        }}
-                        className="absolute inset-0 w-10 h-10 cursor-pointer opacity-0"
-                        aria-label="Pick color"
+                        type="text"
+                        value={pickerLabel}
+                        onChange={(e) => setPickerLabel(e.target.value)}
+                        className="glass-field w-full min-w-0 h-9 px-3 rounded-xl text-sm text-foreground placeholder:text-muted/70 mb-3 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                        placeholder="Color name (optional)"
                       />
-                      <div
-                        className="w-10 h-10 rounded-xl ring-1 ring-separator shadow-inner pointer-events-none"
-                        style={{ backgroundColor: pickerHex }}
-                      />
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={closePicker}
+                          className="flex-1 h-9 px-3 rounded-xl glass-field text-sm text-muted hover:text-foreground transition-colors cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleSaveCustom}
+                          className="flex-1 h-9 px-3 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer"
+                        >
+                          {editingColor ? "Save" : "Add"}
+                        </button>
+                      </div>
                     </div>
-                    <input
-                      type="text"
-                      value={hexDraft}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setHexDraft(v);
-                        if (/^#[0-9a-fA-F]{6}$/.test(v)) setPickerHex(v);
-                      }}
-                      onBlur={() => {
-                        if (/^#[0-9a-fA-F]{6}$/.test(hexDraft)) {
-                          setPickerHex(hexDraft);
-                        } else {
-                          setHexDraft(pickerHex);
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && /^#[0-9a-fA-F]{6}$/.test(hexDraft)) {
-                          setPickerHex(hexDraft);
-                          handleAddCustom();
-                        }
-                      }}
-                      className="glass-field flex-1 min-w-0 h-9 px-3 rounded-xl text-sm text-foreground placeholder:text-muted/70 font-mono transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                      placeholder="#000000"
-                      maxLength={7}
-                    />
-                  </div>
-
-                  <input
-                    type="text"
-                    value={pickerLabel}
-                    onChange={(e) => setPickerLabel(e.target.value)}
-                    className="glass-field w-full min-w-0 h-9 px-3 rounded-xl text-sm text-foreground placeholder:text-muted/70 mb-3 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    placeholder="Color name (optional)"
-                  />
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setShowPicker(false)}
-                      className="flex-1 h-9 px-3 rounded-xl glass-field text-sm text-muted hover:text-foreground transition-colors cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleAddCustom}
-                      className="flex-1 h-9 px-3 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer"
-                    >
-                      Add
-                    </button>
-                  </div>
-                </div>
-              </>,
-              document.body,
-            )}
+                  </>,
+                  document.body,
+                )}
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Custom color context menu */}
+        {ctxMenu &&
+          createPortal(
+            <>
+              <div
+                className="fixed inset-0 z-[9998]"
+                onClick={() => setCtxMenu(null)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setCtxMenu(null);
+                }}
+              />
+              <div
+                className="fixed z-[9999] glass-surface-strong rounded-xl shadow-2xl p-1 w-36 animate-scale-in"
+                style={{
+                  top: Math.min(ctxMenu.y, window.innerHeight - 96),
+                  left: Math.min(ctxMenu.x, window.innerWidth - 152),
+                }}
+              >
+                <button
+                  onClick={() => {
+                    setCtxMenu(null);
+                    openPicker("edit", ctxMenu.color);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-default-100 transition-colors cursor-pointer"
+                >
+                  <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.8">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+                  </svg>
+                  {t("common.edit")}
+                </button>
+                <button
+                  onClick={() => handleDeleteCustom(ctxMenu.color.name)}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-danger hover:bg-danger/10 transition-colors cursor-pointer"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.8">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  {t("common.delete")}
+                </button>
+              </div>
+            </>,
+            document.body,
+          )}
+
+        {screenPickerOpen &&
+          createPortal(
+            <ScreenColorPicker
+              onPick={handleScreenPick}
+              onCancel={() => setScreenPickerOpen(false)}
+            />,
+            document.body,
+          )}
       </div>
     </div>
   );

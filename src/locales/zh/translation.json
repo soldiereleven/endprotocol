@@ -69,6 +69,7 @@
     "refresh": "刷新",
     "refreshing": "刷新中...",
     "delete": "删除",
+    "edit": "编辑",
     "characters": "个干员"
   },
   "filters": {
@@ -101,7 +102,9 @@
       "theme_mode": "主题模式",
       "theme_mode_desc": "切换浅色、深色或跟随系统",
       "theme_color": "主题色",
-      "theme_color_desc": "选择您偏好的主题色"
+      "theme_color_desc": "选择您偏好的主题色",
+      "theme_color_preset": "预设",
+      "theme_color_custom": "自定义"
     },
     "developer": {
       "title": "开发者模式",
