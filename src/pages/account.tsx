@@ -1453,11 +1453,7 @@ export default function AccountPage() {
         isOpen={isAddModalOpen}
         onClose={handleCloseAddModal}
         size="lg"
-        height={
-          availableRoles.length > 0 && availableRoles.length <= 3
-            ? "auto"
-            : "fixed"
-        }
+        height={availableRoles.length > 3 ? "fixed" : "auto"}
         disableBackdropClick={availableRoles.length > 0} // 当有角色可选时，禁用点击背景关闭
       >
         <CustomModalHeader onClose={handleCloseAddModal}>

@@ -61,6 +61,8 @@ export default function DashboardPage() {
   const [isRoleSelectModalOpen, setIsRoleSelectModalOpen] = useState(false);
   const [pendingDisplayMode, setPendingDisplayMode] = useState<CharacterListDisplayMode | null>(null);
   const [availableAccounts, setAvailableAccounts] = useState<Account[]>([]);
+  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
+  const [highlightedCardId, setHighlightedCardId] = useState<string | null>(null);
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
 
@@ -147,82 +149,89 @@ export default function DashboardPage() {
       setIsSizeModalOpen(true);
       return;
     }
-    if (cardType === "achievement") {
-      setPendingCardType(cardType);
-      try {
-        const accounts = await getAccounts();
-        setAvailableAccounts(accounts);
-        setIsRoleSelectModalOpen(true);
-      } catch (error) {
-        logError("Failed to load accounts:", error);
-      }
-      return;
-    }
-    try {
-      await addCard(activeTabId, cardType);
-      const config = await getDashboardConfig(activeTabId);
-      setDashboardConfig(config);
-    } catch (error) {
-      logError("Failed to add card:", error);
-    }
+    await openRoleSelect(cardType);
   };
 
-  const handleSizeConfirm = async (mode: CharacterListDisplayMode) => {
-    if (!activeTabId || !pendingCardType) return;
-    setPendingDisplayMode(mode);
-    setIsSizeModalOpen(false);
-    
-    // 获取所有可用账户
+  const openRoleSelect = async (cardType: CardTypeId) => {
     try {
       const accounts = await getAccounts();
       setAvailableAccounts(accounts);
+      setSelectedRoleId(activeTab?.defaultRoleId ?? null);
+      setPendingCardType(cardType);
       setIsRoleSelectModalOpen(true);
     } catch (error) {
       logError("Failed to load accounts:", error);
     }
   };
 
+  const closeRoleSelect = () => {
+    setIsRoleSelectModalOpen(false);
+    setPendingCardType(null);
+    setPendingDisplayMode(null);
+    setSelectedRoleId(null);
+  };
+
+  const handleSizeConfirm = async (mode: CharacterListDisplayMode) => {
+    if (!activeTabId || !pendingCardType) return;
+    setPendingDisplayMode(mode);
+    setIsSizeModalOpen(false);
+    await openRoleSelect(pendingCardType);
+  };
+
   const handleRoleConfirm = async (roleId: string) => {
     if (!activeTabId || !pendingCardType) return;
-    if (pendingCardType === "achievement") {
-      try {
-        await addCard(activeTabId, pendingCardType, {
+    const cardType = pendingCardType;
+    let newCardId: string | null = null;
+    try {
+      if (cardType === "character_list") {
+        if (!pendingDisplayMode) return;
+        const SIZE_MAP: Record<CharacterListDisplayMode, { w: number; h: number }> = {
+          single: { w: 2, h: 3 },
+          double: { w: 3, h: 3 },
+          triple: { w: 4, h: 3 },
+        };
+        const { w, h } = SIZE_MAP[pendingDisplayMode];
+        newCardId = await addCard(activeTabId, cardType, {
+          w,
+          h,
+          settings: { roleId, displayMode: pendingDisplayMode },
+        });
+      } else if (cardType === "attendance") {
+        newCardId = await addCard(activeTabId, cardType, {
+          settings: { selectedRoleId: roleId },
+        });
+      } else {
+        newCardId = await addCard(activeTabId, cardType, {
           settings: { roleId },
         });
-        const config = await getDashboardConfig(activeTabId);
-        setDashboardConfig(config);
-      } catch (error) {
-        logError("Failed to add achievement card:", error);
-      } finally {
-        setIsRoleSelectModalOpen(false);
-        setPendingCardType(null);
       }
-      return;
-    }
-    // character_list path
-    if (!pendingDisplayMode) return;
-    const SIZE_MAP: Record<CharacterListDisplayMode, { w: number; h: number }> = {
-      single: { w: 2, h: 3 },
-      double: { w: 3, h: 3 },
-      triple: { w: 4, h: 3 },
-    };
-    const { w, h } = SIZE_MAP[pendingDisplayMode];
-    try {
-      await addCard(activeTabId, pendingCardType, {
-        w,
-        h,
-        settings: { displayMode: pendingDisplayMode, roleId },
-      });
       const config = await getDashboardConfig(activeTabId);
       setDashboardConfig(config);
+      if (newCardId) {
+        setHighlightedCardId(newCardId);
+      }
     } catch (error) {
-      logError("Failed to add character list card:", error);
+      logError("Failed to add card:", error);
     } finally {
-      setIsRoleSelectModalOpen(false);
-      setPendingCardType(null);
-      setPendingDisplayMode(null);
+      closeRoleSelect();
     }
   };
+
+  // 添加卡片后滚动到卡片位置并闪烁提示
+  useEffect(() => {
+    if (!highlightedCardId) return;
+    const scrollTimer = window.setTimeout(() => {
+      const el = document.querySelector(`[data-card-id="${highlightedCardId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 200);
+    const clearTimer = window.setTimeout(() => setHighlightedCardId(null), 2800);
+    return () => {
+      window.clearTimeout(scrollTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [highlightedCardId]);
 
   const handleRemoveCard = async (cardId: string) => {
     if (!activeTabId) return;
@@ -418,6 +427,7 @@ export default function DashboardPage() {
           isEditMode={isEditMode}
           onEnterEditMode={() => setIsEditMode(true)}
           onExitEditMode={() => setIsEditMode(false)}
+          highlightCardId={highlightedCardId}
         />
       ) : null}
 
@@ -448,20 +458,10 @@ export default function DashboardPage() {
       {/* Role Select Modal for Character List Card */}
       <CustomModal
         isOpen={isRoleSelectModalOpen}
-        onClose={() => {
-          setIsRoleSelectModalOpen(false);
-          setPendingCardType(null);
-          setPendingDisplayMode(null);
-        }}
+        onClose={closeRoleSelect}
         size="md"
       >
-        <CustomModalHeader
-          onClose={() => {
-            setIsRoleSelectModalOpen(false);
-            setPendingCardType(null);
-            setPendingDisplayMode(null);
-          }}
-        >
+        <CustomModalHeader onClose={closeRoleSelect}>
           {t("card:select_role") || "Select Account"}
         </CustomModalHeader>
         <CustomModalBody>
@@ -471,48 +471,60 @@ export default function DashboardPage() {
                 {t("card:no_accounts") || "No accounts available"}
               </div>
             ) : (
-              availableAccounts.map((account) => (
-                <div
-                  key={account.id}
-                  className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all hover:bg-default-100 border border-separator hover:border-primary/50"
-                  onClick={() => handleRoleConfirm(account.id)}
-                >
-                  <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
-                    {account.avatar ? (
-                      <Img
-                        src={account.avatar}
-                        alt={account.nickname}
-                        className="w-full h-full avatar-feather"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-muted text-sm">
-                        {account.nickname?.charAt(0) || "?"}
+              availableAccounts.map((account) => {
+                const isSelected = selectedRoleId === account.id;
+                return (
+                  <div
+                    key={account.id}
+                    onClick={() => setSelectedRoleId(account.id)}
+                    className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border ${
+                      isSelected
+                        ? "border-primary/70 bg-primary/10"
+                        : "border-separator hover:border-primary/50 hover:bg-default-100"
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
+                      {account.avatar ? (
+                        <Img
+                          src={account.avatar}
+                          alt={account.nickname}
+                          className="w-full h-full avatar-feather"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted text-sm">
+                          {account.nickname?.charAt(0) || "?"}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">
+                        {account.nickname || t("common.unknown") || "Unknown"}
                       </div>
+                      <div className="text-xs text-muted">
+                        {resolveServerLabel(account.server, i18n.language)} · Lv.{account.level}
+                      </div>
+                    </div>
+                    {isSelected && (
+                      <svg className="w-5 h-5 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">
-                      {account.nickname || t("common.unknown") || "Unknown"}
-                    </div>
-                    <div className="text-xs text-muted">
-                      {resolveServerLabel(account.server, i18n.language)} · Lv.{account.level}
-                    </div>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </CustomModalBody>
         <CustomModalFooter>
-          <GlassButton
-            variant="secondary"
-            onPress={() => {
-              setIsRoleSelectModalOpen(false);
-              setPendingCardType(null);
-              setPendingDisplayMode(null);
-            }}
-          >
+          <GlassButton variant="secondary" onPress={closeRoleSelect}>
             {t("common.cancel") || "Cancel"}
+          </GlassButton>
+          <GlassButton
+            variant="primary"
+            isDisabled={!selectedRoleId}
+            onPress={() => selectedRoleId && handleRoleConfirm(selectedRoleId)}
+          >
+            {t("common.confirm") || "Confirm"}
           </GlassButton>
         </CustomModalFooter>
       </CustomModal>

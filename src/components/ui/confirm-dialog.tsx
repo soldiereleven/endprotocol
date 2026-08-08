@@ -61,11 +61,11 @@ export function ConfirmDialogHost() {
       <GlassModal.Backdrop variant="blur" className="z-[100]">
         <GlassModal.Container size="sm" placement="center" scroll="outside">
           <GlassModal.Dialog className="glass-surface-strong border border-separator/90 p-0">
-            <GlassModal.Header>
+            <GlassModal.Header className="px-6 pt-4 pb-2">
               <GlassModal.Heading>{opts.title}</GlassModal.Heading>
             </GlassModal.Header>
-            <GlassModal.Body className="px-6 py-4">{opts.body}</GlassModal.Body>
-            <GlassModal.Footer className="flex items-center justify-end gap-2 px-6 py-4 border-t border-separator">
+            <GlassModal.Body className="px-6 py-2 pb-4">{opts.body}</GlassModal.Body>
+            <GlassModal.Footer className="flex items-center justify-end gap-2 px-6 py-3.5 border-t border-separator">
               <GlassButton variant="tertiary" onPress={() => close(false)}>
                 {opts.cancelText ?? "Cancel"}
               </GlassButton>

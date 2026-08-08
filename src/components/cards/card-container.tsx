@@ -58,11 +58,13 @@ function FreeDragCard({
   showGridCoords,
   onLongPress,
   onExitEditMode,
+  highlightCardId,
 }: FreeDragCardProps & {
   isDragging?: boolean;
   showGridCoords?: boolean;
   onLongPress?: () => void;
   onExitEditMode?: () => void;
+  highlightCardId?: string | null;
 }) {
   const { t } = useTranslation();
 
@@ -297,7 +299,10 @@ function FreeDragCard({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group ${isEditMode ? "active:cursor-grabbing" : ""}`}
+      data-card-id={card.id}
+      className={`group ${isEditMode ? "active:cursor-grabbing" : ""} ${
+        card.id === highlightCardId ? "card-flash-highlight" : ""
+      }`}
       {...(isEditMode ? { ...attributes, ...listeners } : {})}
       onContextMenu={handleContextMenu}
       onPointerDown={(e) => {
@@ -440,6 +445,7 @@ interface CardContainerProps {
   isEditMode?: boolean;
   onEnterEditMode?: () => void; // Callback for long press to enter edit mode
   onExitEditMode?: () => void; // Callback for exiting edit mode after drag
+  highlightCardId?: string | null; // Card to flash after being added
 }
 
 export function CardContainer({
@@ -450,6 +456,7 @@ export function CardContainer({
   isEditMode = false,
   onEnterEditMode,
   onExitEditMode,
+  highlightCardId,
 }: CardContainerProps) {
   const { t } = useTranslation();
   const [sortedCards, setSortedCards] = useState<CardConfig[]>([]);
@@ -881,6 +888,7 @@ export function CardContainer({
               onUpdatePosition={() => {}}
               isDragging={activeId === card.id}
               showGridCoords={isDragging && activeId === card.id}
+              highlightCardId={highlightCardId}
               onLongPress={() => {
                 onEnterEditMode?.();
                 setDraggedViaLongPress(true);

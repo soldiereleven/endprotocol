@@ -42,13 +42,13 @@ interface ModalContainerProps {
 const ModalCtx = createContext<{ close: () => void }>({ close: () => {} });
 
 const CONTAINER_SIZES: Record<NonNullable<ModalContainerProps["size"]>, string> = {
-  xs: "max-w-[80vw]",
-  sm: "max-w-[80vw]",
-  md: "max-w-[80vw]",
-  lg: "max-w-[80vw]",
-  xl: "max-w-[80vw]",
-  "2xl": "max-w-[80vw]",
-  full: "max-w-[80vw]",
+  xs: "max-w-[360px]",
+  sm: "max-w-[420px]",
+  md: "max-w-[560px]",
+  lg: "max-w-[720px]",
+  xl: "max-w-[880px]",
+  "2xl": "max-w-[1000px]",
+  full: "max-w-[calc(100vw-2rem)]",
 };
 
 function GlassModal({ isOpen, onOpenChange, children }: ModalProps) {
