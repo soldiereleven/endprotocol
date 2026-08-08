@@ -46,7 +46,7 @@ const CONTAINER_SIZES: Record<NonNullable<ModalContainerProps["size"]>, string> 
   sm: "max-w-[420px]",
   md: "max-w-[560px]",
   lg: "max-w-[720px]",
-  xl: "max-w-[880px]",
+  xl: "max-w-[1100px]",
   "2xl": "max-w-[1000px]",
   full: "max-w-[calc(100vw-2rem)]",
 };
