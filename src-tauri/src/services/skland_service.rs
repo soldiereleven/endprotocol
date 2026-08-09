@@ -691,70 +691,52 @@ impl SklandService {
         Ok(is_valid)
     }
 
-    /// 使用 hytoken 重新换取 cred 和 token
+    /// 使用 hytoken 重新换取 cred、token 以及 u8 token
     pub async fn refresh_cred_by_hytoken(
         &self,
         hytoken: &str,
-    ) -> Result<(String, String, String), AppError> {
-        let client = http_client::create_client();
+        device_token: Option<&str>,
+    ) -> Result<(String, String, Option<String>, String), AppError> {
+        // Step 1: OAuth grant（hytoken → skland sk_code）
+        let sk_code = self.oauth_grant_to_sk_code(hytoken).await?;
         
-        // Step 1: OAuth grant
-        let start_time = std::time::Instant::now();
-        let payload1 = serde_json::json!({
-            "token": hytoken,
-            "appCode": "4ca99fa6b56cc2ba",
-            "type": 0
-        });
-        log_info!("=== HTTP REQUEST: OAuth Grant (Step 1) ===");
-        log_info!("Method: POST");
-        log_info!("URL: https://as.hypergryph.com/user/oauth2/v2/grant");
-
-        let response = client
-            .post("https://as.hypergryph.com/user/oauth2/v2/grant")
-            .json(&payload1)
-            .send()
-            .await
-            .map_err(|e| AppError::AuthError { 
-                message: format!("Step 1 (OAuth grant) failed: {}", e) 
-            })?;
-        
-        let elapsed = start_time.elapsed();
-        let status = response.status();
-        let resp_headers = response.headers().clone();
-        
-        let json: serde_json::Value = response.json().await.map_err(|e| AppError::AuthError {
-            message: format!("Failed to parse OAuth response: {}", e),
-        })?;
-        
-        log_info!("=== HTTP RESPONSE: OAuth Grant (Step 1) ===");
-        log_info!("Status: {}", status);
-        log_info!("Time: {:?}", elapsed);
-        log_debug!("Response Headers:");
-        for (name, value) in resp_headers.iter() {
-            if let Ok(value_str) = value.to_str() {
-                log_debug!("  {}: {}", name, value_str);
+        // Step 1.5: 使用 u8 grant 获取 u8 token（失败不阻断，保留旧值）
+        let u8_token = match device_token {
+            Some(device_token) => {
+                match self.u8_grant_to_sk_code(hytoken, device_token).await {
+                    Ok(u8_sk_code) => match self.get_u8_token_by_channel(&u8_sk_code).await {
+                        Ok((u8_token, _)) => {
+                            log_debug!(
+                                "refresh_cred_by_hytoken: u8 token fetched (len={})",
+                                u8_token.len()
+                            );
+                            Some(u8_token)
+                        }
+                        Err(e) => {
+                            log_warn!(
+                                "refresh_cred_by_hytoken: u8 token fetch FAILED (non-fatal): {}",
+                                e
+                            );
+                            None
+                        }
+                    },
+                    Err(e) => {
+                        log_warn!(
+                            "refresh_cred_by_hytoken: u8 grant FAILED (non-fatal): {}",
+                            e
+                        );
+                        None
+                    }
+                }
             }
-        }
-        if json.get("status").and_then(|v| v.as_i64()) != Some(0) {
-            let msg = json
-                .get("msg")
-                .and_then(|v| v.as_str())
-                .unwrap_or("Unknown error");
-            return Err(AppError::AuthError {
-                message: format!("OAuth grant failed: {}", msg),
-            });
-        }
-        
-        let sk_code = json
-            .get("data")
-            .and_then(|d| d.get("code"))
-            .and_then(|c| c.as_str())
-            .ok_or_else(|| AppError::AuthError {
-                message: "Code not found in OAuth response".to_string(),
-            })?
-            .to_string();
+            None => {
+                log_warn!("refresh_cred_by_hytoken: no device_token, skipping u8 token refresh");
+                None
+            }
+        };
         
         // Step 2: 使用 sk_code 换取新的 cred 和 token
+        let client = http_client::create_client();
         let start_time = std::time::Instant::now();
         let payload2 = serde_json::json!({
             "kind": 1,
@@ -828,7 +810,233 @@ impl SklandService {
             })?
             .to_string();
         
-        Ok((cred, token, user_id))
+        Ok((cred, token, u8_token, user_id))
+    }
+
+    /// 使用 sk_code 换取 u8 token（渠道登录 token）
+    pub async fn get_u8_token_by_channel(
+        &self,
+        sk_code: &str,
+    ) -> Result<(String, String), AppError> {
+        let client = http_client::create_client();
+
+        let channel_token = serde_json::json!({
+            "code": sk_code,
+            "type": 1,
+            "isSuc": true
+        });
+        let payload = serde_json::json!({
+            "appCode": "4df8f5a7c2ad711b497a",
+            "channelMasterId": "1",
+            "channelToken": channel_token.to_string(),
+            "type": 0,
+            "platform": 2
+        });
+
+        let start_time = std::time::Instant::now();
+        log_info!("=== HTTP REQUEST: 获取U8Token ===");
+        log_info!("Method: POST");
+        log_info!("URL: https://u8.hypergryph.com/u8/user/auth/v2/token_by_channel_token");
+
+        let response = client
+            .post("https://u8.hypergryph.com/u8/user/auth/v2/token_by_channel_token")
+            .header("User-Agent", "UnityPlayer/2021.3.34f5 (UnityWebRequest/1.0, libcurl/8.4.0-DEV)")
+            .header("X-Unity-Version", "2021.3.34f5")
+            .header("Accept", "*/*")
+            .header("Accept-Encoding", "deflate, gzip")
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| AppError::AuthError {
+                message: format!("U8 token request failed: {}", e),
+            })?;
+
+        let elapsed = start_time.elapsed();
+        let status = response.status();
+        let resp_headers = response.headers().clone();
+
+        let json: serde_json::Value = response.json().await.map_err(|e| AppError::AuthError {
+            message: format!("Failed to parse U8 token response: {}", e),
+        })?;
+
+        log_info!("=== HTTP RESPONSE: 获取U8Token ===");
+        log_info!("Status: {}", status);
+        log_info!("Time: {:?}", elapsed);
+        log_debug!("Response Headers:");
+        for (name, value) in resp_headers.iter() {
+            if let Ok(value_str) = value.to_str() {
+                log_debug!("  {}: {}", name, value_str);
+            }
+        }
+
+        if json.get("status").and_then(|v| v.as_i64()) != Some(0) {
+            let msg = json
+                .get("msg")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown error");
+            return Err(AppError::AuthError {
+                message: format!("U8 token failed: {}", msg),
+            });
+        }
+
+        let data = json.get("data").ok_or_else(|| AppError::AuthError {
+            message: "Data not found in U8 token response".to_string(),
+        })?;
+
+        let token = data
+            .get("token")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| AppError::AuthError {
+                message: "Token not found in U8 response".to_string(),
+            })?
+            .to_string();
+
+        let uid = data
+            .get("uid")
+            .map(|v| v.to_string())
+            .unwrap_or_default();
+
+        log_debug!(
+            "get_u8_token_by_channel: token_len={}, uid_len={}",
+            token.len(),
+            uid.len()
+        );
+
+        Ok((token, uid))
+    }
+
+    /// 使用 hytoken 获取 u8 token（仅获取，不刷新 cred）
+    pub async fn get_u8_token_by_hytoken(
+        &self,
+        hytoken: &str,
+        device_token: &str,
+    ) -> Result<String, AppError> {
+        let sk_code = self.u8_grant_to_sk_code(hytoken, device_token).await?;
+        let (u8_token, _) = self.get_u8_token_by_channel(&sk_code).await?;
+        Ok(u8_token)
+    }
+
+    /// u8 grant：hytoken + device_token → u8 channel code
+    async fn u8_grant_to_sk_code(
+        &self,
+        hytoken: &str,
+        device_token: &str,
+    ) -> Result<String, AppError> {
+        let client = http_client::create_client();
+
+        let start_time = std::time::Instant::now();
+        let payload = serde_json::json!({
+            "appCode": "dd7b852d5f1dd9da",
+            "deviceToken": device_token,
+            "token": hytoken,
+            "type": 0
+        });
+        log_info!("=== HTTP REQUEST: U8 OAuth Grant ===");
+        log_info!("Method: POST");
+        log_info!("URL: https://as.hypergryph.com/user/oauth2/v2/grant");
+
+        let response = client
+            .post("https://as.hypergryph.com/user/oauth2/v2/grant")
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| AppError::AuthError {
+                message: format!("U8 OAuth grant failed: {}", e),
+            })?;
+
+        let elapsed = start_time.elapsed();
+        let status = response.status();
+        let resp_headers = response.headers().clone();
+
+        let json: serde_json::Value = response.json().await.map_err(|e| AppError::AuthError {
+            message: format!("Failed to parse U8 OAuth response: {}", e),
+        })?;
+
+        log_info!("=== HTTP RESPONSE: U8 OAuth Grant ===");
+        log_info!("Status: {}", status);
+        log_info!("Time: {:?}", elapsed);
+        log_debug!("Response Headers:");
+        for (name, value) in resp_headers.iter() {
+            if let Ok(value_str) = value.to_str() {
+                log_debug!("  {}: {}", name, value_str);
+            }
+        }
+        if json.get("status").and_then(|v| v.as_i64()) != Some(0) {
+            let msg = json
+                .get("msg")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown error");
+            return Err(AppError::AuthError {
+                message: format!("U8 OAuth grant failed: {}", msg),
+            });
+        }
+
+        json.get("data")
+            .and_then(|d| d.get("code"))
+            .and_then(|c| c.as_str())
+            .ok_or_else(|| AppError::AuthError {
+                message: "Code not found in U8 OAuth response".to_string(),
+            })
+            .map(|s| s.to_string())
+    }
+
+    /// OAuth grant：hytoken → sk_code
+    async fn oauth_grant_to_sk_code(&self, hytoken: &str) -> Result<String, AppError> {
+        let client = http_client::create_client();
+
+        let start_time = std::time::Instant::now();
+        let payload = serde_json::json!({
+            "token": hytoken,
+            "appCode": "4ca99fa6b56cc2ba",
+            "type": 0
+        });
+        log_info!("=== HTTP REQUEST: OAuth Grant (Step 1) ===");
+        log_info!("Method: POST");
+        log_info!("URL: https://as.hypergryph.com/user/oauth2/v2/grant");
+
+        let response = client
+            .post("https://as.hypergryph.com/user/oauth2/v2/grant")
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| AppError::AuthError {
+                message: format!("Step 1 (OAuth grant) failed: {}", e),
+            })?;
+
+        let elapsed = start_time.elapsed();
+        let status = response.status();
+        let resp_headers = response.headers().clone();
+
+        let json: serde_json::Value = response.json().await.map_err(|e| AppError::AuthError {
+            message: format!("Failed to parse OAuth response: {}", e),
+        })?;
+
+        log_info!("=== HTTP RESPONSE: OAuth Grant (Step 1) ===");
+        log_info!("Status: {}", status);
+        log_info!("Time: {:?}", elapsed);
+        log_debug!("Response Headers:");
+        for (name, value) in resp_headers.iter() {
+            if let Ok(value_str) = value.to_str() {
+                log_debug!("  {}: {}", name, value_str);
+            }
+        }
+        if json.get("status").and_then(|v| v.as_i64()) != Some(0) {
+            let msg = json
+                .get("msg")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown error");
+            return Err(AppError::AuthError {
+                message: format!("OAuth grant failed: {}", msg),
+            });
+        }
+
+        json.get("data")
+            .and_then(|d| d.get("code"))
+            .and_then(|c| c.as_str())
+            .ok_or_else(|| AppError::AuthError {
+                message: "Code not found in OAuth response".to_string(),
+            })
+            .map(|s| s.to_string())
     }
 
     /// 提取终末地角色列表

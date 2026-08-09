@@ -8,7 +8,9 @@ use tauri::{AppHandle, Emitter};
 use crate::models::account::{
     AccountInfo, AccountLoginResult, AccountRefreshResult, AccountSummary,
 };
-use crate::models::login::{CodeLoginRequest, LoginRequest, SendCodeRequest};
+use crate::models::login::{
+    CodeLoginRequest, LoginRequest, ScanLoginInfo, ScanStatus, SendCodeRequest,
+};
 use crate::models::role::RoleDisplayInfo;
 use crate::services::avatar_cache_service::AvatarCacheService;
 use crate::services::config_service::ConfigService;
@@ -33,11 +35,11 @@ impl AsyncAccountService {
         // 获取当前用户的配置
         let token_key = format!("account_token_{}", user_id);
 
-        let (token_data, cred, token, hytoken) = {
+        let (token_data, cred, token, hytoken, u8token, device_token) = {
             let config = self.config_service.lock().unwrap();
             let token_data: Option<serde_json::Value> = config.get(&token_key);
 
-            let (cred, token, hytoken) = match &token_data {
+            let (cred, token, hytoken, u8token, device_token) = match &token_data {
                 Some(data) => {
                     let cred = data
                         .get("cred")
@@ -51,12 +53,20 @@ impl AsyncAccountService {
                         .get("hytoken")
                         .and_then(|v| v.as_str())
                         .map(|s| s.to_string());
-                    (cred, token, hytoken)
+                    let u8token = data
+                        .get("u8token")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
+                    let device_token = data
+                        .get("device_token")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
+                    (cred, token, hytoken, u8token, device_token)
                 }
                 None => return Ok(None),
             };
 
-            (token_data, cred, token, hytoken)
+            (token_data, cred, token, hytoken, u8token, device_token)
         }; // MutexGuard 在这里被释放
 
         let cred = match cred {
@@ -78,6 +88,44 @@ impl AsyncAccountService {
                     "check_and_refresh_user_cred: Cred is VALID for user {}",
                     user_id
                 );
+
+                // 若 u8token 缺失，则补充获取（为升级前已存在的账号迁移）
+                if u8token.is_none() {
+                    if let (Some(hyt), Some(dev_tok)) = (&hytoken, &device_token) {
+                        log_info!(
+                            "check_and_refresh_user_cred: u8token MISSING for user {}, backfilling...",
+                            user_id
+                        );
+                        match self.skland_service.get_u8_token_by_hytoken(hyt, dev_tok).await {
+                            Ok(u8t) => {
+                                log_debug!(
+                                    "check_and_refresh_user_cred: u8token backfill SUCCESS (len={})",
+                                    u8t.len()
+                                );
+                                let mut config = self.config_service.lock().unwrap();
+                                let mut updated_data = token_data.unwrap();
+                                if let Some(obj) = updated_data.as_object_mut() {
+                                    obj.insert("u8token".to_string(), json!(u8t));
+                                }
+                                config.set(token_key, updated_data)?;
+                                log_debug!(
+                                    "check_and_refresh_user_cred: u8token backfill saved to config"
+                                );
+                            }
+                            Err(e) => {
+                                log_warn!(
+                                    "check_and_refresh_user_cred: u8token backfill FAILED (non-fatal): {}",
+                                    e
+                                );
+                            }
+                        }
+                    } else {
+                        log_warn!(
+                            "check_and_refresh_user_cred: u8token missing, but hytoken/device_token not found, cannot backfill"
+                        );
+                    }
+                }
+
                 Ok(None)
             }
             Ok(false) => {
@@ -106,8 +154,8 @@ impl AsyncAccountService {
 
                 // 使用 hytoken 重新换取 cred 和 token
                 log_debug!("check_and_refresh_user_cred: Calling refresh_cred_by_hytoken...");
-                match self.skland_service.refresh_cred_by_hytoken(&hytoken).await {
-                    Ok((new_cred, new_token, _)) => {
+                match self.skland_service.refresh_cred_by_hytoken(&hytoken, device_token.as_deref()).await {
+                    Ok((new_cred, new_token, new_u8token, _)) => {
                         log_debug!("check_and_refresh_user_cred: refresh_cred_by_hytoken SUCCESS, new_cred_len={}, new_token_len={}", new_cred.len(), new_token.len());
                         // 更新配置中的 cred 和 token
                         let mut config = self.config_service.lock().unwrap();
@@ -115,6 +163,10 @@ impl AsyncAccountService {
                         if let Some(obj) = updated_data.as_object_mut() {
                             obj.insert("cred".to_string(), json!(new_cred));
                             obj.insert("token".to_string(), json!(new_token));
+                            if let Some(u8t) = new_u8token {
+                                obj.insert("u8token".to_string(), json!(u8t));
+                                log_debug!("check_and_refresh_user_cred: Updated u8token in config");
+                            }
                             log_debug!(
                                 "check_and_refresh_user_cred: Updated cred and token in config"
                             );
@@ -163,14 +215,18 @@ impl AsyncAccountService {
                 log_debug!(
                     "check_and_refresh_user_cred: Attempting refresh despite check_cred failure..."
                 );
-                match self.skland_service.refresh_cred_by_hytoken(&hytoken).await {
-                    Ok((new_cred, new_token, _)) => {
+                match self.skland_service.refresh_cred_by_hytoken(&hytoken, device_token.as_deref()).await {
+                    Ok((new_cred, new_token, new_u8token, _)) => {
                         log_debug!("check_and_refresh_user_cred: Refresh succeeded despite check_cred failure");
                         let mut config = self.config_service.lock().unwrap();
                         let mut updated_data = token_data.unwrap();
                         if let Some(obj) = updated_data.as_object_mut() {
                             obj.insert("cred".to_string(), json!(new_cred));
                             obj.insert("token".to_string(), json!(new_token));
+                            if let Some(u8t) = new_u8token {
+                                obj.insert("u8token".to_string(), json!(u8t));
+                                log_debug!("check_and_refresh_user_cred: Updated u8token in config");
+                            }
                         }
                         config.set(token_key, updated_data)?;
 
@@ -196,6 +252,14 @@ impl AsyncAccountService {
             }
         }
     }
+}
+
+/// 当已获取 hytoken 但缺少 device token（新设备）时的处理策略
+enum MissingDeviceTokenPolicy {
+    /// 发送验证码并返回 NEW_DEVICE_VERIFICATION_REQUIRED（密码登录）
+    SendCodeAndVerify { phone: String },
+    /// 无短信验证码渠道，继续登录但不记录 u8token（验证码/扫码登录）
+    ContinueWithoutDeviceToken,
 }
 
 /// 账户服务
@@ -556,6 +620,82 @@ impl AccountService {
 
         config.set(token_key, token_data)?;
         log_debug!("set_hytoken_for_user: Config saved successfully");
+        Ok(())
+    }
+
+    /// 为指定用户设置 u8 token（在登录成功后调用）
+    pub async fn set_u8token_for_user(&self, user_id: &str, u8token: &str) -> Result<(), AppError> {
+        log_debug!(
+            "set_u8token_for_user: START for user_id={}, u8token_len={}",
+            user_id,
+            u8token.len()
+        );
+        let mut config = self.config_service.lock().unwrap();
+        let token_key = format!("account_token_{}", user_id);
+
+        let mut token_data: serde_json::Value = config.get(&token_key).unwrap_or(json!({}));
+        log_debug!(
+            "set_u8token_for_user: Current token_data keys: {:?}",
+            token_data
+                .as_object()
+                .map(|obj| obj.keys().collect::<Vec<_>>())
+        );
+
+        if let Some(obj) = token_data.as_object_mut() {
+            obj.insert("u8token".to_string(), json!(u8token));
+            log_debug!("set_u8token_for_user: u8token inserted successfully");
+        } else {
+            log_error!("set_u8token_for_user: token_data is not an object!");
+            return Err(AppError::ConfigError {
+                message: "token_data is not a valid JSON object".to_string(),
+            });
+        }
+
+        config.set(token_key, token_data)?;
+        log_debug!("set_u8token_for_user: Config saved successfully");
+        Ok(())
+    }
+
+    /// 在本地按用户 id 查找已保存的 device token（用于新设备登录时跳过验证）
+    fn get_local_device_token(&self, user_id: &str) -> Option<String> {
+        let config = self.config_service.lock().unwrap();
+        let value: Option<serde_json::Value> =
+            config.get(&format!("account_token_{}", user_id));
+        value
+            .as_ref()
+            .and_then(|v| v.get("device_token"))
+            .and_then(|d| d.as_str())
+            .map(|s| s.to_string())
+            .filter(|s| !s.is_empty())
+    }
+
+    /// 为指定用户设置 device token（登录成功后调用）
+    pub async fn set_device_token_for_user(
+        &self,
+        user_id: &str,
+        device_token: &str,
+    ) -> Result<(), AppError> {
+        log_debug!(
+            "set_device_token_for_user: START for user_id={}, device_token_len={}",
+            user_id,
+            device_token.len()
+        );
+        let mut config = self.config_service.lock().unwrap();
+        let token_key = format!("account_token_{}", user_id);
+
+        let mut token_data: serde_json::Value = config.get(&token_key).unwrap_or(json!({}));
+        if let Some(obj) = token_data.as_object_mut() {
+            obj.insert("device_token".to_string(), json!(device_token));
+            log_debug!("set_device_token_for_user: device_token inserted successfully");
+        } else {
+            log_error!("set_device_token_for_user: token_data is not an object!");
+            return Err(AppError::ConfigError {
+                message: "token_data is not a valid JSON object".to_string(),
+            });
+        }
+
+        config.set(token_key, token_data)?;
+        log_debug!("set_device_token_for_user: Config saved successfully (per-account only)");
         Ok(())
     }
 
@@ -936,19 +1076,31 @@ impl AccountService {
 
                             // 尝试使用 hytoken 重新获取 cred
                             let hytoken_key = format!("account_token_{}", user_id);
-                            let hytoken: Option<String> = {
+                            let (hytoken, device_token): (Option<String>, Option<String>) = {
                                 let config = self.config_service.lock().unwrap();
-                                config.get::<serde_json::Value>(&hytoken_key).and_then(|v| {
+                                let value: Option<serde_json::Value> =
+                                    config.get(&hytoken_key);
+                                let hytoken = value.as_ref().and_then(|v| {
                                     v.get("hytoken")
                                         .and_then(|h| h.as_str())
                                         .map(|s| s.to_string())
-                                })
+                                });
+                                let device_token = value.as_ref().and_then(|v| {
+                                    v.get("device_token")
+                                        .and_then(|h| h.as_str())
+                                        .map(|s| s.to_string())
+                                });
+                                (hytoken, device_token)
                             };
 
                             if let Some(hyt) = hytoken {
                                 log_debug!("get_accounts: Found hytoken, attempting refresh...");
-                                match self.skland_service.refresh_cred_by_hytoken(&hyt).await {
-                                    Ok((new_cred, new_token, _)) => {
+                                match self
+                                    .skland_service
+                                    .refresh_cred_by_hytoken(&hyt, device_token.as_deref())
+                                    .await
+                                {
+                                    Ok((new_cred, new_token, new_u8token, _)) => {
                                         log_debug!("get_accounts: Auto-refresh succeeded, retrying get_role_detail...");
 
                                         // 更新配置中的 cred 和 token
@@ -959,6 +1111,9 @@ impl AccountService {
                                             if let Some(obj) = token_data.as_object_mut() {
                                                 obj.insert("cred".to_string(), json!(new_cred));
                                                 obj.insert("token".to_string(), json!(new_token));
+                                                if let Some(u8t) = new_u8token {
+                                                    obj.insert("u8token".to_string(), json!(u8t));
+                                                }
                                             }
                                             let _ = config.set(hytoken_key, token_data);
                                         }
@@ -1090,18 +1245,49 @@ impl AccountService {
         accounts
     }
 
-    /// 添加账户（执行三步认证）
+    /// 添加账户（密码登录）
+    ///
+    /// 密码登录无法直接拿到 device token（新设备）时：
+    /// 先用 hytoken 访问森空岛 API 换取 userId，再用 userId 在本地匹配已保存的
+    /// device token。命中则直接登录；未命中则发送验证码并转验证码登录，
+    /// 必须通过验证码获取到 device token 后才算登录成功。
     pub async fn add_account(
         &self,
         login_request: LoginRequest,
     ) -> Result<AccountLoginResult, AppError> {
-        // Step 1: 获取 Hypergryph Token
-        let hy_token = match self
+        // Step 1: 密码 → Hypergryph Token (+ deviceToken)
+        let (hy_token, device_token, hgld) = match self
             .get_hypergryph_token(&login_request.phone, &login_request.password)
             .await
         {
-            Ok(token) => token,
+            Ok((token, device_token, hgld)) => {
+                log_debug!(
+                    "add_account: Password login OK, hgld={:?}, device_token_len={}",
+                    hgld,
+                    device_token.as_ref().map(|d| d.len()).unwrap_or(0)
+                );
+                (token, device_token, hgld)
+            }
             Err(e) => {
+                // 密码 API 直接提示需要新设备验证 → 发送验证码并转验证码登录
+                if Self::is_new_device_verification_error(&e) {
+                    log_warn!("add_account: New device detected (API error), switching to code verification for phone {}", login_request.phone);
+                    let _ = self
+                        .send_verification_code(SendCodeRequest {
+                            phone: login_request.phone.clone(),
+                            code_type: 2,
+                        })
+                        .await;
+                    return Ok(AccountLoginResult {
+                        success: false,
+                        error_message: Some("NEW_DEVICE_VERIFICATION_REQUIRED".to_string()),
+                        account: None,
+                        available_roles: None,
+                        cred: None,
+                        token: None,
+                        user_id: None,
+                    });
+                }
                 return Ok(AccountLoginResult {
                     success: false,
                     error_message: Some(format!("Step 1 failed: {}", e)),
@@ -1114,130 +1300,25 @@ impl AccountService {
             }
         };
 
-        // Step 2: 获取 Skland Code
-        let sk_code = match self.get_skland_code(&hy_token).await {
-            Ok(code) => code,
-            Err(e) => {
-                return Ok(AccountLoginResult {
-                    success: false,
-                    error_message: Some(format!("Step 2 failed: {}", e)),
-                    account: None,
-                    available_roles: None,
-                    cred: None,
-                    token: None,
-                    user_id: None,
-                });
-            }
-        };
-
-        // Step 3: 获取 Skland Cred 和 Token
-        let (cred, token, user_id) = match self.get_skland_cred(&sk_code).await {
-            Ok(data) => data,
-            Err(e) => {
-                return Ok(AccountLoginResult {
-                    success: false,
-                    error_message: Some(format!("Step 3 failed: {}", e)),
-                    account: None,
-                    available_roles: None,
-                    cred: None,
-                    token: None,
-                    user_id: None,
-                });
-            }
-        };
-
-        // 保存 hytoken（与 cred 同级存储）
-        log_debug!("About to save hytoken for user_id={}", user_id);
-        if let Err(e) = self.set_hytoken_for_user(&user_id, &hy_token).await {
-            tracing::warn!("Failed to save hytoken for user {}: {}", user_id, e);
-            log_error!("Failed to save hytoken: {}", e);
-        } else {
-            log_debug!("hytoken saved successfully");
-        }
-
-        // Step 4: 获取玩家绑定列表
-        let bindings = match self.skland_service.get_player_binding(&cred, &token).await {
-            Ok(bindings) => bindings,
-            Err(e) => {
-                log_error!("Step 4 failed: {}", e);
-                return Ok(AccountLoginResult {
-                    success: false,
-                    error_message: Some(format!("Failed to get binding list: {}", e)),
-                    account: None,
-                    available_roles: None,
-                    cred: None,
-                    token: None,
-                    user_id: None,
-                });
-            }
-        };
-
-        // Step 5: 提取终末地角色
-        let endfield_roles = SklandService::extract_endfield_roles(&bindings);
-
-        if endfield_roles.is_empty() {
-            log_error!("No Endfield roles found!");
-            return Ok(AccountLoginResult {
-                success: false,
-                error_message: Some("No Endfield roles found in binding list".to_string()),
-                account: None,
-                available_roles: None,
-                cred: Some(cred.clone()),
-                token: Some(token.clone()),
-                user_id: Some(user_id.clone()),
-            });
-        }
-
-        // Step 6: 获取每个角色的详情
-        let mut role_details = Vec::new();
-        for (_uid, server_id, role_id) in &endfield_roles {
-            match self
-                .skland_service
-                .get_role_detail(&cred, &token, role_id, server_id, &user_id)
-                .await
-            {
-                Ok(char_detail_response) => {
-                    // 从完整响应中提取 AccountInfo 所需字段
-                    let base = &char_detail_response.data.detail.base;
-
-                    // 下载并缓存头像（返回 base64）
-                    let cached_avatar = self
-                        .avatar_cache_service
-                        .get_or_download_avatar(&base.avatar_url)
-                        .await
-                        .unwrap_or_else(|_| base.avatar_url.clone());
-
-                    let detail = RoleDisplayInfo {
-                        role_id: role_id.clone(),
-                        user_id: user_id.clone(),
-                        server_id: server_id.clone(),
-                        nickname: base.name.clone(),
-                        level: base.level,
-                        avatar_url: cached_avatar,
-                    };
-                    role_details.push(detail);
-                }
-                Err(e) => {
-                    log_error!("Failed to get role detail for {}: {}", role_id, e);
-                    // 跳过失败的角色
-                }
-            }
-        }
-
-        // 返回可用角色列表，等待前端选择
-        Ok(AccountLoginResult {
-            success: true,
-            error_message: None,
-            account: None,
-            available_roles: Some(role_details),
-            cred: Some(cred),
-            token: Some(token),
-            user_id: Some(user_id),
-        })
+        // 后续流程（hytoken → skland code/cred → 用 userId 本地匹配 device token →
+        // 保存凭证 → 获取角色列表）在 complete_login_from_token 中统一处理
+        self.complete_login_from_token(
+            hy_token,
+            device_token,
+            MissingDeviceTokenPolicy::SendCodeAndVerify {
+                phone: login_request.phone,
+            },
+        )
+        .await
     }
 
     /// 登出单个账户
-    pub async fn logout_account(&self, account_id: String) -> bool {
+    ///
+    /// 当账户下角色被全部移除时：
+    /// - `keep_device_token = true`: 保留配置项，但删除除 device_token 外的所有数据，
+    ///   下次密码登录可在本地匹配到 device token，跳过新设备验证码
+    /// - `keep_device_token = false`: 删除整个配置项，下次密码登录需要重新验证新设备
+    pub async fn logout_account(&self, account_id: String, keep_device_token: bool) -> bool {
         let mut config = self.config_service.lock().unwrap();
 
         // account_id 实际上是 roleId，我们需要找到它对应的 userId
@@ -1282,8 +1363,23 @@ impl AccountService {
             let _ = config.set(key, value);
         }
 
-        // 删除空的用户配置项
+        // 删除空的用户配置项（可选择保留 device_token 供下次登录跳过新设备验证）
         for key in keys_to_remove {
+            if keep_device_token {
+                if let Some(value) = config.get::<serde_json::Value>(&key) {
+                    if let Some(dev) = value.get("device_token").and_then(|v| v.as_str()) {
+                        if !dev.is_empty() {
+                            // 仅保留 device_token，删除其他所有数据（cred/token/hytoken/u8token/roles）
+                            let _ = config.set(key.clone(), json!({ "device_token": dev }));
+                            log_info!(
+                                "logout_account: Kept device_token for {} (removed all other data)",
+                                key
+                            );
+                            continue;
+                        }
+                    }
+                }
+            }
             config.remove(&key);
         }
 
@@ -1478,21 +1574,33 @@ impl AccountService {
 
                             // 尝试使用 hytoken 重新获取 cred
                             let hytoken_key = format!("account_token_{}", user_id);
-                            let hytoken: Option<String> = {
+                            let (hytoken, device_token): (Option<String>, Option<String>) = {
                                 let config = self.config_service.lock().unwrap();
-                                config.get::<serde_json::Value>(&hytoken_key).and_then(|v| {
+                                let value: Option<serde_json::Value> =
+                                    config.get(&hytoken_key);
+                                let hytoken = value.as_ref().and_then(|v| {
                                     v.get("hytoken")
                                         .and_then(|h| h.as_str())
                                         .map(|s| s.to_string())
-                                })
+                                });
+                                let device_token = value.as_ref().and_then(|v| {
+                                    v.get("device_token")
+                                        .and_then(|h| h.as_str())
+                                        .map(|s| s.to_string())
+                                });
+                                (hytoken, device_token)
                             };
 
                             if let Some(hyt) = hytoken {
                                 log_debug!(
                                     "refresh_accounts: Found hytoken, attempting refresh..."
                                 );
-                                match self.skland_service.refresh_cred_by_hytoken(&hyt).await {
-                                    Ok((new_cred, new_token, _)) => {
+                                match self
+                                    .skland_service
+                                    .refresh_cred_by_hytoken(&hyt, device_token.as_deref())
+                                    .await
+                                {
+                                    Ok((new_cred, new_token, new_u8token, _)) => {
                                         log_debug!("refresh_accounts: Auto-refresh succeeded, retrying get_role_detail...");
 
                                         // 更新配置中的 cred 和 token
@@ -1503,6 +1611,9 @@ impl AccountService {
                                             if let Some(obj) = token_data.as_object_mut() {
                                                 obj.insert("cred".to_string(), json!(new_cred));
                                                 obj.insert("token".to_string(), json!(new_token));
+                                                if let Some(u8t) = new_u8token {
+                                                    obj.insert("u8token".to_string(), json!(u8t));
+                                                }
                                             }
                                             let _ = config.set(hytoken_key, token_data);
                                         }
@@ -1650,12 +1761,12 @@ impl AccountService {
         }
     }
 
-    /// 通过验证码登录（获取 Hypergryph Token）
+    /// 通过验证码登录（获取 Hypergryph Token + deviceToken）
     async fn get_hypergryph_token_by_code(
         &self,
         phone: &str,
         code: &str,
-    ) -> Result<String, AppError> {
+    ) -> Result<(String, String), AppError> {
         let client = http_client::create_client();
         let payload = json!({
             "phone": phone,
@@ -1692,13 +1803,22 @@ impl AccountService {
 
 
         if json.get("status").and_then(|v| v.as_i64()) == Some(0) {
-            json.get("data")
-                .and_then(|d| d.get("token"))
+            let data = json.get("data").ok_or_else(|| AppError::AuthError {
+                message: "Data not found in response".to_string(),
+            })?;
+            let token = data
+                .get("token")
                 .and_then(|t| t.as_str())
                 .map(|s| s.to_string())
                 .ok_or_else(|| AppError::AuthError {
                     message: "Token not found in response".to_string(),
-                })
+                })?;
+            let device_token = data
+                .get("deviceToken")
+                .and_then(|t| t.as_str())
+                .map(|s| s.to_string())
+                .unwrap_or_default();
+            Ok((token, device_token))
         } else {
             let msg = json
                 .get("msg")
@@ -1715,12 +1835,12 @@ impl AccountService {
         &self,
         login_request: CodeLoginRequest,
     ) -> Result<AccountLoginResult, AppError> {
-        // Step 1: 通过验证码获取 Hypergryph Token
-        let hy_token = match self
+        // Step 1: 通过验证码获取 Hypergryph Token (+ deviceToken)
+        let (hy_token, device_token) = match self
             .get_hypergryph_token_by_code(&login_request.phone, &login_request.code)
             .await
         {
-            Ok(token) => token,
+            Ok((token, device_token)) => (token, Some(device_token).filter(|d| !d.is_empty())),
             Err(e) => {
                 return Ok(AccountLoginResult {
                     success: false,
@@ -1734,6 +1854,271 @@ impl AccountService {
             }
         };
 
+        // 后续流程（hytoken → skland code/cred → 用 userId 本地匹配 device token →
+        // 保存凭证 → 获取角色列表）在 complete_login_from_token 中统一处理。
+        // 验证码登录无短信验证码渠道，缺少 device token 时继续登录但不记录 u8token
+        self.complete_login_from_token(
+            hy_token,
+            device_token,
+            MissingDeviceTokenPolicy::ContinueWithoutDeviceToken,
+        )
+        .await
+    }
+
+    /// 生成扫码登录二维码
+    pub async fn gen_scan_login(&self) -> Result<ScanLoginInfo, AppError> {
+        let client = http_client::create_client();
+        let payload = json!({
+            "appCode": "dd7b852d5f1dd9da",
+            "enableRememberLogin": true
+        });
+
+        let start_time = std::time::Instant::now();
+        log_info!("=== HTTP REQUEST: 生成扫码登录 ===");
+        log_info!("Method: POST");
+        log_info!("URL: https://as.hypergryph.com/general/v1/gen_scan/login");
+
+        let response = client
+            .post("https://as.hypergryph.com/general/v1/gen_scan/login")
+            .json(&payload)
+            .send()
+            .await?;
+
+        let elapsed = start_time.elapsed();
+        let status = response.status();
+        let resp_headers = response.headers().clone();
+
+        let json: serde_json::Value = response.json().await?;
+
+        log_info!("=== HTTP RESPONSE: 生成扫码登录 ===");
+        log_info!("Status: {}", status);
+        log_info!("Time: {:?}", elapsed);
+        log_debug!("Response Headers:");
+        for (name, value) in resp_headers.iter() {
+            if let Ok(value_str) = value.to_str() {
+                log_debug!("  {}: {}", name, value_str);
+            }
+        }
+
+        if json.get("status").and_then(|v| v.as_i64()) == Some(0) {
+            let data = json.get("data").ok_or_else(|| AppError::AuthError {
+                message: "Data not found in gen_scan_login response".to_string(),
+            })?;
+            let scan_id = data
+                .get("scanId")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .ok_or_else(|| AppError::AuthError {
+                    message: "scanId not found in response".to_string(),
+                })?;
+            let scan_url = data
+                .get("scanUrl")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .ok_or_else(|| AppError::AuthError {
+                    message: "scanUrl not found in response".to_string(),
+                })?;
+            Ok(ScanLoginInfo { scan_id, scan_url })
+        } else {
+            let msg = json
+                .get("msg")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown error");
+            Err(AppError::AuthError {
+                message: format!("Gen scan login failed: {}", msg),
+            })
+        }
+    }
+
+    /// 查询扫码登录状态
+    pub async fn scan_status(&self, scan_id: &str) -> Result<ScanStatus, AppError> {
+        let client = http_client::create_client();
+
+        let start_time = std::time::Instant::now();
+        log_info!("=== HTTP REQUEST: 查询扫码状态 ===");
+        log_info!("Method: GET");
+        log_info!("URL: https://as.hypergryph.com/general/v1/scan_status");
+
+        let response = client
+            .get("https://as.hypergryph.com/general/v1/scan_status")
+            .query(&[("scanId", scan_id)])
+            .send()
+            .await?;
+
+        let elapsed = start_time.elapsed();
+        let status = response.status();
+        let resp_headers = response.headers().clone();
+
+        let json: serde_json::Value = response.json().await?;
+
+        log_info!("=== HTTP RESPONSE: 查询扫码状态 ===");
+        log_info!("Status: {}", status);
+        log_info!("Time: {:?}", elapsed);
+        log_debug!("Response Headers:");
+        for (name, value) in resp_headers.iter() {
+            if let Ok(value_str) = value.to_str() {
+                log_debug!("  {}: {}", name, value_str);
+            }
+        }
+
+        let data = json.get("data");
+        let scan_status = data
+            .and_then(|v| v.get("status"))
+            .or_else(|| json.get("status"))
+            .and_then(|v| v.as_i64())
+            .unwrap_or(-1) as i32;
+        let scan_code = data
+            .and_then(|v| v.get("scanCode"))
+            .or_else(|| json.get("scanCode"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        let msg = data
+            .and_then(|v| v.get("msg"))
+            .or_else(|| json.get("msg"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        Ok(ScanStatus {
+            status: scan_status,
+            scan_code,
+            msg,
+        })
+    }
+
+    /// 用扫码登录返回的 scanCode 换取 Hypergryph Token (+ deviceToken + hgld)
+    async fn token_by_scan_code(
+        &self,
+        scan_code: &str,
+    ) -> Result<(String, String, Option<String>), AppError> {
+        let client = http_client::create_client();
+        let payload = json!({
+            "appCode": "dd7b852d5f1dd9da",
+            "from": 0,
+            "scanCode": scan_code,
+        });
+
+        let start_time = std::time::Instant::now();
+        log_info!("=== HTTP REQUEST: 扫码换取 Token ===");
+        log_info!("Method: POST");
+        log_info!("URL: https://as.hypergryph.com/user/auth/v1/token_by_scan_code");
+
+        let response = client
+            .post("https://as.hypergryph.com/user/auth/v1/token_by_scan_code")
+            .header("X-AppCode", "dd7b852d5f1dd9da")
+            .header("X-DeviceId", "9b7a08ae4be1fe2d7520528ca45a225b")
+            .header("X-DeviceId2", "632cddd5993b41590886e8b538ab2894")
+            .header("X-DeviceModel", "DESKTOP-F7UQANK")
+            .header("X-DeviceType", "2")
+            .header("X-OSVer", "10.0.26220")
+            .json(&payload)
+            .send()
+            .await?;
+
+        let elapsed = start_time.elapsed();
+        let status = response.status();
+        let resp_headers = response.headers().clone();
+
+        let json: serde_json::Value = response.json().await?;
+
+        log_info!("=== HTTP RESPONSE: 扫码换取 Token ===");
+        log_info!("Status: {}", status);
+        log_info!("Time: {:?}", elapsed);
+        log_debug!("Response Headers:");
+        for (name, value) in resp_headers.iter() {
+            if let Ok(value_str) = value.to_str() {
+                log_debug!("  {}: {}", name, value_str);
+            }
+        }
+
+        if json.get("status").and_then(|v| v.as_i64()) == Some(0) {
+            let data = json.get("data").ok_or_else(|| AppError::AuthError {
+                message: "Data not found in token_by_scan_code response".to_string(),
+            })?;
+            let token = data
+                .get("token")
+                .and_then(|t| t.as_str())
+                .map(|s| s.to_string())
+                .ok_or_else(|| AppError::AuthError {
+                    message: "Token not found in response".to_string(),
+                })?;
+            let device_token = data
+                .get("deviceToken")
+                .and_then(|t| t.as_str())
+                .map(|s| s.to_string())
+                .unwrap_or_default();
+            let hgld = data
+                .get("hgld")
+                .and_then(|t| t.as_str())
+                .map(|s| s.to_string());
+            log_debug!(
+                "token_by_scan_code: token_len={}, device_token_len={}, hgld={:?}",
+                token.len(),
+                device_token.len(),
+                hgld
+            );
+            Ok((token, device_token, hgld))
+        } else {
+            let msg = json
+                .get("msg")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown error");
+            Err(AppError::AuthError {
+                message: format!("Hypergryph API error: {}", msg),
+            })
+        }
+    }
+
+    /// 通过扫码添加账户
+    pub async fn add_account_by_scan(
+        &self,
+        scan_code: String,
+    ) -> Result<AccountLoginResult, AppError> {
+        // Step 1: 用 scanCode 换取 Hypergryph Token (+ deviceToken + hgld)
+        let (hy_token, device_token, hgld) = match self.token_by_scan_code(&scan_code).await {
+            Ok((token, device_token, hgld)) => {
+                log_debug!(
+                    "add_account_by_scan: hgld={:?}, device_token_len={}",
+                    hgld,
+                    device_token.len()
+                );
+                (token, device_token, hgld)
+            }
+            Err(e) => {
+                return Ok(AccountLoginResult {
+                    success: false,
+                    error_message: Some(format!("Step 1 failed: {}", e)),
+                    account: None,
+                    available_roles: None,
+                    cred: None,
+                    token: None,
+                    user_id: None,
+                });
+            }
+        };
+
+        // 服务器未返回 deviceToken 时，后续在 complete_login_from_token 中
+        // 用 userId 在本地匹配；扫码登录无法发送验证码，继续登录但不记录 u8token
+        let device_token = if device_token.is_empty() {
+            None
+        } else {
+            Some(device_token)
+        };
+
+        self.complete_login_from_token(
+            hy_token,
+            device_token,
+            MissingDeviceTokenPolicy::ContinueWithoutDeviceToken,
+        )
+        .await
+    }
+
+    /// 登录获取 token 后的公共流程（获取 skland code/cred、保存 token、获取角色列表）
+    async fn complete_login_from_token(
+        &self,
+        hy_token: String,
+        device_token: Option<String>,
+        missing_policy: MissingDeviceTokenPolicy,
+    ) -> Result<AccountLoginResult, AppError> {
         // Step 2: 获取 Skland Code
         let sk_code = match self.get_skland_code(&hy_token).await {
             Ok(code) => code,
@@ -1766,6 +2151,50 @@ impl AccountService {
             }
         };
 
+        // Step 3.5: 若服务器未返回 deviceToken（新设备），用 userId 在本地匹配已保存的 device token
+        let mut device_token = device_token;
+        if device_token.is_none() {
+            if let Some(local_dev) = self.get_local_device_token(&user_id) {
+                log_info!(
+                    "complete_login_from_token: Matched local device_token for user {}, continuing login without verification",
+                    user_id
+                );
+                device_token = Some(local_dev);
+            }
+        }
+
+        // 仍无 device token → 按策略处理
+        let device_token = match device_token {
+            Some(d) => Some(d),
+            None => match missing_policy {
+                MissingDeviceTokenPolicy::SendCodeAndVerify { phone } => {
+                    log_warn!(
+                        "complete_login_from_token: No device_token for user {} (new device), sending code & switching to verification",
+                        user_id
+                    );
+                    let _ = self
+                        .send_verification_code(SendCodeRequest { phone, code_type: 2 })
+                        .await;
+                    return Ok(AccountLoginResult {
+                        success: false,
+                        error_message: Some("NEW_DEVICE_VERIFICATION_REQUIRED".to_string()),
+                        account: None,
+                        available_roles: None,
+                        cred: None,
+                        token: None,
+                        user_id: None,
+                    });
+                }
+                MissingDeviceTokenPolicy::ContinueWithoutDeviceToken => {
+                    log_warn!(
+                        "complete_login_from_token: No device_token for user {} from server or local cache, u8 token will be unavailable",
+                        user_id
+                    );
+                    None
+                }
+            },
+        };
+
         // 保存 hytoken（与 cred 同级存储）
         log_debug!("About to save hytoken for user_id={}", user_id);
         if let Err(e) = self.set_hytoken_for_user(&user_id, &hy_token).await {
@@ -1773,6 +2202,41 @@ impl AccountService {
             log_error!("Failed to save hytoken: {}", e);
         } else {
             log_debug!("hytoken saved successfully");
+        }
+
+        // 保存 device token（与 cred 同级存储，失败不阻断登录）
+        if let Some(dev_tok) = &device_token {
+            log_debug!("About to save device_token for user_id={}", user_id);
+            if let Err(e) = self.set_device_token_for_user(&user_id, dev_tok).await {
+                tracing::warn!("Failed to save device_token for user {}: {}", user_id, e);
+                log_error!("Failed to save device_token: {}", e);
+            } else {
+                log_debug!("device_token saved successfully");
+            }
+        }
+
+        // 保存 u8 token（与 cred 同级存储，失败不阻断登录）
+        log_debug!("About to fetch u8 token for user_id={}", user_id);
+        match device_token.as_deref() {
+            Some(dev_tok) => {
+                match self.skland_service.get_u8_token_by_hytoken(&hy_token, dev_tok).await {
+                    Ok(u8_token) => {
+                        log_debug!("u8 token fetched (len={})", u8_token.len());
+                        if let Err(e) = self.set_u8token_for_user(&user_id, &u8_token).await {
+                            tracing::warn!("Failed to save u8token for user {}: {}", user_id, e);
+                            log_error!("Failed to save u8token: {}", e);
+                        } else {
+                            log_debug!("u8token saved successfully");
+                        }
+                    }
+                    Err(e) => {
+                        log_warn!("Failed to fetch u8 token for user {}: {}", user_id, e);
+                    }
+                }
+            }
+            None => {
+                log_warn!("No device_token, skipping u8 token fetch for user {}", user_id);
+            }
         }
 
         // Step 4: 获取玩家绑定列表
@@ -1884,17 +2348,35 @@ impl AccountService {
             // 保存或更新 account_token_{user_id}
             let token_key = format!("account_token_{}", user_id);
 
-            // 先读取现有配置，保留 hytoken（如果存在）
+            // 先读取现有配置，保留 hytoken、u8token 和 device_token（如果存在）
             let existing_data: Option<serde_json::Value> = config.get(&token_key);
             let hytoken = existing_data
                 .as_ref()
                 .and_then(|d| d.get("hytoken"))
                 .and_then(|h| h.as_str())
                 .map(|s| s.to_string());
+            let u8token = existing_data
+                .as_ref()
+                .and_then(|d| d.get("u8token"))
+                .and_then(|h| h.as_str())
+                .map(|s| s.to_string());
+            let device_token = existing_data
+                .as_ref()
+                .and_then(|d| d.get("device_token"))
+                .and_then(|h| h.as_str())
+                .map(|s| s.to_string());
 
             log_debug!(
                 "save_selected_roles: Existing hytoken exists: {}",
                 hytoken.is_some()
+            );
+            log_debug!(
+                "save_selected_roles: Existing u8token exists: {}",
+                u8token.is_some()
+            );
+            log_debug!(
+                "save_selected_roles: Existing device_token exists: {}",
+                device_token.is_some()
             );
 
             // 构建 roles 列表
@@ -1917,6 +2399,14 @@ impl AccountService {
             if let Some(hyt) = hytoken {
                 token_data_obj.insert("hytoken".to_string(), json!(hyt));
                 log_debug!("save_selected_roles: Preserved hytoken in config");
+            }
+            if let Some(u8t) = u8token {
+                token_data_obj.insert("u8token".to_string(), json!(u8t));
+                log_debug!("save_selected_roles: Preserved u8token in config");
+            }
+            if let Some(dev_tok) = device_token {
+                token_data_obj.insert("device_token".to_string(), json!(dev_tok));
+                log_debug!("save_selected_roles: Preserved device_token in config");
             }
             let token_data = serde_json::Value::Object(token_data_obj);
 
@@ -1972,12 +2462,19 @@ impl AccountService {
         Ok(accounts)
     }
 
-    /// Step 1: 手机号密码 → Hypergryph Token
-    async fn get_hypergryph_token(&self, phone: &str, password: &str) -> Result<String, AppError> {
+    /// Step 1: 手机号密码 → Hypergryph Token (+ deviceToken + hgld)
+    ///
+    /// 返回 (token, device_token, hgld)。hgld 为 Hypergryph 用户 id，
+    /// 用于在本地按账户匹配已保存的 device token。
+    async fn get_hypergryph_token(
+        &self,
+        phone: &str,
+        password: &str,
+    ) -> Result<(String, Option<String>, Option<String>), AppError> {
         let client = http_client::create_client();
         let payload = json!({
             "phone": phone,
-            "password": password
+            "password": password,
         });
 
         let start_time = std::time::Instant::now();
@@ -2009,13 +2506,26 @@ impl AccountService {
 
 
         if json.get("status").and_then(|v| v.as_i64()) == Some(0) {
-            json.get("data")
-                .and_then(|d| d.get("token"))
+            let data = json.get("data").ok_or_else(|| AppError::AuthError {
+                message: "Data not found in response".to_string(),
+            })?;
+            let token = data
+                .get("token")
                 .and_then(|t| t.as_str())
                 .map(|s| s.to_string())
                 .ok_or_else(|| AppError::AuthError {
                     message: "Token not found in response".to_string(),
-                })
+                })?;
+            let device_token = data
+                .get("deviceToken")
+                .and_then(|t| t.as_str())
+                .map(|s| s.to_string())
+                .filter(|s| !s.is_empty());
+            let hgld = data
+                .get("hgld")
+                .and_then(|t| t.as_str())
+                .map(|s| s.to_string());
+            Ok((token, device_token, hgld))
         } else {
             let msg = json
                 .get("msg")
@@ -2025,6 +2535,16 @@ impl AccountService {
                 message: format!("Hypergryph API error: {}", msg),
             })
         }
+    }
+
+    /// 判断错误是否为新设备需要验证
+    fn is_new_device_verification_error(err: &AppError) -> bool {
+        let msg = err.to_string();
+        msg.contains("新设备")
+            || msg.contains("需要验证")
+            || msg.contains("设备验证")
+            || msg.contains("verify")
+            || msg.contains("verification")
     }
 
     /// Step 2: Hypergryph Token → Skland Code

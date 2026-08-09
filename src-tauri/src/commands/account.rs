@@ -3,7 +3,9 @@ use tauri::State;
 use tokio::sync::Mutex;
 
 use crate::models::account::{AccountInfo, AccountLoginResult, AccountRefreshResult};
-use crate::models::login::{CodeLoginRequest, LoginRequest, SendCodeRequest};
+use crate::models::login::{
+    CodeLoginRequest, LoginRequest, ScanLoginInfo, ScanStatus, SendCodeRequest,
+};
 use crate::models::role::RoleDisplayInfo;
 use crate::services::account_service::AccountService;
 
@@ -76,9 +78,12 @@ pub async fn add_account(
 pub async fn logout_account(
     state: State<'_, Arc<Mutex<AccountService>>>,
     account_id: String,
+    keep_device_token: Option<bool>,
 ) -> Result<bool, String> {
     let service = state.lock().await;
-    Ok(service.logout_account(account_id).await)
+    Ok(service
+        .logout_account(account_id, keep_device_token.unwrap_or(true))
+        .await)
 }
 
 /// 批量登出账户
@@ -122,6 +127,38 @@ pub async fn add_account_by_code(
     let service = state.lock().await;
     service
         .add_account_by_code(login_request)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// 生成扫码登录二维码
+#[tauri::command]
+pub async fn gen_scan_login(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+) -> Result<ScanLoginInfo, String> {
+    let service = state.lock().await;
+    service.gen_scan_login().await.map_err(|e| e.to_string())
+}
+
+/// 查询扫码登录状态
+#[tauri::command]
+pub async fn scan_status(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+    scan_id: String,
+) -> Result<ScanStatus, String> {
+    let service = state.lock().await;
+    service.scan_status(&scan_id).await.map_err(|e| e.to_string())
+}
+
+/// 通过扫码添加账户
+#[tauri::command]
+pub async fn add_account_by_scan(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+    scan_code: String,
+) -> Result<AccountLoginResult, String> {
+    let service = state.lock().await;
+    service
+        .add_account_by_scan(scan_code)
         .await
         .map_err(|e| e.to_string())
 }
