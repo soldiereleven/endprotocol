@@ -175,7 +175,7 @@ export default function RoleSelectModal({
             : t("role_select.confirm_selection", {
                 count: selectedRoles.length,
               })}
-        </Button>
+        </GlassButton>
       </CustomModalFooter>
     </CustomModal>
   );
