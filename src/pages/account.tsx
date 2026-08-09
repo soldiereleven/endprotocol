@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Img } from "@/utils/imageLoader";
+import QRCode from "qrcode";
 import {
   GlassAlert,
   GlassButton,
@@ -31,6 +32,9 @@ import {
   addAccount,
   sendVerificationCode,
   addAccountByCode,
+  addAccountByScan,
+  genScanLogin,
+  scanStatus,
   saveSelectedRoles,
   setSelectedAccount as apiSetSelectedAccount,
   Account,
@@ -41,6 +45,62 @@ import { roleDetailService } from "@/utils/roleDetailService";
 import logger, { logDebug, logError } from "../utils/logger";
 import { getConfig } from "@/utils/configService";
 import { resolveServerLabel } from "@/types";
+
+// 二维码图片组件（使用 qrcode 库生成 dataURL）
+function QRCodeImage({ value, size = 200 }: { value: string; size?: number }) {
+  const [dataUrl, setDataUrl] = useState("");
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setDataUrl("");
+    setHasError(false);
+    QRCode.toDataURL(value, {
+      width: size,
+      margin: 2,
+      color: { dark: "#000000", light: "#ffffff" },
+    })
+      .then((url) => {
+        if (!cancelled) setDataUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setHasError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [value, size]);
+
+  if (hasError) {
+    return (
+      <div
+        className="w-[200px] h-[200px] flex items-center justify-center text-sm text-muted"
+        style={{ width: size, height: size }}
+      >
+        QR Error
+      </div>
+    );
+  }
+  if (!dataUrl) {
+    return (
+      <div
+        className="flex items-center justify-center"
+        style={{ width: size, height: size }}
+      >
+        <GlassSpinner color="primary" size="md" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={dataUrl}
+      alt="QR Code"
+      className="rounded-xl"
+      width={size}
+      height={size}
+    />
+  );
+}
 
 export default function AccountPage() {
   const { t, i18n } = useTranslation();
@@ -61,7 +121,7 @@ export default function AccountPage() {
   const [expectedAccountCount, setExpectedAccountCount] = useState<number>(0); // 预期的账户数量
 
   // 添加账户相关状态
-  type LoginMethod = "phone" | "qrcode" | null;
+  type LoginMethod = "phone" | "sms" | "qrcode" | null;
   const [loginMethod, setLoginMethod] = useState<LoginMethod>(null);
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState("");
@@ -74,6 +134,51 @@ export default function AccountPage() {
   const [codeSentSuccess, setCodeSentSuccess] = useState(false);
   const [showOtpInput, setShowOtpInput] = useState(false); // 是否显示 OTP 输入界面
   const [isOtpInvalid, setIsOtpInvalid] = useState(false); // OTP 是否无效
+
+  // 扫码登录相关状态
+  const [scanId, setScanId] = useState("");
+  const [scanUrl, setScanUrl] = useState("");
+  const [isGeneratingQr, setIsGeneratingQr] = useState(false);
+  const [isPollingScan, setIsPollingScan] = useState(false);
+  const [scanWaiting, setScanWaiting] = useState(true); // true=等待扫码, false=已扫码待确认
+  const [qrGenFailed, setQrGenFailed] = useState(false); // 二维码自动生成失败
+  const qrPollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isMountedRef = useRef(true);
+
+  // 新设备验证（密码登录触发验证码登录获取 device token）
+  const [isNewDeviceVerify, setIsNewDeviceVerify] = useState(false);
+
+  // 登出确认（选择是否保留设备认证）
+  const [logoutTarget, setLogoutTarget] = useState<Account | null>(null);
+  const [keepDeviceAuth, setKeepDeviceAuth] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // 组件卸载时清理扫码轮询
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (qrPollTimerRef.current) {
+        clearInterval(qrPollTimerRef.current);
+        qrPollTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  // 进入扫码登录界面时自动生成二维码
+  useEffect(() => {
+    if (
+      isAddModalOpen &&
+      loginMethod === "qrcode" &&
+      !scanUrl &&
+      !isGeneratingQr &&
+      !isLoggingIn &&
+      !qrGenFailed
+    ) {
+      handleStartQrLogin();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAddModalOpen, loginMethod, scanUrl, isGeneratingQr, isLoggingIn, qrGenFailed]);
 
   // 角色选择状态
   const [availableRoles, setAvailableRoles] = useState<RoleDisplayInfo[]>([]);
@@ -325,14 +430,31 @@ export default function AccountPage() {
     }
   };
 
-  // 处理登出
-  const handleLogout = async (accountId: string) => {
+  // 处理登出（先询问是否保留设备认证）
+  const handleLogout = (account: Account) => {
+    setLogoutTarget(account);
+    setKeepDeviceAuth(true);
+  };
+
+  // 确认登出
+  const handleConfirmLogout = async () => {
+    if (!logoutTarget) return;
+    setIsLoggingOut(true);
     try {
-      const success = await apiLogoutAccount(accountId);
+      const success = await apiLogoutAccount(logoutTarget.id, keepDeviceAuth);
 
       if (success) {
         // 从列表中移除
-        setAccounts((prev) => prev.filter((acc) => acc.id !== accountId));
+        setAccounts((prev) => {
+          const next = prev.filter((acc) => acc.id !== logoutTarget!.id);
+          // 如果登出的是当前选中的账户，自动选中下一个
+          if (logoutTarget!.id === currentAccountId && next.length > 0) {
+            setCurrentAccountId(next[0].id);
+          } else if (logoutTarget!.id === currentAccountId) {
+            setCurrentAccountId(null);
+          }
+          return next;
+        });
 
         // 显示成功提示
         setGlobalAlert({
@@ -357,6 +479,9 @@ export default function AccountPage() {
             : `Logout error: ${error}`,
       });
       setTimeout(() => setGlobalAlert(null), 3000);
+    } finally {
+      setIsLoggingOut(false);
+      setLogoutTarget(null);
     }
   };
 
@@ -368,18 +493,7 @@ export default function AccountPage() {
 
   // 打开添加账户 Modal
   const handleOpenAddModal = () => {
-    setLoginMethod(null);
-    setPhone("");
-    setPassword("");
-    setVerificationCode("");
-    setLoginError("");
-    setCodeSentSuccess(false);
-    setCountdown(0);
-    setIsAddModalOpen(true);
-  };
-
-  // 关闭添加账户 Modal
-  const handleCloseAddModal = () => {
+    stopQrPolling();
     setLoginMethod(null);
     setPhone("");
     setPassword("");
@@ -389,6 +503,31 @@ export default function AccountPage() {
     setCountdown(0);
     setShowOtpInput(false);
     setIsOtpInvalid(false);
+    setScanId("");
+    setScanUrl("");
+    setScanWaiting(true);
+    setQrGenFailed(false);
+    setIsNewDeviceVerify(false);
+    setIsAddModalOpen(true);
+  };
+
+  // 关闭添加账户 Modal
+  const handleCloseAddModal = () => {
+    stopQrPolling();
+    setLoginMethod(null);
+    setPhone("");
+    setPassword("");
+    setVerificationCode("");
+    setLoginError("");
+    setCodeSentSuccess(false);
+    setCountdown(0);
+    setShowOtpInput(false);
+    setIsOtpInvalid(false);
+    setScanId("");
+    setScanUrl("");
+    setScanWaiting(true);
+    setQrGenFailed(false);
+    setIsNewDeviceVerify(false);
     // 清除角色选择状态 - 放弃这次登录
     setAvailableRoles([]);
     setSelectedRoles([]);
@@ -466,7 +605,37 @@ export default function AccountPage() {
 
   // 处理登录
   const handleLogin = async () => {
-    if (loginMethod === "phone") {
+    if (loginMethod === "phone" && isNewDeviceVerify) {
+      // 新设备验证 - 只需要手机号和验证码
+      if (!phone) {
+        setPhoneError(
+          i18n.language === "zh"
+            ? "请输入手机号"
+            : "Please enter phone number",
+        );
+        return;
+      }
+
+      // 校验手机号格式（11位数字）
+      const phoneRegex = /^1[3-9]\d{9}$/;
+      if (!phoneRegex.test(phone)) {
+        setPhoneError(
+          i18n.language === "zh"
+            ? "请输入有效的11位手机号"
+            : "Please enter a valid 11-digit phone number",
+        );
+        return;
+      }
+
+      if (!verificationCode) {
+        setLoginError(
+          i18n.language === "zh"
+            ? "请输入验证码"
+            : "Please enter verification code",
+        );
+        return;
+      }
+    } else if (loginMethod === "phone") {
       // 密码登录
       if (!phone || !password) {
         if (!phone) {
@@ -494,7 +663,7 @@ export default function AccountPage() {
         );
         return;
       }
-    } else if (loginMethod === "qrcode") {
+    } else if (loginMethod === "sms") {
       // 验证码登录 - 检查是否有验证码
       if (!phone) {
         setPhoneError(
@@ -538,7 +707,10 @@ export default function AccountPage() {
     try {
       let result: LoginResult;
 
-      if (loginMethod === "phone") {
+      if (loginMethod === "phone" && isNewDeviceVerify) {
+        // 新设备验证 - 用验证码完成登录
+        result = await addAccountByCode({ phone, code: verificationCode });
+      } else if (loginMethod === "phone") {
         // 密码登录
         result = await addAccount({ phone, password });
       } else {
@@ -549,70 +721,173 @@ export default function AccountPage() {
       // 调试：打印完整结果
       logger.info("Login result: " + JSON.stringify(result), "Account");
 
-      if (result.success && result.account) {
-        // 登录成功
-
-        // 刷新账户列表
-        const accounts = await getAccounts();
-        setAccounts(accounts || []);
-
-        // 自动选中新登录的账户
-        await apiSetSelectedAccount(result.account.id);
-        setCurrentAccountId(result.account.id);
-
-        // 通知侧边栏更新
-        window.dispatchEvent(new CustomEvent("accountChanged"));
-
-        // 关闭 Modal
-        handleCloseAddModal();
-
-        // 显示全局成功提示
-        setGlobalAlert({
-          type: "success",
-          message:
-            i18n.language === "zh"
-              ? `登录成功！欢迎，${result.account.nickname}`
-              : `Login successful! Welcome, ${result.account.nickname}`,
-        });
-
-        // 5秒后自动清除 Alert
-        setTimeout(() => {
-          setGlobalAlert(null);
-        }, 5000);
-      } else if (
-        result.success &&
-        result.availableRoles &&
-        result.availableRoles.length > 0
-      ) {
-        // 需要选择角色 - 直接在当前 Modal 中显示
-        setAvailableRoles(result.availableRoles);
-        setLoginCred(result.cred || "");
-        setLoginToken(result.token || "");
-        setLoginUserId(result.userId || "");
-        setSelectedRoles([]); // 重置选择
-      } else {
-        // 验证码错误
-        if (loginMethod === "qrcode") {
-          setIsOtpInvalid(true);
-          setLoginError(
-            result.errorMessage ||
-              (i18n.language === "zh"
-                ? "验证码错误，请重试"
-                : "Invalid verification code, please try again"),
-          );
-        } else {
-          setLoginError(
-            result.errorMessage ||
-              (i18n.language === "zh"
-                ? "登录失败，请重试"
-                : "Login failed, please try again"),
-          );
-        }
-      }
+      await processLoginResult(result);
     } catch (error) {
       logger.error("Login error: " + error, "Account");
       setLoginError(
         i18n.language === "zh" ? "登录过程中发生错误" : "Error during login",
+      );
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  // 处理登录结果（成功 / 选择角色 / 失败）
+  const processLoginResult = async (result: LoginResult) => {
+    if (result.success && result.account) {
+      // 登录成功
+
+      // 刷新账户列表
+      const accounts = await getAccounts();
+      setAccounts(accounts || []);
+
+      // 自动选中新登录的账户
+      await apiSetSelectedAccount(result.account.id);
+      setCurrentAccountId(result.account.id);
+
+      // 通知侧边栏更新
+      window.dispatchEvent(new CustomEvent("accountChanged"));
+
+      // 关闭 Modal
+      handleCloseAddModal();
+
+      // 显示全局成功提示
+      setGlobalAlert({
+        type: "success",
+        message:
+          i18n.language === "zh"
+            ? `登录成功！欢迎，${result.account.nickname}`
+            : `Login successful! Welcome, ${result.account.nickname}`,
+      });
+
+      // 5秒后自动清除 Alert
+      setTimeout(() => {
+        setGlobalAlert(null);
+      }, 5000);
+    } else if (
+      result.success &&
+      result.availableRoles &&
+      result.availableRoles.length > 0
+    ) {
+      // 需要选择角色 - 直接在当前 Modal 中显示
+      setAvailableRoles(result.availableRoles);
+      setLoginCred(result.cred || "");
+      setLoginToken(result.token || "");
+      setLoginUserId(result.userId || "");
+      setSelectedRoles([]); // 重置选择
+    } else {
+      // 登录失败
+      if (
+        loginMethod === "phone" &&
+        result.errorMessage === "NEW_DEVICE_VERIFICATION_REQUIRED"
+      ) {
+        // 新设备需要验证 - 已自动发送验证码，切换到验证码输入界面
+        setIsNewDeviceVerify(true);
+        setShowOtpInput(true);
+        setVerificationCode("");
+        setIsOtpInvalid(false);
+        setCodeSentSuccess(true);
+        setCountdown(60);
+        setLoginError("");
+        return;
+      }
+      if (loginMethod === "sms" || isNewDeviceVerify) {
+        setIsOtpInvalid(true);
+        setLoginError(
+          result.errorMessage ||
+            (i18n.language === "zh"
+              ? "验证码错误，请重试"
+              : "Invalid verification code, please try again"),
+        );
+      } else {
+        setLoginError(
+          result.errorMessage ||
+            (i18n.language === "zh"
+              ? "登录失败，请重试"
+              : "Login failed, please try again"),
+        );
+      }
+    }
+  };
+
+  // 停止扫码轮询
+  const stopQrPolling = () => {
+    if (qrPollTimerRef.current) {
+      clearInterval(qrPollTimerRef.current);
+      qrPollTimerRef.current = null;
+    }
+    setIsPollingScan(false);
+  };
+
+  // 生成扫码登录二维码并开始轮询
+  const handleStartQrLogin = async () => {
+    setIsGeneratingQr(true);
+    setLoginError("");
+    setScanWaiting(true);
+    setQrGenFailed(false);
+    try {
+      const info = await genScanLogin();
+      if (!info || !info.scanId || !info.scanUrl) {
+        setQrGenFailed(true);
+        setLoginError(
+          i18n.language === "zh"
+            ? "获取二维码失败，请重试"
+            : "Failed to get QR code, please retry",
+        );
+        return;
+      }
+      setScanId(info.scanId);
+      setScanUrl(info.scanUrl);
+      startQrPolling(info.scanId);
+    } catch (error) {
+      logError("Generate scan login error:", error);
+      setQrGenFailed(true);
+      setLoginError(
+        i18n.language === "zh" ? "生成二维码出错" : "Error generating QR code",
+      );
+    } finally {
+      setIsGeneratingQr(false);
+    }
+  };
+
+  // 轮询扫码状态
+  const startQrPolling = (id: string) => {
+    stopQrPolling();
+    setIsPollingScan(true);
+    qrPollTimerRef.current = setInterval(async () => {
+      const result = await scanStatus(id);
+      if (!result) return; // 查询失败，继续轮询
+      if (result.status === 0 && result.scanCode) {
+        // 手机端确认成功
+        stopQrPolling();
+        if (!isMountedRef.current) return;
+        await handleScanSuccess(result.scanCode);
+      } else if (result.status !== 100) {
+        // 已扫码（或其它中间状态），等待手机端确认
+        if (isMountedRef.current) setScanWaiting(false);
+      } else {
+        // 等待扫码
+        if (isMountedRef.current) setScanWaiting(true);
+      }
+      // 其他状态：继续轮询
+    }, 1000);
+  };
+
+  // 扫码成功后用 scanCode 换取账户
+  const handleScanSuccess = async (scanCode: string) => {
+    if (isLoggingIn) return;
+    setIsLoggingIn(true);
+    setLoginError("");
+    try {
+      const result = await addAccountByScan(scanCode);
+      logger.info("Scan login result: " + JSON.stringify(result), "Account");
+      await processLoginResult(result);
+    } catch (error) {
+      logger.error("Scan login error: " + error, "Account");
+      setLoginError(
+        i18n.language === "zh"
+          ? "扫码登录过程中发生错误"
+          : "Error during scan login",
       );
     } finally {
       setIsLoggingIn(false);
@@ -1214,7 +1489,7 @@ export default function AccountPage() {
                           <GlassButton
                             size="sm"
                             variant="outline"
-                            onPress={() => handleLogout(account.id)}
+                            onPress={() => handleLogout(account)}
                             className="text-danger border-danger hover:bg-danger-50 !h-7 !px-2 text-xs"
                           >
                             {t("settings.account.logout")}
@@ -1448,6 +1723,65 @@ export default function AccountPage() {
         </CustomModalFooter>
       </CustomModal>
 
+      {/* Logout Confirm Modal（是否保留设备认证） */}
+      <CustomModal
+        isOpen={!!logoutTarget}
+        onClose={() => setLogoutTarget(null)}
+        size="sm"
+      >
+        <CustomModalHeader onClose={() => setLogoutTarget(null)}>
+          {t("settings.account.confirm_logout")}
+        </CustomModalHeader>
+        <CustomModalBody>
+          <div className="space-y-4">
+            <p className="text-sm text-foreground/80">
+              {i18n.language === "zh"
+                ? `确定要登出账户「${logoutTarget?.nickname || ""}」吗？`
+                : `Logout account "${logoutTarget?.nickname || ""}"?`}
+            </p>
+
+            <label className="flex items-start gap-3 cursor-pointer rounded-lg border-2 border-separator p-3 hover:border-primary/50 transition-colors">
+              <GlassCheckbox
+                isSelected={keepDeviceAuth}
+                onChange={() => setKeepDeviceAuth((prev) => !prev)}
+              />
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {t("settings.account.logout_keep_device")}
+                </p>
+                <p className="text-xs text-muted mt-0.5">
+                  {t("settings.account.logout_keep_device_desc")}
+                </p>
+              </div>
+            </label>
+
+            {!keepDeviceAuth && (
+              <p className="text-xs text-danger">
+                {t("settings.account.logout_delete_device_warn")}
+              </p>
+            )}
+          </div>
+        </CustomModalBody>
+        <CustomModalFooter>
+          <GlassButton
+            variant="outline"
+            onPress={() => setLogoutTarget(null)}
+            isDisabled={isLoggingOut}
+          >
+            {t("settings.account.cancel")}
+          </GlassButton>
+          <GlassButton
+            variant="danger"
+            onPress={handleConfirmLogout}
+            isDisabled={isLoggingOut}
+          >
+            {isLoggingOut
+              ? t("settings.account.loading")
+              : t("settings.account.logout")}
+          </GlassButton>
+        </CustomModalFooter>
+      </CustomModal>
+
       {/* Add Account Modal */}
       <CustomModal
         isOpen={isAddModalOpen}
@@ -1461,7 +1795,7 @@ export default function AccountPage() {
         </CustomModalHeader>
         <CustomModalBody
           className={
-            loginMethod === "qrcode" && showOtpInput ? "overflow-hidden" : ""
+            loginMethod === "sms" && showOtpInput ? "overflow-hidden" : ""
           }
         >
           {availableRoles.length > 0 ? (
@@ -1548,7 +1882,7 @@ export default function AccountPage() {
                 {t("settings.account.select_login_method")}
               </p>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 {/* 密码登录 */}
                 <button
                   onClick={() => setLoginMethod("phone")}
@@ -1576,7 +1910,7 @@ export default function AccountPage() {
 
                 {/* 验证码登录 */}
                 <button
-                  onClick={() => setLoginMethod("qrcode")}
+                  onClick={() => setLoginMethod("sms")}
                   className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-separator hover:border-primary hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all cursor-pointer group"
                 >
                   <div className="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -1595,7 +1929,32 @@ export default function AccountPage() {
                     </svg>
                   </div>
                   <span className="text-sm font-medium text-foreground">
-                    {t("settings.account.qrcode_login")}
+                    {t("settings.account.sms_login")}
+                  </span>
+                </button>
+
+                {/* 扫码登录 */}
+                <button
+                  onClick={() => setLoginMethod("qrcode")}
+                  className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-separator hover:border-primary hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all cursor-pointer group"
+                >
+                  <div className="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <svg
+                      className="w-8 h-8 text-primary"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 3h7v7H3V3zM14 3h7v7h-7V3zM3 14h7v7H3v-7zM14 14h2v2h-2v-2zM17 14h4v4h-4v-4zM14 17h2v4h-2v-4zM20 20h1v1h-1v-1z"
+                      />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-medium text-foreground">
+                    {t("settings.account.scan_login")}
                   </span>
                 </button>
               </div>
@@ -1605,7 +1964,13 @@ export default function AccountPage() {
             <div className="space-y-4">
               {/* 返回按钮 */}
               <button
-                onClick={() => setLoginMethod(null)}
+                onClick={() => {
+                  setLoginMethod(null);
+                  setIsNewDeviceVerify(false);
+                  setShowOtpInput(false);
+                  setIsOtpInvalid(false);
+                  setVerificationCode("");
+                }}
                 className="flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors mb-4"
               >
                 <svg
@@ -1648,6 +2013,18 @@ export default function AccountPage() {
                 </GlassAlert>
               )}
 
+              {/* 新设备验证提示 */}
+              {isNewDeviceVerify && (
+                <GlassAlert status="warning">
+                  <GlassAlert.Indicator />
+                  <GlassAlert.Content>
+                    <GlassAlert.Description>
+                      {t("settings.account.new_device_verify_hint")}
+                    </GlassAlert.Description>
+                  </GlassAlert.Content>
+                </GlassAlert>
+              )}
+
               {/* 手机号和密码输入 */}
               <div className="grid grid-cols-[auto_1fr] items-center gap-y-4 gap-x-3">
                 {/* 手机号输入行 */}
@@ -1677,25 +2054,90 @@ export default function AccountPage() {
                   )}
                 </div>
 
-                {/* 密码输入行 */}
-                <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
-                  {t("settings.account.password")}
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t("settings.account.enter_password")}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !isLoggingIn) {
-                      handleLogin();
-                    }
-                  }}
-                  className="w-full px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                />
+                {/* 新设备验证：显示验证码输入 */}
+                {isNewDeviceVerify ? (
+                  <>
+                    <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
+                      {t("settings.account.verification_code")}
+                    </label>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <GlassInputOTP
+                          aria-describedby={isOtpInvalid ? "code-error" : undefined}
+                          isInvalid={isOtpInvalid}
+                          maxLength={6}
+                          value={verificationCode}
+                          onComplete={async (code) => {
+                            setVerificationCode(code);
+                            setIsOtpInvalid(false);
+                            await handleLogin();
+                          }}
+                          onChange={(val) => {
+                            setVerificationCode(val);
+                            setIsOtpInvalid(false);
+                            if (codeSentSuccess) {
+                              setCodeSentSuccess(false);
+                            }
+                          }}
+                        >
+                          <GlassInputOTP.Group>
+                            <GlassInputOTP.Slot index={0} />
+                            <GlassInputOTP.Slot index={1} />
+                            <GlassInputOTP.Slot index={2} />
+                          </GlassInputOTP.Group>
+                          <GlassInputOTP.Separator />
+                          <GlassInputOTP.Group>
+                            <GlassInputOTP.Slot index={3} />
+                            <GlassInputOTP.Slot index={4} />
+                            <GlassInputOTP.Slot index={5} />
+                          </GlassInputOTP.Group>
+                        </GlassInputOTP>
+                      </div>
+                      {isOtpInvalid && (
+                        <span className="field-error" data-visible={isOtpInvalid} id="code-error">
+                          {i18n.language === "zh"
+                            ? "验证码无效，请重试"
+                            : "Invalid code. Please try again."}
+                        </span>
+                      )}
+                      <div className="flex items-center gap-[5px]">
+                        <p className="text-sm text-muted">
+                          {i18n.language === "zh"
+                            ? "没收到验证码？"
+                            : "Didn't receive a code?"}
+                        </p>
+                        <GlassLink
+                          className="text-foreground underline cursor-pointer"
+                          onClick={handleSendCodeAndShowOtp}
+                        >
+                          {i18n.language === "zh" ? "重新发送" : "Resend"}
+                        </GlassLink>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* 密码输入行 */}
+                    <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
+                      {t("settings.account.password")}
+                    </label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={t("settings.account.enter_password")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !isLoggingIn) {
+                          handleLogin();
+                        }
+                      }}
+                      className="w-full px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                    />
+                  </>
+                )}
               </div>
             </div>
-          ) : (
+          ) : loginMethod === "sms" ? (
             // 验证码登录表单
             <div className="space-y-4">
               <button
@@ -1919,6 +2361,150 @@ export default function AccountPage() {
                 </div>
               )}
             </div>
+          ) : (
+            // 扫码登录界面
+            <div className="space-y-4">
+              {/* 返回按钮 */}
+              <button
+                onClick={() => {
+                  stopQrPolling();
+                  setLoginMethod(null);
+                  setScanUrl("");
+                  setScanId("");
+                }}
+                className="flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors mb-4"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+                {t("settings.account.back")}
+              </button>
+
+              {/* 错误提示 */}
+              {loginError && (
+                <GlassAlert status="danger">
+                  <GlassAlert.Indicator />
+                  <GlassAlert.Content>
+                    <GlassAlert.Description>{loginError}</GlassAlert.Description>
+                  </GlassAlert.Content>
+                </GlassAlert>
+              )}
+
+              {isLoggingIn ? (
+                <div className="flex flex-col items-center justify-center gap-4 py-10">
+                  <GlassSpinner color="primary" size="lg" />
+                  <p className="text-sm text-muted">
+                    {i18n.language === "zh" ? "正在登录..." : "Logging in..."}
+                  </p>
+                </div>
+              ) : !scanUrl ? (
+                // 生成二维码
+                <div className="flex flex-col items-center gap-4 py-8">
+                  <div className="w-24 h-24 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center">
+                    <svg
+                      className="w-12 h-12 text-primary"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 3h7v7H3V3zM14 3h7v7h-7V3zM3 14h7v7H3v-7zM14 14h2v2h-2v-2zM17 14h4v4h-4v-4zM14 17h2v4h-2v-4zM20 20h1v1h-1v-1z"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-sm text-muted text-center">
+                    {i18n.language === "zh"
+                      ? "请打开鹰角网络通行证，使用扫码登录功能"
+                      : "Open your Hypergryph account app and use QR scan login"}
+                  </p>
+                  <GlassButton
+                    variant="primary"
+                    onPress={handleStartQrLogin}
+                    isDisabled={isGeneratingQr}
+                  >
+                    {isGeneratingQr ? (
+                      <>
+                        <GlassSpinner color="current" size="sm" />
+                        {t("settings.account.generating")}
+                      </>
+                    ) : (
+                      t("settings.account.gen_qrcode")
+                    )}
+                  </GlassButton>
+                </div>
+              ) : (
+                // 显示二维码
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative p-3 bg-white rounded-xl shadow-sm">
+                    <QRCodeImage value={scanUrl} size={200} />
+                    {!scanWaiting && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/80 rounded-xl">
+                        <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center">
+                          <svg
+                            className="w-6 h-6 text-success"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        </div>
+                        <p className="text-sm font-medium text-foreground">
+                          {i18n.language === "zh" ? "已扫码" : "Scanned"}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-sm text-muted text-center">
+                    {scanWaiting
+                      ? t("settings.account.scan_tip")
+                      : t("settings.account.scanned_tip")}
+                  </p>
+
+                  <div className="flex items-center gap-2">
+                    <GlassButton
+                      variant="outline"
+                      size="sm"
+                      onPress={handleStartQrLogin}
+                      isDisabled={isGeneratingQr}
+                    >
+                      {t("settings.account.refresh_qrcode")}
+                    </GlassButton>
+                    <GlassButton
+                      variant="outline"
+                      size="sm"
+                      onPress={() => {
+                        stopQrPolling();
+                        setLoginMethod(null);
+                        setScanUrl("");
+                        setScanId("");
+                      }}
+                    >
+                      {t("settings.account.back")}
+                    </GlassButton>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </CustomModalBody>
         <CustomModalFooter>
@@ -1933,7 +2519,7 @@ export default function AccountPage() {
                   setLoginCred("");
                   setLoginToken("");
                   setLoginUserId("");
-                  setLoginMethod("qrcode");
+                  setLoginMethod("sms");
                 }}
               >
                 {t("settings.account.back")}
@@ -1951,20 +2537,38 @@ export default function AccountPage() {
           ) : loginMethod === "phone" ? (
             // 密码登录显示确认按钮
             <>
-              <GlassButton variant="outline" onPress={() => setLoginMethod(null)}>
+              <GlassButton
+                variant="outline"
+                onPress={() => {
+                  if (isNewDeviceVerify) {
+                    // 返回密码输入，重新走密码登录
+                    setIsNewDeviceVerify(false);
+                    setShowOtpInput(false);
+                    setIsOtpInvalid(false);
+                    setVerificationCode("");
+                  } else {
+                    setLoginMethod(null);
+                  }
+                }}
+              >
                 {t("settings.account.back")}
               </GlassButton>
               <GlassButton
                 variant="primary"
                 onPress={handleLogin}
-                isDisabled={isLoggingIn || !phone || !password}
+                isDisabled={
+                  isLoggingIn ||
+                  (isNewDeviceVerify ? !phone || !verificationCode : !phone || !password)
+                }
               >
                 {isLoggingIn
                   ? t("settings.account.loading")
-                  : t("settings.account.login")}
+                  : isNewDeviceVerify
+                    ? t("settings.account.confirm")
+                    : t("settings.account.login")}
               </GlassButton>
             </>
-          ) : loginMethod === "qrcode" ? (
+          ) : loginMethod === "sms" ? (
             // 验证码登录显示返回按钮
             <>
               <GlassButton
@@ -1975,6 +2579,26 @@ export default function AccountPage() {
                     setShowOtpInput(false);
                     setVerificationCode("");
                     setIsOtpInvalid(false);
+                  } else {
+                    // 否则返回登录方式选择
+                    setLoginMethod(null);
+                  }
+                }}
+              >
+                {t("settings.account.back")}
+              </GlassButton>
+            </>
+          ) : loginMethod === "qrcode" ? (
+            // 扫码登录显示返回按钮
+            <>
+              <GlassButton
+                variant="outline"
+                onPress={() => {
+                  if (scanUrl) {
+                    // 如果已生成二维码，返回生成界面
+                    stopQrPolling();
+                    setScanUrl("");
+                    setScanId("");
                   } else {
                     // 否则返回登录方式选择
                     setLoginMethod(null);

@@ -78,6 +78,23 @@ export interface CodeLoginRequest {
 }
 
 /**
+ * 扫码登录信息接口
+ */
+export interface ScanLoginInfo {
+  scanId: string;
+  scanUrl: string;
+}
+
+/**
+ * 扫码登录状态接口
+ */
+export interface ScanStatus {
+  status: number;
+  scanCode?: string;
+  msg?: string;
+}
+
+/**
  * 获取所有账户
  * @returns 账户列表
  */
@@ -111,11 +128,15 @@ export async function addAccount(loginRequest: LoginRequest): Promise<LoginResul
 /**
  * 登出单个账户
  * @param accountId 账户ID
+ * @param keepDeviceToken 是否保留设备认证（保留则下次密码登录跳过新设备验证）
  * @returns 是否成功
  */
-export async function logoutAccount(accountId: string): Promise<boolean> {
+export async function logoutAccount(
+  accountId: string,
+  keepDeviceToken: boolean = true,
+): Promise<boolean> {
   try {
-    return await invoke('logout_account', { accountId });
+    return await invoke('logout_account', { accountId, keepDeviceToken });
   } catch (error) {
     logError('Failed to logout account:', error);
     return false;
@@ -182,6 +203,51 @@ export async function addAccountByCode(loginRequest: CodeLoginRequest): Promise<
     return await invoke('add_account_by_code', { loginRequest });
   } catch (error) {
     logger.error('Failed to add account by code: ' + error, "AccountService");
+    return {
+      success: false,
+      errorMessage: String(error),
+      account: undefined,
+    };
+  }
+}
+
+/**
+ * 生成扫码登录二维码
+ * @returns 扫码登录信息（scanId 和 scanUrl）
+ */
+export async function genScanLogin(): Promise<ScanLoginInfo | null> {
+  try {
+    return await invoke('gen_scan_login');
+  } catch (error) {
+    logError('Failed to generate scan login:', error);
+    return null;
+  }
+}
+
+/**
+ * 查询扫码登录状态
+ * @param scanId 扫码登录 ID
+ * @returns 扫码登录状态
+ */
+export async function scanStatus(scanId: string): Promise<ScanStatus | null> {
+  try {
+    return await invoke('scan_status', { scanId });
+  } catch (error) {
+    logError('Failed to get scan status:', error);
+    return null;
+  }
+}
+
+/**
+ * 通过扫码添加账户
+ * @param scanCode 扫码登录成功后返回的扫描码
+ * @returns 登录结果
+ */
+export async function addAccountByScan(scanCode: string): Promise<LoginResult> {
+  try {
+    return await invoke('add_account_by_scan', { scanCode });
+  } catch (error) {
+    logger.error('Failed to add account by scan: ' + error, "AccountService");
     return {
       success: false,
       errorMessage: String(error),
