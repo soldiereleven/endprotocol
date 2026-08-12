@@ -2335,6 +2335,9 @@ impl AccountService {
         {
             let mut config = self.config_service.lock().unwrap();
 
+            // 迁移旧配置：为缺少 app 标识的角色自动补上 endfield
+            Self::migrate_roles_app_field(&mut config)?;
+
             // 保存或更新 account_token_{user_id}
             let token_key = format!("account_token_{}", user_id);
 
@@ -2376,7 +2379,8 @@ impl AccountService {
                     json!({
                         "userId": role.user_id,
                         "serverId": role.server_id,
-                        "roleId": role.role_id
+                        "roleId": role.role_id,
+                        "app": "endfield"
                     })
                 })
                 .collect();
@@ -2450,6 +2454,40 @@ impl AccountService {
         }
 
         Ok(accounts)
+    }
+
+    /// 迁移旧配置：为所有 account_token_* 中缺少 app 标识的角色自动补上 "endfield"
+    fn migrate_roles_app_field(config: &mut ConfigService) -> Result<(), AppError> {
+        let keys: Vec<String> = config
+            .get_all()
+            .keys()
+            .filter(|k| k.starts_with("account_token_"))
+            .cloned()
+            .collect();
+
+        for key in keys {
+            let value: Option<serde_json::Value> = config.get(&key);
+            let Some(mut value) = value else {
+                continue;
+            };
+            let Some(roles) = value.get_mut("roles").and_then(|v| v.as_array_mut()) else {
+                continue;
+            };
+
+            let mut changed = false;
+            for role in roles.iter_mut() {
+                if role.is_object() && role.get("app").is_none() {
+                    role["app"] = json!("endfield");
+                    changed = true;
+                }
+            }
+
+            if changed {
+                config.set(key, value)?;
+            }
+        }
+
+        Ok(())
     }
 
     /// Step 1: 手机号密码 → Hypergryph Token (+ deviceToken + hgld)
