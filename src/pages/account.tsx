@@ -603,39 +603,25 @@ export default function AccountPage() {
     }
   };
 
+  // 新设备验证 - 选择用验证码登录（直接套用验证码登录流程）
+  const handleVerifyWithCode = async () => {
+    setIsNewDeviceVerify(false);
+    setLoginMethod("sms");
+    setShowOtpInput(false);
+    setVerificationCode("");
+    setIsOtpInvalid(false);
+    await handleSendCodeAndShowOtp();
+  };
+
+  // 新设备验证 - 选择用扫码登录（直接套用扫码登录流程）
+  const handleVerifyWithScan = () => {
+    setIsNewDeviceVerify(false);
+    setLoginMethod("qrcode");
+  };
+
   // 处理登录
   const handleLogin = async () => {
-    if (loginMethod === "phone" && isNewDeviceVerify) {
-      // 新设备验证 - 只需要手机号和验证码
-      if (!phone) {
-        setPhoneError(
-          i18n.language === "zh"
-            ? "请输入手机号"
-            : "Please enter phone number",
-        );
-        return;
-      }
-
-      // 校验手机号格式（11位数字）
-      const phoneRegex = /^1[3-9]\d{9}$/;
-      if (!phoneRegex.test(phone)) {
-        setPhoneError(
-          i18n.language === "zh"
-            ? "请输入有效的11位手机号"
-            : "Please enter a valid 11-digit phone number",
-        );
-        return;
-      }
-
-      if (!verificationCode) {
-        setLoginError(
-          i18n.language === "zh"
-            ? "请输入验证码"
-            : "Please enter verification code",
-        );
-        return;
-      }
-    } else if (loginMethod === "phone") {
+    if (loginMethod === "phone") {
       // 密码登录
       if (!phone || !password) {
         if (!phone) {
@@ -707,10 +693,7 @@ export default function AccountPage() {
     try {
       let result: LoginResult;
 
-      if (loginMethod === "phone" && isNewDeviceVerify) {
-        // 新设备验证 - 用验证码完成登录
-        result = await addAccountByCode({ phone, code: verificationCode });
-      } else if (loginMethod === "phone") {
+      if (loginMethod === "phone") {
         // 密码登录
         result = await addAccount({ phone, password });
       } else {
@@ -769,6 +752,16 @@ export default function AccountPage() {
       result.availableRoles &&
       result.availableRoles.length > 0
     ) {
+      if (result.availableRoles.length === 1) {
+        // 仅一个角色，无需选择，直接绑定
+        await saveRoles(
+          result.availableRoles,
+          result.cred || "",
+          result.token || "",
+          result.userId || "",
+        );
+        return;
+      }
       // 需要选择角色 - 直接在当前 Modal 中显示
       setAvailableRoles(result.availableRoles);
       setLoginCred(result.cred || "");
@@ -781,13 +774,10 @@ export default function AccountPage() {
         loginMethod === "phone" &&
         result.errorMessage === "NEW_DEVICE_VERIFICATION_REQUIRED"
       ) {
-        // 新设备需要验证 - 已自动发送验证码，切换到验证码输入界面
+        // 新设备需要验证 - 让用户选择验证码登录或扫码登录
         setIsNewDeviceVerify(true);
-        setShowOtpInput(true);
         setVerificationCode("");
         setIsOtpInvalid(false);
-        setCodeSentSuccess(true);
-        setCountdown(60);
         setLoginError("");
         return;
       }
@@ -829,11 +819,7 @@ export default function AccountPage() {
       const info = await genScanLogin();
       if (!info || !info.scanId || !info.scanUrl) {
         setQrGenFailed(true);
-        setLoginError(
-          i18n.language === "zh"
-            ? "获取二维码失败，请重试"
-            : "Failed to get QR code, please retry",
-        );
+        setLoginError(t("settings.account.qr_fetch_failed"));
         return;
       }
       setScanId(info.scanId);
@@ -842,9 +828,7 @@ export default function AccountPage() {
     } catch (error) {
       logError("Generate scan login error:", error);
       setQrGenFailed(true);
-      setLoginError(
-        i18n.language === "zh" ? "生成二维码出错" : "Error generating QR code",
-      );
+      setLoginError(t("settings.account.qr_gen_error"));
     } finally {
       setIsGeneratingQr(false);
     }
@@ -884,11 +868,7 @@ export default function AccountPage() {
       await processLoginResult(result);
     } catch (error) {
       logger.error("Scan login error: " + error, "Account");
-      setLoginError(
-        i18n.language === "zh"
-          ? "扫码登录过程中发生错误"
-          : "Error during scan login",
-      );
+      setLoginError(t("settings.account.scan_login_error"));
     } finally {
       setIsLoggingIn(false);
     }
@@ -905,20 +885,30 @@ export default function AccountPage() {
       return;
     }
 
+    // 获取选中角色的完整信息
+    const selectedRoleDetails = availableRoles.filter((role) =>
+      selectedRoles.includes(role.roleId),
+    );
+
+    await saveRoles(
+      selectedRoleDetails,
+      loginCred,
+      loginToken,
+      loginUserId,
+    );
+  };
+
+  // 保存角色绑定并刷新账户列表
+  const saveRoles = async (
+    roleDetails: RoleDisplayInfo[],
+    cred: string,
+    token: string,
+    userId: string,
+  ) => {
     setIsLoading(true);
     try {
-      // 获取选中角色的完整信息
-      const selectedRoleDetails = availableRoles.filter((role) =>
-        selectedRoles.includes(role.roleId),
-      );
-
       // 调用后端保存
-      await saveSelectedRoles(
-        loginCred,
-        loginToken,
-        loginUserId,
-        selectedRoleDetails,
-      );
+      await saveSelectedRoles(cred, token, userId, roleDetails);
 
       // 刷新账户列表
       const accounts = await getAccounts();
@@ -2025,6 +2015,57 @@ export default function AccountPage() {
                 </GlassAlert>
               )}
 
+              {isNewDeviceVerify ? (
+                // 新设备验证方式选择
+                <div className="flex flex-col gap-3">
+                  <div className="grid grid-cols-[auto_1fr] items-center gap-y-4 gap-x-3">
+                    <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
+                      {t("settings.account.phone_number")}
+                    </label>
+                    <div className="flex flex-col gap-1">
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => {
+                          setPhone(e.target.value);
+                          setCodeSentSuccess(false);
+                          if (phoneError) setPhoneError("");
+                        }}
+                        placeholder={t("settings.account.enter_phone")}
+                        maxLength={11}
+                        disabled={isLoggingIn || isSendingCode}
+                        className="w-full px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                      />
+                      {phoneError && (
+                        <p className="text-xs text-danger">{phoneError}</p>
+                      )}
+                    </div>
+                  </div>
+                  <GlassButton
+                    variant="primary"
+                    onPress={handleVerifyWithCode}
+                    isDisabled={isSendingCode}
+                    className="w-full mt-2"
+                  >
+                    {isSendingCode ? (
+                      <>
+                        <GlassSpinner color="current" size="sm" />
+                        {t("settings.account.sending")}
+                      </>
+                    ) : (
+                      t("settings.account.verify_with_code")
+                    )}
+                  </GlassButton>
+                  <GlassButton
+                    variant="outline"
+                    onPress={handleVerifyWithScan}
+                    className="w-full"
+                  >
+                    {t("settings.account.verify_with_scan")}
+                  </GlassButton>
+                </div>
+              ) : (
+              <>
               {/* 手机号和密码输入 */}
               <div className="grid grid-cols-[auto_1fr] items-center gap-y-4 gap-x-3">
                 {/* 手机号输入行 */}
@@ -2054,88 +2095,25 @@ export default function AccountPage() {
                   )}
                 </div>
 
-                {/* 新设备验证：显示验证码输入 */}
-                {isNewDeviceVerify ? (
-                  <>
-                    <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
-                      {t("settings.account.verification_code")}
-                    </label>
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <GlassInputOTP
-                          aria-describedby={isOtpInvalid ? "code-error" : undefined}
-                          isInvalid={isOtpInvalid}
-                          maxLength={6}
-                          value={verificationCode}
-                          onComplete={async (code) => {
-                            setVerificationCode(code);
-                            setIsOtpInvalid(false);
-                            await handleLogin();
-                          }}
-                          onChange={(val) => {
-                            setVerificationCode(val);
-                            setIsOtpInvalid(false);
-                            if (codeSentSuccess) {
-                              setCodeSentSuccess(false);
-                            }
-                          }}
-                        >
-                          <GlassInputOTP.Group>
-                            <GlassInputOTP.Slot index={0} />
-                            <GlassInputOTP.Slot index={1} />
-                            <GlassInputOTP.Slot index={2} />
-                          </GlassInputOTP.Group>
-                          <GlassInputOTP.Separator />
-                          <GlassInputOTP.Group>
-                            <GlassInputOTP.Slot index={3} />
-                            <GlassInputOTP.Slot index={4} />
-                            <GlassInputOTP.Slot index={5} />
-                          </GlassInputOTP.Group>
-                        </GlassInputOTP>
-                      </div>
-                      {isOtpInvalid && (
-                        <span className="field-error" data-visible={isOtpInvalid} id="code-error">
-                          {i18n.language === "zh"
-                            ? "验证码无效，请重试"
-                            : "Invalid code. Please try again."}
-                        </span>
-                      )}
-                      <div className="flex items-center gap-[5px]">
-                        <p className="text-sm text-muted">
-                          {i18n.language === "zh"
-                            ? "没收到验证码？"
-                            : "Didn't receive a code?"}
-                        </p>
-                        <GlassLink
-                          className="text-foreground underline cursor-pointer"
-                          onClick={handleSendCodeAndShowOtp}
-                        >
-                          {i18n.language === "zh" ? "重新发送" : "Resend"}
-                        </GlassLink>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {/* 密码输入行 */}
-                    <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
-                      {t("settings.account.password")}
-                    </label>
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder={t("settings.account.enter_password")}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !isLoggingIn) {
-                          handleLogin();
-                        }
-                      }}
-                      className="w-full px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                    />
-                  </>
-                )}
+                {/* 密码输入行 */}
+                <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
+                  {t("settings.account.password")}
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={t("settings.account.enter_password")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !isLoggingIn) {
+                      handleLogin();
+                    }
+                  }}
+                  className="w-full px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                />
               </div>
+              </>
+              )}
             </div>
           ) : loginMethod === "sms" ? (
             // 验证码登录表单
@@ -2364,32 +2342,6 @@ export default function AccountPage() {
           ) : (
             // 扫码登录界面
             <div className="space-y-4">
-              {/* 返回按钮 */}
-              <button
-                onClick={() => {
-                  stopQrPolling();
-                  setLoginMethod(null);
-                  setScanUrl("");
-                  setScanId("");
-                }}
-                className="flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors mb-4"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-                {t("settings.account.back")}
-              </button>
-
               {/* 错误提示 */}
               {loginError && (
                 <GlassAlert status="danger">
@@ -2404,7 +2356,7 @@ export default function AccountPage() {
                 <div className="flex flex-col items-center justify-center gap-4 py-10">
                   <GlassSpinner color="primary" size="lg" />
                   <p className="text-sm text-muted">
-                    {i18n.language === "zh" ? "正在登录..." : "Logging in..."}
+                    {t("settings.account.logging_in")}
                   </p>
                 </div>
               ) : !scanUrl ? (
@@ -2426,9 +2378,7 @@ export default function AccountPage() {
                     </svg>
                   </div>
                   <p className="text-sm text-muted text-center">
-                    {i18n.language === "zh"
-                      ? "请打开鹰角网络通行证，使用扫码登录功能"
-                      : "Open your Hypergryph account app and use QR scan login"}
+                    {t("settings.account.qr_open_hint")}
                   </p>
                   <GlassButton
                     variant="primary"
@@ -2468,7 +2418,7 @@ export default function AccountPage() {
                           </svg>
                         </div>
                         <p className="text-sm font-medium text-foreground">
-                          {i18n.language === "zh" ? "已扫码" : "Scanned"}
+                          {t("settings.account.scanned")}
                         </p>
                       </div>
                     )}
@@ -2488,18 +2438,6 @@ export default function AccountPage() {
                       isDisabled={isGeneratingQr}
                     >
                       {t("settings.account.refresh_qrcode")}
-                    </GlassButton>
-                    <GlassButton
-                      variant="outline"
-                      size="sm"
-                      onPress={() => {
-                        stopQrPolling();
-                        setLoginMethod(null);
-                        setScanUrl("");
-                        setScanId("");
-                      }}
-                    >
-                      {t("settings.account.back")}
                     </GlassButton>
                   </div>
                 </div>
@@ -2553,20 +2491,17 @@ export default function AccountPage() {
               >
                 {t("settings.account.back")}
               </GlassButton>
-              <GlassButton
-                variant="primary"
-                onPress={handleLogin}
-                isDisabled={
-                  isLoggingIn ||
-                  (isNewDeviceVerify ? !phone || !verificationCode : !phone || !password)
-                }
-              >
-                {isLoggingIn
-                  ? t("settings.account.loading")
-                  : isNewDeviceVerify
-                    ? t("settings.account.confirm")
+              {!isNewDeviceVerify && (
+                <GlassButton
+                  variant="primary"
+                  onPress={handleLogin}
+                  isDisabled={isLoggingIn || !phone || !password}
+                >
+                  {isLoggingIn
+                    ? t("settings.account.loading")
                     : t("settings.account.login")}
-              </GlassButton>
+                </GlassButton>
+              )}
             </>
           ) : loginMethod === "sms" ? (
             // 验证码登录显示返回按钮
@@ -2594,15 +2529,11 @@ export default function AccountPage() {
               <GlassButton
                 variant="outline"
                 onPress={() => {
-                  if (scanUrl) {
-                    // 如果已生成二维码，返回生成界面
-                    stopQrPolling();
-                    setScanUrl("");
-                    setScanId("");
-                  } else {
-                    // 否则返回登录方式选择
-                    setLoginMethod(null);
-                  }
+                  // 返回登录方式选择
+                  stopQrPolling();
+                  setLoginMethod(null);
+                  setScanUrl("");
+                  setScanId("");
                 }}
               >
                 {t("settings.account.back")}
