@@ -256,8 +256,9 @@ impl AsyncAccountService {
 
 /// 当已获取 hytoken 但缺少 device token（新设备）时的处理策略
 enum MissingDeviceTokenPolicy {
-    /// 发送验证码并返回 NEW_DEVICE_VERIFICATION_REQUIRED（密码登录）
-    SendCodeAndVerify { phone: String },
+    /// 不发送验证码，仅返回 NEW_DEVICE_VERIFICATION_REQUIRED，
+    /// 由前端引导用户在验证码登录/扫码登录之间选择继续（密码登录）
+    RequireUserVerification,
     /// 无短信验证码渠道，继续登录但不记录 u8token（验证码/扫码登录）
     ContinueWithoutDeviceToken,
 }
@@ -1249,8 +1250,8 @@ impl AccountService {
     ///
     /// 密码登录无法直接拿到 device token（新设备）时：
     /// 先用 hytoken 访问森空岛 API 换取 userId，再用 userId 在本地匹配已保存的
-    /// device token。命中则直接登录；未命中则发送验证码并转验证码登录，
-    /// 必须通过验证码获取到 device token 后才算登录成功。
+    /// device token。命中则直接登录；未命中则返回 NEW_DEVICE_VERIFICATION_REQUIRED，
+    /// 由前端引导用户改用验证码登录或扫码登录完成身份验证。
     pub async fn add_account(
         &self,
         login_request: LoginRequest,
@@ -1269,15 +1270,9 @@ impl AccountService {
                 (token, device_token, hgld)
             }
             Err(e) => {
-                // 密码 API 直接提示需要新设备验证 → 发送验证码并转验证码登录
+                // 密码 API 直接提示需要新设备验证 → 返回验证提示，由前端引导用户换用验证码/扫码登录
                 if Self::is_new_device_verification_error(&e) {
-                    log_warn!("add_account: New device detected (API error), switching to code verification for phone {}", login_request.phone);
-                    let _ = self
-                        .send_verification_code(SendCodeRequest {
-                            phone: login_request.phone.clone(),
-                            code_type: 2,
-                        })
-                        .await;
+                    log_warn!("add_account: New device detected (API error), requiring user verification for phone {}", login_request.phone);
                     return Ok(AccountLoginResult {
                         success: false,
                         error_message: Some("NEW_DEVICE_VERIFICATION_REQUIRED".to_string()),
@@ -1305,9 +1300,7 @@ impl AccountService {
         self.complete_login_from_token(
             hy_token,
             device_token,
-            MissingDeviceTokenPolicy::SendCodeAndVerify {
-                phone: login_request.phone,
-            },
+            MissingDeviceTokenPolicy::RequireUserVerification,
         )
         .await
     }
@@ -2167,14 +2160,11 @@ impl AccountService {
         let device_token = match device_token {
             Some(d) => Some(d),
             None => match missing_policy {
-                MissingDeviceTokenPolicy::SendCodeAndVerify { phone } => {
+                MissingDeviceTokenPolicy::RequireUserVerification => {
                     log_warn!(
-                        "complete_login_from_token: No device_token for user {} (new device), sending code & switching to verification",
+                        "complete_login_from_token: No device_token for user {} (new device), requiring user verification",
                         user_id
                     );
-                    let _ = self
-                        .send_verification_code(SendCodeRequest { phone, code_type: 2 })
-                        .await;
                     return Ok(AccountLoginResult {
                         success: false,
                         error_message: Some("NEW_DEVICE_VERIFICATION_REQUIRED".to_string()),
