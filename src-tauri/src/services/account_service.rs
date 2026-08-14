@@ -657,6 +657,68 @@ impl AccountService {
         Ok(())
     }
 
+    /// 主动刷新指定用户的 u8 token（每次同步前调用，避免旧 token 过期导致接口返回非 JSON）。
+    /// 成功时保存并返回新 u8 token；缺少 hytoken/device_token 或获取失败时返回 None（非致命，保留旧值）。
+    pub async fn refresh_u8token_for_user(
+        &self,
+        user_id: &str,
+    ) -> Result<Option<String>, AppError> {
+        log_info!("refresh_u8token_for_user: START for user_id={}", user_id);
+
+        let (hytoken, device_token) = {
+            let config = self.config_service.lock().unwrap();
+            let token_key = format!("account_token_{}", user_id);
+            let value: Option<serde_json::Value> = config.get(&token_key);
+            let hytoken = value
+                .as_ref()
+                .and_then(|v| v.get("hytoken"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .filter(|s| !s.is_empty());
+            let device_token = value
+                .as_ref()
+                .and_then(|v| v.get("device_token"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .filter(|s| !s.is_empty());
+            (hytoken, device_token)
+        };
+
+        let (hytoken, device_token) = match (hytoken, device_token) {
+            (Some(hyt), Some(dev_tok)) => (hyt, dev_tok),
+            _ => {
+                log_warn!(
+                    "refresh_u8token_for_user: hytoken/device_token MISSING for user {}, skip refresh",
+                    user_id
+                );
+                return Ok(None);
+            }
+        };
+
+        match self
+            .skland_service
+            .get_u8_token_by_hytoken(&hytoken, &device_token)
+            .await
+        {
+            Ok(u8t) => {
+                log_debug!(
+                    "refresh_u8token_for_user: u8token refresh SUCCESS (len={})",
+                    u8t.len()
+                );
+                self.set_u8token_for_user(user_id, &u8t).await?;
+                log_info!("refresh_u8token_for_user: SUCCESS for user_id={}", user_id);
+                Ok(Some(u8t))
+            }
+            Err(e) => {
+                log_warn!(
+                    "refresh_u8token_for_user: u8token refresh FAILED (non-fatal): {}",
+                    e
+                );
+                Ok(None)
+            }
+        }
+    }
+
     /// 在本地按用户 id 查找已保存的 device token（用于新设备登录时跳过验证）
     fn get_local_device_token(&self, user_id: &str) -> Option<String> {
         let config = self.config_service.lock().unwrap();

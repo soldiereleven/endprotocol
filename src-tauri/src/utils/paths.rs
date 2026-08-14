@@ -29,3 +29,16 @@ pub fn log_dir() -> Result<PathBuf, &'static str> {
 pub fn config_file_path() -> Result<PathBuf, &'static str> {
     app_data_dir().map(|d| d.join("app_config.json"))
 }
+
+/// 抽卡记录文件路径（gacha_records 子目录，按 userId+serverId 区分）
+pub fn gacha_records_file_path(user_id: &str, server_id: &str) -> Result<PathBuf, &'static str> {
+    app_data_dir().map(|d| {
+        d.join("gacha_records")
+            .join(format!("gacha_records_{}_{}.json", user_id, server_id))
+    })
+}
+
+/// 旧版抽卡记录文件路径（与 app_config.json 同级），仅用于存量数据兼容读取
+pub fn gacha_records_file_path_legacy(user_id: &str, server_id: &str) -> Result<PathBuf, &'static str> {
+    app_data_dir().map(|d| d.join(format!("gacha_records_{}_{}.json", user_id, server_id)))
+}

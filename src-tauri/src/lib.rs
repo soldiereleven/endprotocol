@@ -10,6 +10,7 @@ mod utils;
 use services::account_service::AccountService;
 use services::avatar_cache_service::AvatarCacheService;
 use services::config_service::ConfigService;
+use services::gacha_service::GachaService;
 use services::network_service::NetworkService;
 use services::skland_service::SklandService;
 
@@ -32,6 +33,11 @@ pub fn run() {
             // Attendance commands
             commands::attendance::get_attendance,
             commands::attendance::do_attendance,
+            // Gacha record commands
+            commands::gacha::get_gacha_pool_meta,
+            commands::gacha::sync_gacha_records,
+            commands::gacha::get_saved_gacha_records,
+            commands::gacha::get_gacha_record_stats,
             // Account commands
             commands::account::get_accounts,
             commands::account::add_account,
@@ -82,6 +88,10 @@ pub fn run() {
             // 初始化头像缓存服务
             let avatar_cache_service =
                 Arc::new(AvatarCacheService::new().map_err(|e| e.to_string())?);
+
+            // 初始化抽卡记录服务
+            let gacha_service = Arc::new(GachaService::new(app.handle().clone()));
+            app.manage(gacha_service);
 
             // 初始化网络数据服务
             let network_service =

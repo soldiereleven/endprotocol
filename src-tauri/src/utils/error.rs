@@ -17,4 +17,7 @@ pub enum AppError {
 
     #[error("Configuration error: {message}")]
     ConfigError { message: String },
+
+    #[error("API error (code={code}): {message}")]
+    ApiError { code: i32, message: String },
 }

@@ -3,6 +3,7 @@ pub mod attendance;
 pub mod card_config;
 pub mod color_picker;
 pub mod config;
+pub mod gacha;
 pub mod image;
 pub mod logs;
 pub mod window;
