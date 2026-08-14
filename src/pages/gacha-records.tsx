@@ -1,0 +1,798 @@
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import clsx from "clsx";
+import { GlassButton, GlassCard, GlassProgressCircle } from "@/components/ui/glass";
+import {
+  CustomModal,
+  CustomModalHeader,
+  CustomModalBody,
+  CustomModalFooter,
+} from "@/components/custom-modal";
+import { RefreshIcon, ChevronDownIcon, CheckIcon } from "@/components/ui/app-icon";
+import { SearchIcon } from "@/components/icons";
+import { Img } from "@/utils/imageLoader";
+import { getSelectedAccount, getAccounts, type Account } from "@/utils/accountService";
+import { resolveServerLabel } from "@/types";
+import { logError } from "@/utils/logger";
+import type {
+  GachaPoolKind,
+  GachaRecord,
+  GachaSyncProgress,
+  GachaSyncResult,
+  SavedGachaData,
+} from "@/types/gacha";
+
+const CATEGORIES: { key: GachaPoolKind; labelZh: string; labelEn: string }[] = [
+  { key: "special", labelZh: "限定", labelEn: "Limited" },
+  { key: "joint", labelZh: "联合", labelEn: "Joint" },
+  { key: "normal", labelZh: "常驻", labelEn: "Standard" },
+];
+
+const RARITY_OPTIONS: { value: number | null; label: string }[] = [
+  { value: null, label: "全部" },
+  { value: 6, label: "6★" },
+  { value: 5, label: "5★" },
+  { value: 4, label: "4★" },
+];
+
+/** 记录所属卡池类型：优先用 pools 元信息，缺失时按 poolId 前缀推断 */
+function poolKindOf(rec: GachaRecord, pools: Record<string, { poolType: string }>): GachaPoolKind {
+  const poolType = pools[rec.poolId]?.poolType;
+  if (poolType) {
+    if (poolType.includes("Joint")) return "joint";
+    if (poolType.includes("Standard")) return "normal";
+    return "special";
+  }
+  if (rec.poolId.startsWith("joint_")) return "joint";
+  if (rec.poolId.startsWith("standard")) return "normal";
+  return "special";
+}
+
+/** 进度 tabKey -> 显示名 */
+function tabLabel(tabKey: string, isZh: boolean): string {
+  if (tabKey.startsWith("joint")) return isZh ? "联合" : "Joint";
+  if (tabKey.startsWith("normal")) return isZh ? "常驻" : "Standard";
+  return isZh ? "限定" : "Limited";
+}
+
+export default function GachaRecordsPage() {
+  const { t, i18n } = useTranslation();
+  const isZh = i18n.language === "zh";
+
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [roleId, setRoleId] = useState<string | null>(null);
+  const [saved, setSaved] = useState<SavedGachaData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [category, setCategory] = useState<GachaPoolKind>("special");
+  const [visibleCount, setVisibleCount] = useState(20);
+  const [query, setQuery] = useState("");
+  const [rarityFilter, setRarityFilter] = useState<number | null>(null);
+  const [onlyNew, setOnlyNew] = useState(false);
+  const [onlyFree, setOnlyFree] = useState(false);
+
+  const [showRoleMenu, setShowRoleMenu] = useState(false);
+  const roleMenuRef = useRef<HTMLDivElement>(null);
+
+  // 同步状态（modal 关闭后后台继续，直到后端写盘完成）
+  const [syncing, setSyncing] = useState(false);
+  const [progress, setProgress] = useState<GachaSyncProgress | null>(null);
+  const [progressModalOpen, setProgressModalOpen] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncResult, setSyncResult] = useState<GachaSyncResult | null>(null);
+
+  const loadSaved = useCallback(async (rid: string) => {
+    try {
+      const data = await invoke<SavedGachaData>("get_saved_gacha_records", { roleId: rid });
+      setSaved(data);
+      setError(null);
+    } catch (e) {
+      logError("[Gacha] Failed to load saved records:", e);
+      setError(String(e));
+    }
+  }, []);
+
+  // 进入页面时重置为“主程序选择的角色”，本地切换不影响主程序
+  const initRole = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [selectedId, accs] = await Promise.all([getSelectedAccount(), getAccounts()]);
+      const valid = accs.filter((a) => a.status === "online" || a.status === "offline");
+      setAccounts(valid);
+      const rid = selectedId ?? valid[0]?.id ?? null;
+      setRoleId(rid);
+      setSaved(null);
+      if (rid) {
+        await loadSaved(rid);
+      } else {
+        setError(isZh ? "暂无可用角色，请先在账户页添加" : "No role available, please add one in Accounts");
+      }
+    } catch (e) {
+      logError("[Gacha] Failed to init:", e);
+      setError(String(e));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loadSaved, isZh]);
+
+  useEffect(() => {
+    initRole();
+  }, [initRole]);
+
+  // 主程序切换账号时，重置为新的主程序选择
+  useEffect(() => {
+    const handleAccountChange = () => initRole();
+    window.addEventListener("accountChanged", handleAccountChange);
+    return () => window.removeEventListener("accountChanged", handleAccountChange);
+  }, [initRole]);
+
+  // 点击外部关闭角色下拉
+  useEffect(() => {
+    if (!showRoleMenu) return;
+    const handle = (e: MouseEvent) => {
+      if (roleMenuRef.current && !roleMenuRef.current.contains(e.target as Node)) {
+        setShowRoleMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [showRoleMenu]);
+
+  // 监听同步进度事件
+  useEffect(() => {
+    let unlisten: UnlistenFn | undefined;
+    (async () => {
+      unlisten = await listen("gacha-sync-progress", (event) => {
+        const p = event.payload as GachaSyncProgress;
+        setProgress(p);
+        if (p.done) setSyncing(false);
+      });
+    })();
+    return () => {
+      unlisten?.();
+    };
+  }, []);
+
+  const handleSync = () => {
+    if (!roleId) return;
+    // 同步中再次点击 -> 重新打开进度窗口
+    if (syncing) {
+      setProgressModalOpen(true);
+      return;
+    }
+    setSyncing(true);
+    setSyncError(null);
+    setSyncResult(null);
+    setProgress(null);
+    setProgressModalOpen(true);
+
+    invoke<GachaSyncResult>("sync_gacha_records", { roleId })
+      .then((res) => {
+        setSyncResult(res);
+        setSyncing(false);
+      })
+      .catch((e) => {
+        logError("[Gacha] Sync failed:", e);
+        setSyncError(String(e));
+        setSyncing(false);
+        // 出错时重新打开进度窗口展示错误
+        setProgressModalOpen(true);
+      })
+      .finally(() => {
+        loadSaved(roleId);
+      });
+  };
+
+  const handleSelectRole = (rid: string) => {
+    setRoleId(rid);
+    setShowRoleMenu(false);
+    loadSaved(rid);
+  };
+
+  const selectedAccount = useMemo(
+    () => accounts.find((a) => a.id === roleId) ?? null,
+    [accounts, roleId],
+  );
+
+  const stats = useMemo(() => {
+    const pools = saved?.pools ?? {};
+    const filtered = (saved?.records ?? []).filter(
+      (r) => r.kind === "draw" && poolKindOf(r, pools) === category,
+    );
+    const total = filtered.length;
+    const six = filtered.filter((r) => r.rarity === 6).length;
+    const five = filtered.filter((r) => r.rarity === 5).length;
+    const four = filtered.filter((r) => r.rarity === 4).length;
+    return {
+      total,
+      six,
+      five,
+      four,
+      avgSix: six > 0 ? total / six : null,
+      avgFive: five + six > 0 ? total / (five + six) : null,
+      ratioSix: total > 0 ? six / total : 0,
+      ratioFive: total > 0 ? five / total : 0,
+      ratioFour: total > 0 ? four / total : 0,
+    };
+  }, [saved, category]);
+
+  const lastSyncText = useMemo(() => {
+    if (!saved?.lastSyncTime) return null;
+    return new Date(saved.lastSyncTime).toLocaleString(isZh ? "zh-CN" : "en-US");
+  }, [saved, isZh]);
+
+  const hasActiveFilter =
+    query.trim() !== "" || rarityFilter !== null || onlyNew || onlyFree;
+
+  const records = useMemo(() => {
+    const pools = saved?.pools ?? {};
+    const q = query.trim().toLowerCase();
+    return (saved?.records ?? []).filter((r) => {
+      if (r.kind !== "draw") return false;
+      if (poolKindOf(r, pools) !== category) return false;
+      if (rarityFilter !== null && (r.rarity ?? 0) !== rarityFilter) return false;
+      if (onlyNew && !r.isNew) return false;
+      if (onlyFree && !r.isFree) return false;
+      if (q) {
+        const hay = `${r.charName ?? ""} ${r.nameText} ${r.poolName}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [saved, category, query, rarityFilter, onlyNew, onlyFree]);
+
+  // 连续出现且属于同一卡池的赠送记录合并为同一次赠送十连
+  const recordGroups = useMemo(() => {
+    const out: (GachaRecord | GachaRecord[])[] = [];
+    let free: GachaRecord[] = [];
+    for (const rec of records) {
+      if (rec.isFree) {
+        if (free.length > 0 && free[free.length - 1].poolId !== rec.poolId) {
+          out.push(free);
+          free = [];
+        }
+        free.push(rec);
+        continue;
+      }
+      if (free.length > 0) {
+        out.push(free);
+        free = [];
+      }
+      out.push(rec);
+    }
+    if (free.length > 0) out.push(free);
+    return out;
+  }, [records]);
+
+  // 按组截断，避免把同一次十连拆成两半
+  const visibleGroups = useMemo(() => {
+    const out: (GachaRecord | GachaRecord[])[] = [];
+    let count = 0;
+    for (const item of recordGroups) {
+      out.push(item);
+      count += Array.isArray(item) ? item.length : 1;
+      if (count >= visibleCount) break;
+    }
+    return out;
+  }, [recordGroups, visibleCount]);
+
+  if (isLoading) {
+    return (
+      <div className="max-w-6xl mx-auto pb-12">
+        <div className="flex items-center justify-center py-24">
+          <GlassProgressCircle isIndeterminate size="lg" aria-label="Loading" className="text-primary">
+            <GlassProgressCircle.Track>
+              <GlassProgressCircle.TrackCircle />
+              <GlassProgressCircle.FillCircle />
+            </GlassProgressCircle.Track>
+          </GlassProgressCircle>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !saved) {
+    return (
+      <div className="max-w-6xl mx-auto pb-12">
+        <h1 className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight">
+          {isZh ? "抽卡记录" : "Gacha Records"}
+        </h1>
+        <GlassCard className="mt-6 p-16 glass-surface border border-separator/90">
+          <div className="text-center text-muted">
+            <p>{error}</p>
+          </div>
+        </GlassCard>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-6 pb-12">
+      {/* 页面标题 + 右上角操作（角色切换 / 同步） */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight">
+            {t("sidebar.gacha")}
+          </h1>
+          <p className="text-foreground/70 mt-1.5 text-sm">
+            {selectedAccount ? (
+              <>
+                {selectedAccount.nickname} ·{" "}
+                {resolveServerLabel(selectedAccount.server, i18n.language)} · Lv.
+                {selectedAccount.level}
+              </>
+            ) : (
+              isZh ? "未选择角色" : "No role selected"
+            )}
+            {lastSyncText && (
+              <>
+                {" · "}
+                {isZh ? "上次同步" : "Last sync"}: {lastSyncText}
+              </>
+            )}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {/* 角色选择（仅本页生效） */}
+          <div className="relative" ref={roleMenuRef}>
+            <GlassButton
+              variant="secondary"
+              isDisabled={syncing || accounts.length === 0}
+              onPress={() => setShowRoleMenu((v) => !v)}
+              endContent={<ChevronDownIcon size={14} />}
+              className="max-w-48"
+            >
+              <span className="truncate">
+                {selectedAccount?.nickname ?? (isZh ? "选择角色" : "Select role")}
+              </span>
+            </GlassButton>
+
+            {showRoleMenu && (
+              <div className="absolute right-0 top-full mt-2 z-50 w-64 glass-surface-strong rounded-xl border border-separator/70 shadow-xl overflow-hidden">
+                <div className="max-h-72 overflow-y-auto">
+                  {accounts.map((acc) => {
+                    const isSelected = acc.id === roleId;
+                    return (
+                      <button
+                        key={acc.id}
+                        type="button"
+                        onClick={() => handleSelectRole(acc.id)}
+                        className={clsx(
+                          "w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors",
+                          isSelected ? "bg-primary/15" : "hover:bg-default-100",
+                        )}
+                      >
+                        <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-default-100 flex items-center justify-center">
+                          {acc.avatar ? (
+                            <Img src={acc.avatar} alt={acc.nickname} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-muted text-xs font-semibold">
+                              {acc.nickname.charAt(0)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{acc.nickname}</p>
+                          <p className="text-xs text-muted truncate">
+                            {resolveServerLabel(acc.server, i18n.language)} · Lv.{acc.level}
+                          </p>
+                        </div>
+                        {isSelected && <CheckIcon size={14} className="text-primary shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 同步按钮：同步中显示旋转图标 + 文案，再次点击打开进度 */}
+          <GlassButton
+            variant="primary"
+            onPress={handleSync}
+            isDisabled={!roleId}
+            startContent={
+              <RefreshIcon size={16} className={clsx(syncing && "animate-spin")} />
+            }
+          >
+            {syncing ? (isZh ? "正在同步" : "Syncing...") : isZh ? "同步记录" : "Sync"}
+          </GlassButton>
+        </div>
+      </header>
+
+      {/* 分类选择（大号多项 switch） */}
+      <div className="glass-surface rounded-full p-1.5 flex gap-1.5">
+        {CATEGORIES.map((c) => {
+          const active = category === c.key;
+          return (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => {
+                setCategory(c.key);
+                setVisibleCount(20);
+              }}
+              className={clsx(
+                "flex-1 h-10 rounded-full text-sm lg:text-base font-semibold transition-all duration-200",
+                "flex items-center justify-center",
+                active
+                  ? "glass-surface-strong border border-primary/50 text-primary"
+                  : "border border-transparent text-foreground/70 hover:text-foreground hover:bg-default-100",
+              )}
+            >
+              {isZh ? c.labelZh : c.labelEn}
+            </button>
+          );
+        })}
+      </div>
+
+      {!saved || saved.records.length === 0 ? (
+        <GlassCard className="p-16 glass-surface border border-separator/90">
+          <div className="text-center space-y-3">
+            <RefreshIcon size={40} className="mx-auto text-muted" />
+            <p className="text-muted">
+              {isZh ? "还没有同步过抽卡记录，点击右上角" : "No gacha records yet, click"} "同步记录"{" "}
+              {isZh ? "开始同步" : "to start syncing"}
+            </p>
+          </div>
+        </GlassCard>
+      ) : (
+        <>
+          {/* 第一行统计卡片：数值 + RATE/AVG */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              label={isZh ? "总抽卡数" : "Total Draws"}
+              value={stats.total.toLocaleString()}
+            />
+            <StatCard
+              label={isZh ? "六星数" : "6★ Count"}
+              value={stats.six.toLocaleString()}
+              accent="text-danger"
+              rate={pctText(stats.ratioSix)}
+              avg={stats.avgSix !== null ? stats.avgSix.toFixed(1) : null}
+            />
+            <StatCard
+              label={isZh ? "五星数" : "5★ Count"}
+              value={stats.five.toLocaleString()}
+              accent="text-[#d4af37]"
+              rate={pctText(stats.ratioFive)}
+              avg={stats.avgFive !== null ? stats.avgFive.toFixed(1) : null}
+            />
+            <StatCard
+              label={isZh ? "四星数" : "4★ Count"}
+              value={stats.four.toLocaleString()}
+              accent="text-[#a855f7]"
+              rate={pctText(stats.ratioFour)}
+            />
+          </div>
+
+          {/* 抽卡记录详情 */}
+          <GlassCard className="p-6 glass-surface border border-separator/90">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-muted">
+                {isZh ? "抽卡记录" : "Gacha Records"}
+              </h2>
+              <span className="text-xs text-muted tabular-nums">
+                {isZh ? `共 ${records.length} 条` : `${records.length} total`}
+              </span>
+            </div>
+            {/* 筛选栏 */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <div className="relative flex-1 min-w-44">
+                <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none text-sm" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={isZh ? "搜索名称 / 卡池" : "Search name / pool"}
+                  className="glass-field w-full h-9 pl-8 pr-3 rounded-lg text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+              <div className="flex items-center gap-1 p-1 rounded-full glass-surface">
+                {RARITY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    onClick={() => setRarityFilter(opt.value)}
+                    className={clsx(
+                      "h-8 px-3 rounded-full text-xs font-medium transition-all",
+                      rarityFilter === opt.value
+                        ? "glass-surface-strong border border-primary/50 text-primary"
+                        : "border border-transparent text-muted hover:text-foreground",
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setOnlyNew(!onlyNew)}
+                className={clsx(
+                  "h-8 px-3 rounded-full text-xs font-medium border transition-all",
+                  onlyNew
+                    ? "border-success/60 bg-success/15 text-success"
+                    : "border-separator text-muted hover:text-foreground hover:border-success/40",
+                )}
+              >
+                NEW
+              </button>
+              <button
+                type="button"
+                onClick={() => setOnlyFree(!onlyFree)}
+                className={clsx(
+                  "h-8 px-3 rounded-full text-xs font-medium border transition-all",
+                  onlyFree
+                    ? "border-primary/60 bg-primary/15 text-primary"
+                    : "border-separator text-muted hover:text-foreground hover:border-primary/40",
+                )}
+              >
+                {isZh ? "赠送十连" : "Gift 10-Pull"}
+              </button>
+            </div>
+            {records.length === 0 ? (
+              <p className="text-sm text-muted py-8 text-center">
+                {hasActiveFilter
+                  ? isZh
+                    ? "没有匹配的记录"
+                    : "No matching records"
+                  : isZh
+                    ? "该分类暂无记录"
+                    : "No records in this category"}
+              </p>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-xs text-muted border-b border-separator">
+                        <th className="text-left font-medium py-2 pr-3 w-14">★</th>
+                        <th className="text-left font-medium py-2 pr-3">
+                          {isZh ? "名称" : "Name"}
+                        </th>
+                        <th className="text-left font-medium py-2 pr-3 hidden md:table-cell">
+                          {isZh ? "卡池" : "Pool"}
+                        </th>
+                        <th className="text-left font-medium py-2 pr-3 hidden sm:table-cell">
+                          {isZh ? "时间" : "Time"}
+                        </th>
+                        <th className="text-right font-medium py-2">
+                          {isZh ? "标记" : "Tags"}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visibleGroups.map((item, i) => {
+                        const nextIsGroup =
+                          i + 1 < visibleGroups.length && Array.isArray(visibleGroups[i + 1]);
+                        if (Array.isArray(item)) {
+                          return (
+                            <Fragment key={`g-${item[0].seqId}`}>
+                              <tr>
+                                <td colSpan={5} className="py-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="shrink-0 text-[11px] font-semibold text-primary">
+                                      {isZh ? "赠送十连" : "Gift 10-Pull"} - {item[0].poolName}
+                                    </span>
+                                    <div className="h-px flex-1 bg-primary/40" />
+                                  </div>
+                                </td>
+                              </tr>
+                              {item.map((rec, j) => (
+                                <RecordRow
+                                  key={rec.seqId}
+                                  rec={rec}
+                                  isZh={isZh}
+                                  noBorder={j === item.length - 1}
+                                />
+                              ))}
+                              <tr>
+                                <td colSpan={5} className="pt-2">
+                                  <div className="h-px bg-primary/40" />
+                                </td>
+                              </tr>
+                            </Fragment>
+                          );
+                        }
+                        return (
+                          <RecordRow
+                            key={item.seqId}
+                            rec={item}
+                            isZh={isZh}
+                            noBorder={nextIsGroup}
+                          />
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {visibleCount < records.length && (
+                  <div className="mt-4 text-center">
+                    <GlassButton
+                      variant="secondary"
+                      onPress={() => setVisibleCount((v) => v + 20)}
+                    >
+                      {isZh ? "加载更多" : "Load more"}
+                    </GlassButton>
+                  </div>
+                )}
+              </>
+            )}
+          </GlassCard>
+        </>
+      )}
+
+      {/* 同步进度 Modal（关闭后后台继续同步） */}
+      <CustomModal
+        isOpen={progressModalOpen}
+        onClose={() => setProgressModalOpen(false)}
+        size="sm"
+      >
+        <CustomModalHeader onClose={() => setProgressModalOpen(false)}>
+          {isZh ? "同步进度" : "Sync Progress"}
+        </CustomModalHeader>
+        <CustomModalBody>
+          {syncError ? (
+            <div className="py-6 text-center">
+              <p className="text-danger text-sm break-all">{syncError}</p>
+              <p className="text-muted text-xs mt-2">
+                {isZh
+                  ? "同步失败，本地数据未写入，可稍后重试"
+                  : "Sync failed, local data was not written. Try again later."}
+              </p>
+            </div>
+          ) : syncing ? (
+            <div className="py-6 text-center space-y-4">
+              <GlassProgressCircle isIndeterminate size="lg" aria-label="Syncing" className="text-primary">
+                <GlassProgressCircle.Track>
+                  <GlassProgressCircle.TrackCircle />
+                  <GlassProgressCircle.FillCircle />
+                </GlassProgressCircle.Track>
+              </GlassProgressCircle>
+              <div className="text-sm space-y-1">
+                <p className="text-foreground">
+                  {isZh ? "正在同步抽卡记录..." : "Syncing gacha records..."}
+                </p>
+                {progress && (
+                  <p className="text-muted text-xs">
+                    {tabLabel(progress.tabKey, isZh)} · {isZh ? "第" : "Tab"}{" "}
+                    {progress.tabIndex + 1}
+                    {isZh ? "/" : "/"}
+                    {progress.tabCount} · {isZh ? "第" : "Page"} {progress.page}{" "}
+                    {isZh ? "页" : ""}
+                  </p>
+                )}
+                {progress && (
+                  <p className="text-muted text-xs">
+                    {isZh
+                      ? `本卡池已获取 ${progress.tabFetched} 条，累计 ${progress.totalFetched} 条`
+                      : `Fetched ${progress.tabFetched} in this tab, ${progress.totalFetched} total`}
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : syncResult ? (
+            <div className="py-6 text-center space-y-2">
+              <p className="text-success text-sm">
+                {isZh ? "同步完成" : "Sync completed"}
+              </p>
+              <p className="text-muted text-sm">
+                {isZh
+                  ? `新增 ${syncResult.newRecords} 条，共 ${syncResult.totalRecords} 条`
+                  : `+${syncResult.newRecords} new, ${syncResult.totalRecords} total`}
+              </p>
+            </div>
+          ) : null}
+        </CustomModalBody>
+        <CustomModalFooter>
+          <GlassButton variant="secondary" onPress={() => setProgressModalOpen(false)}>
+            {isZh ? "关闭" : "Close"}
+          </GlassButton>
+        </CustomModalFooter>
+      </CustomModal>
+    </div>
+  );
+}
+
+function pctText(ratio: number): string {
+  return `${Math.round(ratio * 1000) / 10}%`;
+}
+
+const RARITY_COLORS: Record<
+  number,
+  { text: string; border: string; badge: string }
+> = {
+  6: { text: "text-danger", border: "border-danger/60", badge: "bg-danger" },
+  5: { text: "text-[#d4af37]", border: "border-[#d4af37]/60", badge: "bg-[#d4af37]" },
+  4: { text: "text-[#a855f7]", border: "border-[#a855f7]/60", badge: "bg-[#a855f7]" },
+};
+
+function formatTime(ts: string, isZh: boolean): string {
+  return new Date(Number(ts)).toLocaleString(isZh ? "zh-CN" : "en-US");
+}
+
+function rarityColor(rarity: number | null | undefined) {
+  return (
+    RARITY_COLORS[rarity ?? 0] ?? {
+      text: "text-foreground",
+      border: "border-separator",
+      badge: "bg-default-400",
+    }
+  );
+}
+
+function RecordRow({ rec, isZh, noBorder = false }: { rec: GachaRecord; isZh: boolean; noBorder?: boolean }) {
+  const color = rarityColor(rec.rarity);
+  return (
+    <tr
+      className={clsx(
+        noBorder ? "last:border-b-0" : "border-b border-separator/60 last:border-b-0",
+        "hover:bg-default-50 transition-colors",
+      )}
+    >
+      <td className="py-2.5 pr-3 w-14">
+        <span
+          className={clsx(
+            "inline-block w-9 text-center text-[10px] font-bold text-white rounded-full py-0.5",
+            color.badge,
+          )}
+        >
+          {rec.rarity ?? 0}★
+        </span>
+      </td>
+      <td className={clsx("py-2.5 pr-3 font-medium truncate max-w-40", color.text)}>
+        {rec.charName ?? rec.nameText}
+      </td>
+      <td className="py-2.5 pr-3 text-xs text-muted truncate max-w-48 hidden md:table-cell">
+        {rec.poolName}
+      </td>
+      <td className="py-2.5 pr-3 text-xs text-muted tabular-nums hidden sm:table-cell">
+        {formatTime(rec.gachaTs, isZh)}
+      </td>
+      <td className="py-2.5 text-right">
+        <div className="flex gap-1 justify-end">
+          {rec.isNew && (
+            <span className="text-[10px] px-1 py-0.5 rounded bg-success/15 text-success font-medium">
+              NEW
+            </span>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  accent,
+  rate,
+  avg,
+}: {
+  label: string;
+  value: string;
+  accent?: string;
+  rate?: string | null;
+  avg?: string | null;
+}) {
+  return (
+    <GlassCard className="p-5 glass-surface border border-separator/90">
+      <p className="text-xs font-medium text-muted">{label}</p>
+      <div className="mt-2 flex items-end justify-between gap-2">
+        <p className={clsx("text-2xl lg:text-3xl font-bold tabular-nums", accent ?? "text-foreground")}>
+          {value}
+        </p>
+        {(rate ?? avg) && (
+          <div className="shrink-0 text-right text-[11px] leading-relaxed text-muted tabular-nums">
+            {rate != null && <p>RATE {rate}</p>}
+            {avg != null && <p>AVG {avg}</p>}
+          </div>
+        )}
+      </div>
+    </GlassCard>
+  );
+}

@@ -12,6 +12,7 @@ import {
   UsersIcon,
   MedalIcon,
   CalendarIcon,
+  GachaIcon,
   GithubIcon,
   SearchIcon,
   PlusIcon,
@@ -62,9 +63,9 @@ interface SidebarProps {
   onNavigate?: () => void;
 }
 
-type NavKey = "dashboard" | "characters" | "medals" | "attendance";
+type NavKey = "dashboard" | "characters" | "medals" | "attendance" | "gacha";
 
-const NAV_KEYS: NavKey[] = ["dashboard", "characters", "medals", "attendance"];
+const NAV_KEYS: NavKey[] = ["dashboard", "characters", "medals", "attendance", "gacha"];
 
 function GripHandle({
   onPointerDown,
@@ -1444,6 +1445,42 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                         onPointerDown={(e) => startNavDrag("attendance", e)}
                         onDragEnd={endNavDrag}
                         isDragging={draggingNav === "attendance"}
+                      />
+                    </div>
+                  );
+
+                case "gacha":
+                  return (
+                    <div
+                      key="gacha"
+                      className="relative group"
+                      onMouseEnter={() =>
+                        draggingNav && draggingNav !== "gacha" && swapNav(draggingNav, "gacha")
+                      }
+                    >
+                      <Link
+                        to="/gacha"
+                        onClick={onNavigate}
+                        className={clsx(
+                          "flex items-center gap-3 pl-3 pr-8 py-2.5 rounded-xl transition-all duration-200",
+                          draggingNav === "gacha" ? "opacity-60" : "",
+                          location.pathname === "/gacha"
+                            ? "glass-surface text-foreground"
+                            : "text-foreground hover:bg-default-100",
+                        )}
+                      >
+                        <GachaIcon
+                          className={clsx(
+                            "w-5 h-5 transition-transform duration-200",
+                            location.pathname === "/gacha" ? "" : "group-hover:scale-110",
+                          )}
+                        />
+                        <span className="text-sm font-semibold">{t("sidebar.gacha") || "Gacha"}</span>
+                      </Link>
+                      <GripHandle
+                        onPointerDown={(e) => startNavDrag("gacha", e)}
+                        onDragEnd={endNavDrag}
+                        isDragging={draggingNav === "gacha"}
                       />
                     </div>
                   );

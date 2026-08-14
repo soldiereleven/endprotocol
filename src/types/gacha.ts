@@ -1,0 +1,66 @@
+/** 卡池类型（页面分类用，对应后端 meta tab 的 key 前缀） */
+export type GachaPoolKind = "special" | "joint" | "normal";
+
+/** 单条抽卡记录（对应后端 models/gacha.rs GachaRecord） */
+export interface GachaRecord {
+  kind: string; // draw / gift_intel_book
+  poolId: string;
+  poolName: string;
+  nameText: string;
+  charId?: string | null;
+  charName?: string | null;
+  rarity?: number | null;
+  isFree?: boolean | null;
+  isNew?: boolean | null;
+  /** 毫秒时间戳（字符串） */
+  gachaTs: string;
+  /** 全局唯一序号 */
+  seqId: string;
+}
+
+/** 卡池信息 */
+export interface GachaPoolInfo {
+  poolName: string;
+  poolType: string;
+}
+
+/** 本地保存的抽卡记录（对应 GachaSavedData） */
+export interface SavedGachaData {
+  userId: string;
+  serverId: string;
+  lastSyncTime?: number | null;
+  pools: Record<string, GachaPoolInfo>;
+  /** 全部记录，从新到旧 */
+  records: GachaRecord[];
+}
+
+/** 同步进度事件负载（对应 GachaSyncProgress） */
+export interface GachaSyncProgress {
+  userId: string;
+  serverId: string;
+  tabIndex: number;
+  tabCount: number;
+  tabKey: string;
+  page: number;
+  tabFetched: number;
+  totalFetched: number;
+  done: boolean;
+}
+
+/** 同步结果（对应 GachaSyncResult） */
+export interface GachaSyncResult {
+  userId: string;
+  serverId: string;
+  syncedAt: number;
+  newRecords: number;
+  totalRecords: number;
+  perTabNew: Record<string, number>;
+}
+
+/** meta 中的卡池 Tab（对应 GachaTab） */
+export interface GachaTab {
+  key: string; // special / joint:{poolId} / normal
+  label?: string | null;
+  poolType: string;
+  poolId?: string | null;
+}
