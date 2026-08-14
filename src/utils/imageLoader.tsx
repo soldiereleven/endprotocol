@@ -18,17 +18,28 @@ export function Img({ src, className, alt, ...props }: ImgProps) {
     if (!src) return;
     let cancelled = false;
 
+    // 持有缓存引用：防止已挂载图片的 blob URL 被缓存回收（revoke）导致图片失效
+    cacheManager.request([src]);
+
     const startLoad = () => {
-      cacheManager.load(src).then((url) => {
-        if (!cancelled) setResolvedSrc(url);
-      });
+      cacheManager
+        .load(src)
+        .then((url) => {
+          if (!cancelled) setResolvedSrc(url);
+        })
+        .catch(() => {
+          // 加载失败时保持占位（不设置 resolvedSrc）
+        });
     };
 
     const el = placeholderRef.current;
     // IntersectionObserver 不可用（如旧环境）时直接加载
     if (typeof IntersectionObserver === "undefined" || !el) {
       startLoad();
-      return () => { cancelled = true; };
+      return () => {
+        cancelled = true;
+        cacheManager.release([src]);
+      };
     }
 
     const observer = new IntersectionObserver(
@@ -45,6 +56,7 @@ export function Img({ src, className, alt, ...props }: ImgProps) {
     return () => {
       cancelled = true;
       observer.disconnect();
+      cacheManager.release([src]);
     };
   }, [src]);
 
