@@ -33,10 +33,10 @@ function ModePreview({ count }: { count: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="flex-1 rounded border border-blue-400/40 bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center"
+          className="flex-1 rounded border border-primary/40 bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center"
         >
           <svg
-            className="w-4 h-4 text-blue-400"
+            className="w-4 h-4 text-primary"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -115,8 +115,8 @@ export function CharacterListSizeModal({
                 key={opt.mode}
                 className={`p-4 rounded-lg cursor-pointer transition-all border-2 ${
                   isSelected
-                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/40 shadow-md"
-                    : "border-separator hover:border-blue-400/50 hover:bg-default-50"
+                    ? "border-primary bg-primary-50 dark:bg-primary-900/40 shadow-md"
+                    : "border-separator hover:border-primary/50 hover:bg-default-50"
                 }`}
                 onClick={() => setSelectedMode(opt.mode)}
               >

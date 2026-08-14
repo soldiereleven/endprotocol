@@ -204,8 +204,8 @@ export function TabEditorModal({
                     onClick={() => setDefaultRoleId(acc.id)}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all border-2 w-full text-left ${
                       isSelected
-                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/40 shadow-sm"
-                        : "border-separator hover:border-blue-400/50 hover:bg-default-50"
+                        ? "border-primary bg-primary-50 dark:bg-primary-900/40 shadow-sm"
+                        : "border-separator hover:border-primary/50 hover:bg-default-50"
                     }`}
                   >
                     <AccountAvatar
@@ -218,7 +218,7 @@ export function TabEditorModal({
                       <span className="text-xs text-muted ml-1.5">Lv.{acc.level}</span>
                     </div>
                     {isSelected && (
-                      <svg className="w-4 h-4 text-blue-500 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-primary shrink-0" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
                       </svg>
                     )}

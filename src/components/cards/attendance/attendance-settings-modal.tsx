@@ -133,8 +133,8 @@ export function AttendanceSettingsModal({
                       key={acc.id}
                       className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border-2 ${
                         isSelected
-                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/40 shadow-sm"
-                          : "border-separator hover:border-blue-400/50 hover:bg-default-50"
+                          ? "border-primary bg-primary-50 dark:bg-primary-900/40 shadow-sm"
+                          : "border-separator hover:border-primary/50 hover:bg-default-50"
                       }`}
                       onClick={() => setLocalSelectedRoleId(acc.id)}
                     >
@@ -157,7 +157,7 @@ export function AttendanceSettingsModal({
                             {acc.nickname}
                           </span>
                           {isSelected && (
-                            <svg className="w-4 h-4 text-blue-500 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 text-primary shrink-0" fill="currentColor" viewBox="0 0 24 24">
                               <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
                             </svg>
                           )}

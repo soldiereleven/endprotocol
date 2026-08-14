@@ -157,7 +157,7 @@ export function AddCardModal({
                   ? t("common.hide_filters") || "Hide Filters"
                   : t("common.show_filters") || "Filters"}
                 {selectedTagIds.size > 0 && (
-                  <span className="ml-0.5 px-1.5 py-0.5 text-[10px] rounded-full bg-blue-500 text-white">
+                  <span className="ml-0.5 px-1.5 py-0.5 text-[10px] rounded-full bg-primary text-white">
                     {selectedTagIds.size}
                   </span>
                 )}
@@ -174,8 +174,8 @@ export function AddCardModal({
                         onClick={() => toggleTag(tag.id)}
                         className={`px-2.5 py-1 text-xs rounded-full border transition-all cursor-pointer ${
                           isActive
-                            ? "bg-blue-500 text-white border-blue-500"
-                            : "bg-default-50 text-muted border-separator hover:border-blue-400 hover:text-blue-600"
+                            ? "bg-primary text-white border-primary"
+                            : "bg-default-50 text-muted border-separator hover:border-primary hover:text-primary"
                         }`}
                       >
                         {getTagLabel(tag)}
@@ -203,8 +203,8 @@ export function AddCardModal({
                   onPress={() => setSelectedType(card.id)}
                   className={`p-4 cursor-pointer transition-all ${
                     isSelected
-                      ? "border-[3px] border-blue-500 bg-blue-50 dark:bg-blue-900/40 shadow-md scale-[1.02]"
-                      : "hover:border-blue-400/50 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-2 border-transparent"
+                      ? "border-[3px] border-primary bg-primary-50 dark:bg-primary-900/40 shadow-md scale-[1.02]"
+                      : "hover:border-primary/50 hover:bg-primary-50 dark:hover:bg-primary-900/20 border-2 border-transparent"
                   }`}
                 >
                   <div className="flex items-center gap-3">

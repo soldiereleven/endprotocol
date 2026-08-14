@@ -159,7 +159,7 @@ export function MedalBrowser({
               value={globalQuery}
               onChange={(e) => setGlobalQuery(e.target.value)}
               placeholder={t("card:ach_search")}
-              className="w-full px-2 py-1.5 pl-7 pr-6 rounded-lg bg-default-100 border border-separator text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all"
+              className="w-full px-2 py-1.5 pl-7 pr-6 rounded-lg bg-default-100 border border-separator text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
             />
             {globalQuery && (
               <button
@@ -201,7 +201,7 @@ export function MedalBrowser({
               type="button"
               className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                 activeCategory === cat.key
-                  ? "bg-accent/10 text-accent font-medium"
+                  ? "bg-primary/10 text-primary font-medium"
                   : "text-foreground hover:bg-default-100"
               }`}
               onClick={() => setActiveCategory(cat.key)}
@@ -233,7 +233,7 @@ export function MedalBrowser({
               type="button"
               className={`text-xs px-2.5 py-1 rounded-full border transition-colors font-medium ${
                 levelFilter === lv
-                  ? "bg-accent text-white border-accent shadow-sm"
+                  ? "bg-primary text-white border-primary shadow-sm"
                   : "border-separator text-muted hover:border-foreground hover:text-foreground"
               }`}
               onClick={() => setLevelFilter(lv)}
@@ -248,7 +248,7 @@ export function MedalBrowser({
               type="button"
               className={`text-xs px-2.5 py-1 rounded-full border transition-colors font-medium ${
                 platedFilter === opt
-                  ? "bg-accent text-white border-accent shadow-sm"
+                  ? "bg-primary text-white border-primary shadow-sm"
                   : "border-separator text-muted hover:border-foreground hover:text-foreground"
               }`}
               onClick={() => setPlatedFilter(opt)}
@@ -263,7 +263,7 @@ export function MedalBrowser({
               type="button"
               className={`text-xs px-2.5 py-1 rounded-full border transition-colors font-medium ${
                 sortBy === opt
-                  ? "bg-accent text-white border-accent shadow-sm"
+                  ? "bg-primary text-white border-primary shadow-sm"
                   : "border-separator text-muted hover:border-foreground hover:text-foreground"
               }`}
               onClick={() => setSortBy(opt)}
@@ -291,7 +291,7 @@ export function MedalBrowser({
                     selectable ? "cursor-pointer" : ""
                   } ${
                     isSelected
-                      ? "border-accent bg-accent/5"
+                      ? "border-primary bg-primary/5"
                       : "border-transparent hover:bg-default-100"
                   }`}
                   onClick={() => selectable && onToggle?.(id)}
@@ -329,7 +329,7 @@ export function MedalBrowser({
                     <div
                       className={`w-5 h-5 rounded shrink-0 flex items-center justify-center transition-colors ${
                         isSelected
-                          ? "bg-accent text-white"
+                          ? "bg-primary text-white"
                           : "border-2 border-default-300"
                       }`}
                     >

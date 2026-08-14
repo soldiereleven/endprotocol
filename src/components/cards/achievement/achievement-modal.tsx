@@ -79,7 +79,7 @@ function DroppableHexCell({
         className={`
           relative
           ${medal ? "overflow-hidden" : ""}
-          ${isDragOver ? "ring-2 ring-accent ring-offset-2 ring-offset-content1" : ""}
+          ${isDragOver ? "ring-2 ring-primary ring-offset-2 ring-offset-content1" : ""}
           transition-shadow duration-200
         `}
         style={{
@@ -125,7 +125,7 @@ function DroppableHexCell({
       )}
       {isDragOver && (
         <div
-          className="absolute inset-0 bg-accent/20 pointer-events-none"
+          className="absolute inset-0 bg-primary/20 pointer-events-none"
           style={{ clipPath: HEX_CLIP, WebkitClipPath: HEX_CLIP }}
         />
       )}
@@ -518,7 +518,7 @@ export function AchievementModal({
                 type="button"
                 className={`text-xs px-3 py-1 rounded-full transition-colors font-medium ${
                   !localUseDisplayList
-                    ? "bg-accent text-white shadow-sm"
+                    ? "bg-primary text-white shadow-sm"
                     : "text-muted hover:text-foreground"
                 }`}
                 onClick={() => localUseDisplayList && handleToggle()}
@@ -529,7 +529,7 @@ export function AchievementModal({
                 type="button"
                 className={`text-xs px-3 py-1 rounded-full transition-colors font-medium ${
                   localUseDisplayList
-                    ? "bg-accent text-white shadow-sm"
+                    ? "bg-primary text-white shadow-sm"
                     : "text-muted hover:text-foreground"
                 }`}
                 onClick={() => !localUseDisplayList && handleToggle()}
@@ -556,7 +556,7 @@ export function AchievementModal({
                         type="button"
                         className={`text-xs px-2 py-0.5 rounded-full border transition-colors font-medium ${
                           stripSortBy === opt
-                            ? "bg-accent text-white border-accent shadow-sm"
+                            ? "bg-primary text-white border-primary shadow-sm"
                             : "border-separator text-muted hover:border-foreground hover:text-foreground"
                         }`}
                         onClick={() => setStripSortBy(opt)}
@@ -578,7 +578,7 @@ export function AchievementModal({
 
                 <div
                   data-drop-target="strip"
-                  className={`w-full overflow-x-auto scrollbar-hide min-h-[92px] flex items-center rounded-lg transition-colors ${dragOverTarget?.type === "strip" ? "bg-accent/10 ring-2 ring-accent ring-offset-1" : ""}`}
+                  className={`w-full overflow-x-auto scrollbar-hide min-h-[92px] flex items-center rounded-lg transition-colors ${dragOverTarget?.type === "strip" ? "bg-primary/10 ring-2 ring-primary ring-offset-1" : ""}`}
                 >
                   {stripMedals.length > 0 ? (
                     <div className="flex items-center gap-2 justify-start px-2 pb-1">
