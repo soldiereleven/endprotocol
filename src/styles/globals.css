@@ -59,7 +59,7 @@
     /* 基底 */
     --background: #fafafa;
     --foreground: #171717;
-    --muted: oklch(0.55 0.014 286);
+    --muted: oklch(0.48 0.014 286);
     --separator: oklch(0.9 0.004 286);
     --border: oklch(0.88 0.004 286);
     --surface: #ffffff;
@@ -185,10 +185,10 @@ html {
  * 透明度较高，桌面内容仍隐约可见。 */
 body {
   min-height: 100vh;
-  background: rgba(255, 255, 255, 0.33);
+  background: rgba(255, 255, 255, 0.23);
 }
 .dark body {
-  background: rgba(10, 12, 16, 0.25);
+  background: rgba(10, 12, 16, 0.23);
 }
 
 ::selection {
@@ -456,7 +456,7 @@ body {
 
 /* 液态玻璃 — Modal 背景层（透明液态玻璃 + 统一叠加色） */
 .glass-backdrop {
-  background: color-mix(in oklab, var(--surface) 15%, transparent);
+  background: color-mix(in oklab, var(--surface) 40%, transparent);
   backdrop-filter: blur(16px) saturate(1.2);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
 }
