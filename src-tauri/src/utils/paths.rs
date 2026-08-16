@@ -42,3 +42,8 @@ pub fn gacha_records_file_path(user_id: &str, server_id: &str) -> Result<PathBuf
 pub fn gacha_records_file_path_legacy(user_id: &str, server_id: &str) -> Result<PathBuf, &'static str> {
     app_data_dir().map(|d| d.join(format!("gacha_records_{}_{}.json", user_id, server_id)))
 }
+
+/// 抽卡记录角色 id -> 头像映射文件路径（与 app_config.json 同级）
+pub fn gacha_avatar_map_file_path() -> Result<PathBuf, &'static str> {
+    app_data_dir().map(|d| d.join("gacha_avatar_map.json"))
+}

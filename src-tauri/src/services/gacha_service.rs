@@ -217,6 +217,40 @@ impl GachaService {
         Ok(())
     }
 
+    // ---------- 角色头像映射（与 app_config.json 同级） ----------
+
+    /// 抽卡记录角色 id -> 头像映射文件路径
+    pub fn avatar_map_file_path(&self) -> Result<PathBuf, AppError> {
+        paths::gacha_avatar_map_file_path().map_err(|e| AppError::ConfigError {
+            message: e.to_string(),
+        })
+    }
+
+    /// 读取角色头像映射；文件不存在或损坏时返回空映射
+    pub fn load_avatar_map(&self) -> HashMap<String, String> {
+        let Ok(path) = self.avatar_map_file_path() else {
+            return HashMap::new();
+        };
+        let Ok(content) = fs::read_to_string(&path) else {
+            return HashMap::new();
+        };
+        serde_json::from_str(&content).unwrap_or_default()
+    }
+
+    /// 保存角色头像映射；映射为空时不写入
+    pub fn save_avatar_map(&self, map: &HashMap<String, String>) -> Result<(), AppError> {
+        if map.is_empty() {
+            return Ok(());
+        }
+        let path = self.avatar_map_file_path()?;
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let content = serde_json::to_string_pretty(map)?;
+        fs::write(&path, content)?;
+        Ok(())
+    }
+
     // ---------- 同步 ----------
 
     /// 增量同步抽卡记录（手动触发）：

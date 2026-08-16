@@ -38,6 +38,7 @@ pub fn run() {
             commands::gacha::sync_gacha_records,
             commands::gacha::get_saved_gacha_records,
             commands::gacha::get_gacha_record_stats,
+            commands::gacha::resolve_gacha_avatar_map,
             // Account commands
             commands::account::get_accounts,
             commands::account::add_account,
