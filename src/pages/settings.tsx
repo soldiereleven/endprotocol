@@ -368,8 +368,8 @@ export default function SettingsPage() {
           ) : (
           <>
           <h2 className="text-lg font-semibold mb-6 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-warning/10 flex items-center justify-center ring-1 ring-warning/20">
-              <svg className="w-4 h-4 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
+              <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
                 <polyline points="16 18 22 12 16 6" />
                 <polyline points="8 6 2 12 8 18" />
               </svg>
