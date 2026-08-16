@@ -92,6 +92,24 @@ export const SimplePagination: React.FC<SimplePaginationProps> = ({
           </button>
         );
       })}
+      <div className="mx-1 flex items-center gap-1">
+        <input
+          type="number"
+          min={1}
+          max={last}
+          placeholder="…"
+          aria-label="Jump to page"
+          onKeyDown={(e) => {
+            if (e.key !== "Enter") return;
+            const v = parseInt(e.currentTarget.value, 10);
+            if (!Number.isNaN(v) && v >= 1 && v <= last) {
+              onChange(v);
+            }
+            e.currentTarget.value = "";
+          }}
+          className="glass-field h-8 w-14 rounded-xl border border-separator/70 px-1.5 text-center text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+      </div>
       {showControls && (
         <button
           type="button"

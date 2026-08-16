@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import clsx from "clsx";
 import { GlassButton, GlassCard, GlassProgressCircle, GlassSelect } from "@/components/ui/glass";
+import { SimplePagination } from "@/components/simple-pagination";
 import GachaPityChart from "@/components/gacha-pity-chart";
 import {
   CustomModal,
@@ -70,7 +71,7 @@ export default function GachaRecordsPage() {
 
   const [category, setCategory] = useState<GachaPoolKind>("special");
   const [tablePoolFilter, setTablePoolFilter] = useState<string | null>(null);
-  const [visibleCount, setVisibleCount] = useState(20);
+  const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
   const [rarityFilter, setRarityFilter] = useState<number | null>(null);
   const [onlyNew, setOnlyNew] = useState(false);
@@ -287,17 +288,45 @@ export default function GachaRecordsPage() {
     return out;
   }, [records]);
 
-  // 按组截断，避免把同一次十连拆成两半
-  const visibleGroups = useMemo(() => {
-    const out: (GachaRecord | GachaRecord[])[] = [];
+  // 分页：每页精确切分记录数；赠送十连可被切到两页，两页都显示上下分割线
+  type PageItem =
+    | { kind: "single"; rec: GachaRecord }
+    | { kind: "gift"; recs: GachaRecord[]; continuation: boolean };
+  const PAGE_SIZE = 20;
+  const totalRecords = useMemo(
+    () => recordGroups.reduce((acc, g) => acc + (Array.isArray(g) ? g.length : 1), 0),
+    [recordGroups],
+  );
+  const totalPages = Math.max(1, Math.ceil(totalRecords / PAGE_SIZE));
+
+  const pageGroups = useMemo(() => {
+    const out: PageItem[] = [];
     let count = 0;
+    const start = (page - 1) * PAGE_SIZE;
+    const end = page * PAGE_SIZE;
     for (const item of recordGroups) {
-      out.push(item);
-      count += Array.isArray(item) ? item.length : 1;
-      if (count >= visibleCount) break;
+      const len = Array.isArray(item) ? item.length : 1;
+      if (count + len <= start) {
+        count += len;
+        continue;
+      }
+      if (Array.isArray(item)) {
+        const from = Math.max(start - count, 0);
+        const to = Math.min(len, end - count);
+        out.push({ kind: "gift", recs: item.slice(from, to), continuation: from > 0 });
+      } else {
+        out.push({ kind: "single", rec: item });
+      }
+      count += len;
+      if (count >= end) break;
     }
     return out;
-  }, [recordGroups, visibleCount]);
+  }, [recordGroups, page]);
+
+  // 筛选条件变化时回到第一页
+  useEffect(() => {
+    setPage(1);
+  }, [category, tablePoolFilter, query, rarityFilter, onlyNew, onlyFree]);
 
   if (isLoading) {
     return (
@@ -435,7 +464,7 @@ export default function GachaRecordsPage() {
               onClick={() => {
                 setCategory(c.key);
                 setTablePoolFilter(null);
-                setVisibleCount(20);
+                setPage(1);
               }}
               className={clsx(
                 "flex-1 h-10 rounded-full text-sm lg:text-base font-semibold transition-all duration-200",
@@ -504,7 +533,7 @@ export default function GachaRecordsPage() {
           <GlassCard className="p-6 glass-surface border border-separator/90">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-muted">
-                {isZh ? "抽卡记录" : "Gacha Records"}
+                {isZh ? "寻访记录" : "Headhunting Records"}
               </h2>
               <span className="text-xs text-muted tabular-nums">
                 {isZh ? `共 ${records.length} 条` : `${records.length} total`}
@@ -520,7 +549,7 @@ export default function GachaRecordsPage() {
                 ]}
                 onChange={(v) => {
                   setTablePoolFilter(v || null);
-                  setVisibleCount(20);
+                  setPage(1);
                 }}
                 className="max-w-56"
               />
@@ -592,7 +621,9 @@ export default function GachaRecordsPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-xs text-muted border-b border-separator">
-                        <th className="text-left font-medium py-2 pr-3 w-14">★</th>
+                        <th className="text-left font-medium py-2 pr-3">
+                          {isZh ? "稀有度" : "Rarity"}
+                        </th>
                         <th className="text-left font-medium py-2 pr-3">
                           {isZh ? "名称" : "Name"}
                         </th>
@@ -608,28 +639,30 @@ export default function GachaRecordsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {visibleGroups.map((item, i) => {
+                      {pageGroups.map((item, i) => {
                         const nextIsGroup =
-                          i + 1 < visibleGroups.length && Array.isArray(visibleGroups[i + 1]);
-                        if (Array.isArray(item)) {
+                          i + 1 < pageGroups.length && pageGroups[i + 1].kind === "gift";
+                        if (item.kind === "gift") {
                           return (
-                            <Fragment key={`g-${item[0].seqId}`}>
+                            <Fragment key={`g-${item.recs[0].seqId}`}>
                               <tr>
                                 <td colSpan={5} className="py-2">
                                   <div className="flex items-center gap-2">
-                                    <span className="shrink-0 text-[11px] font-semibold text-primary">
-                                      {isZh ? "赠送十连" : "Gift 10-Pull"} - {item[0].poolName}
-                                    </span>
+                                    {!item.continuation && (
+                                      <span className="shrink-0 text-[11px] font-semibold text-primary">
+                                        {isZh ? "赠送十连" : "Gift 10-Pull"} - {item.recs[0].poolName}
+                                      </span>
+                                    )}
                                     <div className="h-px flex-1 bg-primary/40" />
                                   </div>
                                 </td>
                               </tr>
-                              {item.map((rec, j) => (
+                              {item.recs.map((rec, j) => (
                                 <RecordRow
                                   key={rec.seqId}
                                   rec={rec}
                                   isZh={isZh}
-                                  noBorder={j === item.length - 1}
+                                  noBorder={j === item.recs.length - 1}
                                 />
                               ))}
                               <tr>
@@ -642,8 +675,8 @@ export default function GachaRecordsPage() {
                         }
                         return (
                           <RecordRow
-                            key={item.seqId}
-                            rec={item}
+                            key={item.rec.seqId}
+                            rec={item.rec}
                             isZh={isZh}
                             noBorder={nextIsGroup}
                           />
@@ -652,14 +685,9 @@ export default function GachaRecordsPage() {
                     </tbody>
                   </table>
                 </div>
-                {visibleCount < records.length && (
-                  <div className="mt-4 text-center">
-                    <GlassButton
-                      variant="secondary"
-                      onPress={() => setVisibleCount((v) => v + 20)}
-                    >
-                      {isZh ? "加载更多" : "Load more"}
-                    </GlassButton>
+                {totalPages > 1 && (
+                  <div className="mt-4 flex justify-center">
+                    <SimplePagination total={totalPages} page={page} onChange={setPage} />
                   </div>
                 )}
               </>
