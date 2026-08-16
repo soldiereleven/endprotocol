@@ -185,10 +185,10 @@ html {
  * 透明度较高，桌面内容仍隐约可见。 */
 body {
   min-height: 100vh;
-  background: rgba(255, 255, 255, 0.23);
+  background: rgba(255, 255, 255, 0.33);
 }
 .dark body {
-  background: rgba(10, 12, 16, 0.23);
+  background: rgba(10, 12, 16, 0.33);
 }
 
 ::selection {
