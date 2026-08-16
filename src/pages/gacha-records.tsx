@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import clsx from "clsx";
-import { GlassButton, GlassCard, GlassProgressCircle } from "@/components/ui/glass";
+import { GlassButton, GlassCard, GlassProgressCircle, GlassSelect } from "@/components/ui/glass";
+import GachaPityChart from "@/components/gacha-pity-chart";
 import {
   CustomModal,
   CustomModalHeader,
@@ -68,6 +69,7 @@ export default function GachaRecordsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [category, setCategory] = useState<GachaPoolKind>("special");
+  const [tablePoolFilter, setTablePoolFilter] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(20);
   const [query, setQuery] = useState("");
   const [rarityFilter, setRarityFilter] = useState<number | null>(null);
@@ -224,6 +226,23 @@ export default function GachaRecordsPage() {
     return new Date(saved.lastSyncTime).toLocaleString(isZh ? "zh-CN" : "en-US");
   }, [saved, isZh]);
 
+  // 当前分类下的卡池列表（按记录出现顺序，从新到旧）
+  const poolOptions = useMemo(() => {
+    const pools = saved?.pools ?? {};
+    const seen = new Set<string>();
+    const out: { poolId: string; poolName: string }[] = [];
+    for (const r of saved?.records ?? []) {
+      if (r.kind !== "draw" || poolKindOf(r, pools) !== category) continue;
+      if (seen.has(r.poolId)) continue;
+      seen.add(r.poolId);
+      out.push({
+        poolId: r.poolId,
+        poolName: r.poolName || pools[r.poolId]?.poolName || r.poolId,
+      });
+    }
+    return out;
+  }, [saved, category]);
+
   const hasActiveFilter =
     query.trim() !== "" || rarityFilter !== null || onlyNew || onlyFree;
 
@@ -233,6 +252,7 @@ export default function GachaRecordsPage() {
     return (saved?.records ?? []).filter((r) => {
       if (r.kind !== "draw") return false;
       if (poolKindOf(r, pools) !== category) return false;
+      if (tablePoolFilter !== null && r.poolId !== tablePoolFilter) return false;
       if (rarityFilter !== null && (r.rarity ?? 0) !== rarityFilter) return false;
       if (onlyNew && !r.isNew) return false;
       if (onlyFree && !r.isFree) return false;
@@ -242,7 +262,7 @@ export default function GachaRecordsPage() {
       }
       return true;
     });
-  }, [saved, category, query, rarityFilter, onlyNew, onlyFree]);
+  }, [saved, category, tablePoolFilter, query, rarityFilter, onlyNew, onlyFree]);
 
   // 连续出现且属于同一卡池的赠送记录合并为同一次赠送十连
   const recordGroups = useMemo(() => {
@@ -414,6 +434,7 @@ export default function GachaRecordsPage() {
               type="button"
               onClick={() => {
                 setCategory(c.key);
+                setTablePoolFilter(null);
                 setVisibleCount(20);
               }}
               className={clsx(
@@ -458,7 +479,7 @@ export default function GachaRecordsPage() {
             <StatCard
               label={isZh ? "五星数" : "5★ Count"}
               value={stats.five.toLocaleString()}
-              accent="text-[#d4af37]"
+              accent="text-[#ffd700]"
               rate={pctText(stats.ratioFive)}
               avg={stats.avgFive !== null ? stats.avgFive.toFixed(1) : null}
             />
@@ -469,6 +490,15 @@ export default function GachaRecordsPage() {
               rate={pctText(stats.ratioFour)}
             />
           </div>
+
+          {/* 寻访保底统计（顺时针旋转 90° 柱状图） */}
+          <GachaPityChart
+            roleId={roleId}
+            records={saved.records}
+            pools={saved.pools}
+            category={category}
+            isZh={isZh}
+          />
 
           {/* 抽卡记录详情 */}
           <GlassCard className="p-6 glass-surface border border-separator/90">
@@ -482,6 +512,18 @@ export default function GachaRecordsPage() {
             </div>
             {/* 筛选栏 */}
             <div className="flex flex-wrap items-center gap-2 mb-4">
+              <GlassSelect
+                value={tablePoolFilter}
+                options={[
+                  { value: "", label: isZh ? "全部卡池" : "All Pools" },
+                  ...poolOptions.map((p) => ({ value: p.poolId, label: p.poolName })),
+                ]}
+                onChange={(v) => {
+                  setTablePoolFilter(v || null);
+                  setVisibleCount(20);
+                }}
+                className="max-w-56"
+              />
               <div className="relative flex-1 min-w-44">
                 <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none text-sm" />
                 <input
@@ -707,7 +749,7 @@ const RARITY_COLORS: Record<
   { text: string; border: string; badge: string }
 > = {
   6: { text: "text-danger", border: "border-danger/60", badge: "bg-danger" },
-  5: { text: "text-[#d4af37]", border: "border-[#d4af37]/60", badge: "bg-[#d4af37]" },
+  5: { text: "text-[#ffd700]", border: "border-[#ffd700]/60", badge: "bg-[#ffd700]" },
   4: { text: "text-[#a855f7]", border: "border-[#a855f7]/60", badge: "bg-[#a855f7]" },
 };
 

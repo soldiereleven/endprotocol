@@ -14,6 +14,7 @@ export { GlassSpinner, type GlassSpinnerProps } from "./spinner";
 export { GlassProgressCircle, GlassMeter } from "./progress";
 export { GlassTable } from "./table";
 export { GlassNumberField, type GlassNumberFieldProps } from "./number-field";
+export { GlassSelect, type GlassSelectProps, type GlassSelectOption } from "./select";
 export { GlassInputOTP, type GlassInputOTPProps } from "./input-otp";
 export {
   GlassModal,
