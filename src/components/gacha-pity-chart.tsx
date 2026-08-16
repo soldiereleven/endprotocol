@@ -153,6 +153,15 @@ const BAR_GAP = 10; // 柱体上下留白
 const BAR_START_GAP = 10; // 柱体与竖线的间距（竖线不动，柱体右移）
 const CHART_BOTTOM_PAD = 14; // 画布底部留白（避免最后一行贴底被遮住）
 
+const HEADER_FONT = "600 12px system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif";
+
+const _measureCtx = typeof document !== "undefined" ? document.createElement("canvas").getContext("2d") : null;
+function measureTextWidth(text: string, font: string): number {
+  if (!_measureCtx) return text.length * 8;
+  _measureCtx.font = font;
+  return _measureCtx.measureText(text).width;
+}
+
 interface ChartProps {
   roleId: string | null;
   records: GachaRecord[];
@@ -321,6 +330,9 @@ export default function GachaPityChart({
     const separator = cssVar("--separator", "#e4e4e7");
     const defaultColor = cssVar("--default-400", "#94a3b8");
     const danger = cssVar("--danger", "#ef4444");
+    // 深色模式下卡池名用更亮的浅灰
+    const isDark = document.documentElement.getAttribute("data-aura-mode") === "dark";
+    const headerColor = isDark ? cssVar("--default-600", "#cbd5e1") : muted;
 
     const categories = meta.map((_, i) => `r${i}`);
     const maxCount = Math.max(10, ...meta.filter((m) => m.kind !== "header").map((m) => m.row!.count));
@@ -348,11 +360,13 @@ export default function GachaPityChart({
       },
       tooltip: {
         trigger: "item",
-        backgroundColor: "rgba(17, 17, 27, 0.85)",
-        borderColor: separator,
-        borderWidth: 1,
+        backgroundColor: "transparent",
+        borderColor: "transparent",
+        borderWidth: 0,
+        className: "glass-surface-strong rounded-xl shadow-xl",
+        extraCssText: "border:1px solid var(--separator);border-radius:12px;",
         padding: [8, 12],
-        textStyle: { color: "#fafafa", fontSize: 12 },
+        textStyle: { color: "var(--foreground)", fontSize: 12 },
         formatter: (params: any) => {
           const m = meta[params.dataIndex];
           if (!m) return "";
@@ -388,7 +402,7 @@ export default function GachaPityChart({
               x2: GRID_LEFT,
               y2: meta.length * ROW_H,
             },
-            style: { stroke: separator, lineWidth: 1.5, opacity: 0.9 },
+            style: { stroke: muted, lineWidth: 1.5, opacity: 0.6 },
           },
         ],
       },
@@ -397,7 +411,10 @@ export default function GachaPityChart({
           type: "custom",
           name: "pity",
           clip: false,
-          data: meta.map((m) => (m.kind === "header" ? 0 : m.row!.count)),
+          data: meta.map((m) => ({
+            value: m.kind === "header" ? 0 : m.row!.count,
+            tooltip: { show: m.kind !== "header" },
+          })),
           encode: { x: 0, y: 1 },
           renderItem: (params: any, api: any) => {
             const m = meta[params.dataIndex];
@@ -406,6 +423,11 @@ export default function GachaPityChart({
             const centerY = bandTop + ROW_H / 2;
 
             if (m.kind === "header") {
+              const name = m.section.poolName;
+              const lineY = bandTop + ROW_H / 2;
+              const nameX = GRID_LEFT + 24;
+              const maxTextW = api.getWidth() - GRID_LEFT - GRID_RIGHT - 24;
+              const nameW = Math.min(measureTextWidth(name, HEADER_FONT), maxTextW);
               return {
                 type: "group",
                 children: [
@@ -416,17 +438,29 @@ export default function GachaPityChart({
                   },
                   {
                     type: "rect",
-                    shape: { x: 0, y: bandTop + ROW_H - 1, width: api.getWidth(), height: 1 },
-                    style: { fill: separator, opacity: 0.45 },
+                    shape: { x: 0, y: lineY - 0.5, width: Math.max(nameX - 10, 0), height: 1 },
+                    style: { fill: muted, opacity: 0.5 },
+                  },
+                  {
+                    type: "rect",
+                    shape: {
+                      x: nameX + nameW + 10,
+                      y: lineY - 0.5,
+                      width: Math.max(api.getWidth() - (nameX + nameW + 10), 0),
+                      height: 1,
+                    },
+                    style: { fill: muted, opacity: 0.5 },
                   },
                   {
                     type: "text",
                     style: {
-                      text: m.section.poolName,
-                      x: 10,
-                      y: centerY,
-                      fill: muted,
-                      font: "600 12px system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif",
+                      text: name,
+                      x: nameX,
+                      y: lineY,
+                      fill: headerColor,
+                      font: HEADER_FONT,
+                      maxWidth: maxTextW,
+                      overflow: "truncate",
                       textVerticalAlign: "middle",
                       textAlign: "left",
                     },
