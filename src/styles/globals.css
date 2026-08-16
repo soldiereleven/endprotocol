@@ -15,9 +15,9 @@
     --default-100: #f1f5f9;
     --default-200: #e2e8f0;
     --default-300: #cbd5e1;
-    --default-400: #94a3b8;
-    --default-500: #64748b;
-    --default-600: #475569;
+    --default-400: #64748b;
+    --default-500: #475569;
+    --default-600: #334155;
     --default-700: #334155;
     --default-800: #1e293b;
     --default-900: #0f172a;
@@ -59,7 +59,7 @@
     /* 基底 */
     --background: #fafafa;
     --foreground: #171717;
-    --muted: oklch(0.48 0.014 286);
+    --muted: oklch(0.4 0.016 286);
     --separator: oklch(0.9 0.004 286);
     --border: oklch(0.88 0.004 286);
     --surface: #ffffff;
