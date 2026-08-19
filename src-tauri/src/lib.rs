@@ -39,6 +39,9 @@ pub fn run() {
             commands::gacha::get_saved_gacha_records,
             commands::gacha::get_gacha_record_stats,
             commands::gacha::resolve_gacha_avatar_map,
+            // Weapon gacha record commands
+            commands::gacha::sync_weapon_gacha_records,
+            commands::gacha::get_saved_weapon_gacha_records,
             // Account commands
             commands::account::get_accounts,
             commands::account::add_account,
@@ -75,6 +78,9 @@ pub fn run() {
             commands::color_picker::finish_screen_pick,
             // Logger commands
             commands::logs::get_backend_logs,
+            // Wiki debug commands
+            commands::wiki_debug::debug_dump_wiki_catalogs,
+            commands::wiki_debug::debug_wiki_debug_dir,
         ])
         .setup(|app| {
             // 初始化配置服务（使用 std::sync::Mutex，因为它是同步的）

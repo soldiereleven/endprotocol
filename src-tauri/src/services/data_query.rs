@@ -6,8 +6,14 @@ use std::fmt;
 pub enum DataApi {
     /// 角色详情
     CharDetail,
-    /// 统一 Wiki 目录（typeMainId=1&onlyOnline=true）
+    /// 统一 Wiki 目录（typeMainId=1&onlyOnline=true，返回全部 typeSub 但不含 items）
     WikiCatalog,
+    /// 干员子目录（typeMainId=1&typeSubId=1，含 items）
+    WikiCatalogChar,
+    /// 武器子目录（typeMainId=1&typeSubId=2，含 items）
+    WikiCatalogWeapon,
+    /// 无 onlyOnline 的目录（typeMainId=1，调试用：验证 onlyOnline 是否导致 items 为空）
+    WikiCatalogNoOnline,
     /// 角色 Wiki 详情（按 itemId 索引的 JSON 对象）
     CharWikiDetail,
 }
@@ -17,6 +23,9 @@ impl fmt::Display for DataApi {
         match self {
             DataApi::CharDetail => write!(f, "char_detail"),
             DataApi::WikiCatalog => write!(f, "wiki_catalog"),
+            DataApi::WikiCatalogChar => write!(f, "wiki_catalog_char"),
+            DataApi::WikiCatalogWeapon => write!(f, "wiki_catalog_weapon"),
+            DataApi::WikiCatalogNoOnline => write!(f, "wiki_catalog_no_online"),
             DataApi::CharWikiDetail => write!(f, "char_wiki_detail"),
         }
     }
@@ -29,6 +38,9 @@ impl std::str::FromStr for DataApi {
         match s {
             "char_detail" => Ok(DataApi::CharDetail),
             "wiki_catalog" => Ok(DataApi::WikiCatalog),
+            "wiki_catalog_char" => Ok(DataApi::WikiCatalogChar),
+            "wiki_catalog_weapon" => Ok(DataApi::WikiCatalogWeapon),
+            "wiki_catalog_no_online" => Ok(DataApi::WikiCatalogNoOnline),
             "char_wiki_detail" => Ok(DataApi::CharWikiDetail),
             _ => Err(format!("Unknown API: {}", s)),
         }

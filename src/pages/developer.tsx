@@ -15,6 +15,17 @@ import { cacheManager, CacheMode } from "@/utils/imageCacheManager";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import logger, { LogEntry, LogLevel } from "@/utils/logger";
 import { invoke } from "@tauri-apps/api/core";
+import { logError } from "@/utils/logger";
+
+interface WikiDumpEntry {
+  name: string;
+  path: string;
+  code: number | null;
+  message: string | null;
+  catalog_count: number;
+  type_sub_count: number;
+  item_count: number;
+}
 
 const LOG_LEVEL_NAMES: Record<LogLevel, string> = {
   [LogLevel.DEBUG]: "DEBUG",
@@ -76,6 +87,27 @@ export default function DeveloperPage() {
   const cacheEntries = useMemo(() => cacheManager.getEntries(), [cacheStats]);
 
   const [isConfigLoading, setIsConfigLoading] = useState(true);
+
+  const [dumpEntries, setDumpEntries] = useState<WikiDumpEntry[]>([]);
+  const [isDumping, setIsDumping] = useState(false);
+  const [dumpError, setDumpError] = useState<string | null>(null);
+  const [dumpDir, setDumpDir] = useState<string>("");
+
+  const handleDumpWiki = async () => {
+    setIsDumping(true);
+    setDumpError(null);
+    try {
+      const entries = await invoke<WikiDumpEntry[]>("debug_dump_wiki_catalogs");
+      setDumpEntries(entries);
+      const dir = await invoke<string>("debug_wiki_debug_dir");
+      setDumpDir(dir);
+    } catch (e) {
+      logError("[Developer] wiki dump failed:", e);
+      setDumpError(String(e));
+    } finally {
+      setIsDumping(false);
+    }
+  };
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -429,6 +461,72 @@ export default function DeveloperPage() {
               </>
             )}
           </div>
+          )}
+        </GlassCard>
+
+        {/* Wiki 数据抓取（调试） */}
+        <GlassCard id="developer-wiki-dump" className="p-6 glass-surface border border-separator/90 overflow-hidden">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <span className="w-1 h-5 bg-warning rounded-full" />
+              {i18n.language === "zh" ? "Wiki 数据抓取（调试）" : "Wiki Data Dump (Debug)"}
+            </h2>
+            <div className="flex items-center gap-2">
+              {dumpDir && (
+                <GlassButton variant="outline" size="sm" onPress={() => revealItemInDir(dumpDir)}>
+                  {i18n.language === "zh" ? "打开目录" : "Open Folder"}
+                </GlassButton>
+              )}
+              <GlassButton variant="outline" size="sm" isDisabled={isDumping} onPress={handleDumpWiki}>
+                {isDumping
+                  ? (i18n.language === "zh" ? "抓取中…" : "Fetching…")
+                  : (i18n.language === "zh" ? "保存全部 Wiki JSON" : "Dump All Wiki JSON")}
+              </GlassButton>
+            </div>
+          </div>
+          <p className="text-sm text-muted mb-4">
+            {i18n.language === "zh"
+              ? "抓取 wiki 目录各接口变体的原始响应并保存到 wiki_debug 目录（含总目录、干员、武器、无 onlyOnline 变体），用于核对返回结构与 items 内容。"
+              : "Fetch raw responses of each wiki catalog variant and save them to the wiki_debug folder (catalog, char, weapon, no-onlyOnline), for inspecting response structure and items."}
+          </p>
+          {dumpError && (
+            <p className="text-sm text-danger mb-3 break-all">{dumpError}</p>
+          )}
+          {dumpEntries.length > 0 && (
+            <GlassTable>
+              <GlassTable.ScrollContainer>
+                <GlassTable.Content aria-label="Wiki dump results" className="min-w-[520px]">
+                  <GlassTable.Header>
+                    <GlassTable.Column isRowHeader>{i18n.language === "zh" ? "变体" : "Variant"}</GlassTable.Column>
+                    <GlassTable.Column>{i18n.language === "zh" ? "code" : "code"}</GlassTable.Column>
+                    <GlassTable.Column>{i18n.language === "zh" ? "message" : "message"}</GlassTable.Column>
+                    <GlassTable.Column>{i18n.language === "zh" ? "目录" : "Catalogs"}</GlassTable.Column>
+                    <GlassTable.Column>{i18n.language === "zh" ? "子类" : "Subs"}</GlassTable.Column>
+                    <GlassTable.Column>{i18n.language === "zh" ? "条目" : "Items"}</GlassTable.Column>
+                  </GlassTable.Header>
+                  <GlassTable.Body>
+                    {dumpEntries.map((e) => (
+                      <GlassTable.Row key={e.name}>
+                        <GlassTable.Cell className="font-mono text-xs">{e.name}</GlassTable.Cell>
+                        <GlassTable.Cell>
+                          <span className={e.code === 0 ? "text-success" : "text-danger font-semibold"}>
+                            {e.code ?? "—"}
+                          </span>
+                        </GlassTable.Cell>
+                        <GlassTable.Cell className="text-xs text-muted max-w-[160px] truncate">
+                          {e.message ?? "—"}
+                        </GlassTable.Cell>
+                        <GlassTable.Cell>{e.catalog_count}</GlassTable.Cell>
+                        <GlassTable.Cell>{e.type_sub_count}</GlassTable.Cell>
+                        <GlassTable.Cell className={e.item_count > 0 ? "text-success font-semibold" : "text-danger"}>
+                          {e.item_count}
+                        </GlassTable.Cell>
+                      </GlassTable.Row>
+                    ))}
+                  </GlassTable.Body>
+                </GlassTable.Content>
+              </GlassTable.ScrollContainer>
+            </GlassTable>
           )}
         </GlassCard>
 

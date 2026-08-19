@@ -111,8 +111,33 @@ impl NetworkService {
                     .await?
             }
             DataApi::WikiCatalog => {
+                // 统一目录（不指定 typeSubId 时返回全部 typeSub，但 items 为空）
                 let path = "/web/v1/wiki/item/catalog";
                 let query = "typeMainId=1&onlyOnline=true".to_string();
+                self.skland_service
+                    .call_skland_api("GET", path, Some(&query), None, cred, token, vec![])
+                    .await?
+            }
+            DataApi::WikiCatalogChar => {
+                // 干员子目录（指定 typeSubId 时才返回 items）
+                let path = "/web/v1/wiki/item/catalog";
+                let query = "typeMainId=1&typeSubId=1".to_string();
+                self.skland_service
+                    .call_skland_api("GET", path, Some(&query), None, cred, token, vec![])
+                    .await?
+            }
+            DataApi::WikiCatalogWeapon => {
+                // 武器子目录（指定 typeSubId 时才返回 items）
+                let path = "/web/v1/wiki/item/catalog";
+                let query = "typeMainId=1&typeSubId=2".to_string();
+                self.skland_service
+                    .call_skland_api("GET", path, Some(&query), None, cred, token, vec![])
+                    .await?
+            }
+            DataApi::WikiCatalogNoOnline => {
+                // 无 onlyOnline 的目录（调试用：验证 onlyOnline 是否导致 items 为空）
+                let path = "/web/v1/wiki/item/catalog";
+                let query = "typeMainId=1".to_string();
                 self.skland_service
                     .call_skland_api("GET", path, Some(&query), None, cred, token, vec![])
                     .await?

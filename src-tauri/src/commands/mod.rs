@@ -6,4 +6,5 @@ pub mod config;
 pub mod gacha;
 pub mod image;
 pub mod logs;
+pub mod wiki_debug;
 pub mod window;

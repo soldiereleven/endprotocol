@@ -2769,6 +2769,11 @@ impl AccountService {
         }
     }
 
+    /// 获取网络数据服务（供调试等场景直接发起请求）
+    pub fn get_network_service(&self) -> Arc<NetworkService> {
+        self.network_service.clone()
+    }
+
     /// 统一数据查询入口
     pub async fn query_role_data(
         &self,
