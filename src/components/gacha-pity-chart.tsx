@@ -21,8 +21,9 @@ function poolKindOf(rec: GachaRecord, pools: Record<string, { poolType: string }
 
 interface ChartRow {
   kind: "six" | "leftover";
-  charId?: string | null;
-  charName?: string | null;
+  /** 角色/武器 id（用于图标映射） */
+  id?: string | null;
+  name: string;
   count: number;
   gachaTs?: string;
   inGift: boolean;
@@ -34,35 +35,33 @@ interface ChartSection {
   rows: ChartRow[];
 }
 
-interface RawSection {
-  poolId: string;
-  poolName: string;
-  rows: GachaRecord[];
-}
-
-/** 计算柱状图数据：卡池分组（连续同卡池为一个区间），区间内从新到旧排列六星与余量 */
+/** 计算柱状图数据：
+ * 卡池按 poolId 合并（先抽 A、再抽 B、最后又回 A 时合并为一个卡池区间），区间内按时间顺序排列六星与余量；
+ * 卡池排序以该卡池最先出现的第一个六星时间倒序，无六星的卡池按最近一条记录时间倒序 */
 function computeSections(
   records: GachaRecord[],
   pools: Record<string, GachaPoolInfo>,
   category: GachaPoolKind,
 ): ChartSection[] {
-  const rawSections: RawSection[] = [];
-  let current: RawSection | null = null;
-
+  // 过滤并合并到 poolId（组内保持从新到旧）
+  const byPool = new Map<string, { poolId: string; poolName: string; rows: GachaRecord[] }>();
   for (const rec of records) {
-    if (rec.kind !== "draw" || poolKindOf(rec, pools) !== category) continue;
-    if (!current || current.poolId !== rec.poolId) {
-      current = {
+    if (rec.kind !== "draw") continue;
+    if (category !== "weapon" && poolKindOf(rec, pools) !== category) continue;
+    let sec = byPool.get(rec.poolId);
+    if (!sec) {
+      sec = {
         poolId: rec.poolId,
         poolName: rec.poolName || pools[rec.poolId]?.poolName || rec.poolId,
         rows: [],
       };
-      rawSections.push(current);
+      byPool.set(rec.poolId, sec);
     }
-    current.rows.push(rec);
+    sec.rows.push(rec);
   }
 
-  const sections: ChartSection[] = rawSections.map((section) => {
+  const sections: ChartSection[] = [];
+  for (const section of byPool.values()) {
     const out: ChartRow[] = [];
     let n = 0; // 距上一个普通六星的非赠送抽数（卡池区间起点重置）
     let giftPos = 0; // 当前赠送十连内位置（从第一抽起）
@@ -74,8 +73,8 @@ function computeSections(
         if ((rec.rarity ?? 0) === 6) {
           out.unshift({
             kind: "six",
-            charId: rec.charId,
-            charName: rec.charName ?? rec.nameText,
+            id: rec.charId ?? rec.weaponId,
+            name: rec.weaponName ?? rec.charName ?? rec.nameText,
             count: giftPos,
             gachaTs: rec.gachaTs,
             inGift: true,
@@ -86,8 +85,8 @@ function computeSections(
         if ((rec.rarity ?? 0) === 6) {
           out.unshift({
             kind: "six",
-            charId: rec.charId,
-            charName: rec.charName ?? rec.nameText,
+            id: rec.charId ?? rec.weaponId,
+            name: rec.weaponName ?? rec.charName ?? rec.nameText,
             count: n + 1,
             gachaTs: rec.gachaTs,
             inGift: false,
@@ -98,11 +97,36 @@ function computeSections(
         }
       }
     }
-    if (n > 0) out.unshift({ kind: "leftover", count: n, inGift: false });
-    return { poolId: section.poolId, poolName: section.poolName, rows: out };
-  });
+    if (n > 0) {
+      out.unshift({
+        kind: "leftover",
+        name: "",
+        count: n,
+        inGift: false,
+        gachaTs: rows[0]?.gachaTs,
+      });
+    }
+    if (out.length > 0) {
+      sections.push({ poolId: section.poolId, poolName: section.poolName, rows: out });
+    }
+  }
 
-  return sections.filter((s) => s.rows.length > 0);
+  // 卡池排序：以最先出现的第一个六星时间倒序；无六星卡池按最近记录时间倒序
+  sections.sort((a, b) => firstSixTs(b) - firstSixTs(a));
+  return sections;
+}
+
+/** 卡池排序键：最先出现的第一个六星时间（ms，区间内最旧的六星）；无六星时取最近一条记录时间 */
+function firstSixTs(section: ChartSection): number {
+  let key = 0;
+  for (const r of section.rows) {
+    if (r.kind === "six") {
+      key = r.gachaTs ? Number(r.gachaTs) : 0;
+    }
+  }
+  if (key > 0) return key;
+  const leftover = section.rows.find((r) => r.kind === "leftover");
+  return leftover?.gachaTs ? Number(leftover.gachaTs) : 0;
 }
 
 function cssVar(name: string, fallback: string): string {
@@ -182,7 +206,8 @@ export default function GachaPityChart({
     const seen = new Set<string>();
     const out: { poolId: string; poolName: string }[] = [];
     for (const r of records) {
-      if (r.kind !== "draw" || poolKindOf(r, pools) !== category) continue;
+      if (r.kind !== "draw") continue;
+      if (category !== "weapon" && poolKindOf(r, pools) !== category) continue;
       if (seen.has(r.poolId)) continue;
       seen.add(r.poolId);
       out.push({
@@ -209,25 +234,25 @@ export default function GachaPityChart({
     [filteredRecords, pools, category],
   );
 
-  // 需要的六星角色 id
-  const neededCharIds = useMemo(() => {
+  // 需要的六星角色/武器 id
+  const neededIds = useMemo(() => {
     const set = new Set<string>();
     for (const s of sections) {
       for (const r of s.rows) {
-        if (r.kind === "six" && r.charId) set.add(r.charId);
+        if (r.kind === "six" && r.id) set.add(r.id);
       }
     }
     return [...set];
   }, [sections]);
 
-  // 头像映射（映射文件优先，缺失时后端按 name 匹配补全）
+  // 图标映射（映射文件优先，缺失时后端按名称在 total.json 中匹配补全）
   const [avatarMap, setAvatarMap] = useState<Record<string, string>>({});
   const avatarMapRef = useRef<Record<string, string>>({});
   const resolvingRef = useRef(false);
 
   useEffect(() => {
     if (!roleId) return;
-    const missing = neededCharIds.filter((id) => !(id in avatarMapRef.current));
+    const missing = neededIds.filter((id) => !(id in avatarMapRef.current));
     if (missing.length === 0 || resolvingRef.current) return;
     resolvingRef.current = true;
     invoke<Record<string, string>>("resolve_gacha_avatar_map", { roleId })
@@ -241,22 +266,22 @@ export default function GachaPityChart({
       .finally(() => {
         resolvingRef.current = false;
       });
-  }, [roleId, neededCharIds]);
+  }, [roleId, neededIds]);
 
-  // 头像 src -> 圆形 dataURL（缓存于组件状态）
+  // 图标 src -> 圆形 dataURL（缓存于组件状态）
   const [avatarImgs, setAvatarImgs] = useState<Record<string, string | null>>({});
   const neededSrcs = useMemo(
     () =>
-      neededCharIds
+      neededIds
         .map((id) => avatarMap[id])
         .filter((src): src is string => Boolean(src)),
-    [neededCharIds, avatarMap],
+    [neededIds, avatarMap],
   );
   usePinImages(neededSrcs);
 
   useEffect(() => {
     let cancelled = false;
-    const ids = neededCharIds.filter((id) => avatarMap[id]);
+    const ids = neededIds.filter((id) => avatarMap[id]);
     if (ids.length === 0) return;
     (async () => {
       const entries: Record<string, string | null> = {};
@@ -276,7 +301,7 @@ export default function GachaPityChart({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [neededCharIds.join(","), avatarMap]);
+  }, [neededIds.join(","), avatarMap]);
 
   // 主题色（跟随 AuraGlass）
   const [themeTick, setThemeTick] = useState(0);
@@ -376,7 +401,7 @@ export default function GachaPityChart({
           const row = m.row!;
           const lines: string[] = [];
           if (row.kind === "six") {
-            lines.push(`<div style="font-weight:600;font-size:13px">${escapeHtml(row.charName ?? "?")}</div>`);
+            lines.push(`<div style="font-weight:600;font-size:13px">${escapeHtml(row.name ?? "?")}</div>`);
             lines.push(escapeHtml(m.section.poolName));
             lines.push(
               row.inGift
@@ -478,8 +503,8 @@ export default function GachaPityChart({
             const children: any[] = [];
 
             // 头像（仅六星行）
-            if (isSix && row.charId) {
-              const img = avatarImgs[row.charId];
+            if (isSix && row.id) {
+              const img = avatarImgs[row.id];
               const ax = GRID_LEFT - 12 - AVATAR_SIZE;
               const ay = centerY - AVATAR_SIZE / 2;
               if (img) {
@@ -493,7 +518,7 @@ export default function GachaPityChart({
                   shape: { cx: ax + AVATAR_SIZE / 2, cy: centerY, r: AVATAR_SIZE / 2 },
                   style: { fill: "rgba(127, 127, 140, 0.15)", stroke: separator, lineWidth: 1 },
                 });
-                const initial = (row.charName ?? "?").slice(0, 1);
+                const initial = (row.name ?? "?").slice(0, 1);
                 children.push({
                   type: "text",
                   style: {

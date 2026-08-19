@@ -6,7 +6,8 @@ use tauri::{AppHandle, Emitter};
 
 use crate::models::gacha::{
     GachaApiResponse, GachaMetaData, GachaPoolInfo, GachaRecord, GachaRecordData, GachaSyncProgress,
-    GachaSyncResult, SavedGachaData,
+    GachaSyncResult, GachaWeaponRecord, GachaWeaponRecordData, SavedGachaData,
+    SavedWeaponGachaData,
 };
 use crate::utils::{http_client, paths, AppError};
 use crate::{log_debug, log_info};
@@ -63,6 +64,21 @@ impl GachaService {
             params.push(("seq_id", sid));
         }
         self.get_api("/api/record/char", &params, u8token, server_id)
+            .await
+    }
+
+    /// GET /api/record/weapon：拉取一页武器寻访记录（无 meta，直接按 seqId 翻页）
+    pub async fn get_weapon_records_page(
+        &self,
+        u8token: &str,
+        server_id: &str,
+        seq_id: Option<&str>,
+    ) -> Result<GachaWeaponRecordData, AppError> {
+        let mut params: Vec<(&str, &str)> = Vec::with_capacity(1);
+        if let Some(sid) = seq_id {
+            params.push(("seq_id", sid));
+        }
+        self.get_api("/api/record/weapon", &params, u8token, server_id)
             .await
     }
 
@@ -217,6 +233,69 @@ impl GachaService {
         Ok(())
     }
 
+    // ---------- 武器寻访本地存储 ----------
+
+    /// 武器寻访记录文件路径（gacha_records 子目录）
+    pub fn weapon_records_file_path(
+        &self,
+        user_id: &str,
+        server_id: &str,
+    ) -> Result<PathBuf, AppError> {
+        paths::gacha_weapon_records_file_path(user_id, server_id).map_err(|e| {
+            AppError::ConfigError {
+                message: e.to_string(),
+            }
+        })
+    }
+
+    /// 读取本地保存的武器寻访记录；文件不存在时返回 None
+    pub fn load_weapon_records(
+        &self,
+        user_id: &str,
+        server_id: &str,
+    ) -> Result<Option<SavedWeaponGachaData>, AppError> {
+        let path = self.weapon_records_file_path(user_id, server_id)?;
+        if !path.exists() {
+            return Ok(None);
+        }
+        let content = fs::read_to_string(&path)?;
+        let data = serde_json::from_str(&content)?;
+        Ok(Some(data))
+    }
+
+    /// 读取本地武器寻访记录；不存在时返回空结构
+    pub fn load_weapon_records_or_empty(
+        &self,
+        user_id: &str,
+        server_id: &str,
+    ) -> Result<SavedWeaponGachaData, AppError> {
+        Ok(self.load_weapon_records(user_id, server_id)?.unwrap_or_else(|| {
+            SavedWeaponGachaData {
+                user_id: user_id.to_string(),
+                server_id: server_id.to_string(),
+                last_sync_time: None,
+                pools: HashMap::new(),
+                records: Vec::new(),
+            }
+        }))
+    }
+
+    /// 保存武器寻访记录到本地文件
+    pub fn save_weapon_records(
+        &self,
+        user_id: &str,
+        server_id: &str,
+        data: &SavedWeaponGachaData,
+    ) -> Result<(), AppError> {
+        let path = self.weapon_records_file_path(user_id, server_id)?;
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let content = serde_json::to_string_pretty(data)?;
+        fs::write(&path, content)?;
+        Ok(())
+    }
+
     // ---------- 角色头像映射（与 app_config.json 同级） ----------
 
     /// 抽卡记录角色 id -> 头像映射文件路径
@@ -247,6 +326,58 @@ impl GachaService {
             fs::create_dir_all(parent)?;
         }
         let content = serde_json::to_string_pretty(map)?;
+        fs::write(&path, content)?;
+        Ok(())
+    }
+
+    // ---------- 全量 Wiki 目录（total.json）缓存 ----------
+
+    /// 全量 Wiki 目录缓存路径（gacha_records 子目录）
+    pub fn total_catalog_file_path(&self) -> Result<PathBuf, AppError> {
+        paths::gacha_total_catalog_file_path().map_err(|e| AppError::ConfigError {
+            message: e.to_string(),
+        })
+    }
+
+    /// 读取全量 Wiki 目录缓存；文件不存在、解析失败或没有任何 items 时返回 None
+    /// （无 items 的缓存是早期接口误用时写入的无效数据，视为缺失重新拉取）
+    pub fn load_total_catalog(&self) -> Option<serde_json::Value> {
+        let Ok(path) = self.total_catalog_file_path() else {
+            return None;
+        };
+        let Ok(content) = fs::read_to_string(&path) else {
+            return None;
+        };
+        let catalog: serde_json::Value = serde_json::from_str(&content).ok()?;
+        let has_items = catalog
+            .get("data")
+            .and_then(|d| d.get("catalog"))
+            .and_then(|c| c.as_array())
+            .map(|entries| {
+                entries.iter().any(|e| {
+                    e.get("typeSub")
+                        .and_then(|ts| ts.as_array())
+                        .map(|subs| {
+                            subs.iter()
+                                .any(|s| s.get("items").and_then(|i| i.as_array()).map(|a| !a.is_empty()).unwrap_or(false))
+                        })
+                        .unwrap_or(false)
+                })
+            })
+            .unwrap_or(false);
+        if !has_items {
+            return None;
+        }
+        Some(catalog)
+    }
+
+    /// 保存全量 Wiki 目录缓存
+    pub fn save_total_catalog(&self, catalog: &serde_json::Value) -> Result<(), AppError> {
+        let path = self.total_catalog_file_path()?;
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let content = serde_json::to_string(catalog)?;
         fs::write(&path, content)?;
         Ok(())
     }
@@ -349,6 +480,146 @@ impl GachaService {
             total_records: saved.records.len() as i32,
             per_tab_new,
         })
+    }
+
+    // ---------- 武器寻访同步 ----------
+
+    /// 增量同步武器寻访记录（手动触发）：
+    /// 武器 API 无 meta，从最新向前翻页，直到遇到本地已保存的 seqId 或翻完（不重复拉取已保存内容）
+    pub async fn sync_weapon_records(
+        &self,
+        user_id: &str,
+        server_id: &str,
+        u8token: &str,
+    ) -> Result<GachaSyncResult, AppError> {
+        log_info!(
+            "gacha: weapon sync START user={} server={} u8token_len={}",
+            user_id,
+            server_id,
+            u8token.len()
+        );
+
+        let mut saved = self.load_weapon_records_or_empty(user_id, server_id)?;
+        let saved_seq_ids: HashSet<String> =
+            saved.records.iter().map(|r| r.seq_id.clone()).collect();
+        log_info!(
+            "gacha: weapon existing records={} pools={}",
+            saved.records.len(),
+            saved.pools.len()
+        );
+
+        // 进度跟踪（每页推送 gacha-sync-progress 事件，tab_key 固定为 weapon）
+        let mut progress = GachaSyncProgress {
+            user_id: user_id.to_string(),
+            server_id: server_id.to_string(),
+            tab_index: 0,
+            tab_count: 1,
+            tab_key: "weapon".to_string(),
+            page: 0,
+            tab_fetched: 0,
+            total_fetched: 0,
+            done: false,
+        };
+
+        let mut fetched: Vec<GachaWeaponRecord> = Vec::new();
+        let mut seq_id: Option<String> = None;
+        let mut page_no = 0;
+        loop {
+            page_no += 1;
+            let page = self
+                .get_weapon_records_page(u8token, server_id, seq_id.as_deref())
+                .await?;
+            log_debug!(
+                "gacha: weapon page {} -> {} records, hasMore={}",
+                page_no,
+                page.list.len(),
+                page.has_more
+            );
+
+            let mut reached_saved = false;
+            for rec in &page.list {
+                if saved_seq_ids.contains(&rec.seq_id) {
+                    reached_saved = true;
+                    break;
+                }
+                fetched.push(rec.clone());
+            }
+
+            // 每翻一页推送一次进度
+            progress.page = page_no;
+            progress.tab_fetched = fetched.len();
+            progress.total_fetched = fetched.len();
+            self.emit_progress(&progress);
+
+            if reached_saved || !page.has_more || page.list.is_empty() {
+                break;
+            }
+            seq_id = page.list.last().map(|r| r.seq_id.clone());
+        }
+
+        let before = saved.records.len();
+        saved.records = Self::merge_weapon_records(&saved.records, &fetched);
+        saved.pools = Self::build_weapon_pools_map(&saved.records);
+        saved.last_sync_time = Some(Self::now_ms());
+
+        self.save_weapon_records(user_id, server_id, &saved)?;
+
+        // 推送完成进度
+        progress.done = true;
+        self.emit_progress(&progress);
+
+        let new_count = (saved.records.len() as i64 - before as i64).max(0) as i32;
+        log_info!(
+            "gacha: weapon sync DONE user={} server={} new={} total={}",
+            user_id,
+            server_id,
+            new_count,
+            saved.records.len()
+        );
+
+        Ok(GachaSyncResult {
+            user_id: user_id.to_string(),
+            server_id: server_id.to_string(),
+            synced_at: saved.last_sync_time.unwrap_or(0),
+            new_records: new_count,
+            total_records: saved.records.len() as i32,
+            per_tab_new: HashMap::from([("weapon".to_string(), fetched.len() as i32)]),
+        })
+    }
+
+    /// 按 seqId 去重合并武器记录（新记录在前），结果保证全局从新到旧
+    pub fn merge_weapon_records(
+        existing: &[GachaWeaponRecord],
+        new_prefix: &[GachaWeaponRecord],
+    ) -> Vec<GachaWeaponRecord> {
+        let mut seen: HashSet<String> = HashSet::new();
+        let mut merged: Vec<GachaWeaponRecord> =
+            Vec::with_capacity(existing.len() + new_prefix.len());
+        for rec in new_prefix.iter().chain(existing.iter()) {
+            if seen.insert(rec.seq_id.clone()) {
+                merged.push(rec.clone());
+            }
+        }
+        merged.sort_by(|a, b| {
+            let a_key = (a.seq_id.parse::<i64>().unwrap_or(0), a.gacha_ts_ms().unwrap_or(0));
+            let b_key = (b.seq_id.parse::<i64>().unwrap_or(0), b.gacha_ts_ms().unwrap_or(0));
+            b_key.cmp(&a_key)
+        });
+        merged
+    }
+
+    /// 构建武器 poolId -> 卡池信息（武器 API 无 meta，仅从记录中提取）
+    pub fn build_weapon_pools_map(
+        records: &[GachaWeaponRecord],
+    ) -> HashMap<String, GachaPoolInfo> {
+        let mut pools: HashMap<String, GachaPoolInfo> = HashMap::new();
+        for rec in records {
+            pools.entry(rec.pool_id.clone()).or_insert_with(|| GachaPoolInfo {
+                pool_name: rec.pool_name.clone(),
+                pool_type: "E_WeaponGachaPoolType".to_string(),
+            });
+        }
+        pools
     }
 
     // ---------- 工具方法 ----------

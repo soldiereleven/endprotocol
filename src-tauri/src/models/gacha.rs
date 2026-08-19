@@ -96,6 +96,68 @@ impl GachaRecord {
     }
 }
 
+/// GET /api/record/weapon 的 data
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GachaWeaponRecordData {
+    #[serde(default)]
+    pub list: Vec<GachaWeaponRecord>,
+    pub has_more: bool,
+}
+
+/// 单条武器寻访记录
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GachaWeaponRecord {
+    /// draw
+    pub kind: String,
+    pub pool_id: String,
+    pub pool_name: String,
+    /// 物品/武器展示名
+    pub name_text: String,
+    #[serde(default)]
+    pub weapon_id: Option<String>,
+    #[serde(default)]
+    pub weapon_name: Option<String>,
+    #[serde(default)]
+    pub weapon_type: Option<String>,
+    #[serde(default)]
+    pub rarity: Option<i32>,
+    #[serde(default)]
+    pub is_new: Option<bool>,
+    /// 抽卡时间（毫秒时间戳，API 返回字符串）
+    pub gacha_ts: String,
+    /// 全局唯一序号，也是翻页游标
+    pub seq_id: String,
+}
+
+impl GachaWeaponRecord {
+    pub fn is_draw(&self) -> bool {
+        self.kind == "draw"
+    }
+
+    /// 毫秒时间戳（解析失败返回 None）
+    pub fn gacha_ts_ms(&self) -> Option<i64> {
+        self.gacha_ts.parse::<i64>().ok()
+    }
+}
+
+/// 本地保存的武器寻访记录（gacha_records 子目录下 gacha_weapon_records_{userId}_{serverId}.json）
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SavedWeaponGachaData {
+    pub user_id: String,
+    pub server_id: String,
+    #[serde(default)]
+    pub last_sync_time: Option<i64>,
+    /// poolId -> 卡池信息
+    #[serde(default)]
+    pub pools: HashMap<String, GachaPoolInfo>,
+    /// 全部记录，从新到旧
+    #[serde(default)]
+    pub records: Vec<GachaWeaponRecord>,
+}
+
 /// 本地保存的抽卡记录（app_config.json 同级目录下 gacha_records_{userId}_{serverId}.json）
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]

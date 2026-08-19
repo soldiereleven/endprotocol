@@ -38,6 +38,19 @@ pub fn gacha_records_file_path(user_id: &str, server_id: &str) -> Result<PathBuf
     })
 }
 
+/// 武器寻访记录文件路径（gacha_records 子目录，按 userId+serverId 区分）
+pub fn gacha_weapon_records_file_path(user_id: &str, server_id: &str) -> Result<PathBuf, &'static str> {
+    app_data_dir().map(|d| {
+        d.join("gacha_records")
+            .join(format!("gacha_weapon_records_{}_{}.json", user_id, server_id))
+    })
+}
+
+/// 全量 Wiki 目录（total.json）缓存路径（gacha_records 子目录，全局共用）
+pub fn gacha_total_catalog_file_path() -> Result<PathBuf, &'static str> {
+    app_data_dir().map(|d| d.join("gacha_records").join("total.json"))
+}
+
 /// 旧版抽卡记录文件路径（与 app_config.json 同级），仅用于存量数据兼容读取
 pub fn gacha_records_file_path_legacy(user_id: &str, server_id: &str) -> Result<PathBuf, &'static str> {
     app_data_dir().map(|d| d.join(format!("gacha_records_{}_{}.json", user_id, server_id)))

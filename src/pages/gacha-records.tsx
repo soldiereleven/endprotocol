@@ -24,12 +24,14 @@ import type {
   GachaSyncProgress,
   GachaSyncResult,
   SavedGachaData,
+  SavedWeaponGachaData,
 } from "@/types/gacha";
 
 const CATEGORIES: { key: GachaPoolKind; labelZh: string; labelEn: string }[] = [
   { key: "special", labelZh: "限定", labelEn: "Limited" },
   { key: "joint", labelZh: "联合", labelEn: "Joint" },
   { key: "normal", labelZh: "常驻", labelEn: "Standard" },
+  { key: "weapon", labelZh: "武器", labelEn: "Weapon" },
 ];
 
 const RARITY_OPTIONS: { value: number | null; label: string }[] = [
@@ -54,6 +56,7 @@ function poolKindOf(rec: GachaRecord, pools: Record<string, { poolType: string }
 
 /** 进度 tabKey -> 显示名 */
 function tabLabel(tabKey: string, isZh: boolean): string {
+  if (tabKey.startsWith("weapon")) return isZh ? "武器" : "Weapon";
   if (tabKey.startsWith("joint")) return isZh ? "联合" : "Joint";
   if (tabKey.startsWith("normal")) return isZh ? "常驻" : "Standard";
   return isZh ? "限定" : "Limited";
@@ -66,6 +69,7 @@ export default function GachaRecordsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [roleId, setRoleId] = useState<string | null>(null);
   const [saved, setSaved] = useState<SavedGachaData | null>(null);
+  const [weaponSaved, setWeaponSaved] = useState<SavedWeaponGachaData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -98,6 +102,18 @@ export default function GachaRecordsPage() {
     }
   }, []);
 
+  const loadWeaponSaved = useCallback(async (rid: string) => {
+    try {
+      const data = await invoke<SavedWeaponGachaData>("get_saved_weapon_gacha_records", {
+        roleId: rid,
+      });
+      setWeaponSaved(data);
+    } catch (e) {
+      logError("[Gacha] Failed to load weapon records:", e);
+      setWeaponSaved(null);
+    }
+  }, []);
+
   // 进入页面时重置为“主程序选择的角色”，本地切换不影响主程序
   const initRole = useCallback(async () => {
     setIsLoading(true);
@@ -108,8 +124,9 @@ export default function GachaRecordsPage() {
       const rid = selectedId ?? valid[0]?.id ?? null;
       setRoleId(rid);
       setSaved(null);
+      setWeaponSaved(null);
       if (rid) {
-        await loadSaved(rid);
+        await Promise.all([loadSaved(rid), loadWeaponSaved(rid)]);
       } else {
         setError(isZh ? "暂无可用角色，请先在账户页添加" : "No role available, please add one in Accounts");
       }
@@ -119,7 +136,7 @@ export default function GachaRecordsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [loadSaved, isZh]);
+  }, [loadSaved, loadWeaponSaved, isZh]);
 
   useEffect(() => {
     initRole();
@@ -172,7 +189,12 @@ export default function GachaRecordsPage() {
     setProgress(null);
     setProgressModalOpen(true);
 
-    invoke<GachaSyncResult>("sync_gacha_records", { roleId })
+    const isWeapon = category === "weapon";
+    const promise = isWeapon
+      ? invoke<GachaSyncResult>("sync_weapon_gacha_records", { roleId })
+      : invoke<GachaSyncResult>("sync_gacha_records", { roleId });
+
+    promise
       .then((res) => {
         setSyncResult(res);
         setSyncing(false);
@@ -186,6 +208,7 @@ export default function GachaRecordsPage() {
       })
       .finally(() => {
         loadSaved(roleId);
+        loadWeaponSaved(roleId);
       });
   };
 
@@ -193,6 +216,7 @@ export default function GachaRecordsPage() {
     setRoleId(rid);
     setShowRoleMenu(false);
     loadSaved(rid);
+    loadWeaponSaved(rid);
   };
 
   const selectedAccount = useMemo(
@@ -200,10 +224,14 @@ export default function GachaRecordsPage() {
     [accounts, roleId],
   );
 
+  // 武器为完全独立的分类：数据源与抽卡记录分离，其余分类共用角色寻访记录
+  const isWeapon = category === "weapon";
+  const active = isWeapon ? weaponSaved : saved;
+
   const stats = useMemo(() => {
-    const pools = saved?.pools ?? {};
-    const filtered = (saved?.records ?? []).filter(
-      (r) => r.kind === "draw" && poolKindOf(r, pools) === category,
+    const pools = active?.pools ?? {};
+    const filtered = (active?.records ?? []).filter(
+      (r) => r.kind === "draw" && (isWeapon || poolKindOf(r, pools) === category),
     );
     const total = filtered.length;
     const six = filtered.filter((r) => r.rarity === 6).length;
@@ -220,20 +248,20 @@ export default function GachaRecordsPage() {
       ratioFive: total > 0 ? five / total : 0,
       ratioFour: total > 0 ? four / total : 0,
     };
-  }, [saved, category]);
+  }, [active, category, isWeapon]);
 
   const lastSyncText = useMemo(() => {
-    if (!saved?.lastSyncTime) return null;
-    return new Date(saved.lastSyncTime).toLocaleString(isZh ? "zh-CN" : "en-US");
-  }, [saved, isZh]);
+    if (!active?.lastSyncTime) return null;
+    return new Date(active.lastSyncTime).toLocaleString(isZh ? "zh-CN" : "en-US");
+  }, [active, isZh]);
 
   // 当前分类下的卡池列表（按记录出现顺序，从新到旧）
   const poolOptions = useMemo(() => {
-    const pools = saved?.pools ?? {};
+    const pools = active?.pools ?? {};
     const seen = new Set<string>();
     const out: { poolId: string; poolName: string }[] = [];
-    for (const r of saved?.records ?? []) {
-      if (r.kind !== "draw" || poolKindOf(r, pools) !== category) continue;
+    for (const r of active?.records ?? []) {
+      if (r.kind !== "draw" || (!isWeapon && poolKindOf(r, pools) !== category)) continue;
       if (seen.has(r.poolId)) continue;
       seen.add(r.poolId);
       out.push({
@@ -242,28 +270,28 @@ export default function GachaRecordsPage() {
       });
     }
     return out;
-  }, [saved, category]);
+  }, [active, category, isWeapon]);
 
   const hasActiveFilter =
     query.trim() !== "" || rarityFilter !== null || onlyNew || onlyFree;
 
   const records = useMemo(() => {
-    const pools = saved?.pools ?? {};
+    const pools = active?.pools ?? {};
     const q = query.trim().toLowerCase();
-    return (saved?.records ?? []).filter((r) => {
+    return (active?.records ?? []).filter((r) => {
       if (r.kind !== "draw") return false;
-      if (poolKindOf(r, pools) !== category) return false;
+      if (!isWeapon && poolKindOf(r, pools) !== category) return false;
       if (tablePoolFilter !== null && r.poolId !== tablePoolFilter) return false;
       if (rarityFilter !== null && (r.rarity ?? 0) !== rarityFilter) return false;
       if (onlyNew && !r.isNew) return false;
-      if (onlyFree && !r.isFree) return false;
+      if (!isWeapon && onlyFree && !r.isFree) return false;
       if (q) {
-        const hay = `${r.charName ?? ""} ${r.nameText} ${r.poolName}`.toLowerCase();
+        const hay = `${r.charName ?? ""} ${r.weaponName ?? ""} ${r.nameText} ${r.poolName}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [saved, category, tablePoolFilter, query, rarityFilter, onlyNew, onlyFree]);
+  }, [active, category, tablePoolFilter, query, rarityFilter, onlyNew, onlyFree, isWeapon]);
 
   // 连续出现且属于同一卡池的赠送记录合并为同一次赠送十连
   const recordGroups = useMemo(() => {
@@ -327,6 +355,11 @@ export default function GachaRecordsPage() {
   useEffect(() => {
     setPage(1);
   }, [category, tablePoolFilter, query, rarityFilter, onlyNew, onlyFree]);
+
+  // 切换分类时重置“赠送十连”筛选（武器记录无赠送字段）
+  useEffect(() => {
+    setOnlyFree(false);
+  }, [category]);
 
   if (isLoading) {
     return (
@@ -480,7 +513,7 @@ export default function GachaRecordsPage() {
         })}
       </div>
 
-      {!saved || saved.records.length === 0 ? (
+      {!active || active.records.length === 0 ? (
         <GlassCard className="p-16 glass-surface border border-separator/90">
           <div className="text-center space-y-3">
             <RefreshIcon size={40} className="mx-auto text-muted" />
@@ -520,11 +553,11 @@ export default function GachaRecordsPage() {
             />
           </div>
 
-          {/* 寻访保底统计（顺时针旋转 90° 柱状图） */}
+          {/* 寻访保底统计（顺时针旋转 90° 柱状图；武器寻访与角色一致） */}
           <GachaPityChart
             roleId={roleId}
-            records={saved.records}
-            pools={saved.pools}
+            records={isWeapon ? (weaponSaved?.records ?? []) : (saved?.records ?? [])}
+            pools={isWeapon ? (weaponSaved?.pools ?? {}) : (saved?.pools ?? {})}
             category={category}
             isZh={isZh}
           />
@@ -592,18 +625,20 @@ export default function GachaRecordsPage() {
               >
                 NEW
               </button>
-              <button
-                type="button"
-                onClick={() => setOnlyFree(!onlyFree)}
-                className={clsx(
-                  "h-8 px-3 rounded-full text-xs font-medium border transition-all",
-                  onlyFree
-                    ? "border-primary/60 bg-primary/15 text-primary"
-                    : "border-separator text-muted hover:text-foreground hover:border-primary/40",
-                )}
-              >
-                {isZh ? "赠送十连" : "Gift 10-Pull"}
-              </button>
+              {!isWeapon && (
+                <button
+                  type="button"
+                  onClick={() => setOnlyFree(!onlyFree)}
+                  className={clsx(
+                    "h-8 px-3 rounded-full text-xs font-medium border transition-all",
+                    onlyFree
+                      ? "border-primary/60 bg-primary/15 text-primary"
+                      : "border-separator text-muted hover:text-foreground hover:border-primary/40",
+                  )}
+                >
+                  {isZh ? "赠送十连" : "Gift 10-Pull"}
+                </button>
+              )}
             </div>
             {records.length === 0 ? (
               <p className="text-sm text-muted py-8 text-center">
@@ -815,7 +850,7 @@ function RecordRow({ rec, isZh, noBorder = false }: { rec: GachaRecord; isZh: bo
         </span>
       </td>
       <td className={clsx("py-2.5 pr-3 font-medium truncate max-w-40", color.text)}>
-        {rec.charName ?? rec.nameText}
+        {rec.weaponName ?? rec.charName ?? rec.nameText}
       </td>
       <td className="py-2.5 pr-3 text-xs text-muted truncate max-w-48 hidden md:table-cell">
         {rec.poolName}

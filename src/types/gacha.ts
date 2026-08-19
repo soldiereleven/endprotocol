@@ -1,7 +1,7 @@
-/** 卡池类型（页面分类用，对应后端 meta tab 的 key 前缀） */
-export type GachaPoolKind = "special" | "joint" | "normal";
+/** 卡池类型（页面分类用，对应后端 meta tab 的 key 前缀；weapon 为独立的武器寻访分类） */
+export type GachaPoolKind = "special" | "joint" | "normal" | "weapon";
 
-/** 单条抽卡记录（对应后端 models/gacha.rs GachaRecord） */
+/** 单条抽卡记录（对应后端 models/gacha.rs GachaRecord；武器寻访记录复用本结构） */
 export interface GachaRecord {
   kind: string; // draw / gift_intel_book
   poolId: string;
@@ -9,6 +9,10 @@ export interface GachaRecord {
   nameText: string;
   charId?: string | null;
   charName?: string | null;
+  /** 武器寻访记录字段 */
+  weaponId?: string | null;
+  weaponName?: string | null;
+  weaponType?: string | null;
   rarity?: number | null;
   isFree?: boolean | null;
   isNew?: boolean | null;
@@ -22,6 +26,16 @@ export interface GachaRecord {
 export interface GachaPoolInfo {
   poolName: string;
   poolType: string;
+}
+
+/** 本地保存的武器寻访记录（对应后端 SavedWeaponGachaData） */
+export interface SavedWeaponGachaData {
+  userId: string;
+  serverId: string;
+  lastSyncTime?: number | null;
+  pools: Record<string, GachaPoolInfo>;
+  /** 全部记录，从新到旧 */
+  records: GachaRecord[];
 }
 
 /** 本地保存的抽卡记录（对应 GachaSavedData） */
