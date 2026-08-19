@@ -43,8 +43,6 @@ function GlassProgressCircle({
 }) {
   const px = typeof size === "number" ? size : size === "sm" ? 24 : size === "md" ? 32 : 40;
   const sw = Math.max(2, Math.round(px / 10));
-  const r = (px - sw) / 2;
-  const c = 2 * Math.PI * r;
   const clamped = Math.max(0, Math.min(100, value));
 
   return (
@@ -82,8 +80,7 @@ function TrackCircle({ className }: { className?: string }) {
       fill="none"
       stroke="currentColor"
       strokeWidth={strokeWidth}
-      className={cn("text-default-100/80", className)}
-      opacity={0.6}
+      className={cn("text-separator", className)}
     />
   );
 }
@@ -109,7 +106,11 @@ function FillCircle({ className }: { className?: string }) {
         isIndeterminate && "animate-spin",
         className,
       )}
-      style={{ transition: "stroke-dashoffset 0.2s ease" }}
+      style={{
+        transition: "stroke-dashoffset 0.2s ease",
+        transformBox: "fill-box",
+        transformOrigin: "center",
+      }}
     />
   );
 }
