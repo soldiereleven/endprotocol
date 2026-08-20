@@ -6,6 +6,7 @@ import clsx from "clsx";
 import { GlassButton, GlassCard, GlassProgressCircle, GlassSelect } from "@/components/ui/glass";
 import { SimplePagination } from "@/components/simple-pagination";
 import GachaPityChart from "@/components/gacha-pity-chart";
+import GachaStatCharts from "@/components/gacha-stat-charts";
 import {
   CustomModal,
   CustomModalHeader,
@@ -552,6 +553,15 @@ export default function GachaRecordsPage() {
               rate={pctText(stats.ratioFour)}
             />
           </div>
+
+          {/* 分析图表：星级分布 / 六星间隔分布 / 六星累计 */}
+          <GachaStatCharts
+            records={isWeapon ? (weaponSaved?.records ?? []) : (saved?.records ?? [])}
+            pools={isWeapon ? (weaponSaved?.pools ?? {}) : (saved?.pools ?? {})}
+            category={category}
+            isWeapon={isWeapon}
+            isZh={isZh}
+          />
 
           {/* 寻访保底统计（顺时针旋转 90° 柱状图；武器寻访与角色一致） */}
           <GachaPityChart
