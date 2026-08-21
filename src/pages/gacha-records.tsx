@@ -20,6 +20,7 @@ import { getSelectedAccount, getAccounts, type Account } from "@/utils/accountSe
 import { resolveServerLabel } from "@/types";
 import { logError } from "@/utils/logger";
 import type {
+  GachaCategory,
   GachaPoolKind,
   GachaRecord,
   GachaSyncProgress,
@@ -28,7 +29,8 @@ import type {
   SavedWeaponGachaData,
 } from "@/types/gacha";
 
-const CATEGORIES: { key: GachaPoolKind; labelZh: string; labelEn: string }[] = [
+const CATEGORIES: { key: GachaCategory; labelZh: string; labelEn: string }[] = [
+  { key: "all", labelZh: "全部角色", labelEn: "All" },
   { key: "special", labelZh: "限定", labelEn: "Limited" },
   { key: "joint", labelZh: "联合", labelEn: "Joint" },
   { key: "normal", labelZh: "常驻", labelEn: "Standard" },
@@ -74,7 +76,7 @@ export default function GachaRecordsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [category, setCategory] = useState<GachaPoolKind>("special");
+  const [category, setCategory] = useState<GachaCategory>("all");
   const [tablePoolFilter, setTablePoolFilter] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
@@ -225,14 +227,18 @@ export default function GachaRecordsPage() {
     [accounts, roleId],
   );
 
-  // 武器为完全独立的分类：数据源与抽卡记录分离，其余分类共用角色寻访记录
+  // 武器为完全独立的分类：数据源与抽卡记录分离，其余分类共用角色寻访记录；all 含限定/联合/常驻（不含武器）
   const isWeapon = category === "weapon";
   const active = isWeapon ? weaponSaved : saved;
+
+  /** 当前分类下该记录是否属于角色寻访 */
+  const isCharDraw = (r: GachaRecord, pools: Record<string, { poolType: string }>) =>
+    category === "all" || poolKindOf(r, pools) === category;
 
   const stats = useMemo(() => {
     const pools = active?.pools ?? {};
     const filtered = (active?.records ?? []).filter(
-      (r) => r.kind === "draw" && (isWeapon || poolKindOf(r, pools) === category),
+      (r) => r.kind === "draw" && (isWeapon || isCharDraw(r, pools)),
     );
     const total = filtered.length;
     const six = filtered.filter((r) => r.rarity === 6).length;
@@ -262,7 +268,7 @@ export default function GachaRecordsPage() {
     const seen = new Set<string>();
     const out: { poolId: string; poolName: string }[] = [];
     for (const r of active?.records ?? []) {
-      if (r.kind !== "draw" || (!isWeapon && poolKindOf(r, pools) !== category)) continue;
+      if (r.kind !== "draw" || (!isWeapon && !isCharDraw(r, pools))) continue;
       if (seen.has(r.poolId)) continue;
       seen.add(r.poolId);
       out.push({
@@ -281,7 +287,7 @@ export default function GachaRecordsPage() {
     const q = query.trim().toLowerCase();
     return (active?.records ?? []).filter((r) => {
       if (r.kind !== "draw") return false;
-      if (!isWeapon && poolKindOf(r, pools) !== category) return false;
+      if (!isWeapon && !isCharDraw(r, pools)) return false;
       if (tablePoolFilter !== null && r.poolId !== tablePoolFilter) return false;
       if (rarityFilter !== null && (r.rarity ?? 0) !== rarityFilter) return false;
       if (onlyNew && !r.isNew) return false;

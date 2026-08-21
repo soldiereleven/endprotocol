@@ -1,6 +1,9 @@
 /** 卡池类型（页面分类用，对应后端 meta tab 的 key 前缀；weapon 为独立的武器寻访分类） */
 export type GachaPoolKind = "special" | "joint" | "normal" | "weapon";
 
+/** 页面分类：GachaPoolKind 外加 "all"（全部角色：限定+联合+常驻，不含武器） */
+export type GachaCategory = GachaPoolKind | "all";
+
 /** 单条抽卡记录（对应后端 models/gacha.rs GachaRecord；武器寻访记录复用本结构） */
 export interface GachaRecord {
   kind: string; // draw / gift_intel_book

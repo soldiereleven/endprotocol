@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as echarts from "echarts";
 import { GlassCard } from "@/components/ui/glass";
-import type { GachaPoolKind, GachaRecord } from "@/types/gacha";
+import type { GachaCategory, GachaPoolKind, GachaRecord } from "@/types/gacha";
 
 /** 六星期望抽数：武器 25 抽/个，角色 35.5 抽/个 */
 const SIX_STAR_EXPECTATION = 35.5;
@@ -49,12 +49,12 @@ function useEchart(ref: React.RefObject<HTMLDivElement | null>) {
 function useChronoRecords(
   records: GachaRecord[],
   pools: Record<string, { poolType: string }>,
-  category: GachaPoolKind,
+  category: GachaCategory,
 ): GachaRecord[] {
   return useMemo(() => {
     const list = records.filter((r) => {
       if (r.kind !== "draw") return false;
-      if (category === "weapon") return true;
+      if (category === "weapon" || category === "all") return true;
       return poolKindOf(r, pools) === category;
     });
     list.sort((a, b) => Number(a.gachaTs) - Number(b.gachaTs));
@@ -138,7 +138,7 @@ export default function GachaStatCharts({
 }: {
   records: GachaRecord[];
   pools: Record<string, { poolType: string }>;
-  category: GachaPoolKind;
+  category: GachaCategory;
   isWeapon: boolean;
   isZh: boolean;
 }) {
@@ -226,7 +226,7 @@ export default function GachaStatCharts({
         extraCssText: "border:1px solid var(--separator);border-radius:12px;",
         padding: [8, 12],
         textStyle: { color: "var(--foreground)", fontSize: 12 },
-        axisPointer: { type: "cross" },
+        axisPointer: { type: "line" },
         formatter: (params: any) => {
           const p = params[0];
           const idx = Math.round(p.axisValue);
@@ -235,7 +235,7 @@ export default function GachaStatCharts({
       },
       xAxis: {
         type: "value",
-        min: 0,
+        min: 1,
         max: Math.max(intervals.length, 1),
         minInterval: 1,
         splitLine: { show: false },
@@ -295,7 +295,7 @@ export default function GachaStatCharts({
         extraCssText: "border:1px solid var(--separator);border-radius:12px;",
         padding: [8, 12],
         textStyle: { color: "var(--foreground)", fontSize: 12 },
-        axisPointer: { type: "cross" },
+        axisPointer: { type: "line" },
         formatter: (params: any) => {
           const p = params[0];
           return `<div style="font-weight:600">${isZh ? `累计 ${p.axisValue} 抽` : `${p.axisValue} draws`}</div><div>${isZh ? "六星" : "6★"}: ${p.value}</div>`;
@@ -356,13 +356,14 @@ export default function GachaStatCharts({
         <h3 className="text-sm font-semibold text-muted mb-2">
           {isZh ? `六星间隔分布（期望 ${expectation} 抽）` : `6★ Interval Distribution (expected ${expectation})`}
         </h3>
-        {intervals.length === 0 ? (
-          <div className="flex h-[220px] items-center justify-center text-xs text-muted">
-            {isZh ? "暂无六星记录" : "No 6★ yet"}
-          </div>
-        ) : (
+        <div className="relative">
           <div ref={histRef} style={{ height: 220 }} />
-        )}
+          {intervals.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center text-xs text-muted">
+              {isZh ? "暂无六星记录" : "No 6★ yet"}
+            </div>
+          )}
+        </div>
       </GlassCard>
       <GlassCard className="p-4 glass-surface border border-separator/90">
         <h3 className="text-sm font-semibold text-muted mb-2">

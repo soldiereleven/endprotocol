@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { GlassCard, GlassSelect } from "@/components/ui/glass";
 import { cacheManager, usePinImages } from "@/utils/imageCacheManager";
 import { logError } from "@/utils/logger";
-import type { GachaPoolInfo, GachaPoolKind, GachaRecord } from "@/types/gacha";
+import type { GachaCategory, GachaPoolInfo, GachaPoolKind, GachaRecord } from "@/types/gacha";
 
 /** 记录所属卡池类型：优先用 pools 元信息，缺失时按 poolId 前缀推断 */
 function poolKindOf(rec: GachaRecord, pools: Record<string, { poolType: string }>): GachaPoolKind {
@@ -41,13 +41,13 @@ interface ChartSection {
 function computeSections(
   records: GachaRecord[],
   pools: Record<string, GachaPoolInfo>,
-  category: GachaPoolKind,
+  category: GachaCategory,
 ): ChartSection[] {
   // 过滤并合并到 poolId（组内保持从新到旧）
   const byPool = new Map<string, { poolId: string; poolName: string; rows: GachaRecord[] }>();
   for (const rec of records) {
     if (rec.kind !== "draw") continue;
-    if (category !== "weapon" && poolKindOf(rec, pools) !== category) continue;
+    if (category !== "weapon" && category !== "all" && poolKindOf(rec, pools) !== category) continue;
     let sec = byPool.get(rec.poolId);
     if (!sec) {
       sec = {
@@ -190,7 +190,7 @@ interface ChartProps {
   roleId: string | null;
   records: GachaRecord[];
   pools: Record<string, GachaPoolInfo>;
-  category: GachaPoolKind;
+  category: GachaCategory;
   isZh: boolean;
 }
 
@@ -207,7 +207,7 @@ export default function GachaPityChart({
     const out: { poolId: string; poolName: string }[] = [];
     for (const r of records) {
       if (r.kind !== "draw") continue;
-      if (category !== "weapon" && poolKindOf(r, pools) !== category) continue;
+      if (category !== "weapon" && category !== "all" && poolKindOf(r, pools) !== category) continue;
       if (seen.has(r.poolId)) continue;
       seen.add(r.poolId);
       out.push({
