@@ -1,0 +1,20 @@
+{
+  "id": "spaceship",
+  "name": {
+    "zh": "帝江号",
+    "en": "Spaceship"
+  },
+  "description": {
+    "zh": "展示帝江号各舱室等级与派驻干员（心情、信赖）",
+    "en": "Display spaceship cabins and stationed operators (mood, trust)"
+  },
+  "icon": "satellite",
+  "defaultSize": { "w": 4, "h": 3 },
+  "version": "1.0.0",
+  "allowMultiple": true,
+  "tags": [
+    { "id": "account", "label": { "zh": "账户", "en": "Account" } },
+    { "id": "base", "label": { "zh": "基建", "en": "Base" } },
+    { "id": "display", "label": { "zh": "显示", "en": "Display" } }
+  ]
+}

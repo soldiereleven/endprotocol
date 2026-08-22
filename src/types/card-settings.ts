@@ -54,6 +54,13 @@ export interface DomainInfoCardSettings {
 }
 
 /**
+ * 帝江号(spaceship)卡片配置
+ */
+export interface SpaceshipCardSettings {
+  roleId?: string;  // 自定义角色ID（独立于dashboard的defaultRoleId）
+}
+
+/**
  * TestCard 卡片配置（示例）
  */
 export interface TestCardSettings {
@@ -70,6 +77,7 @@ export type CardSettingsMap = {
   account_info: AccountInfoCardSettings;
   account_progress: AccountProgressCardSettings;
   domain_info: DomainInfoCardSettings;
+  spaceship: SpaceshipCardSettings;
   test_card: TestCardSettings;
   // 未来添加新卡片时在此注册
 };
