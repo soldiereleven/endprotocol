@@ -8,7 +8,7 @@
     "zh": "展示账户的基础信息（等级、世界等级、干员/武器数量等）",
     "en": "Display account base info (level, world level, characters/weapons count, etc.)"
   },
-  "icon": "🪪",
+  "icon": "user",
   "defaultSize": { "w": 4, "h": 2 },
   "version": "1.0.0",
   "allowMultiple": true,

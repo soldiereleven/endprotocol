@@ -8,7 +8,7 @@
     "zh": "显示收藏的干员头像和信息",
     "en": "Display pinned characters with avatars and info"
   },
-  "icon": "👥",
+  "icon": "users",
   "defaultSize": { "w": 4, "h": 3 },
   "version": "1.0.0",
   "allowMultiple": true,

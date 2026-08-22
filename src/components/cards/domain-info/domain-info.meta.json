@@ -8,7 +8,7 @@
     "zh": "展示大世界区域信息（等级、货币、基建建设点）",
     "en": "Display domain info (level, money, base settlements)"
   },
-  "icon": "🗺️",
+  "icon": "map",
   "defaultSize": { "w": 4, "h": 2 },
   "version": "1.0.0",
   "allowMultiple": true,

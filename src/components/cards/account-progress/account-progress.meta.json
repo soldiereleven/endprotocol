@@ -8,7 +8,7 @@
     "zh": "展示账户的理智、日常活跃度、每周事务、通行证等级进度",
     "en": "Display account stamina, daily activity, weekly affairs, battle pass level progress"
   },
-  "icon": "📈",
+  "icon": "chart",
   "defaultSize": { "w": 4, "h": 2 },
   "version": "1.0.0",
   "allowMultiple": true,

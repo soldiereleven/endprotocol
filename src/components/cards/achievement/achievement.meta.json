@@ -8,7 +8,7 @@
     "zh": "展示已获得的蚀刻章",
     "en": "Display earned achievement medals"
   },
-  "icon": "🏅",
+  "icon": "award",
   "defaultSize": { "w": 4, "h": 2 },
   "version": "1.0.0",
   "allowMultiple": true,
