@@ -135,3 +135,162 @@ pub async fn debug_wiki_debug_dir() -> Result<String, String> {
         .map(|d| d.join("wiki_debug").to_string_lossy().to_string())
         .map_err(|e| e.to_string())
 }
+
+#[derive(serde::Serialize)]
+pub struct UserInfoDumpEntry {
+    name: String,
+    path: String,
+    code: Option<i64>,
+    message: Option<String>,
+    info: String,
+}
+
+/// 调试命令：抓取用户信息相关接口（玩家绑定、角色卡片详情）的原始响应，
+/// 保存到 app data 的 user_debug 目录，用于核对返回结构与字段。
+#[tauri::command]
+pub async fn debug_dump_user_info(
+    account_state: State<'_, Arc<Mutex<AccountService>>>,
+) -> Result<Vec<UserInfoDumpEntry>, String> {
+    let account = account_state.lock().await;
+
+    let accounts = account.get_accounts().await;
+    let Some(acc) = accounts.iter().find(|a| {
+        a.cred.is_some() && a.token.is_some() && a.user_id.is_some() && a.server_id.is_some()
+    }) else {
+        return Err("no account with cred/token found".to_string());
+    };
+    let (cred, token, user_id, server_id) = (
+        acc.cred.clone().unwrap(),
+        acc.token.clone().unwrap(),
+        acc.user_id.clone().unwrap(),
+        acc.server_id.clone().unwrap(),
+    );
+    let role_id = acc.id.clone();
+
+    if let Err(e) = account.check_and_refresh_user_cred(&user_id).await {
+        log_warn!("debug_dump_user_info: cred refresh failed (non-fatal): {}", e);
+    }
+
+    let skland = account.get_network_service().skland_service().clone();
+    let dir = paths::app_data_dir()
+        .map(|d| d.join("user_debug"))
+        .map_err(|e| e.to_string())?;
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+
+    let targets: [(&str, &str, Option<String>); 2] = [
+        (
+            "player_binding",
+            "/api/v1/game/player/binding",
+            None,
+        ),
+        (
+            "card_detail",
+            "/api/v1/game/endfield/card/detail",
+            Some(format!(
+                "roleId={}&serverId={}&userId={}",
+                role_id, server_id, user_id
+            )),
+        ),
+    ];
+
+    let mut out = Vec::new();
+    for (file_name, path, query) in targets {
+        let mut entry = UserInfoDumpEntry {
+            name: file_name.to_string(),
+            path: String::new(),
+            code: None,
+            message: None,
+            info: String::new(),
+        };
+        match skland
+            .call_skland_api("GET", path, query.as_deref(), None, &cred, &token, vec![])
+            .await
+        {
+            Ok(raw) => {
+                entry.code = raw.get("code").and_then(|v| v.as_i64());
+                entry.message = raw
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+
+                match file_name {
+                    "player_binding" => {
+                        let mut games = 0usize;
+                        let mut endfield_roles = 0usize;
+                        if let Some(list) =
+                            raw.pointer("/data/list").and_then(|v| v.as_array())
+                        {
+                            games = list.len();
+                            for g in list {
+                                if g.get("appCode").and_then(|v| v.as_str())
+                                    != Some("endfield")
+                                {
+                                    continue;
+                                }
+                                if let Some(bindings) =
+                                    g.get("bindingList").and_then(|v| v.as_array())
+                                {
+                                    for b in bindings {
+                                        if let Some(roles) =
+                                            b.get("roles").and_then(|v| v.as_array())
+                                        {
+                                            endfield_roles += roles.len();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        entry.info = format!("games={} endfieldRoles={}", games, endfield_roles);
+                    }
+                    _ => {
+                        let base_name = raw
+                            .pointer("/data/detail/base/name")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        let base_level = raw
+                            .pointer("/data/detail/base/level")
+                            .and_then(|v| v.as_i64())
+                            .unwrap_or(0);
+                        let char_count = raw
+                            .pointer("/data/detail/chars")
+                            .and_then(|v| v.as_array())
+                            .map(|a| a.len())
+                            .unwrap_or(0);
+                        entry.info = if base_name.is_empty() {
+                            format!("chars={}", char_count)
+                        } else {
+                            format!("{} Lv.{} chars={}", base_name, base_level, char_count)
+                        };
+                    }
+                }
+
+                let file_path = dir.join(format!("{}.json", file_name));
+                let content = serde_json::to_string_pretty(&raw).unwrap_or_default();
+                fs::write(&file_path, content).map_err(|e| e.to_string())?;
+                entry.path = file_path.to_string_lossy().to_string();
+                log_info!(
+                    "debug_dump_user_info: {} -> code={:?} info=[{}] saved={}",
+                    file_name,
+                    entry.code,
+                    entry.info,
+                    entry.path
+                );
+            }
+            Err(e) => {
+                log_warn!("debug_dump_user_info: {} failed: {}", file_name, e);
+                entry.message = Some(format!("query error: {}", e));
+            }
+        }
+        out.push(entry);
+    }
+
+    Ok(out)
+}
+
+/// 调试命令：返回已保存的 user_debug 目录路径（供前端打开）
+#[tauri::command]
+pub async fn debug_user_info_dir() -> Result<String, String> {
+    paths::app_data_dir()
+        .map(|d| d.join("user_debug").to_string_lossy().to_string())
+        .map_err(|e| e.to_string())
+}
