@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { CloseIcon } from "@/components/ui/app-icon";
-import { SearchIcon } from "@/components/icons";
 import { AchieveMedal } from "@/types/charDetail";
 import { useTranslation } from "react-i18next";
 import { Img } from "@/utils/imageLoader";
@@ -150,16 +149,15 @@ export function MedalBrowser({
   return (
     <>
     <div className="flex gap-1 h-full overflow-hidden">
-      <div className="w-44 shrink-0 border-r border-separator flex flex-col pr-2">
+      <div className="w-44 shrink-0 border-r border-separator/70 flex flex-col pr-2 glass-surface rounded-xl">
         <div className="relative mb-2 shrink-0">
           <div className="relative p-1.5">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none text-sm" />
             <input
               type="text"
               value={globalQuery}
               onChange={(e) => setGlobalQuery(e.target.value)}
               placeholder={t("card:ach_search")}
-              className="w-full px-2 py-1.5 pl-7 pr-6 rounded-lg bg-default-100 border border-separator text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+              className="w-full px-2 py-1.5 pl-2 pr-6 rounded-lg glass-field border border-separator/70 text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
             />
             {globalQuery && (
               <button
@@ -173,14 +171,14 @@ export function MedalBrowser({
             )}
           </div>
           {globalQuery.trim() && (
-            <div className="absolute left-1.5 right-1.5 top-full z-20 max-h-72 overflow-y-auto rounded-lg border border-separator bg-background shadow-xl dark:shadow-white/15 py-1">
+            <div className="absolute left-1.5 right-1.5 top-full z-20 max-h-72 overflow-y-auto rounded-lg border border-separator/70 glass-surface-strong shadow-xl py-1">
               {globalResults.length > 0 ? (
                 globalResults.slice(0, 50).map((medal) => (
                   <button
                     key={medal.achievementData.id}
                     type="button"
                     onClick={() => handleLocate(medal)}
-                    className="w-full text-left px-3 py-1.5 rounded-md text-xs truncate text-foreground hover:bg-default-100 transition-colors"
+                    className="w-full text-left px-3 py-1.5 rounded-md text-xs truncate text-foreground hover:bg-white/5 transition-all"
                     title={medal.achievementData.name}
                   >
                     {medal.achievementData.name}
@@ -199,10 +197,10 @@ export function MedalBrowser({
             <button
               key={cat.key}
               type="button"
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
                 activeCategory === cat.key
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-foreground hover:bg-default-100"
+                  ? "bg-primary/10 text-primary font-medium border border-primary/30"
+                  : "text-foreground hover:bg-white/5 border border-transparent"
               }`}
               onClick={() => setActiveCategory(cat.key)}
             >
@@ -213,28 +211,17 @@ export function MedalBrowser({
       </div>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="flex items-center justify-between mb-3 shrink-0">
-          {headerLeft != null ? (
-            headerLeft
-          ) : (
-            <span className="text-sm text-muted">
-              {selectable
-                ? t("card:ach_selected_count", { count: selectedIds!.length })
-                : `${filteredMedals.length} / ${medals.length}`}
-            </span>
-          )}
-        </div>
 
-        <div className="flex items-center gap-2 mb-3 shrink-0 flex-wrap">
+        <div className="flex items-center gap-2 mb-3 shrink-0 flex-wrap glass-surface border border-separator/50 rounded-lg p-2">
           <span className="text-xs text-muted mr-1">{t("card:ach_level")}:</span>
           {levelOptions.map((lv) => (
             <button
               key={lv}
               type="button"
-              className={`text-xs px-2.5 py-1 rounded-full border transition-colors font-medium ${
+              className={`text-xs px-2.5 py-1 rounded-full border transition-all font-medium ${
                 levelFilter === lv
-                  ? "bg-primary text-white border-primary shadow-sm"
-                  : "border-separator text-muted hover:border-foreground hover:text-foreground"
+                  ? "bg-primary/15 text-primary border-primary/50 shadow-sm"
+                  : "border-separator/50 text-muted hover:border-foreground/50 hover:text-foreground hover:bg-white/5"
               }`}
               onClick={() => setLevelFilter(lv)}
             >
@@ -246,10 +233,10 @@ export function MedalBrowser({
             <button
               key={opt}
               type="button"
-              className={`text-xs px-2.5 py-1 rounded-full border transition-colors font-medium ${
+              className={`text-xs px-2.5 py-1 rounded-full border transition-all font-medium ${
                 platedFilter === opt
-                  ? "bg-primary text-white border-primary shadow-sm"
-                  : "border-separator text-muted hover:border-foreground hover:text-foreground"
+                  ? "bg-primary/15 text-primary border-primary/50 shadow-sm"
+                  : "border-separator/50 text-muted hover:border-foreground/50 hover:text-foreground hover:bg-white/5"
               }`}
               onClick={() => setPlatedFilter(opt)}
             >
@@ -261,10 +248,10 @@ export function MedalBrowser({
             <button
               key={opt}
               type="button"
-              className={`text-xs px-2.5 py-1 rounded-full border transition-colors font-medium ${
+              className={`text-xs px-2.5 py-1 rounded-full border transition-all font-medium ${
                 sortBy === opt
-                  ? "bg-primary text-white border-primary shadow-sm"
-                  : "border-separator text-muted hover:border-foreground hover:text-foreground"
+                  ? "bg-primary/15 text-primary border-primary/50 shadow-sm"
+                  : "border-separator/50 text-muted hover:border-foreground/50 hover:text-foreground hover:bg-white/5"
               }`}
               onClick={() => setSortBy(opt)}
             >
@@ -273,7 +260,7 @@ export function MedalBrowser({
           ))}
         </div>
 
-        <div ref={medalListRef} className="flex-1 overflow-y-auto space-y-1 min-h-[420px] pb-16">
+        <div ref={medalListRef} className="flex-1 overflow-y-auto space-y-1 min-h-[420px] pb-16 glass-surface border border-separator/50 rounded-lg p-2">
           {filteredMedals.length === 0 ? (
             <div className="text-center text-muted py-12">
               {t("card:ach_no_medals")}
@@ -291,8 +278,8 @@ export function MedalBrowser({
                     selectable ? "cursor-pointer" : ""
                   } ${
                     isSelected
-                      ? "border-primary bg-primary/5"
-                      : "border-transparent hover:bg-default-100"
+                      ? "border-primary/50 bg-primary/10 glass-surface"
+                      : "border-transparent hover:bg-white/5 hover:glass-surface"
                   }`}
                   onClick={() => selectable && onToggle?.(id)}
                 >
