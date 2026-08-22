@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
+import { MorphIcon } from "morphicons/react";
+import { ArrowUp } from "lucide";
 
 /**
  * 返回顶部 FAB（与 char-select 一致）：
@@ -61,19 +63,7 @@ export function BackToTopFab({
       aria-label="Back to top"
     >
       {hovering ? (
-        <svg
-          className="w-6 h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M3 8h18M12 20V8m0 0l-6 6m6-6l6 6"
-          />
-        </svg>
+        <MorphIcon icon={ArrowUp} size={24} spring="snappy" />
       ) : (
         <span className="text-xs font-bold">{percent}%</span>
       )}

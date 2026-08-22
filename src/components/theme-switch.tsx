@@ -1,5 +1,6 @@
 import { FC, useState, useEffect, useCallback, useRef } from "react";
-import { SunFilledIcon, MoonFilledIcon } from "@/components/icons";
+import { MorphIcon } from "morphicons/react";
+import { Sun, Moon } from "lucide";
 import { getConfig, setConfig } from "@/utils/configService";
 
 type ThemeMode = "light" | "dark" | "system";
@@ -100,12 +101,7 @@ export const ThemeSwitch: FC<ThemeSwitchProps> = ({ className }) => {
       className={`glass-surface p-1.5 rounded-full transition-all duration-200 hover:scale-105 active:scale-90 cursor-pointer border-none ${className || ""}`}
       onClick={toggleTheme}
     >
-      <span
-        className="block transition-transform duration-500 ease-spring"
-        style={{ transform: `rotate(${isDark ? "360deg" : "0deg"})` }}
-      >
-        {isDark ? <MoonFilledIcon size={20} /> : <SunFilledIcon size={20} />}
-      </span>
+      <MorphIcon icon={isDark ? Moon : Sun} size={20} spring="snappy" />
     </button>
   );
 };

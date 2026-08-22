@@ -9,9 +9,11 @@ import { ThemeSwitch } from "@/components/theme-switch";
 import { LanguageSwitch } from "@/components/language-switch";
 import {
   GithubIcon,
-  HeartFilledIcon,
+  HeartIcon,
   SearchIcon,
 } from "@/components/icons";
+import { MorphIcon } from "morphicons/react";
+import { Menu, X } from "lucide";
 
 export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -53,7 +55,7 @@ export const Navbar = () => {
               variant="tertiary"
               onPress={() => window.open(siteConfig.links.sponsor, "_blank")}
             >
-              <HeartFilledIcon className="text-danger" />
+              <HeartIcon className="text-danger" />
               {t('common.sponsor')}
             </GlassButton>
           </div>
@@ -76,28 +78,7 @@ export const Navbar = () => {
             className="p-2"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              {isMenuOpen ? (
-                <path
-                  d="M6 18L18 6M6 6l12 12"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                />
-              ) : (
-                <path
-                  d="M4 6h16M4 12h16M4 18h16"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                />
-              )}
-            </svg>
+            <MorphIcon icon={isMenuOpen ? X : Menu} size={24} className="h-6 w-6" spring="snappy" />
           </button>
         </div>
       </header>

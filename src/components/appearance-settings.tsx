@@ -5,6 +5,8 @@ import { isTauri } from "@tauri-apps/api/core";
 import { SettingsDivider } from "@/components/ui/settings-row";
 import ScreenColorPicker from "@/components/screen-color-picker";
 import { getConfig, setConfig } from "@/utils/configService";
+import { MorphIcon } from "morphicons/react";
+import { Sun, Moon, Monitor, Check, Plus, Pencil, Trash2, Pipette } from "lucide";
 
 type ThemeMode = "light" | "dark" | "system";
 
@@ -486,9 +488,9 @@ export function AppearanceSettings() {
   if (isLoading) return null;
 
   const modeOptions: { value: ThemeMode; label: string; icon: JSX.Element }[] = [
-    { value: "light", label: t("settings.general.theme_light"), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg> },
-    { value: "dark", label: t("settings.general.theme_dark"), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg> },
-    { value: "system", label: t("settings.general.theme_system"), icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></svg> },
+    { value: "light", label: t("settings.general.theme_light"), icon: <MorphIcon icon={Sun} size={16} /> },
+    { value: "dark", label: t("settings.general.theme_dark"), icon: <MorphIcon icon={Moon} size={16} /> },
+    { value: "system", label: t("settings.general.theme_system"), icon: <MorphIcon icon={Monitor} size={16} /> },
   ];
 
   const hsv = hexToHsv(pickerHex);
@@ -548,9 +550,7 @@ export function AppearanceSettings() {
                   title={color.label}
                 >
                   {themeColor === color.name && (
-                    <svg className="absolute inset-0 m-auto w-5 h-5 drop-shadow-md" fill="none" stroke="white" viewBox="0 0 24 24" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
+                    <MorphIcon icon={Check} size={20} className="absolute inset-0 m-auto drop-shadow-md" color="white" strokeWidth={2.5} />
                   )}
                 </button>
               ))}
@@ -581,9 +581,7 @@ export function AppearanceSettings() {
                   title={color.label}
                 >
                   {themeColor === color.name && (
-                    <svg className="absolute inset-0 m-auto w-5 h-5 drop-shadow-md" fill="none" stroke="white" viewBox="0 0 24 24" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
+                    <MorphIcon icon={Check} size={20} className="absolute inset-0 m-auto drop-shadow-md" color="white" strokeWidth={2.5} />
                   )}
                 </button>
               ))}
@@ -595,9 +593,7 @@ export function AppearanceSettings() {
                   className="w-10 h-10 rounded-full border-2 border-dashed border-default-300 hover:border-primary/60 flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-105 text-muted hover:text-primary"
                   title="Add custom color"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
-                  </svg>
+                  <MorphIcon icon={Plus} size={20} strokeWidth={2} />
                 </button>
 
                 {showPicker && createPortal(
@@ -744,9 +740,7 @@ export function AppearanceSettings() {
                             title="Pick color from screen"
                             className="w-10 h-10 shrink-0 flex items-center justify-center glass-field rounded-xl text-muted hover:text-foreground transition-colors cursor-pointer"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
-                            </svg>
+                            <MorphIcon icon={Pipette} size={16} strokeWidth={1.8} />
                           </button>
                         )}
                       </div>
@@ -837,18 +831,14 @@ export function AppearanceSettings() {
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-default-100 transition-colors cursor-pointer"
                 >
-                  <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.8">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
-                  </svg>
+                  <MorphIcon icon={Pencil} size={16} className="text-muted" strokeWidth={1.8} />
                   {t("common.edit")}
                 </button>
                 <button
                   onClick={() => handleDeleteCustom(ctxMenu.color.name)}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-danger hover:bg-danger/10 transition-colors cursor-pointer"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.8">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <MorphIcon icon={Trash2} size={16} strokeWidth={1.8} />
                   {t("common.delete")}
                 </button>
               </div>

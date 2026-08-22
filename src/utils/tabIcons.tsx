@@ -1,11 +1,10 @@
 import React from 'react';
-import type { IconSvgProps } from '@/types';
 import {
   HomeIcon,
   ChartIcon,
   UsersIcon,
   StarIcon,
-  HeartFilledIcon,
+  HeartIcon,
   BookmarkIcon,
   TagIcon,
   FolderIcon,
@@ -18,12 +17,12 @@ import {
   ProjectsIcon,
 } from '@/components/icons';
 
-export const TAB_ICON_MAP: Record<string, React.FC<IconSvgProps>> = {
+export const TAB_ICON_MAP: Record<string, React.ComponentType<any>> = {
   home: HomeIcon,
   chart: ChartIcon,
   users: UsersIcon,
   star: StarIcon,
-  heart: HeartFilledIcon,
+  heart: HeartIcon,
   bookmark: BookmarkIcon,
   tag: TagIcon,
   folder: FolderIcon,
@@ -54,7 +53,7 @@ export const ICON_LABELS: Record<string, { zh: string; en: string }> = {
   projects: { zh: '项目', en: 'Projects' },
 };
 
-export function getTabIcon(iconKey: string): React.FC<IconSvgProps> {
+export function getTabIcon(iconKey: string): React.ComponentType<any> {
   return TAB_ICON_MAP[iconKey] ?? HomeIcon;
 }
 

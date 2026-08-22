@@ -13,6 +13,8 @@ import {
   type DragMoveEvent,
 } from "@dnd-kit/core";
 import { GlassProgressCircle } from "@/components/ui/glass";
+import { MorphIcon } from "morphicons/react";
+import { MapPin, TriangleAlert } from "lucide";
 import { CardConfig } from "@/types/dashboard";
 import { updateCardLayout } from "@/utils/dashboardConfig";
 import { useLongPressDrag } from "@/hooks/useLongPressDrag";
@@ -217,7 +219,7 @@ function FreeDragCard({
           );
         },
       });
-    } else if (card.type === "account_info" || card.type === "account_progress" || card.type === "domain_info") {
+    } else if (card.type === "account_info" || card.type === "account_progress" || card.type === "domain_info" || card.type === "spaceship") {
       items.push({
         key: "change-role",
         label: t("card:change_role"),
@@ -836,13 +838,14 @@ export function CardContainer({
             data-testid="highlight-grid"
           >
             <div
-              className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-sm font-bold bg-content1/90 px-3 py-2 rounded shadow-lg whitespace-nowrap ${
+              className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-sm font-bold bg-content1/90 px-3 py-2 rounded shadow-lg whitespace-nowrap flex items-center gap-1 ${
                 hasCollision ? "text-danger" : "text-primary"
               }`}
             >
-              📍 ({highlightGrid.x}, {highlightGrid.y}) {highlightGrid.w}x
+              <MorphIcon icon={MapPin} size={14} />
+              ({highlightGrid.x}, {highlightGrid.y}) {highlightGrid.w}x
               {highlightGrid.h}
-              {hasCollision && " ⚠️"}
+              {hasCollision && <MorphIcon icon={TriangleAlert} size={14} />}
             </div>
           </div>
         )}

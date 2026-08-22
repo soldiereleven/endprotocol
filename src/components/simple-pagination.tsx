@@ -1,4 +1,6 @@
 import { cn } from "@/lib/cn";
+import { MorphIcon } from "morphicons/react";
+import { ChevronLeft, ChevronRight } from "lucide";
 
 interface SimplePaginationProps {
   total: number;
@@ -67,9 +69,7 @@ export const SimplePagination: React.FC<SimplePaginationProps> = ({
           aria-label="Previous page"
           disabled={page === 1}
         >
-          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M7.5 2.5 4 6l3.5 3.5" />
-          </svg>
+          <MorphIcon icon={ChevronLeft} size={11} />
         </button>
       )}
       {pages.map((p, idx) => {
@@ -118,9 +118,7 @@ export const SimplePagination: React.FC<SimplePaginationProps> = ({
           aria-label="Next page"
           disabled={page === last}
         >
-          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4.5 2.5 8 6l-3.5 3.5" />
-          </svg>
+          <MorphIcon icon={ChevronRight} size={11} />
         </button>
       )}
     </nav>

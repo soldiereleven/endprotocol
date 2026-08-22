@@ -11,6 +11,8 @@ import { TAB_ICONS, DashboardTab } from "@/types/dashboard";
 import { getTabIcon, getIconLabel } from "@/utils/tabIcons";
 import { getAccounts, getSelectedAccount, type Account } from "@/utils/accountService";
 import { AccountAvatar } from "@/components/ui/account-avatar";
+import { MorphIcon } from "morphicons/react";
+import { X, Check } from "lucide";
 
 interface TabEditorModalProps {
   isOpen: boolean;
@@ -174,9 +176,7 @@ export function TabEditorModal({
                         onClick={() => handleRemoveTag(tag)}
                         className="ml-0.5 hover:text-danger transition-colors"
                       >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <MorphIcon icon={X} size={12} />
                       </button>
                     </div>
                   </GlassChip>
@@ -218,9 +218,7 @@ export function TabEditorModal({
                       <span className="text-xs text-muted ml-1.5">Lv.{acc.level}</span>
                     </div>
                     {isSelected && (
-                      <svg className="w-4 h-4 text-primary shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                      </svg>
+                      <MorphIcon icon={Check} size={16} className="text-primary shrink-0" />
                     )}
                   </button>
                 );

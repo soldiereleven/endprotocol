@@ -8,6 +8,8 @@ import {
 } from "./custom-modal";
 import { useTranslation } from "react-i18next";
 import { getAvailableCards } from "./cards/registry/loader";
+import { CardIcon, SearchIcon } from "@/components/icons";
+import { ChevronRightIcon } from "@/components/ui/app-icon";
 import type { CardTag } from "./cards/registry/types";
 
 interface AddCardModalProps {
@@ -116,19 +118,7 @@ export function AddCardModal({
             onChange={(e) => setSearchText(e.target.value)}
             size="sm"
             startContent={
-              <svg
-                className="w-4 h-4 text-muted pointer-events-none"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
+              <SearchIcon size={16} className="text-muted pointer-events-none" />
             }
           />
 
@@ -140,19 +130,10 @@ export function AddCardModal({
                 onClick={() => setShowFilters((v) => !v)}
                 className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors cursor-pointer"
               >
-                <svg
-                  className={`w-3.5 h-3.5 transition-transform ${showFilters ? "rotate-90" : ""}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
+                <ChevronRightIcon
+                  size={14}
+                  className={`transition-transform ${showFilters ? "rotate-90" : ""}`}
+                />
                 {showFilters
                   ? t("common.hide_filters") || "Hide Filters"
                   : t("common.show_filters") || "Filters"}
@@ -208,7 +189,7 @@ export function AddCardModal({
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl">{card.icon}</span>
+                    <CardIcon iconKey={card.icon} size={28} className="text-primary shrink-0" />
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold">
                         {card.name[i18n.language] || card.name.en}

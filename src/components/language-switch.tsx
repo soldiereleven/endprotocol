@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { GlassInput } from "@/components/ui/glass";
 import { setConfig } from "@/utils/configService";
+import { MorphIcon } from "morphicons/react";
+import { ChevronDown, Check } from "lucide";
 
 // SVG flag components
 const USFlag = () => (
@@ -121,19 +123,11 @@ export const LanguageSwitch = () => {
         >
           {selectedLang.flag}
           <span className="text-sm font-medium">{selectedLang.label}</span>
-          <svg
-            className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 9l-7 7-7-7"
-            />
-          </svg>
+          <MorphIcon
+            icon={ChevronDown}
+            size={16}
+            className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
+          />
         </button>
       </div>
 
@@ -167,17 +161,7 @@ export const LanguageSwitch = () => {
                   </span>
                 </div>
                 {i18n.language === lang.key && (
-                  <svg
-                    className="w-4 h-4 text-success"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+                  <MorphIcon icon={Check} size={16} className="text-success" />
                 )}
               </button>
             ))}

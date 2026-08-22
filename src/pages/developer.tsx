@@ -16,6 +16,8 @@ import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import logger, { LogEntry, LogLevel } from "@/utils/logger";
 import { invoke } from "@tauri-apps/api/core";
 import { logError } from "@/utils/logger";
+import { MorphIcon } from "morphicons/react";
+import { FileText, Settings } from "lucide";
 
 interface WikiDumpEntry {
   name: string;
@@ -25,6 +27,14 @@ interface WikiDumpEntry {
   catalog_count: number;
   type_sub_count: number;
   item_count: number;
+}
+
+interface UserInfoDumpEntry {
+  name: string;
+  path: string;
+  code: number | null;
+  message: string | null;
+  info: string;
 }
 
 const LOG_LEVEL_NAMES: Record<LogLevel, string> = {
@@ -92,6 +102,27 @@ export default function DeveloperPage() {
   const [isDumping, setIsDumping] = useState(false);
   const [dumpError, setDumpError] = useState<string | null>(null);
   const [dumpDir, setDumpDir] = useState<string>("");
+
+  const [userInfoEntries, setUserInfoEntries] = useState<UserInfoDumpEntry[]>([]);
+  const [isUserInfoDumping, setIsUserInfoDumping] = useState(false);
+  const [userInfoError, setUserInfoError] = useState<string | null>(null);
+  const [userInfoDir, setUserInfoDir] = useState<string>("");
+
+  const handleDumpUserInfo = async () => {
+    setIsUserInfoDumping(true);
+    setUserInfoError(null);
+    try {
+      const entries = await invoke<UserInfoDumpEntry[]>("debug_dump_user_info");
+      setUserInfoEntries(entries);
+      const dir = await invoke<string>("debug_user_info_dir");
+      setUserInfoDir(dir);
+    } catch (e) {
+      logError("[Developer] user info dump failed:", e);
+      setUserInfoError(String(e));
+    } finally {
+      setIsUserInfoDumping(false);
+    }
+  };
 
   const handleDumpWiki = async () => {
     setIsDumping(true);
@@ -530,6 +561,82 @@ export default function DeveloperPage() {
           )}
         </GlassCard>
 
+        {/* 用户信息抓取（调试） */}
+        <GlassCard id="developer-user-dump" className="p-6 glass-surface border border-separator/90 overflow-hidden">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <span className="w-1 h-5 bg-primary rounded-full" />
+              {i18n.language === "zh" ? "用户信息数据抓取（调试）" : "User Info Dump (Debug)"}
+            </h2>
+            <div className="flex items-center gap-2">
+              {userInfoDir && (
+                <GlassButton variant="outline" size="sm" onPress={() => revealItemInDir(userInfoDir)}>
+                  {i18n.language === "zh" ? "打开目录" : "Open Folder"}
+                </GlassButton>
+              )}
+              <GlassButton variant="outline" size="sm" isDisabled={isUserInfoDumping} onPress={handleDumpUserInfo}>
+                {isUserInfoDumping
+                  ? (i18n.language === "zh" ? "抓取中…" : "Fetching…")
+                  : (i18n.language === "zh" ? "抓取用户信息" : "Dump User Info")}
+              </GlassButton>
+            </div>
+          </div>
+          <p className="text-sm text-muted mb-4">
+            {i18n.language === "zh"
+              ? "抓取玩家绑定（player/binding）与角色卡片详情（card/detail）的原始响应并保存到 user_debug 目录，用于核对用户信息字段。"
+              : "Fetch raw responses of player binding and card detail, save them to the user_debug folder for inspecting user info fields."}
+          </p>
+          {userInfoError && (
+            <p className="text-sm text-danger mb-3 break-all">{userInfoError}</p>
+          )}
+          {userInfoEntries.length > 0 && (
+            <GlassTable>
+              <GlassTable.ScrollContainer>
+                <GlassTable.Content aria-label="User info dump results" className="min-w-[520px]">
+                  <GlassTable.Header>
+                    <GlassTable.Column isRowHeader>{i18n.language === "zh" ? "接口" : "API"}</GlassTable.Column>
+                    <GlassTable.Column>{i18n.language === "zh" ? "code" : "code"}</GlassTable.Column>
+                    <GlassTable.Column>{i18n.language === "zh" ? "message" : "message"}</GlassTable.Column>
+                    <GlassTable.Column>{i18n.language === "zh" ? "摘要" : "Summary"}</GlassTable.Column>
+                    <GlassTable.Column>JSON</GlassTable.Column>
+                  </GlassTable.Header>
+                  <GlassTable.Body>
+                    {userInfoEntries.map((e) => (
+                      <GlassTable.Row key={e.name}>
+                        <GlassTable.Cell className="font-mono text-xs">{e.name}</GlassTable.Cell>
+                        <GlassTable.Cell>
+                          <span className={e.code === 0 ? "text-success" : "text-danger font-semibold"}>
+                            {e.code ?? "—"}
+                          </span>
+                        </GlassTable.Cell>
+                        <GlassTable.Cell className="text-xs text-muted max-w-[160px] truncate">
+                          {e.message ?? "—"}
+                        </GlassTable.Cell>
+                        <GlassTable.Cell className="text-xs text-foreground max-w-[200px] truncate">
+                          {e.info || "—"}
+                        </GlassTable.Cell>
+                        <GlassTable.Cell>
+                          {e.path ? (
+                            <button
+                              className="text-primary hover:underline text-xs font-mono truncate block max-w-[140px]"
+                              onClick={() => revealItemInDir(e.path)}
+                              title={e.path}
+                            >
+                              {e.path.split(/[\\/]/).pop()}
+                            </button>
+                          ) : (
+                            <span className="text-muted text-xs">—</span>
+                          )}
+                        </GlassTable.Cell>
+                      </GlassTable.Row>
+                    ))}
+                  </GlassTable.Body>
+                </GlassTable.Content>
+              </GlassTable.ScrollContainer>
+            </GlassTable>
+          )}
+        </GlassCard>
+
         {/* Log Viewer */}
         <GlassCard id="developer-logs" className="p-6 glass-surface border border-separator/90 overflow-hidden">
           <div className="flex items-center justify-between mb-4">
@@ -551,23 +658,23 @@ export default function DeveloperPage() {
           <div className="flex gap-1 mb-3 bg-default-100/60 p-1 rounded-xl">
             {(["all", "frontend", "backend"] as LogFilter[]).map((f) => {
               const isActive = logSourceFilter === f;
-              const label =
-                f === "all"
-                  ? (i18n.language === "zh" ? "所有日志" : "All Logs")
-                  : f === "frontend"
-                    ? (i18n.language === "zh" ? "📄 前端" : "📄 Frontend")
-                    : (i18n.language === "zh" ? "⚙️ 后端" : "⚙️ Backend");
               return (
                 <button
                   key={f}
                   onClick={() => setLogSourceFilter(f)}
-                  className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 ${
+                  className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-1 ${
                     isActive
                       ? "glass-surface text-foreground shadow-sm border border-separator/80"
                       : "text-muted hover:text-foreground"
                   }`}
                 >
-                  {label}
+                  {f === "frontend" && <MorphIcon icon={FileText} size={12} />}
+                  {f === "backend" && <MorphIcon icon={Settings} size={12} />}
+                  {f === "all"
+                    ? (i18n.language === "zh" ? "所有日志" : "All Logs")
+                    : f === "frontend"
+                      ? (i18n.language === "zh" ? "前端" : "Frontend")
+                      : (i18n.language === "zh" ? "后端" : "Backend")}
                 </button>
               );
             })}
