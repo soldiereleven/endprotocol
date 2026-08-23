@@ -86,10 +86,11 @@ pub async fn get_gacha_pool_meta(
     let account = account_state.lock().await;
     let config_service = account.get_config_service().clone();
 
-    let (user_id, server_id, _u8token) = lookup_u8token(&config_service, &role_id).map_err(|e| {
-        log_error!("get_gacha_pool_meta: lookup failed: {}", e);
-        e.to_string()
-    })?;
+    let (user_id, server_id, _u8token) =
+        lookup_u8token(&config_service, &role_id).map_err(|e| {
+            log_error!("get_gacha_pool_meta: lookup failed: {}", e);
+            e.to_string()
+        })?;
     let u8token = ensure_fresh_u8token(&account, &config_service, &user_id, &role_id)
         .await
         .map_err(|e| e.to_string())?;
@@ -117,10 +118,11 @@ pub async fn sync_gacha_records(
     let account = account_state.lock().await;
     let config_service = account.get_config_service().clone();
 
-    let (user_id, server_id, _u8token) = lookup_u8token(&config_service, &role_id).map_err(|e| {
-        log_error!("sync_gacha_records: lookup failed: {}", e);
-        e.to_string()
-    })?;
+    let (user_id, server_id, _u8token) =
+        lookup_u8token(&config_service, &role_id).map_err(|e| {
+            log_error!("sync_gacha_records: lookup failed: {}", e);
+            e.to_string()
+        })?;
     let u8token = ensure_fresh_u8token(&account, &config_service, &user_id, &role_id)
         .await
         .map_err(|e| e.to_string())?;
@@ -179,10 +181,11 @@ pub async fn sync_weapon_gacha_records(
     let account = account_state.lock().await;
     let config_service = account.get_config_service().clone();
 
-    let (user_id, server_id, _u8token) = lookup_u8token(&config_service, &role_id).map_err(|e| {
-        log_error!("sync_weapon_gacha_records: lookup failed: {}", e);
-        e.to_string()
-    })?;
+    let (user_id, server_id, _u8token) =
+        lookup_u8token(&config_service, &role_id).map_err(|e| {
+            log_error!("sync_weapon_gacha_records: lookup failed: {}", e);
+            e.to_string()
+        })?;
     let u8token = ensure_fresh_u8token(&account, &config_service, &user_id, &role_id)
         .await
         .map_err(|e| e.to_string())?;
@@ -210,7 +213,10 @@ pub async fn get_saved_weapon_gacha_records(
     gacha_state: State<'_, Arc<GachaService>>,
     role_id: String,
 ) -> Result<serde_json::Value, String> {
-    log_info!("get_saved_weapon_gacha_records: START for role_id={}", role_id);
+    log_info!(
+        "get_saved_weapon_gacha_records: START for role_id={}",
+        role_id
+    );
     let account = account_state.lock().await;
     let config_service = account.get_config_service().clone();
 
@@ -230,7 +236,10 @@ pub async fn get_saved_weapon_gacha_records(
             e.to_string()
         })?;
 
-    log_info!("get_saved_weapon_gacha_records: SUCCESS for role_id={}", role_id);
+    log_info!(
+        "get_saved_weapon_gacha_records: SUCCESS for role_id={}",
+        role_id
+    );
     serde_json::to_value(data).map_err(|e| e.to_string())
 }
 
@@ -263,7 +272,10 @@ pub async fn resolve_gacha_avatar_map(
     let weapon_saved = gacha_state
         .load_weapon_records_or_empty(&user_id, &server_id)
         .map_err(|e| {
-            log_error!("resolve_gacha_avatar_map: load weapon records failed: {}", e);
+            log_error!(
+                "resolve_gacha_avatar_map: load weapon records failed: {}",
+                e
+            );
             e.to_string()
         })?;
 
@@ -288,7 +300,9 @@ pub async fn resolve_gacha_avatar_map(
                             Some(n.to_string())
                         }
                     });
-                needed.entry(cid.clone()).or_insert_with(|| name.unwrap_or_default());
+                needed
+                    .entry(cid.clone())
+                    .or_insert_with(|| name.unwrap_or_default());
             }
         }
     }
@@ -311,7 +325,9 @@ pub async fn resolve_gacha_avatar_map(
                             Some(n.to_string())
                         }
                     });
-                needed.entry(wid.clone()).or_insert_with(|| name.unwrap_or_default());
+                needed
+                    .entry(wid.clone())
+                    .or_insert_with(|| name.unwrap_or_default());
             }
         }
     }
@@ -338,10 +354,7 @@ pub async fn resolve_gacha_avatar_map(
         // 优先本地 total.json 缓存（无效缓存会被 load_total_catalog 判空），缺失则拉取并写盘
         let mut catalog = gacha_state.load_total_catalog();
         if catalog.is_none() {
-            match account
-                .query_role_data(&role_id, "wiki_catalog", &[])
-                .await
-            {
+            match account.query_role_data(&role_id, "wiki_catalog", &[]).await {
                 Ok(result) => {
                     if let Some(raw) = result.get("__full__") {
                         catalog = Some(raw.clone());
@@ -385,10 +398,7 @@ pub async fn resolve_gacha_avatar_map(
                             else {
                                 continue;
                             };
-                            let Some(kind) = associate
-                                .get("type")
-                                .and_then(|t| t.as_str())
-                            else {
+                            let Some(kind) = associate.get("type").and_then(|t| t.as_str()) else {
                                 continue;
                             };
                             if kind != "char" && kind != "weapon" {

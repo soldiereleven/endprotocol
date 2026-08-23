@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Emitter};
 
 use crate::models::gacha::{
-    GachaApiResponse, GachaMetaData, GachaPoolInfo, GachaRecord, GachaRecordData, GachaSyncProgress,
-    GachaSyncResult, GachaWeaponRecord, GachaWeaponRecordData, SavedGachaData,
+    GachaApiResponse, GachaMetaData, GachaPoolInfo, GachaRecord, GachaRecordData,
+    GachaSyncProgress, GachaSyncResult, GachaWeaponRecord, GachaWeaponRecordData, SavedGachaData,
     SavedWeaponGachaData,
 };
 use crate::utils::{http_client, paths, AppError};
@@ -158,15 +158,9 @@ impl GachaService {
     // ---------- 本地存储 ----------
 
     /// 抽卡记录文件路径（app_config.json 同级目录）
-    pub fn records_file_path(
-        &self,
-        user_id: &str,
-        server_id: &str,
-    ) -> Result<PathBuf, AppError> {
-        paths::gacha_records_file_path(user_id, server_id).map_err(|e| {
-            AppError::ConfigError {
-                message: e.to_string(),
-            }
+    pub fn records_file_path(&self, user_id: &str, server_id: &str) -> Result<PathBuf, AppError> {
+        paths::gacha_records_file_path(user_id, server_id).map_err(|e| AppError::ConfigError {
+            message: e.to_string(),
         })
     }
 
@@ -179,8 +173,12 @@ impl GachaService {
         let path = self.records_file_path(user_id, server_id)?;
         if !path.exists() {
             // 兼容旧位置（与 app_config.json 同级）的存量文件
-            let legacy = paths::gacha_records_file_path_legacy(user_id, server_id)
-                .map_err(|e| AppError::ConfigError { message: e.to_string() })?;
+            let legacy =
+                paths::gacha_records_file_path_legacy(user_id, server_id).map_err(|e| {
+                    AppError::ConfigError {
+                        message: e.to_string(),
+                    }
+                })?;
             if legacy.exists() {
                 log_info!(
                     "gacha: load FALLBACK to legacy path for user={} server={}",
@@ -206,15 +204,15 @@ impl GachaService {
         user_id: &str,
         server_id: &str,
     ) -> Result<SavedGachaData, AppError> {
-        Ok(self.load_records(user_id, server_id)?.unwrap_or_else(|| {
-            SavedGachaData {
+        Ok(self
+            .load_records(user_id, server_id)?
+            .unwrap_or_else(|| SavedGachaData {
                 user_id: user_id.to_string(),
                 server_id: server_id.to_string(),
                 last_sync_time: None,
                 pools: HashMap::new(),
                 records: Vec::new(),
-            }
-        }))
+            }))
     }
 
     /// 保存抽卡记录到本地文件
@@ -269,15 +267,15 @@ impl GachaService {
         user_id: &str,
         server_id: &str,
     ) -> Result<SavedWeaponGachaData, AppError> {
-        Ok(self.load_weapon_records(user_id, server_id)?.unwrap_or_else(|| {
-            SavedWeaponGachaData {
+        Ok(self
+            .load_weapon_records(user_id, server_id)?
+            .unwrap_or_else(|| SavedWeaponGachaData {
                 user_id: user_id.to_string(),
                 server_id: server_id.to_string(),
                 last_sync_time: None,
                 pools: HashMap::new(),
                 records: Vec::new(),
-            }
-        }))
+            }))
     }
 
     /// 保存武器寻访记录到本地文件
@@ -358,8 +356,12 @@ impl GachaService {
                     e.get("typeSub")
                         .and_then(|ts| ts.as_array())
                         .map(|subs| {
-                            subs.iter()
-                                .any(|s| s.get("items").and_then(|i| i.as_array()).map(|a| !a.is_empty()).unwrap_or(false))
+                            subs.iter().any(|s| {
+                                s.get("items")
+                                    .and_then(|i| i.as_array())
+                                    .map(|a| !a.is_empty())
+                                    .unwrap_or(false)
+                            })
                         })
                         .unwrap_or(false)
                 })
@@ -601,23 +603,29 @@ impl GachaService {
             }
         }
         merged.sort_by(|a, b| {
-            let a_key = (a.seq_id.parse::<i64>().unwrap_or(0), a.gacha_ts_ms().unwrap_or(0));
-            let b_key = (b.seq_id.parse::<i64>().unwrap_or(0), b.gacha_ts_ms().unwrap_or(0));
+            let a_key = (
+                a.seq_id.parse::<i64>().unwrap_or(0),
+                a.gacha_ts_ms().unwrap_or(0),
+            );
+            let b_key = (
+                b.seq_id.parse::<i64>().unwrap_or(0),
+                b.gacha_ts_ms().unwrap_or(0),
+            );
             b_key.cmp(&a_key)
         });
         merged
     }
 
     /// 构建武器 poolId -> 卡池信息（武器 API 无 meta，仅从记录中提取）
-    pub fn build_weapon_pools_map(
-        records: &[GachaWeaponRecord],
-    ) -> HashMap<String, GachaPoolInfo> {
+    pub fn build_weapon_pools_map(records: &[GachaWeaponRecord]) -> HashMap<String, GachaPoolInfo> {
         let mut pools: HashMap<String, GachaPoolInfo> = HashMap::new();
         for rec in records {
-            pools.entry(rec.pool_id.clone()).or_insert_with(|| GachaPoolInfo {
-                pool_name: rec.pool_name.clone(),
-                pool_type: "E_WeaponGachaPoolType".to_string(),
-            });
+            pools
+                .entry(rec.pool_id.clone())
+                .or_insert_with(|| GachaPoolInfo {
+                    pool_name: rec.pool_name.clone(),
+                    pool_type: "E_WeaponGachaPoolType".to_string(),
+                });
         }
         pools
     }
@@ -625,10 +633,7 @@ impl GachaService {
     // ---------- 工具方法 ----------
 
     /// 按 seqId 去重合并记录（新记录在前），结果保证全局从新到旧
-    pub fn merge_records(
-        existing: &[GachaRecord],
-        new_prefix: &[GachaRecord],
-    ) -> Vec<GachaRecord> {
+    pub fn merge_records(existing: &[GachaRecord], new_prefix: &[GachaRecord]) -> Vec<GachaRecord> {
         let mut seen: HashSet<String> = HashSet::new();
         let mut merged: Vec<GachaRecord> = Vec::with_capacity(existing.len() + new_prefix.len());
         for rec in new_prefix.iter().chain(existing.iter()) {
@@ -637,8 +642,14 @@ impl GachaService {
             }
         }
         merged.sort_by(|a, b| {
-            let a_key = (a.seq_id.parse::<i64>().unwrap_or(0), a.gacha_ts_ms().unwrap_or(0));
-            let b_key = (b.seq_id.parse::<i64>().unwrap_or(0), b.gacha_ts_ms().unwrap_or(0));
+            let a_key = (
+                a.seq_id.parse::<i64>().unwrap_or(0),
+                a.gacha_ts_ms().unwrap_or(0),
+            );
+            let b_key = (
+                b.seq_id.parse::<i64>().unwrap_or(0),
+                b.gacha_ts_ms().unwrap_or(0),
+            );
             b_key.cmp(&a_key)
         });
         merged
@@ -662,10 +673,12 @@ impl GachaService {
             }
         }
         for rec in records {
-            pools.entry(rec.pool_id.clone()).or_insert_with(|| GachaPoolInfo {
-                pool_name: rec.pool_name.clone(),
-                pool_type: Self::pool_type_of_pool_id(&rec.pool_id).to_string(),
-            });
+            pools
+                .entry(rec.pool_id.clone())
+                .or_insert_with(|| GachaPoolInfo {
+                    pool_name: rec.pool_name.clone(),
+                    pool_type: Self::pool_type_of_pool_id(&rec.pool_id).to_string(),
+                });
         }
         pools
     }
@@ -685,7 +698,9 @@ impl GachaService {
     pub fn group_records_by_pool(records: &[GachaRecord]) -> HashMap<String, Vec<GachaRecord>> {
         let mut map: HashMap<String, Vec<GachaRecord>> = HashMap::new();
         for rec in records {
-            map.entry(rec.pool_id.clone()).or_default().push(rec.clone());
+            map.entry(rec.pool_id.clone())
+                .or_default()
+                .push(rec.clone());
         }
         map
     }
@@ -741,10 +756,12 @@ impl GachaService {
         u8token: &str,
         server_id: &str,
     ) -> Result<T, AppError> {
-        let mut url = reqwest::Url::parse(&format!("{}{}", EF_WEBVIEW_BASE, endpoint))
-            .map_err(|e| AppError::ApiError {
-                code: 0,
-                message: format!("Invalid endpoint: {}", e),
+        let mut url =
+            reqwest::Url::parse(&format!("{}{}", EF_WEBVIEW_BASE, endpoint)).map_err(|e| {
+                AppError::ApiError {
+                    code: 0,
+                    message: format!("Invalid endpoint: {}", e),
+                }
             })?;
         url.query_pairs_mut()
             .append_pair("lang", "zh-cn")

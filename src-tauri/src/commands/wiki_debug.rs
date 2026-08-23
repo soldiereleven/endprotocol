@@ -42,7 +42,10 @@ pub async fn debug_dump_wiki_catalogs(
     );
 
     if let Err(e) = account.check_and_refresh_user_cred(&user_id).await {
-        log_warn!("debug_dump_wiki_catalogs: cred refresh failed (non-fatal): {}", e);
+        log_warn!(
+            "debug_dump_wiki_catalogs: cred refresh failed (non-fatal): {}",
+            e
+        );
     }
 
     let network = account.get_network_service().clone();
@@ -168,7 +171,10 @@ pub async fn debug_dump_user_info(
     let role_id = acc.id.clone();
 
     if let Err(e) = account.check_and_refresh_user_cred(&user_id).await {
-        log_warn!("debug_dump_user_info: cred refresh failed (non-fatal): {}", e);
+        log_warn!(
+            "debug_dump_user_info: cred refresh failed (non-fatal): {}",
+            e
+        );
     }
 
     let skland = account.get_network_service().skland_service().clone();
@@ -178,11 +184,7 @@ pub async fn debug_dump_user_info(
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
 
     let targets: [(&str, &str, Option<String>); 2] = [
-        (
-            "player_binding",
-            "/api/v1/game/player/binding",
-            None,
-        ),
+        ("player_binding", "/api/v1/game/player/binding", None),
         (
             "card_detail",
             "/api/v1/game/endfield/card/detail",
@@ -217,14 +219,10 @@ pub async fn debug_dump_user_info(
                     "player_binding" => {
                         let mut games = 0usize;
                         let mut endfield_roles = 0usize;
-                        if let Some(list) =
-                            raw.pointer("/data/list").and_then(|v| v.as_array())
-                        {
+                        if let Some(list) = raw.pointer("/data/list").and_then(|v| v.as_array()) {
                             games = list.len();
                             for g in list {
-                                if g.get("appCode").and_then(|v| v.as_str())
-                                    != Some("endfield")
-                                {
+                                if g.get("appCode").and_then(|v| v.as_str()) != Some("endfield") {
                                     continue;
                                 }
                                 if let Some(bindings) =

@@ -4,12 +4,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct AccountSummary {
-    pub id: String,        // roleId
+    pub id: String, // roleId
     pub avatar: String,
     pub nickname: String,
     pub level: i32,
     pub server: String,
-    pub status: String,    // online/offline/loading
+    pub status: String,              // online/offline/loading
     pub sync_status: Option<String>, // SYNCING/FAILED/null
 }
 
@@ -17,12 +17,12 @@ pub struct AccountSummary {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct AccountInfo {
-    pub id: String,        // roleId
+    pub id: String, // roleId
     pub avatar: String,
     pub nickname: String,
     pub level: i32,
     pub server: String,
-    pub status: String,    // online/offline/loading
+    pub status: String,              // online/offline/loading
     pub sync_status: Option<String>, // SYNCING/FAILED/null
     pub cred: Option<String>,
     pub token: Option<String>,

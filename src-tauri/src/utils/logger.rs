@@ -130,7 +130,13 @@ impl Logger {
             }
         }
 
-        let formatted = format!("[{}] [{}] [{}] {}", entry.timestamp, level.as_str(), module, message);
+        let formatted = format!(
+            "[{}] [{}] [{}] {}",
+            entry.timestamp,
+            level.as_str(),
+            module,
+            message
+        );
 
         // 控制台输出（带颜色）
         if self.config.log_to_console && level >= self.config.log_level {

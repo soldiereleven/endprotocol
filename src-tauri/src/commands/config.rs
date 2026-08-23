@@ -7,10 +7,7 @@ use crate::services::config_service::ConfigService;
 
 /// 获取配置值
 #[tauri::command]
-pub fn get_config(
-    state: State<Arc<Mutex<ConfigService>>>,
-    key: String,
-) -> Option<Value> {
+pub fn get_config(state: State<Arc<Mutex<ConfigService>>>, key: String) -> Option<Value> {
     let service = state.lock().unwrap();
     service.get(&key)
 }
@@ -28,19 +25,14 @@ pub fn set_config(
 
 /// 删除配置项
 #[tauri::command]
-pub fn remove_config(
-    state: State<Arc<Mutex<ConfigService>>>,
-    key: String,
-) -> bool {
+pub fn remove_config(state: State<Arc<Mutex<ConfigService>>>, key: String) -> bool {
     let mut service = state.lock().unwrap();
     service.remove(&key)
 }
 
 /// 获取所有配置
 #[tauri::command]
-pub fn get_all_configs(
-    state: State<Arc<Mutex<ConfigService>>>,
-) -> HashMap<String, Value> {
+pub fn get_all_configs(state: State<Arc<Mutex<ConfigService>>>) -> HashMap<String, Value> {
     let service = state.lock().unwrap();
     service.get_all()
 }

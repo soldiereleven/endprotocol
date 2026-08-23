@@ -15,12 +15,10 @@ use std::io::Write;
 use uuid::Uuid;
 
 use crate::models::char_detail::CharDetailResponse;
-use crate::models::role::{
-    BindingInfo, BindingResponse, GameBinding, RoleDisplayInfo, RoleInfo,
-};
+use crate::models::role::{BindingInfo, BindingResponse, GameBinding, RoleDisplayInfo, RoleInfo};
 use crate::services::config_service::ConfigService;
 use crate::utils::{http_client, AppError};
-use crate::{log_debug, log_info, log_warn, log_error};
+use crate::{log_debug, log_error, log_info, log_warn};
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -225,14 +223,24 @@ impl SklandService {
                         };
 
                         let enc = des_encrypt_3des(key, &value_str)?;
-                        log_debug!("DES Encrypt - Field: {}, Key: {}, ObfName: {}", field_name, key, obf_name);
+                        log_debug!(
+                            "DES Encrypt - Field: {}, Key: {}, ObfName: {}",
+                            field_name,
+                            key,
+                            obf_name
+                        );
                         log_debug!("  Original: {}", value_str);
                         log_debug!("  Encrypted: {}", enc);
 
                         obfuscated.insert(obf_name.to_string(), serde_json::Value::String(enc));
                     } else {
                         // 不需要加密，保持原始类型
-                        log_debug!("Keep Original - Field: {}, ObfName: {}, Value: {}", field_name, obf_name, value);
+                        log_debug!(
+                            "Keep Original - Field: {}, ObfName: {}, Value: {}",
+                            field_name,
+                            obf_name,
+                            value
+                        );
 
                         obfuscated.insert(obf_name.to_string(), value.clone());
                     }
@@ -513,12 +521,12 @@ impl SklandService {
                 }
             } else {
                 {
-                    let mut config = self
-                        .config_service
-                        .lock()
-                        .map_err(|e| AppError::ConfigError {
-                            message: format!("Lock failed: {}", e),
-                        })?;
+                    let mut config =
+                        self.config_service
+                            .lock()
+                            .map_err(|e| AppError::ConfigError {
+                                message: format!("Lock failed: {}", e),
+                            })?;
                     config.remove("did_cache");
                 }
                 match self.fetch_new_did().await {
@@ -531,10 +539,7 @@ impl SklandService {
             };
 
             let ts = Utc::now().timestamp().to_string();
-            let body_str = body
-                .as_ref()
-                .map(|b| b.to_string())
-                .unwrap_or_default();
+            let body_str = body.as_ref().map(|b| b.to_string()).unwrap_or_default();
             let sign_input = query.unwrap_or(&body_str);
             let sign = self.calculate_sign(path, sign_input, &ts, &did, token);
 
@@ -578,10 +583,7 @@ impl SklandService {
 
             match serde_json::from_str::<serde_json::Value>(&resp_text) {
                 Ok(json) => {
-                    let code = json
-                        .get("code")
-                        .and_then(|c| c.as_i64())
-                        .unwrap_or(-1);
+                    let code = json.get("code").and_then(|c| c.as_i64()).unwrap_or(-1);
                     if code == 0 {
                         return Ok(json);
                     }
@@ -617,13 +619,17 @@ impl SklandService {
         token: &str,
     ) -> Result<Vec<GameBinding>, AppError> {
         let path = "/api/v1/game/player/binding";
-        let json = self.call_skland_api("GET", path, None, None, cred, token, vec![]).await?;
-        let response: BindingResponse = serde_json::from_value(json).map_err(|e| {
-            AppError::AuthError {
+        let json = self
+            .call_skland_api("GET", path, None, None, cred, token, vec![])
+            .await?;
+        let response: BindingResponse =
+            serde_json::from_value(json).map_err(|e| AppError::AuthError {
                 message: format!("Failed to parse BindingResponse: {}", e),
-            }
-        })?;
-        log_info!("Binding list parsed, returning {} games", response.data.list.len());
+            })?;
+        log_info!(
+            "Binding list parsed, returning {} games",
+            response.data.list.len()
+        );
         Ok(response.data.list)
     }
 
@@ -637,46 +643,53 @@ impl SklandService {
         user_id: &str,
     ) -> Result<CharDetailResponse, AppError> {
         let path = "/api/v1/game/endfield/card/detail";
-        let query = format!("roleId={}&serverId={}&userId={}", role_id, server_id, user_id);
-        let json = self.call_skland_api("GET", path, Some(&query), None, cred, token, vec![]).await?;
-        let response: CharDetailResponse = serde_json::from_value(json).map_err(|e| {
-            AppError::AuthError {
+        let query = format!(
+            "roleId={}&serverId={}&userId={}",
+            role_id, server_id, user_id
+        );
+        let json = self
+            .call_skland_api("GET", path, Some(&query), None, cred, token, vec![])
+            .await?;
+        let response: CharDetailResponse =
+            serde_json::from_value(json).map_err(|e| AppError::AuthError {
                 message: format!("Failed to parse CharDetailResponse: {}", e),
-            }
-        })?;
-        log_info!("Char detail loaded: name={}, level={}",
-            response.data.detail.base.name, response.data.detail.base.level);
+            })?;
+        log_info!(
+            "Char detail loaded: name={}, level={}",
+            response.data.detail.base.name,
+            response.data.detail.base.level
+        );
         Ok(response)
     }
 
     /// 检查 cred 是否有效
     pub async fn check_cred(&self, cred: &str) -> Result<bool, AppError> {
         let client = http_client::create_client();
-        
+
         let start_time = std::time::Instant::now();
         log_info!("=== HTTP REQUEST: 检查Cred ===");
         log_info!("Method: GET");
         log_info!("URL: https://zonai.skland.com/api/v1/user/check");
         log_debug!("Request Headers: cred=***");
-        
+
         let response = client
             .get("https://zonai.skland.com/api/v1/user/check")
             .header("cred", cred)
             .header("Content-Type", "application/json")
             .send()
             .await
-            .map_err(|e| AppError::AuthError { 
-                message: format!("HTTP request failed: {}", e) 
+            .map_err(|e| AppError::AuthError {
+                message: format!("HTTP request failed: {}", e),
             })?;
-        
+
         let elapsed = start_time.elapsed();
         let status = response.status();
         let resp_headers = response.headers().clone();
-        
+
         let json: serde_json::Value = response.json().await.map_err(|e| AppError::AuthError {
             message: format!("Failed to parse response: {}", e),
         })?;
-        
+
         log_info!("=== HTTP RESPONSE: 检查Cred ===");
         log_info!("Status: {}", status);
         log_info!("Time: {:?}", elapsed);
@@ -699,42 +712,40 @@ impl SklandService {
     ) -> Result<(String, String, Option<String>, String), AppError> {
         // Step 1: OAuth grant（hytoken → skland sk_code）
         let sk_code = self.oauth_grant_to_sk_code(hytoken).await?;
-        
+
         // Step 1.5: 使用 u8 grant 获取 u8 token（失败不阻断，保留旧值）
         let u8_token = match device_token {
-            Some(device_token) => {
-                match self.u8_grant_to_sk_code(hytoken, device_token).await {
-                    Ok(u8_sk_code) => match self.get_u8_token_by_channel(&u8_sk_code).await {
-                        Ok((u8_token, _)) => {
-                            log_debug!(
-                                "refresh_cred_by_hytoken: u8 token fetched (len={})",
-                                u8_token.len()
-                            );
-                            Some(u8_token)
-                        }
-                        Err(e) => {
-                            log_warn!(
-                                "refresh_cred_by_hytoken: u8 token fetch FAILED (non-fatal): {}",
-                                e
-                            );
-                            None
-                        }
-                    },
+            Some(device_token) => match self.u8_grant_to_sk_code(hytoken, device_token).await {
+                Ok(u8_sk_code) => match self.get_u8_token_by_channel(&u8_sk_code).await {
+                    Ok((u8_token, _)) => {
+                        log_debug!(
+                            "refresh_cred_by_hytoken: u8 token fetched (len={})",
+                            u8_token.len()
+                        );
+                        Some(u8_token)
+                    }
                     Err(e) => {
                         log_warn!(
-                            "refresh_cred_by_hytoken: u8 grant FAILED (non-fatal): {}",
+                            "refresh_cred_by_hytoken: u8 token fetch FAILED (non-fatal): {}",
                             e
                         );
                         None
                     }
+                },
+                Err(e) => {
+                    log_warn!(
+                        "refresh_cred_by_hytoken: u8 grant FAILED (non-fatal): {}",
+                        e
+                    );
+                    None
                 }
-            }
+            },
             None => {
                 log_warn!("refresh_cred_by_hytoken: no device_token, skipping u8 token refresh");
                 None
             }
         };
-        
+
         // Step 2: 使用 sk_code 换取新的 cred 和 token
         let client = http_client::create_client();
         let start_time = std::time::Instant::now();
@@ -751,18 +762,18 @@ impl SklandService {
             .json(&payload2)
             .send()
             .await
-            .map_err(|e| AppError::AuthError { 
-                message: format!("Step 2 (generate cred) failed: {}", e) 
+            .map_err(|e| AppError::AuthError {
+                message: format!("Step 2 (generate cred) failed: {}", e),
             })?;
-        
+
         let elapsed = start_time.elapsed();
         let status = response.status();
         let resp_headers = response.headers().clone();
-        
+
         let json: serde_json::Value = response.json().await.map_err(|e| AppError::AuthError {
             message: format!("Failed to parse cred response: {}", e),
         })?;
-        
+
         log_info!("=== HTTP RESPONSE: Generate Cred (Step 2) ===");
         log_info!("Status: {}", status);
         log_info!("Time: {:?}", elapsed);
@@ -781,11 +792,11 @@ impl SklandService {
                 message: format!("Generate cred failed: {}", msg),
             });
         }
-        
+
         let data = json.get("data").ok_or_else(|| AppError::AuthError {
             message: "Data not found in cred response".to_string(),
         })?;
-        
+
         let cred = data
             .get("cred")
             .and_then(|v| v.as_str())
@@ -793,7 +804,7 @@ impl SklandService {
                 message: "Cred not found".to_string(),
             })?
             .to_string();
-        
+
         let token = data
             .get("token")
             .and_then(|v| v.as_str())
@@ -801,7 +812,7 @@ impl SklandService {
                 message: "Token not found".to_string(),
             })?
             .to_string();
-        
+
         let user_id = data
             .get("userId")
             .and_then(|v| v.as_str())
@@ -809,7 +820,7 @@ impl SklandService {
                 message: "UserId not found".to_string(),
             })?
             .to_string();
-        
+
         Ok((cred, token, u8_token, user_id))
     }
 
@@ -840,7 +851,10 @@ impl SklandService {
 
         let response = client
             .post("https://u8.hypergryph.com/u8/user/auth/v2/token_by_channel_token")
-            .header("User-Agent", "UnityPlayer/2021.3.34f5 (UnityWebRequest/1.0, libcurl/8.4.0-DEV)")
+            .header(
+                "User-Agent",
+                "UnityPlayer/2021.3.34f5 (UnityWebRequest/1.0, libcurl/8.4.0-DEV)",
+            )
             .header("X-Unity-Version", "2021.3.34f5")
             .header("Accept", "*/*")
             .header("Accept-Encoding", "deflate, gzip")
@@ -891,10 +905,7 @@ impl SklandService {
             })?
             .to_string();
 
-        let uid = data
-            .get("uid")
-            .map(|v| v.to_string())
-            .unwrap_or_default();
+        let uid = data.get("uid").map(|v| v.to_string()).unwrap_or_default();
 
         log_debug!(
             "get_u8_token_by_channel: token_len={}, uid_len={}",

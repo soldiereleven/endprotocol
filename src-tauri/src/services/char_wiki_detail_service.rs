@@ -38,13 +38,15 @@ pub struct CharWikiDetailService {
 
 impl CharWikiDetailService {
     pub fn new(skland_service: Arc<SklandService>) -> Self {
-        let cache_dir = paths::wiki_detail_cache_dir()
-            .unwrap_or_else(|_| PathBuf::from("wiki_detail_cache"));
+        let cache_dir =
+            paths::wiki_detail_cache_dir().unwrap_or_else(|_| PathBuf::from("wiki_detail_cache"));
         log_info!("[wiki_detail_cache] Cache dir: {}", cache_dir.display());
         Self {
             skland_service,
             cache: Arc::new(Mutex::new(HashMap::new())),
-            merged: Arc::new(Mutex::new(serde_json::Value::Object(serde_json::Map::new()))),
+            merged: Arc::new(Mutex::new(
+                serde_json::Value::Object(serde_json::Map::new()),
+            )),
             initialized: AtomicBool::new(false),
             preload_epoch: AtomicU64::new(0),
             preload_in_progress: AtomicBool::new(false),
@@ -86,13 +88,21 @@ impl CharWikiDetailService {
     fn save_to_disk(&self, item_id: &str, data: &serde_json::Value) {
         let cache_dir_str = self.cache_dir.display();
         if let Err(e) = fs::create_dir_all(&self.cache_dir) {
-            log_warn!("[wiki_detail_cache] Failed to create dir '{}': {}", cache_dir_str, e);
+            log_warn!(
+                "[wiki_detail_cache] Failed to create dir '{}': {}",
+                cache_dir_str,
+                e
+            );
             return;
         }
         let path = self.disk_cache_path(item_id);
         match serde_json::to_string(data) {
             Ok(json) => match fs::write(&path, &json) {
-                Ok(_) => log_info!("[wiki_detail_cache] Saved {} -> {}", item_id, path.display()),
+                Ok(_) => log_info!(
+                    "[wiki_detail_cache] Saved {} -> {}",
+                    item_id,
+                    path.display()
+                ),
                 Err(e) => log_warn!("[wiki_detail_cache] Failed to write {}: {}", item_id, e),
             },
             Err(e) => log_warn!("[wiki_detail_cache] Failed to serialize {}: {}", item_id, e),
@@ -102,11 +112,16 @@ impl CharWikiDetailService {
     fn load_from_disk(&self, item_id: &str) -> Option<serde_json::Value> {
         let path = self.disk_cache_path(item_id);
         if path.exists() {
-            let result = fs::read_to_string(&path).ok().and_then(|s| serde_json::from_str(&s).ok());
+            let result = fs::read_to_string(&path)
+                .ok()
+                .and_then(|s| serde_json::from_str(&s).ok());
             if result.is_some() {
                 log_info!("[wiki_detail_cache] Hit {} -> {}", item_id, path.display());
             } else {
-                log_warn!("[wiki_detail_cache] Found but failed to parse {}", path.display());
+                log_warn!(
+                    "[wiki_detail_cache] Found but failed to parse {}",
+                    path.display()
+                );
             }
             result
         } else {
@@ -141,12 +156,7 @@ impl CharWikiDetailService {
 
     /// 强制拉取全部 wiki 详情，可随时调用（不受 initialized 限制）。
     /// 成功时**覆盖**现有 merged 缓存。
-    pub async fn preload_all(
-        &self,
-        catalog: &serde_json::Value,
-        cred: &str,
-        token: &str,
-    ) {
+    pub async fn preload_all(&self, catalog: &serde_json::Value, cred: &str, token: &str) {
         log_info!("Preloading all wiki details ...");
         self.fetch_all(catalog, cred, token).await;
     }
@@ -234,12 +244,7 @@ impl CharWikiDetailService {
     ///
     /// 增量更新 `merged`：每成功拉取一个 item 立即写入，让前端能在
     /// 后台预加载进行中看到部分数据。
-    async fn fetch_all(
-        &self,
-        catalog: &serde_json::Value,
-        cred: &str,
-        token: &str,
-    ) {
+    async fn fetch_all(&self, catalog: &serde_json::Value, cred: &str, token: &str) {
         let item_ids = self.extract_item_ids(catalog);
         if item_ids.is_empty() {
             log_warn!("No items found in wiki catalog");

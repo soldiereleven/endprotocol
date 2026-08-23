@@ -96,7 +96,11 @@ impl AsyncAccountService {
                             "check_and_refresh_user_cred: u8token MISSING for user {}, backfilling...",
                             user_id
                         );
-                        match self.skland_service.get_u8_token_by_hytoken(hyt, dev_tok).await {
+                        match self
+                            .skland_service
+                            .get_u8_token_by_hytoken(hyt, dev_tok)
+                            .await
+                        {
                             Ok(u8t) => {
                                 log_debug!(
                                     "check_and_refresh_user_cred: u8token backfill SUCCESS (len={})",
@@ -154,7 +158,11 @@ impl AsyncAccountService {
 
                 // 使用 hytoken 重新换取 cred 和 token
                 log_debug!("check_and_refresh_user_cred: Calling refresh_cred_by_hytoken...");
-                match self.skland_service.refresh_cred_by_hytoken(&hytoken, device_token.as_deref()).await {
+                match self
+                    .skland_service
+                    .refresh_cred_by_hytoken(&hytoken, device_token.as_deref())
+                    .await
+                {
                     Ok((new_cred, new_token, new_u8token, _)) => {
                         log_debug!("check_and_refresh_user_cred: refresh_cred_by_hytoken SUCCESS, new_cred_len={}, new_token_len={}", new_cred.len(), new_token.len());
                         // 更新配置中的 cred 和 token
@@ -165,7 +173,9 @@ impl AsyncAccountService {
                             obj.insert("token".to_string(), json!(new_token));
                             if let Some(u8t) = new_u8token {
                                 obj.insert("u8token".to_string(), json!(u8t));
-                                log_debug!("check_and_refresh_user_cred: Updated u8token in config");
+                                log_debug!(
+                                    "check_and_refresh_user_cred: Updated u8token in config"
+                                );
                             }
                             log_debug!(
                                 "check_and_refresh_user_cred: Updated cred and token in config"
@@ -215,7 +225,11 @@ impl AsyncAccountService {
                 log_debug!(
                     "check_and_refresh_user_cred: Attempting refresh despite check_cred failure..."
                 );
-                match self.skland_service.refresh_cred_by_hytoken(&hytoken, device_token.as_deref()).await {
+                match self
+                    .skland_service
+                    .refresh_cred_by_hytoken(&hytoken, device_token.as_deref())
+                    .await
+                {
                     Ok((new_cred, new_token, new_u8token, _)) => {
                         log_debug!("check_and_refresh_user_cred: Refresh succeeded despite check_cred failure");
                         let mut config = self.config_service.lock().unwrap();
@@ -225,7 +239,9 @@ impl AsyncAccountService {
                             obj.insert("token".to_string(), json!(new_token));
                             if let Some(u8t) = new_u8token {
                                 obj.insert("u8token".to_string(), json!(u8t));
-                                log_debug!("check_and_refresh_user_cred: Updated u8token in config");
+                                log_debug!(
+                                    "check_and_refresh_user_cred: Updated u8token in config"
+                                );
                             }
                         }
                         config.set(token_key, updated_data)?;
@@ -448,7 +464,9 @@ impl AccountService {
 
             // 预加载所有角色详情
             let role_infos = self.gather_preload_role_infos().await;
-            self.network_service.preload_all_char_details(&role_infos).await?;
+            self.network_service
+                .preload_all_char_details(&role_infos)
+                .await?;
         }
 
         Ok(())
@@ -722,8 +740,7 @@ impl AccountService {
     /// 在本地按用户 id 查找已保存的 device token（用于新设备登录时跳过验证）
     fn get_local_device_token(&self, user_id: &str) -> Option<String> {
         let config = self.config_service.lock().unwrap();
-        let value: Option<serde_json::Value> =
-            config.get(&format!("account_token_{}", user_id));
+        let value: Option<serde_json::Value> = config.get(&format!("account_token_{}", user_id));
         value
             .as_ref()
             .and_then(|v| v.get("device_token"))
@@ -795,7 +812,9 @@ impl AccountService {
     /// 获取开启了自动签到的角色列表
     pub fn get_auto_sign_roles(&self) -> Vec<String> {
         let config = self.config_service.lock().unwrap();
-        config.get::<Vec<String>>("card_auto_sign_users").unwrap_or_default()
+        config
+            .get::<Vec<String>>("card_auto_sign_users")
+            .unwrap_or_default()
     }
 
     /// 查询角色今天是否已在服务器签到
@@ -813,8 +832,14 @@ impl AccountService {
                             for role in roles {
                                 if let Some(rid) = role.get("roleId").and_then(|v| v.as_str()) {
                                     if rid == role_id {
-                                        if let Some(sid) = role.get("serverId").and_then(|v| v.as_str()) {
-                                            found = Some((sid.to_string(), c.to_string(), t.to_string()));
+                                        if let Some(sid) =
+                                            role.get("serverId").and_then(|v| v.as_str())
+                                        {
+                                            found = Some((
+                                                sid.to_string(),
+                                                c.to_string(),
+                                                t.to_string(),
+                                            ));
                                             break;
                                         }
                                     }
@@ -823,19 +848,41 @@ impl AccountService {
                         }
                     }
                 }
-                if found.is_some() { break; }
+                if found.is_some() {
+                    break;
+                }
             }
             found.ok_or_else(|| AppError::AuthError {
-                message: format!("No cred/token found for roleId: {}. Please re-login.", role_id),
+                message: format!(
+                    "No cred/token found for roleId: {}. Please re-login.",
+                    role_id
+                ),
             })?
         };
         let skland = self.skland_service();
         let extra_headers = vec![
-            ("sk-game-role".to_string(), format!("3_{}_{}", role_id, server_id)),
+            (
+                "sk-game-role".to_string(),
+                format!("3_{}_{}", role_id, server_id),
+            ),
             ("token".to_string(), token.clone()),
         ];
-        let json = skland.call_skland_api("GET", "/web/v1/game/endfield/attendance", None, None, &cred, &token, extra_headers).await?;
-        let has_today = json.get("data").and_then(|d| d.get("hasToday")).and_then(|v| v.as_bool()).unwrap_or(false);
+        let json = skland
+            .call_skland_api(
+                "GET",
+                "/web/v1/game/endfield/attendance",
+                None,
+                None,
+                &cred,
+                &token,
+                extra_headers,
+            )
+            .await?;
+        let has_today = json
+            .get("data")
+            .and_then(|d| d.get("hasToday"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
         Ok(has_today)
     }
 
@@ -855,8 +902,15 @@ impl AccountService {
                             for role in roles {
                                 if let Some(rid) = role.get("roleId").and_then(|v| v.as_str()) {
                                     if rid == role_id {
-                                        if let Some(sid) = role.get("serverId").and_then(|v| v.as_str()) {
-                                            found = Some((uid, sid.to_string(), c.to_string(), t.to_string()));
+                                        if let Some(sid) =
+                                            role.get("serverId").and_then(|v| v.as_str())
+                                        {
+                                            found = Some((
+                                                uid,
+                                                sid.to_string(),
+                                                c.to_string(),
+                                                t.to_string(),
+                                            ));
                                             break;
                                         }
                                     }
@@ -865,26 +919,48 @@ impl AccountService {
                         }
                     }
                 }
-                if found.is_some() { break; }
+                if found.is_some() {
+                    break;
+                }
             }
             found.ok_or_else(|| AppError::AuthError {
-                message: format!("No cred/token found for roleId: {}. Please re-login.", role_id),
+                message: format!(
+                    "No cred/token found for roleId: {}. Please re-login.",
+                    role_id
+                ),
             })?
         };
         let (final_cred, final_token) = match self.check_and_refresh_user_cred(&user_id).await {
             Ok(Some((new_cred, new_token))) => (new_cred, new_token),
             Ok(None) => (cred, token),
             Err(e) => {
-                log_error!("do_attendance_for_role: cred refresh failed for user {}: {}", user_id, e);
+                log_error!(
+                    "do_attendance_for_role: cred refresh failed for user {}: {}",
+                    user_id,
+                    e
+                );
                 (cred, token)
             }
         };
         let skland = self.skland_service();
         let extra_headers = vec![
-            ("sk-game-role".to_string(), format!("3_{}_{}", role_id, server_id)),
+            (
+                "sk-game-role".to_string(),
+                format!("3_{}_{}", role_id, server_id),
+            ),
             ("token".to_string(), final_token.clone()),
         ];
-        skland.call_skland_api("POST", "/web/v1/game/endfield/attendance", None, Some(serde_json::json!({})), &final_cred, &final_token, extra_headers).await?;
+        skland
+            .call_skland_api(
+                "POST",
+                "/web/v1/game/endfield/attendance",
+                None,
+                Some(serde_json::json!({})),
+                &final_cred,
+                &final_token,
+                extra_headers,
+            )
+            .await?;
         log_info!("do_attendance_for_role: SUCCESS for role_id={}", role_id);
         Ok(())
     }
@@ -1141,8 +1217,7 @@ impl AccountService {
                             let hytoken_key = format!("account_token_{}", user_id);
                             let (hytoken, device_token): (Option<String>, Option<String>) = {
                                 let config = self.config_service.lock().unwrap();
-                                let value: Option<serde_json::Value> =
-                                    config.get(&hytoken_key);
+                                let value: Option<serde_json::Value> = config.get(&hytoken_key);
                                 let hytoken = value.as_ref().and_then(|v| {
                                     v.get("hytoken")
                                         .and_then(|h| h.as_str())
@@ -1222,7 +1297,10 @@ impl AccountService {
                                                 let account = AccountInfo {
                                                     id: role_id.clone(),
                                                     avatar: String::new(),
-                                                    nickname: format!("Role {}", &role_id[..8.min(role_id.len())]),
+                                                    nickname: format!(
+                                                        "Role {}",
+                                                        &role_id[..8.min(role_id.len())]
+                                                    ),
                                                     level: 0,
                                                     server: server_id.clone(),
                                                     status: "offline".to_string(),
@@ -1631,8 +1709,7 @@ impl AccountService {
                             let hytoken_key = format!("account_token_{}", user_id);
                             let (hytoken, device_token): (Option<String>, Option<String>) = {
                                 let config = self.config_service.lock().unwrap();
-                                let value: Option<serde_json::Value> =
-                                    config.get(&hytoken_key);
+                                let value: Option<serde_json::Value> = config.get(&hytoken_key);
                                 let hytoken = value.as_ref().and_then(|v| {
                                     v.get("hytoken")
                                         .and_then(|h| h.as_str())
@@ -1779,7 +1856,6 @@ impl AccountService {
         log_info!("Method: POST");
         log_info!("URL: https://as.hypergryph.com/general/v1/send_phone_code");
 
-
         let response = client
             .post("https://as.hypergryph.com/general/v1/send_phone_code")
             .json(&payload)
@@ -1801,7 +1877,6 @@ impl AccountService {
                 log_debug!("  {}: {}", name, value_str);
             }
         }
-
 
         if json.get("status").and_then(|v| v.as_i64()) == Some(0) {
             Ok(true)
@@ -1833,7 +1908,6 @@ impl AccountService {
         log_info!("Method: POST");
         log_info!("URL: https://as.hypergryph.com/user/auth/v2/token_by_phone_code");
 
-
         let response = client
             .post("https://as.hypergryph.com/user/auth/v2/token_by_phone_code")
             .json(&payload)
@@ -1855,7 +1929,6 @@ impl AccountService {
                 log_debug!("  {}: {}", name, value_str);
             }
         }
-
 
         if json.get("status").and_then(|v| v.as_i64()) == Some(0) {
             let data = json.get("data").ok_or_else(|| AppError::AuthError {
@@ -2271,7 +2344,11 @@ impl AccountService {
         log_debug!("About to fetch u8 token for user_id={}", user_id);
         match device_token.as_deref() {
             Some(dev_tok) => {
-                match self.skland_service.get_u8_token_by_hytoken(&hy_token, dev_tok).await {
+                match self
+                    .skland_service
+                    .get_u8_token_by_hytoken(&hy_token, dev_tok)
+                    .await
+                {
                     Ok(u8_token) => {
                         log_debug!("u8 token fetched (len={})", u8_token.len());
                         if let Err(e) = self.set_u8token_for_user(&user_id, &u8_token).await {
@@ -2287,7 +2364,10 @@ impl AccountService {
                 }
             }
             None => {
-                log_warn!("No device_token, skipping u8 token fetch for user {}", user_id);
+                log_warn!(
+                    "No device_token, skipping u8 token fetch for user {}",
+                    user_id
+                );
             }
         }
 
@@ -2594,7 +2674,6 @@ impl AccountService {
             }
         }
 
-
         if json.get("status").and_then(|v| v.as_i64()) == Some(0) {
             let data = json.get("data").ok_or_else(|| AppError::AuthError {
                 message: "Data not found in response".to_string(),
@@ -2651,7 +2730,6 @@ impl AccountService {
         log_info!("Method: POST");
         log_info!("URL: https://as.hypergryph.com/user/oauth2/v2/grant");
 
-
         let response = client
             .post("https://as.hypergryph.com/user/oauth2/v2/grant")
             .json(&payload)
@@ -2673,7 +2751,6 @@ impl AccountService {
                 log_debug!("  {}: {}", name, value_str);
             }
         }
-
 
         if json.get("status").and_then(|v| v.as_i64()) == Some(0) {
             json.get("data")
@@ -2707,7 +2784,6 @@ impl AccountService {
         log_info!("Method: POST");
         log_info!("URL: https://zonai.skland.com/api/v1/user/auth/generate_cred_by_code");
 
-
         let response = client
             .post("https://zonai.skland.com/api/v1/user/auth/generate_cred_by_code")
             .json(&payload)
@@ -2729,7 +2805,6 @@ impl AccountService {
                 log_debug!("  {}: {}", name, value_str);
             }
         }
-
 
         if json.get("code").and_then(|v| v.as_i64()) == Some(0) {
             let data = json.get("data").ok_or_else(|| AppError::AuthError {

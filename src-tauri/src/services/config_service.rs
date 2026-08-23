@@ -46,7 +46,9 @@ impl ConfigService {
         T: DeserializeOwned,
     {
         let cache = self.cache.lock().ok()?;
-        cache.get(key).and_then(|v| serde_json::from_value(v.clone()).ok())
+        cache
+            .get(key)
+            .and_then(|v| serde_json::from_value(v.clone()).ok())
     }
 
     /// 设置配置值并持久化

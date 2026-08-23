@@ -228,7 +228,12 @@ impl CharDetailService {
 
     /// 处理角色详情中的所有图片URL：
     /// 已缓存的替换为本地路径，未缓存的保留远程URL由前端按需下载（懒加载）。
-    async fn process_images(&self, detail: &mut CharDetailData, cred: &str, token: &str) -> Result<(), AppError> {
+    async fn process_images(
+        &self,
+        detail: &mut CharDetailData,
+        cred: &str,
+        token: &str,
+    ) -> Result<(), AppError> {
         log_debug!("Processing images for {} chars", detail.chars.len());
 
         let image_cache = ImageCacheService::new().map_err(|e| {
@@ -256,16 +261,27 @@ impl CharDetailService {
                     for skill in skills.iter_mut() {
                         localize_or_keep(&mut skill.icon_url, &image_cache, ImageType::SkillIcon);
                         for form in skill.forms.iter_mut() {
-                            localize_or_keep(&mut form.icon_url, &image_cache, ImageType::SkillIcon);
+                            localize_or_keep(
+                                &mut form.icon_url,
+                                &image_cache,
+                                ImageType::SkillIcon,
+                            );
                         }
                     }
                 }
 
-                for talents in [&mut char_data.ability_talents, &mut char_data.combat_talents] {
+                for talents in [
+                    &mut char_data.ability_talents,
+                    &mut char_data.combat_talents,
+                ] {
                     if let Some(ref mut list) = talents {
                         for t in list.iter_mut() {
                             localize_or_keep(&mut t.icon_url, &image_cache, ImageType::SkillIcon);
-                            localize_or_keep(&mut t.locked_icon_url, &image_cache, ImageType::SkillIcon);
+                            localize_or_keep(
+                                &mut t.locked_icon_url,
+                                &image_cache,
+                                ImageType::SkillIcon,
+                            );
                         }
                     }
                 }
@@ -273,19 +289,73 @@ impl CharDetailService {
                 if let Some(ref mut list) = char_data.cultivation_talents {
                     for t in list.iter_mut() {
                         localize_or_keep(&mut t.icon_url, &image_cache, ImageType::SkillIcon);
-                        localize_or_keep(&mut t.locked_icon_url, &image_cache, ImageType::SkillIcon);
+                        localize_or_keep(
+                            &mut t.locked_icon_url,
+                            &image_cache,
+                            ImageType::SkillIcon,
+                        );
                     }
                 }
 
                 // Process equipment icon URLs
-                Self::cache_equip_icon(&image_cache, &mut char.weapon, "weaponData", char_name, ImageType::WeaponIcon).await;
-                Self::cache_equip_icon(&image_cache, &mut char.body_equip, "equipData", char_name, ImageType::EquipIcon).await;
-                Self::cache_equip_icon(&image_cache, &mut char.arm_equip, "equipData", char_name, ImageType::EquipIcon).await;
-                Self::cache_equip_icon(&image_cache, &mut char.first_accessory, "equipData", char_name, ImageType::EquipIcon).await;
-                Self::cache_equip_icon(&image_cache, &mut char.second_accessory, "equipData", char_name, ImageType::EquipIcon).await;
-                Self::cache_equip_icon(&image_cache, &mut char.tactical_item, "tacticalItemData", char_name, ImageType::EquipIcon).await;
+                Self::cache_equip_icon(
+                    &image_cache,
+                    &mut char.weapon,
+                    "weaponData",
+                    char_name,
+                    ImageType::WeaponIcon,
+                )
+                .await;
+                Self::cache_equip_icon(
+                    &image_cache,
+                    &mut char.body_equip,
+                    "equipData",
+                    char_name,
+                    ImageType::EquipIcon,
+                )
+                .await;
+                Self::cache_equip_icon(
+                    &image_cache,
+                    &mut char.arm_equip,
+                    "equipData",
+                    char_name,
+                    ImageType::EquipIcon,
+                )
+                .await;
+                Self::cache_equip_icon(
+                    &image_cache,
+                    &mut char.first_accessory,
+                    "equipData",
+                    char_name,
+                    ImageType::EquipIcon,
+                )
+                .await;
+                Self::cache_equip_icon(
+                    &image_cache,
+                    &mut char.second_accessory,
+                    "equipData",
+                    char_name,
+                    ImageType::EquipIcon,
+                )
+                .await;
+                Self::cache_equip_icon(
+                    &image_cache,
+                    &mut char.tactical_item,
+                    "tacticalItemData",
+                    char_name,
+                    ImageType::EquipIcon,
+                )
+                .await;
                 // Cache gem icon from weapon (保持现有目录解析机制)
-                Self::cache_gem_icon(&image_cache, &self.skland_service, &mut char.weapon, char_name, cred, token).await;
+                Self::cache_gem_icon(
+                    &image_cache,
+                    &self.skland_service,
+                    &mut char.weapon,
+                    char_name,
+                    cred,
+                    token,
+                )
+                .await;
             }
         }
 
@@ -315,7 +385,8 @@ impl CharDetailService {
                         if let Some(serde_json::Value::String(url)) = data_obj.get("iconUrl") {
                             let mut url_mut = url.clone();
                             localize_or_keep(&mut url_mut, image_cache, image_type);
-                            data_obj.insert("iconUrl".to_string(), serde_json::Value::String(url_mut));
+                            data_obj
+                                .insert("iconUrl".to_string(), serde_json::Value::String(url_mut));
                         }
                     }
                 }
@@ -352,7 +423,10 @@ impl CharDetailService {
             let gem = match obj.get("gem") {
                 Some(g) => g,
                 None => {
-                    log_warn!("  no gem field in weapon object, keys: {:?}", obj.keys().collect::<Vec<_>>());
+                    log_warn!(
+                        "  no gem field in weapon object, keys: {:?}",
+                        obj.keys().collect::<Vec<_>>()
+                    );
                     return;
                 }
             };
@@ -366,7 +440,10 @@ impl CharDetailService {
             let gem_data = match gem_obj.get("gemData") {
                 Some(d) => d,
                 None => {
-                    log_warn!("  no gemData in gem, keys: {:?}", gem_obj.keys().collect::<Vec<_>>());
+                    log_warn!(
+                        "  no gemData in gem, keys: {:?}",
+                        gem_obj.keys().collect::<Vec<_>>()
+                    );
                     return;
                 }
             };
@@ -380,7 +457,10 @@ impl CharDetailService {
             let url = match gem_data_obj.get("icon") {
                 Some(serde_json::Value::String(u)) => u.clone(),
                 _ => {
-                    log_warn!("  no icon string in gemData, keys: {:?}", gem_data_obj.keys().collect::<Vec<_>>());
+                    log_warn!(
+                        "  no icon string in gemData, keys: {:?}",
+                        gem_data_obj.keys().collect::<Vec<_>>()
+                    );
                     return;
                 }
             };
@@ -388,13 +468,28 @@ impl CharDetailService {
                 log_warn!("  icon is empty or asset.localhost: {}", url);
                 return;
             }
-            let name = gem_data_obj.get("name").and_then(|n| n.as_str()).unwrap_or("").trim().to_string();
-            let template_id = gem_data_obj.get("templateId").and_then(|t| t.as_str()).unwrap_or("").trim().to_string();
+            let name = gem_data_obj
+                .get("name")
+                .and_then(|n| n.as_str())
+                .unwrap_or("")
+                .trim()
+                .to_string();
+            let template_id = gem_data_obj
+                .get("templateId")
+                .and_then(|t| t.as_str())
+                .unwrap_or("")
+                .trim()
+                .to_string();
             let rarity = template_id.replace("item_gem_rarity_", "");
             (url, name, rarity)
         };
 
-        let filename = original_url.split('/').last().or_else(|| original_url.split('\\').last()).unwrap_or("").to_string();
+        let filename = original_url
+            .split('/')
+            .last()
+            .or_else(|| original_url.split('\\').last())
+            .unwrap_or("")
+            .to_string();
 
         // 1) Check if the file already exists in cache (named by original URL filename)
         if !filename.is_empty() {
@@ -407,7 +502,10 @@ impl CharDetailService {
 
         // 2) No cache hit — fetch wiki catalog to find the correct gem icon
         if gem_name.is_empty() || gem_rarity.is_empty() {
-            log_warn!("Gem name or rarity missing for {}, cannot resolve via catalog", char_name);
+            log_warn!(
+                "Gem name or rarity missing for {}, cannot resolve via catalog",
+                char_name
+            );
             return;
         }
 
@@ -427,24 +525,45 @@ impl CharDetailService {
 
         // Navigate: response.data.catalog[0].typeSub[?].items
         let items: &Vec<serde_json::Value> = {
-            let catalog_array = match catalog.get("data").and_then(|d| d.get("catalog")).and_then(|c| c.as_array()) {
+            let catalog_array = match catalog
+                .get("data")
+                .and_then(|d| d.get("catalog"))
+                .and_then(|c| c.as_array())
+            {
                 Some(arr) => arr,
                 None => {
-                    log_warn!("No data.catalog array in gem catalog response for {}", char_name);
+                    log_warn!(
+                        "No data.catalog array in gem catalog response for {}",
+                        char_name
+                    );
                     return;
                 }
             };
-            let first_entry = match catalog_array.first().and_then(|e| e.get("typeSub")).and_then(|ts| ts.as_array()) {
+            let first_entry = match catalog_array
+                .first()
+                .and_then(|e| e.get("typeSub"))
+                .and_then(|ts| ts.as_array())
+            {
                 Some(arr) => arr,
                 None => {
-                    log_warn!("No catalog[0].typeSub array in gem catalog response for {}", char_name);
+                    log_warn!(
+                        "No catalog[0].typeSub array in gem catalog response for {}",
+                        char_name
+                    );
                     return;
                 }
             };
-            let items_arr = match first_entry.first().and_then(|s| s.get("items")).and_then(|i| i.as_array()) {
+            let items_arr = match first_entry
+                .first()
+                .and_then(|s| s.get("items"))
+                .and_then(|i| i.as_array())
+            {
                 Some(arr) => arr,
                 None => {
-                    log_warn!("No typeSub[0].items array in gem catalog response for {}", char_name);
+                    log_warn!(
+                        "No typeSub[0].items array in gem catalog response for {}",
+                        char_name
+                    );
                     return;
                 }
             };
@@ -464,13 +583,16 @@ impl CharDetailService {
                 return false;
             }
             let prefix_match = gem_chars[0..2] == item_chars[0..2];
-            let suffix_match = gem_chars[gem_chars.len()-2..] == item_chars[item_chars.len()-2..];
+            let suffix_match =
+                gem_chars[gem_chars.len() - 2..] == item_chars[item_chars.len() - 2..];
             if !prefix_match || !suffix_match {
                 return false;
             }
             let tag_match = if let Some(tags) = item.get("tagIds").and_then(|t| t.as_array()) {
                 tags.iter().any(|t| {
-                    t.as_str().map(|v| v.ends_with(&tag_suffix)).unwrap_or(false)
+                    t.as_str()
+                        .map(|v| v.ends_with(&tag_suffix))
+                        .unwrap_or(false)
                 })
             } else {
                 false
@@ -479,9 +601,18 @@ impl CharDetailService {
         });
 
         let cover_url = match matched {
-            Some(item) => item.get("brief").and_then(|b| b.get("cover")).and_then(|c| c.as_str()).map(|s| s.to_string()),
+            Some(item) => item
+                .get("brief")
+                .and_then(|b| b.get("cover"))
+                .and_then(|c| c.as_str())
+                .map(|s| s.to_string()),
             None => {
-                log_warn!("No matching gem found in catalog for {} (name={}, rarity={})", char_name, gem_name, gem_rarity);
+                log_warn!(
+                    "No matching gem found in catalog for {} (name={}, rarity={})",
+                    char_name,
+                    gem_name,
+                    gem_rarity
+                );
                 return;
             }
         };
@@ -497,7 +628,8 @@ impl CharDetailService {
         // 3) Download the matched cover and save with the original filename
         if !filename.is_empty() {
             let client = reqwest::Client::new();
-            let resp = match client.get(&cover_url)
+            let resp = match client
+                .get(&cover_url)
                 .header("Referer", "https://game.skland.com/")
                 .send()
                 .await
@@ -511,7 +643,11 @@ impl CharDetailService {
             let bytes = match resp.bytes().await {
                 Ok(b) => b,
                 Err(e) => {
-                    log_warn!("Failed to read bytes from gem cover for {}: {}", char_name, e);
+                    log_warn!(
+                        "Failed to read bytes from gem cover for {}: {}",
+                        char_name,
+                        e
+                    );
                     return;
                 }
             };
@@ -529,7 +665,10 @@ impl CharDetailService {
                 }
             }
         } else {
-            match image_cache.get_or_download_image(&cover_url, ImageType::GemIcon).await {
+            match image_cache
+                .get_or_download_image(&cover_url, ImageType::GemIcon)
+                .await
+            {
                 Ok(p) => update_gem_icon_path(weapon, p),
                 Err(e) => {
                     log_warn!("Failed to cache gem cover for {}: {}", char_name, e);
@@ -626,7 +765,8 @@ fn update_gem_icon_path(weapon: &mut Option<serde_json::Value>, path: String) {
                 if let Some(gem_obj) = gem.as_object_mut() {
                     if let Some(gem_data) = gem_obj.get_mut("gemData") {
                         if let Some(gem_data_obj) = gem_data.as_object_mut() {
-                            gem_data_obj.insert("icon".to_string(), serde_json::Value::String(path));
+                            gem_data_obj
+                                .insert("icon".to_string(), serde_json::Value::String(path));
                         }
                     }
                 }

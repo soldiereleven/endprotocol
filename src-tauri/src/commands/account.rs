@@ -147,7 +147,10 @@ pub async fn scan_status(
     scan_id: String,
 ) -> Result<ScanStatus, String> {
     let service = state.lock().await;
-    service.scan_status(&scan_id).await.map_err(|e| e.to_string())
+    service
+        .scan_status(&scan_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// 通过扫码添加账户

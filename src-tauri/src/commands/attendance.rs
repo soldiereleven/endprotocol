@@ -6,7 +6,7 @@ use crate::services::account_service::AccountService;
 use crate::services::avatar_cache_service::ImageType;
 use crate::services::config_service::ConfigService;
 use crate::utils::AppError;
-use crate::{log_info, log_error};
+use crate::{log_error, log_info};
 
 /// 根据 roleId 在配置中查找对应的 cred 和 token
 fn lookup_cred_token(
@@ -36,12 +36,7 @@ fn lookup_cred_token(
                         if let Some(rid) = role.get("roleId").and_then(|v| v.as_str()) {
                             if rid == role_id {
                                 if let Some(sid) = role.get("serverId").and_then(|v| v.as_str()) {
-                                    return Ok((
-                                        user_id,
-                                        sid.to_string(),
-                                        c.clone(),
-                                        t.clone(),
-                                    ));
+                                    return Ok((user_id, sid.to_string(), c.clone(), t.clone()));
                                 }
                             }
                         }
@@ -52,7 +47,10 @@ fn lookup_cred_token(
     }
 
     Err(AppError::AuthError {
-        message: format!("No cred/token found for roleId: {}. Please re-login.", role_id),
+        message: format!(
+            "No cred/token found for roleId: {}. Please re-login.",
+            role_id
+        ),
     })
 }
 
@@ -78,7 +76,11 @@ pub async fn get_attendance(
         Ok(Some((new_cred, new_token))) => (new_cred, new_token),
         Ok(None) => (cred, token),
         Err(e) => {
-            log_error!("get_attendance: cred refresh failed for user {}: {}", user_id, e);
+            log_error!(
+                "get_attendance: cred refresh failed for user {}: {}",
+                user_id,
+                e
+            );
             (cred, token)
         }
     };
@@ -86,19 +88,27 @@ pub async fn get_attendance(
     let skland = service.skland_service();
     let path = "/web/v1/game/endfield/attendance";
     let extra_headers = vec![
-        ("sk-game-role".to_string(), format!("3_{}_{}", role_id, server_id)),
+        (
+            "sk-game-role".to_string(),
+            format!("3_{}_{}", role_id, server_id),
+        ),
         ("token".to_string(), final_token.clone()),
     ];
 
     let mut json = match skland
-        .call_skland_api("GET", path, None, None, &final_cred, &final_token, extra_headers)
+        .call_skland_api(
+            "GET",
+            path,
+            None,
+            None,
+            &final_cred,
+            &final_token,
+            extra_headers,
+        )
         .await
     {
         Ok(json) => {
-            let code = json
-                .get("code")
-                .and_then(|c| c.as_i64())
-                .unwrap_or(-1);
+            let code = json.get("code").and_then(|c| c.as_i64()).unwrap_or(-1);
             if code == 0 {
                 log_info!("get_attendance: SUCCESS for role_id={}", role_id);
                 json
@@ -107,8 +117,15 @@ pub async fn get_attendance(
                     .get("message")
                     .and_then(|m| m.as_str())
                     .unwrap_or("unknown");
-                log_error!("get_attendance: API returned code={}, message={}", code, msg);
-                return Err(format!("Attendance API error: code={}, message={}", code, msg));
+                log_error!(
+                    "get_attendance: API returned code={}, message={}",
+                    code,
+                    msg
+                );
+                return Err(format!(
+                    "Attendance API error: code={}, message={}",
+                    code, msg
+                ));
             }
         }
         Err(e) => {
@@ -119,21 +136,35 @@ pub async fn get_attendance(
 
     // 下载 resourceInfoMap 中的奖励图标
     if let Some(data) = json.get_mut("data") {
-        if let Some(map) = data.get_mut("resourceInfoMap").and_then(|m| m.as_object_mut()) {
+        if let Some(map) = data
+            .get_mut("resourceInfoMap")
+            .and_then(|m| m.as_object_mut())
+        {
             let cache_service = service.avatar_cache_service();
             for (_key, entry) in map.iter_mut() {
-                if let Some(icon_url) = entry.get("icon").and_then(|v| v.as_str()).map(|s| s.to_string()) {
+                if let Some(icon_url) = entry
+                    .get("icon")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+                {
                     match cache_service
                         .get_or_download_image(&icon_url, ImageType::AttendanceIcon)
                         .await
                     {
                         Ok(local_path) => {
                             if let Some(obj) = entry.as_object_mut() {
-                                obj.insert("icon".to_string(), serde_json::Value::String(local_path));
+                                obj.insert(
+                                    "icon".to_string(),
+                                    serde_json::Value::String(local_path),
+                                );
                             }
                         }
                         Err(e) => {
-                            log_error!("get_attendance: Failed to download icon {}: {}", icon_url, e);
+                            log_error!(
+                                "get_attendance: Failed to download icon {}: {}",
+                                icon_url,
+                                e
+                            );
                         }
                     }
                 }
@@ -167,7 +198,11 @@ pub async fn do_attendance(
         Ok(Some((new_cred, new_token))) => (new_cred, new_token),
         Ok(None) => (cred, token),
         Err(e) => {
-            log_error!("do_attendance: cred refresh failed for user {}: {}", user_id, e);
+            log_error!(
+                "do_attendance: cred refresh failed for user {}: {}",
+                user_id,
+                e
+            );
             (cred, token)
         }
     };
@@ -175,19 +210,27 @@ pub async fn do_attendance(
     let skland = service.skland_service();
     let path = "/web/v1/game/endfield/attendance";
     let extra_headers = vec![
-        ("sk-game-role".to_string(), format!("3_{}_{}", role_id, server_id)),
+        (
+            "sk-game-role".to_string(),
+            format!("3_{}_{}", role_id, server_id),
+        ),
         ("token".to_string(), final_token.clone()),
     ];
 
     match skland
-        .call_skland_api("POST", path, None, Some(serde_json::json!({})), &final_cred, &final_token, extra_headers)
+        .call_skland_api(
+            "POST",
+            path,
+            None,
+            Some(serde_json::json!({})),
+            &final_cred,
+            &final_token,
+            extra_headers,
+        )
         .await
     {
         Ok(json) => {
-            let code = json
-                .get("code")
-                .and_then(|c| c.as_i64())
-                .unwrap_or(-1);
+            let code = json.get("code").and_then(|c| c.as_i64()).unwrap_or(-1);
             if code == 0 {
                 log_info!("do_attendance: SUCCESS for role_id={}", role_id);
                 Ok(json)
@@ -197,7 +240,10 @@ pub async fn do_attendance(
                     .and_then(|m| m.as_str())
                     .unwrap_or("unknown");
                 log_error!("do_attendance: API returned code={}, message={}", code, msg);
-                Err(format!("Attendance API error: code={}, message={}", code, msg))
+                Err(format!(
+                    "Attendance API error: code={}, message={}",
+                    code, msg
+                ))
             }
         }
         Err(e) => {

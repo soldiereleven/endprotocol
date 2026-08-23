@@ -4,9 +4,9 @@ use tauri::WebviewWindow;
 use tokio::time::{sleep, Duration};
 use windows_sys::Win32::Foundation::POINT;
 use windows_sys::Win32::Graphics::Gdi::{
-    BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDIBits,
-    GetDC, GetMonitorInfoW, MonitorFromPoint, ReleaseDC, SelectObject, BI_RGB, BITMAPINFO,
-    BITMAPINFOHEADER, DIB_RGB_COLORS, MONITORINFO, MONITOR_DEFAULTTONEAREST, SRCCOPY,
+    BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDC, GetDIBits,
+    GetMonitorInfoW, MonitorFromPoint, ReleaseDC, SelectObject, BITMAPINFO, BITMAPINFOHEADER,
+    BI_RGB, DIB_RGB_COLORS, MONITORINFO, MONITOR_DEFAULTTONEAREST, SRCCOPY,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::GetCursorPos;
 

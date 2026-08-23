@@ -1,8 +1,8 @@
-use std::fs;
-use std::path::PathBuf;
 use crate::services::avatar_cache_service::{all_sub_dir_names, resolve_url_subdir};
 use crate::utils::paths;
 use crate::{log_info, log_warn};
+use std::fs;
+use std::path::PathBuf;
 
 /// 读取本地图片文件，返回字节数组
 #[tauri::command]
@@ -30,7 +30,12 @@ pub async fn download_image(
     cache_dir: String,
     sub_dir: String,
 ) -> Result<String, String> {
-    log_info!("[download_image] url={}, cache_dir={}, sub_dir={}", url, cache_dir, sub_dir);
+    log_info!(
+        "[download_image] url={}, cache_dir={}, sub_dir={}",
+        url,
+        cache_dir,
+        sub_dir
+    );
 
     if url.is_empty() {
         log_warn!("[download_image] Empty URL");
@@ -44,12 +49,11 @@ pub async fn download_image(
     }
 
     // 从URL提取文件名
-    let filename = extract_filename_from_url(&url)
-        .ok_or_else(|| {
-            let msg = format!("Invalid image URL: {}", url);
-            log_warn!("[download_image] {}", msg);
-            msg
-        })?;
+    let filename = extract_filename_from_url(&url).ok_or_else(|| {
+        let msg = format!("Invalid image URL: {}", url);
+        log_warn!("[download_image] {}", msg);
+        msg
+    })?;
     log_info!("[download_image] Extracted filename: {}", filename);
 
     // 空 sub_dir：解析图片类型
@@ -110,14 +114,11 @@ pub async fn download_image(
     let status = response.status();
     log_info!("[download_image] Response status: {}", status);
 
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|e| {
-            let msg = format!("Failed to read response body: {}", e);
-            log_warn!("[download_image] {}", msg);
-            msg
-        })?;
+    let bytes = response.bytes().await.map_err(|e| {
+        let msg = format!("Failed to read response body: {}", e);
+        log_warn!("[download_image] {}", msg);
+        msg
+    })?;
 
     log_info!("[download_image] Downloaded {} bytes", bytes.len());
 
