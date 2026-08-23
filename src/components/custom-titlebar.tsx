@@ -7,11 +7,24 @@ import {
   MaximizeIcon,
   RestoreIcon,
   CloseIcon,
+  BellIcon,
 } from "@/components/ui/app-icon";
+import { AppInfoDrawer } from "@/components/app-info-drawer";
+import { getUnreadCount, hasUrgentUnread, subscribeMessages } from "@/utils/messageStore";
 import logger from "@/utils/logger";
 
 export const CustomTitlebar = () => {
   const [isMaximized, setIsMaximized] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(() => getUnreadCount());
+  const [hasUrgent, setHasUrgent] = useState(() => hasUrgentUnread());
+
+  useEffect(() => {
+    return subscribeMessages(() => {
+      setUnreadCount(getUnreadCount());
+      setHasUrgent(hasUrgentUnread());
+    });
+  }, []);
 
   const checkMaximizedState = async () => {
     try {
@@ -69,54 +82,73 @@ export const CustomTitlebar = () => {
   };
 
   return (
-    <div
-      className="h-11 flex items-center pl-5 pr-2 relative"
-      style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
-    >
+    <>
       <div
-        className="flex items-center gap-2.5"
-        style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-      >
-        <div className="w-2 h-2 rounded-full bg-primary/60" />
-        <h1 className="text-sm font-bold text-foreground tracking-widest">ENDPROTOCOL</h1>
-      </div>
-
-      <div
-        className="flex-1"
+        className="h-11 flex items-center pl-5 pr-2 relative"
         style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
-      />
-
-      <div
-        className="flex items-center gap-1 px-2 rounded-xl glass-surface border border-separator/60"
-        style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
       >
-        <button
-          type="button"
-          onClick={handleMinimize}
-          aria-label="Minimize"
-          className="flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-muted transition-colors duration-200 hover:border-separator/70 hover:text-foreground cursor-pointer"
+        <div
+          className="flex items-center gap-2.5"
+          style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
-          <MinimizeIcon size={14} />
-        </button>
+          <div className="w-2 h-2 rounded-full bg-primary/60" />
+          <h1 className="text-sm font-bold text-foreground tracking-widest">ENDPROTOCOL</h1>
+        </div>
+
+        <div
+          className="flex-1"
+          style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+        />
 
         <button
           type="button"
-          onClick={handleMaximize}
-          aria-label={isMaximized ? "Restore" : "Maximize"}
-          className="flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-muted transition-colors duration-200 hover:border-separator/70 hover:text-foreground cursor-pointer"
+          onClick={() => setInfoOpen(true)}
+          aria-label="Messages"
+          className="relative flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-muted transition-colors duration-200 hover:border-separator/70 hover:text-foreground cursor-pointer mr-2"
+          style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
-          {isMaximized ? <RestoreIcon size={14} /> : <MaximizeIcon size={14} />}
+          <BellIcon size={14} />
+          {unreadCount > 0 && (
+            <span className={`absolute -top-0.5 -right-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full px-0.5 text-[8px] font-bold leading-none text-primary-foreground ${hasUrgent ? "bg-danger" : "bg-primary"}`}>
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
         </button>
 
-        <button
-          type="button"
-          onClick={handleClose}
-          aria-label="Close"
-          className="flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-muted transition-colors duration-200 hover:border-danger/40 hover:text-danger cursor-pointer"
+        <div
+          className="flex items-center gap-1 px-2 rounded-xl glass-surface border border-separator/60"
+          style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
-          <CloseIcon size={14} />
-        </button>
+          <button
+            type="button"
+            onClick={handleMinimize}
+            aria-label="Minimize"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-muted transition-colors duration-200 hover:border-separator/70 hover:text-foreground cursor-pointer"
+          >
+            <MinimizeIcon size={14} />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleMaximize}
+            aria-label={isMaximized ? "Restore" : "Maximize"}
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-muted transition-colors duration-200 hover:border-separator/70 hover:text-foreground cursor-pointer"
+          >
+            {isMaximized ? <RestoreIcon size={14} /> : <MaximizeIcon size={14} />}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleClose}
+            aria-label="Close"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-muted transition-colors duration-200 hover:border-danger/40 hover:text-danger cursor-pointer"
+          >
+            <CloseIcon size={14} />
+          </button>
+        </div>
       </div>
-    </div>
+
+      <AppInfoDrawer isOpen={infoOpen} onClose={() => setInfoOpen(false)} />
+    </>
   );
 };

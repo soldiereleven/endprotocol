@@ -12,6 +12,7 @@ import {
   Square,
   Copy,
   Menu,
+  Bell,
 } from "lucide";
 import { createMorphIcon } from "@/components/morph-icon";
 import clsx from "clsx";
@@ -29,6 +30,7 @@ export const MinimizeIcon = createMorphIcon(Minus);
 export const MaximizeIcon = createMorphIcon(Square);
 export const RestoreIcon = createMorphIcon(Copy);
 export const MenuIcon = createMorphIcon(Menu);
+export const BellIcon = createMorphIcon(Bell);
 
 export function StatusDot({
   tone = "default",
