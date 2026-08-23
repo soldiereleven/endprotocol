@@ -12,150 +12,62 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    name: Build Windows x64
+  release:
+    name: Build and Release Windows x64
     runs-on: windows-latest
 
     steps:
-      # --------------------------------------------------------
+      # ==========================================================
       # Checkout
-      # --------------------------------------------------------
+      # ==========================================================
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # --------------------------------------------------------
-      # pnpm
-      # --------------------------------------------------------
+      # ==========================================================
+      # Setup pnpm
+      # ==========================================================
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10
 
-      # --------------------------------------------------------
-      # Node.js
-      # --------------------------------------------------------
+      # ==========================================================
+      # Setup Node.js
+      # ==========================================================
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
 
-      # --------------------------------------------------------
+      # ==========================================================
       # Install dependencies
-      # --------------------------------------------------------
+      # ==========================================================
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # --------------------------------------------------------
-      # Rust
-      # --------------------------------------------------------
+      # ==========================================================
+      # Setup Rust
+      # ==========================================================
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
 
-      # --------------------------------------------------------
+      # ==========================================================
       # Rust cache
-      # --------------------------------------------------------
+      # ==========================================================
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: |
             src-tauri -> target
 
-      # --------------------------------------------------------
-      # Build Tauri
-      # --------------------------------------------------------
-      - name: Build Tauri
-        run: pnpm tauri build --target x86_64-pc-windows-msvc
-
-      # --------------------------------------------------------
-      # Collect artifacts
-      # --------------------------------------------------------
-      - name: Collect artifacts
-        shell: bash
-        run: |
-          set -e
-
-          mkdir -p release-artifacts
-
-          BUNDLE_DIR="src-tauri/target/x86_64-pc-windows-msvc/release/bundle"
-
-          echo "Bundle directory:"
-          echo "${BUNDLE_DIR}"
-
-          if [ ! -d "${BUNDLE_DIR}" ]; then
-            echo "ERROR: Bundle directory does not exist"
-            exit 1
-          fi
-
-          echo "Available files:"
-          find "${BUNDLE_DIR}" -type f -print
-
-          find "${BUNDLE_DIR}" \
-            -type f \
-            \( \
-              -name "*.msi" \
-              -o -name "*.exe" \
-            \) \
-            -exec cp {} release-artifacts/ \;
-
-          echo ""
-          echo "Collected artifacts:"
-          ls -lah release-artifacts
-
-          if [ -z "$(find release-artifacts -type f -print -quit)" ]; then
-            echo "ERROR: No release artifacts found"
-            exit 1
-          fi
-
-      # --------------------------------------------------------
-      # Upload build artifacts
-      # --------------------------------------------------------
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-windows-x64
-          path: release-artifacts/*
-          if-no-files-found: error
-          retention-days: 7
-
-  release:
-    name: Create GitHub Release
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      # --------------------------------------------------------
-      # Checkout
-      # --------------------------------------------------------
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      # --------------------------------------------------------
-      # Download build artifacts
-      # --------------------------------------------------------
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: release-windows-x64
-          path: release-artifacts
-
-      # --------------------------------------------------------
-      # Show artifacts
-      # --------------------------------------------------------
-      - name: List release artifacts
-        run: |
-          echo "Release artifacts:"
-          find release-artifacts -type f -print
-
-      # --------------------------------------------------------
+      # ==========================================================
       # Generate changelog
-      # --------------------------------------------------------
+      # ==========================================================
       - name: Generate changelog
         shell: bash
         run: |
@@ -165,6 +77,9 @@ jobs:
 
           echo "Current tag: ${TAG}"
 
+          # ------------------------------------------------------
+          # Find previous v-* tag
+          # ------------------------------------------------------
           PREVIOUS_TAG=$(
             git tag --sort=-version:refname \
               | grep '^v-' \
@@ -175,6 +90,9 @@ jobs:
 
           echo "Previous tag: ${PREVIOUS_TAG}"
 
+          # ------------------------------------------------------
+          # Determine commit range
+          # ------------------------------------------------------
           if [ -n "${PREVIOUS_TAG}" ]; then
             RANGE="${PREVIOUS_TAG}..${TAG}"
           else
@@ -183,10 +101,16 @@ jobs:
 
           echo "Commit range: ${RANGE}"
 
+          # ------------------------------------------------------
+          # Generate changelog
+          # ------------------------------------------------------
           {
             echo "# ${TAG}"
             echo
 
+            # ----------------------------------------------------
+            # Features
+            # ----------------------------------------------------
             echo "## ✨ Features"
             echo
 
@@ -197,6 +121,9 @@ jobs:
 
             echo
 
+            # ----------------------------------------------------
+            # Bug Fixes
+            # ----------------------------------------------------
             echo "## 🐛 Bug Fixes"
             echo
 
@@ -207,6 +134,9 @@ jobs:
 
             echo
 
+            # ----------------------------------------------------
+            # Documentation
+            # ----------------------------------------------------
             echo "## 📚 Documentation"
             echo
 
@@ -217,6 +147,9 @@ jobs:
 
             echo
 
+            # ----------------------------------------------------
+            # Refactoring
+            # ----------------------------------------------------
             echo "## ♻️ Refactoring"
             echo
 
@@ -227,6 +160,9 @@ jobs:
 
             echo
 
+            # ----------------------------------------------------
+            # Performance
+            # ----------------------------------------------------
             echo "## ⚡ Performance"
             echo
 
@@ -237,6 +173,9 @@ jobs:
 
             echo
 
+            # ----------------------------------------------------
+            # Tests
+            # ----------------------------------------------------
             echo "## 🧪 Tests"
             echo
 
@@ -247,6 +186,9 @@ jobs:
 
             echo
 
+            # ----------------------------------------------------
+            # Chores
+            # ----------------------------------------------------
             echo "## 🔧 Chores"
             echo
 
@@ -257,27 +199,31 @@ jobs:
 
             echo
 
+            # ----------------------------------------------------
+            # Other
+            # ----------------------------------------------------
             echo "## 📝 Other Changes"
             echo
 
             git log "${RANGE}" \
               --pretty=format:'- %s (%h)' \
-              | grep -Ev '^- (feat|fix|docs|refactor|perf|test|chore)(\(.+\))?:' \
+              | grep -Ev \
+                '^- (feat|fix|docs|refactor|perf|test|chore)(\(.+\))?:' \
               || true
 
             echo
 
           } > CHANGELOG.md
 
+          echo ""
           echo "========================================"
-          echo "Generated CHANGELOG.md"
+          echo "CHANGELOG"
           echo "========================================"
-
           cat CHANGELOG.md
 
-      # --------------------------------------------------------
+      # ==========================================================
       # Determine prerelease
-      # --------------------------------------------------------
+      # ==========================================================
       - name: Determine release type
         id: release-type
         shell: bash
@@ -286,25 +232,103 @@ jobs:
 
           if [[ "${TAG}" == *"-pre"* ]]; then
             echo "prerelease=true" >> "${GITHUB_OUTPUT}"
-            echo "This is a prerelease."
+            echo "Release type: PREVIEW"
           else
             echo "prerelease=false" >> "${GITHUB_OUTPUT}"
-            echo "This is a stable release."
+            echo "Release type: STABLE"
           fi
 
-      # --------------------------------------------------------
-      # Create GitHub Release
-      # --------------------------------------------------------
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
-          body_path: CHANGELOG.md
-          files: |
-            release-artifacts/*
-          prerelease: ${{ steps.release-type.outputs.prerelease }}
-          draft: false
-          generate_release_notes: false
+      # ==========================================================
+      # Build Tauri + create GitHub Release
+      #
+      # Tauri will:
+      #   - build Windows installer
+      #   - generate updater artifact
+      #   - generate .sig
+      #   - generate latest.json
+      #   - upload artifacts to GitHub Release
+      # ==========================================================
+      - name: Build and publish Tauri
+        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          # ------------------------------------------------------
+          # Tauri updater signing private key
+          # ------------------------------------------------------
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+        with:
+          # ------------------------------------------------------
+          # Use the tag that triggered this workflow
+          # ------------------------------------------------------
+          tagName: ${{ github.ref_name }}
+
+          # ------------------------------------------------------
+          # Release name
+          # ------------------------------------------------------
+          releaseName: "Release ${{ github.ref_name }}"
+
+          # ------------------------------------------------------
+          # Create as draft first.
+          #
+          # We will add our generated CHANGELOG afterwards
+          # and then publish the release.
+          # ------------------------------------------------------
+          releaseDraft: true
+
+          # ------------------------------------------------------
+          # Preview / stable
+          # ------------------------------------------------------
+          prerelease: ${{ steps.release-type.outputs.prerelease }}
+
+          # ------------------------------------------------------
+          # Tauri build target
+          # ------------------------------------------------------
+          args: "--target x86_64-pc-windows-msvc"
+
+      # ==========================================================
+      # Replace Release notes with our changelog
+      # ==========================================================
+      - name: Update release notes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "${GITHUB_REF_NAME}" \
+            --notes-file CHANGELOG.md
+
+      # ==========================================================
+      # Publish Release
+      # ==========================================================
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [[ "${{ steps.release-type.outputs.prerelease }}" == "true" ]]; then
+            gh release edit "${GITHUB_REF_NAME}" \
+              --draft=false \
+              --prerelease=true
+          else
+            gh release edit "${GITHUB_REF_NAME}" \
+              --draft=false \
+              --prerelease=false
+          fi
+
+      # ==========================================================
+      # Show final release information
+      # ==========================================================
+      - name: Release summary
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "========================================"
+          echo "Release completed"
+          echo "========================================"
+          echo "Tag: ${GITHUB_REF_NAME}"
+          echo ""
+
+          gh release view "${GITHUB_REF_NAME}"
