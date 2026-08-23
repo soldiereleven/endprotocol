@@ -54,5 +54,13 @@
         "languages": ["SimpChinese", "English"]
       }
     }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDI3OTdCNjkzNDBERjc5RDUKUldUVmVkOUFrN2FYSnlMV252L01qR3JQRzVJY2p2dVFUTXU1YVl5c29pSlVYTUUxbnd2WU4zdmgK",
+      "endpoints": [
+        "https://github.com/soldiereleven/endprotocol/releases/latest/download/latest.json"
+      ]
+    }
   }
 }
