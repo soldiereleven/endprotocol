@@ -19,6 +19,7 @@ import { Img } from "@/utils/imageLoader";
 import { getSelectedAccount, getAccounts, type Account } from "@/utils/accountService";
 import { resolveServerLabel } from "@/types";
 import { logError } from "@/utils/logger";
+import { addMessage } from "@/utils/messageStore";
 import type {
   GachaCategory,
   GachaPoolKind,
@@ -201,9 +202,18 @@ export default function GachaRecordsPage() {
       .then((res) => {
         setSyncResult(res);
         setSyncing(false);
+        addMessage({
+          type: "info",
+          title: i18n.language === "zh" ? "抽卡记录同步完成" : "Gacha Sync Complete",
+          body: i18n.language === "zh"
+            ? `新增 ${res.newRecords} 条，共 ${res.totalRecords} 条`
+            : `+${res.newRecords} new, ${res.totalRecords} total`,
+          tag: "gacha",
+        });
       })
       .catch((e) => {
         logError("[Gacha] Sync failed:", e);
+        addMessage({ type: "urgent", title: i18n.language === "zh" ? "抽卡记录同步失败" : "Gacha Sync Failed", body: String(e), tag: "gacha" });
         setSyncError(String(e));
         setSyncing(false);
         // 出错时重新打开进度窗口展示错误

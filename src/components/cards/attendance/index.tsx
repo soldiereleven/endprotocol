@@ -11,6 +11,7 @@ import { getAccounts, type Account } from "@/utils/accountService";
 import { Img } from "@/utils/imageLoader";
 import { invoke } from "@tauri-apps/api/core";
 import { logError } from "@/utils/logger";
+import { addMessage } from "@/utils/messageStore";
 import { resolveServerLabel } from "@/types";
 
 const signedInRoleIds = new Set<string>();
@@ -206,9 +207,11 @@ export default function AttendanceCard({
     setSignError(null);
     try {
       await invoke<any>("do_attendance", { roleId: rid });
+      addMessage({ type: "info", title: i18n.language === "zh" ? "签到成功" : "Attendance Signed", tag: "attendance" });
       completeSignIn();
     } catch (e) {
       logError("[Attendance] POST failed:", e);
+      addMessage({ type: "urgent", title: i18n.language === "zh" ? "签到失败" : "Attendance Failed", body: String(e), tag: "attendance" });
       setSignError(String(e));
       setSignPhase("idle");
     }

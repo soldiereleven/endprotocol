@@ -44,6 +44,7 @@ import {
 import { roleDetailService } from "@/utils/roleDetailService";
 import logger, { logDebug, logError } from "../utils/logger";
 import { getConfig } from "@/utils/configService";
+import { addMessage } from "@/utils/messageStore";
 import { resolveServerLabel } from "@/types";
 
 // 二维码图片组件（使用 qrcode 库生成 dataURL）
@@ -461,12 +462,14 @@ export default function AccountPage() {
           type: "success",
           message: i18n.language === "zh" ? "登出成功" : "Logout successful",
         });
+        addMessage({ type: "info", title: i18n.language === "zh" ? "登出成功" : "Logout Successful", tag: "account" });
         setTimeout(() => setGlobalAlert(null), 3000);
       } else {
         setGlobalAlert({
           type: "danger",
           message: i18n.language === "zh" ? "登出失败" : "Logout failed",
         });
+        addMessage({ type: "urgent", title: i18n.language === "zh" ? "登出失败" : "Logout Failed", tag: "account" });
         setTimeout(() => setGlobalAlert(null), 3000);
       }
     } catch (error) {
@@ -478,6 +481,7 @@ export default function AccountPage() {
             ? `登出错误: ${error}`
             : `Logout error: ${error}`,
       });
+      addMessage({ type: "urgent", title: i18n.language === "zh" ? "登出错误" : "Logout Error", body: String(error), tag: "account" });
       setTimeout(() => setGlobalAlert(null), 3000);
     } finally {
       setIsLoggingOut(false);
@@ -741,6 +745,12 @@ export default function AccountPage() {
           i18n.language === "zh"
             ? `登录成功！欢迎，${result.account.nickname}`
             : `Login successful! Welcome, ${result.account.nickname}`,
+      });
+      addMessage({
+        type: "info",
+        title: i18n.language === "zh" ? "登录成功" : "Login Successful",
+        body: i18n.language === "zh" ? `欢迎，${result.account.nickname}` : `Welcome, ${result.account.nickname}`,
+        tag: "account",
       });
 
       // 5秒后自动清除 Alert
