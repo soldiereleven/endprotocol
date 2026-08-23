@@ -78,11 +78,11 @@ jobs:
           echo "Current tag: ${TAG}"
 
           # ------------------------------------------------------
-          # Find previous v-* tag
+          # Find previous v* tag
           # ------------------------------------------------------
           PREVIOUS_TAG=$(
             git tag --sort=-version:refname \
-              | grep '^v-' \
+              | grep '^v' \
               | grep -v "^${TAG}$" \
               | head -n 1 \
               || true
