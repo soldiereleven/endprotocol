@@ -316,5 +316,9 @@
     "no_active_cultivation_talents": "No active cultivation talents to display",
     "skill_detail": "Skill Detail",
     "no_data": "No data"
+  },
+  "messages": {
+    "mark_all_read": "Mark all read",
+    "empty": "No messages yet"
   }
 }
