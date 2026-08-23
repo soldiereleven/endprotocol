@@ -22,6 +22,7 @@ pub fn run() {
     }
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
@@ -104,8 +105,10 @@ pub fn run() {
             app.manage(gacha_service);
 
             // 初始化网络数据服务
-            let network_service =
-                Arc::new(NetworkService::new(skland_service.clone(), avatar_cache_service.clone()));
+            let network_service = Arc::new(NetworkService::new(
+                skland_service.clone(),
+                avatar_cache_service.clone(),
+            ));
 
             // 初始化账户服务（使用 tokio::sync::Mutex，因为它包含异步方法）
             let account_service = AccountService::new(
