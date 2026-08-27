@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { cn } from "@/lib/cn";
 import type { AppMessage } from "@/utils/messageStore";
 import { removeMessage, markRead } from "@/utils/messageStore";
@@ -73,13 +74,16 @@ function timeAgo(ts: number): string {
 export function MessageCard({ msg }: { msg: AppMessage }) {
   const v = resolveType(msg.type);
   const s = TYPE_STYLES[v];
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
+
   return (
     <div
       className={cn(
-        "group flex gap-3 p-3 rounded-xl border transition-all duration-200 cursor-pointer",
+        "group flex gap-3 p-3 rounded-xl border transition-all duration-200",
+        msg.actions ? "cursor-default" : "cursor-pointer",
         msg.read ? s.cardRead : cn("ring-1", s.card),
       )}
-      onClick={() => !msg.read && markRead(msg.id)}
+      onClick={() => !msg.read && !msg.actions && markRead(msg.id)}
     >
       <TypeIcon type={msg.type} />
 
@@ -91,6 +95,41 @@ export function MessageCard({ msg }: { msg: AppMessage }) {
           <p className="text-[11px] text-muted mt-0.5 leading-relaxed line-clamp-2">{msg.body}</p>
         )}
         <p className="text-[10px] text-muted/60 mt-1">{timeAgo(msg.timestamp)}</p>
+
+        {msg.actions && msg.actions.length > 0 && (
+          <div className="flex gap-2 mt-2">
+            {msg.actions.map((action, i) => {
+              const isLoading = loadingAction === action.label;
+              const btnVariant = action.variant ?? "primary";
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  disabled={isLoading}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLoadingAction(action.label);
+                    Promise.resolve(action.onClick()).finally(() => {
+                      setLoadingAction(null);
+                    });
+                  }}
+                  className={cn(
+                    "px-3 py-1.5 text-[11px] font-medium rounded-lg transition-all duration-200",
+                    "active:scale-95 disabled:opacity-60",
+                    btnVariant === "primary" &&
+                      "bg-primary text-primary-foreground hover:bg-primary/90",
+                    btnVariant === "secondary" &&
+                      "bg-default-200 text-foreground hover:bg-default-300",
+                    btnVariant === "danger" &&
+                      "bg-danger text-white hover:bg-danger/90",
+                  )}
+                >
+                  {isLoading ? (action.loadingLabel ?? "Loading...") : action.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <button

@@ -3,9 +3,18 @@ import { GlassAlertDialog, GlassButton, GlassCard, GlassSkeleton, GlassSwitch } 
 import { AppearanceSettings } from "@/components/appearance-settings";
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { getVersion, getTauriVersion, getIdentifier } from "@tauri-apps/api/app";
 import { getConfig, setConfig } from "@/utils/configService";
 import { roleDetailService } from "@/utils/roleDetailService";
 import { SettingsDivider } from "@/components/ui/settings-row";
+import {
+  fetchRemoteVersion,
+  getRemoteVersion,
+  subscribeRemoteVersion,
+  downloadAndInstall,
+  type RemoteVersionState,
+} from "@/utils/updateService";
+import { pushGlobalAlert } from "@/components/ui/global-alert";
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -21,6 +30,12 @@ export default function SettingsPage() {
   const [developerMode, setDeveloperMode] = useState(false);
   const [showDevWarning, setShowDevWarning] = useState(false);
   const [isConfigLoading, setIsConfigLoading] = useState(true);
+  const [appVersion, setAppVersion] = useState("");
+  const [tauriVersion, setTauriVersion] = useState("");
+  const [appId, setAppId] = useState("");
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [remoteVersion, setRemoteVersion] = useState<RemoteVersionState>(getRemoteVersion());
+  const [isDownloadingUpdate, setIsDownloadingUpdate] = useState(false);
 
   const languages = [
     { key: "en", label: "English" },
@@ -30,19 +45,34 @@ export default function SettingsPage() {
   useEffect(() => {
     const loadConfig = async () => {
       setIsConfigLoading(true);
-      const [value, lazyLoadValue, devMode, wikiPreload] = await Promise.all([
+      const [value, lazyLoadValue, devMode, wikiPreload, version, tauriVer, identifier] = await Promise.all([
         getConfig<boolean>("refresh_on_account_switch"),
         roleDetailService.isLazyLoadEnabled(),
         getConfig<boolean>("developer_mode"),
         getConfig<boolean>("wiki_detail_preload"),
+        getVersion(),
+        getTauriVersion(),
+        getIdentifier(),
       ]);
       setRefreshOnSwitch(value ?? false);
       setLazyLoadEnabled(lazyLoadValue);
       setWikiDetailPreload(wikiPreload ?? false);
       setDeveloperMode(devMode ?? false);
+      setAppVersion(version);
+      setTauriVersion(tauriVer);
+      setAppId(identifier);
       setIsConfigLoading(false);
     };
     loadConfig();
+
+    // Auto-fetch remote version on mount
+    fetchRemoteVersion();
+
+    // Subscribe to remote version changes
+    const unsub = subscribeRemoteVersion(() => {
+      setRemoteVersion(getRemoteVersion());
+    });
+    return unsub;
   }, []);
 
   useEffect(() => {
@@ -100,6 +130,44 @@ export default function SettingsPage() {
       new CustomEvent("developerModeChange", { detail: { enabled: true } })
     );
   };
+
+  const handleCheckUpdate = async () => {
+    if (isCheckingUpdate) return;
+    setIsCheckingUpdate(true);
+    try {
+      await fetchRemoteVersion();
+      const state = getRemoteVersion();
+      if (state.hasUpdate) {
+        pushGlobalAlert("success", i18n.language === "zh" ? "发现新版本！" : "Update available!");
+      } else if (state.error) {
+        pushGlobalAlert("danger", i18n.language === "zh" ? "检查更新失败" : "Failed to check for updates");
+      } else {
+        pushGlobalAlert("success", i18n.language === "zh" ? "已是最新版本" : "Already up to date");
+      }
+    } catch {
+      pushGlobalAlert("danger", i18n.language === "zh" ? "检查更新失败" : "Failed to check for updates");
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
+
+  const handleDownloadUpdate = async () => {
+    if (isDownloadingUpdate) return;
+    setIsDownloadingUpdate(true);
+    try {
+      await downloadAndInstall();
+    } finally {
+      setIsDownloadingUpdate(false);
+    }
+  };
+
+  const platformInfo = (() => {
+    const ua = navigator.userAgent;
+    if (ua.includes("Win")) return "Windows x64";
+    if (ua.includes("Mac")) return "macOS";
+    if (ua.includes("Linux")) return "Linux";
+    return navigator.platform || "Unknown";
+  })();
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-12">
@@ -398,6 +466,230 @@ export default function SettingsPage() {
           </div>
           </>
           )}
+        </GlassCard>
+
+        {/* About */}
+        <GlassCard id="settings-about" className="p-6 glass-surface border border-separator/90">
+          <h2 className="text-lg font-semibold mb-6 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
+              <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 16v-4M12 8h.01" />
+              </svg>
+            </div>
+            {i18n.language === "zh" ? "关于" : "About"}
+          </h2>
+
+          <div className="space-y-5">
+            {/* App Header */}
+            <div className="flex items-center gap-4">
+              <img
+                src="/app-icon.png"
+                alt="EndProtocol"
+                className="w-16 h-16 rounded-2xl ring-1 ring-separator/50"
+              />
+              <div className="flex-1 min-w-0">
+                <h3 className="text-xl font-bold text-foreground">EndProtocol</h3>
+                <p className="text-sm text-muted mt-0.5">
+                  {i18n.language === "zh"
+                    ? "跨平台森空岛桌面客户端"
+                    : "Cross-platform Skland desktop client"}
+                </p>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  {remoteVersion.hasUpdate ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-danger/15 text-danger border border-danger/20">
+                      {i18n.language === "zh" ? "有新版本" : "Update Available"}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-success/15 text-success border border-success/20">
+                      {i18n.language === "zh" ? "已是最新" : "Up to Date"}
+                    </span>
+                  )}
+                  <span className="text-[11px] text-muted">v{appVersion || "..."}</span>
+                </div>
+              </div>
+            </div>
+
+            <SettingsDivider />
+
+            {/* Version Info */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-xl glass-surface border border-separator/40">
+                <p className="text-[11px] text-muted uppercase tracking-wider mb-1">
+                  {i18n.language === "zh" ? "应用版本" : "App Version"}
+                </p>
+                <p className="text-sm font-semibold text-foreground">{appVersion || "..."}</p>
+              </div>
+              <div className="p-3 rounded-xl glass-surface border border-separator/40">
+                <p className="text-[11px] text-muted uppercase tracking-wider mb-1">
+                  {i18n.language === "zh" ? "Tauri 版本" : "Tauri Version"}
+                </p>
+                <p className="text-sm font-semibold text-foreground">{tauriVersion || "..."}</p>
+              </div>
+              <div className="p-3 rounded-xl glass-surface border border-separator/40">
+                <p className="text-[11px] text-muted uppercase tracking-wider mb-1">
+                  {i18n.language === "zh" ? "平台" : "Platform"}
+                </p>
+                <p className="text-sm font-semibold text-foreground">{platformInfo}</p>
+              </div>
+              <div className="p-3 rounded-xl glass-surface border border-separator/40">
+                <p className="text-[11px] text-muted uppercase tracking-wider mb-1">
+                  {i18n.language === "zh" ? "远端最新版本" : "Latest Version"}
+                </p>
+                <p className="text-sm font-semibold text-foreground">
+                  {remoteVersion.loading
+                    ? "..."
+                    : remoteVersion.error
+                      ? (i18n.language === "zh" ? "获取失败" : "Failed")
+                      : remoteVersion.version
+                        ? `v${remoteVersion.version}`
+                        : appVersion ? `v${appVersion}` : "..."}
+                </p>
+              </div>
+            </div>
+
+            {remoteVersion.date && (
+              <div className="text-[11px] text-muted">
+                {i18n.language === "zh" ? "发布日期" : "Released"}: {new Date(remoteVersion.date).toLocaleDateString()}
+              </div>
+            )}
+
+            {/* Update Button */}
+            {remoteVersion.hasUpdate && (
+              <GlassButton
+                variant="primary"
+                fullWidth
+                onPress={handleDownloadUpdate}
+                isLoading={isDownloadingUpdate}
+                startContent={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                }
+              >
+                {isDownloadingUpdate
+                  ? (i18n.language === "zh" ? "下载中..." : "Downloading...")
+                  : (i18n.language === "zh" ? `更新到 v${remoteVersion.version}` : `Update to v${remoteVersion.version}`)}
+              </GlassButton>
+            )}
+
+            {/* Refresh Check Button */}
+            <GlassButton
+              variant="outline"
+              fullWidth
+              onPress={handleCheckUpdate}
+              disabled={isCheckingUpdate}
+              startContent={
+                <svg className={`w-4 h-4 ${isCheckingUpdate ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              }
+            >
+              {isCheckingUpdate
+                ? (i18n.language === "zh" ? "检查中..." : "Checking...")
+                : (i18n.language === "zh" ? "检查更新" : "Check for Updates")}
+            </GlassButton>
+
+            <SettingsDivider />
+
+            {/* Identifier */}
+            <div className="text-[11px] text-muted/60 font-mono break-all">
+              {appId}
+            </div>
+
+            <SettingsDivider />
+
+            {/* License */}
+            <div>
+              <h4 className="text-sm font-semibold text-foreground mb-2">
+                {i18n.language === "zh" ? "许可证" : "License"}
+              </h4>
+              <p className="text-xs text-muted">
+                GNU Affero General Public License v3.0 (AGPL-3.0)
+              </p>
+              <p className="text-[11px] text-muted/60 mt-1">
+                {i18n.language === "zh"
+                  ? "本软件采用 AGPL-3.0 许可证开源"
+                  : "This software is open source under the AGPL-3.0 license"}
+              </p>
+            </div>
+
+            <SettingsDivider />
+
+            {/* Open Source Credits */}
+            <div>
+              <h4 className="text-sm font-semibold text-foreground mb-3">
+                {i18n.language === "zh" ? "开源致谢" : "Open Source Credits"}
+              </h4>
+              <div className="space-y-1.5">
+                {[
+                  { name: "Tauri", url: "https://tauri.app", desc: "Desktop framework" },
+                  { name: "React", url: "https://react.dev", desc: "UI library" },
+                  { name: "React Router", url: "https://reactrouter.com", desc: "Client-side routing" },
+                  { name: "Vite", url: "https://vitejs.dev", desc: "Build tool" },
+                  { name: "TypeScript", url: "https://www.typescriptlang.org", desc: "Type-safe JavaScript" },
+                  { name: "Tailwind CSS", url: "https://tailwindcss.com", desc: "CSS framework" },
+                  { name: "aura-glass", url: "https://github.com/user/aura-glass", desc: "Glassmorphism UI kit" },
+                  { name: "ECharts", url: "https://echarts.apache.org", desc: "Charting library" },
+                  { name: "Lucide", url: "https://lucide.dev", desc: "Icon library" },
+                  { name: "morphicons", url: "https://github.com/nicedoc/morphicons", desc: "Morphing icons" },
+                  { name: "i18next", url: "https://www.i18next.com", desc: "Internationalization" },
+                  { name: "react-i18next", url: "https://github.com/i18next/react-i18next", desc: "React i18n bindings" },
+                  { name: "clsx", url: "https://github.com/lukeed/clsx", desc: "Class name utility" },
+                  { name: "Tailwind Variants", url: "https://tailwind-variants.com", desc: "Variant management" },
+                  { name: "dnd-kit", url: "https://dndkit.com", desc: "Drag and drop" },
+                  { name: "qrcode", url: "https://github.com/soldair/qrcode", desc: "QR code generation" },
+                  { name: "react-beautiful-color", url: "https://github.com/nicedoc/react-beautiful-color", desc: "Color picker" },
+                  { name: "uuid", url: "https://github.com/uuidjs/uuid", desc: "UUID generation" },
+                  { name: "Tauri Plugin Updater", url: "https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/updater", desc: "In-app updater" },
+                  { name: "Tauri Plugin Opener", url: "https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/opener", desc: "URL/file opener" },
+                ].map((lib) => (
+                  <div key={lib.name} className="flex items-center justify-between py-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs font-medium text-foreground">{lib.name}</span>
+                      <span className="text-[10px] text-muted/50 hidden sm:inline">{lib.desc}</span>
+                    </div>
+                    <a
+                      href={lib.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-primary hover:text-primary/80 hover:underline shrink-0"
+                    >
+                      {lib.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <SettingsDivider />
+
+            {/* Links */}
+            <div className="flex items-center gap-3">
+              <a
+                href="https://github.com/soldiereleven/endprotocol"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                GitHub
+              </a>
+              <a
+                href="https://github.com/soldiereleven/endprotocol/blob/main/LICENSE"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                License
+              </a>
+            </div>
+          </div>
         </GlassCard>
       </div>
 

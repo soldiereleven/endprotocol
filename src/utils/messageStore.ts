@@ -1,5 +1,12 @@
 export type MessageType = "info" | "warn" | "urgent";
 
+export interface AppMessageAction {
+  label: string;
+  onClick: () => void | Promise<void>;
+  variant?: "primary" | "secondary" | "danger";
+  loadingLabel?: string;
+}
+
 export interface AppMessage {
   id: string;
   type: MessageType;
@@ -8,6 +15,7 @@ export interface AppMessage {
   timestamp: number;
   read: boolean;
   tag?: string;
+  actions?: AppMessageAction[];
 }
 
 const STORAGE_KEY = "app_messages";

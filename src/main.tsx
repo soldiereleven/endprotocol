@@ -11,6 +11,7 @@ import { getConfig } from "./utils/configService";
 import { CardStartupService } from "@/cards/startup-service";
 import { loadAllCards } from "@/components/cards/registry/loader";
 import { initOverlayScrollbar } from "@/utils/overlayScrollbar";
+import { checkAndNotify } from "@/utils/updateService";
 import logger from "@/utils/logger";
 
 type ThemeMode = "light" | "dark" | "system";
@@ -94,4 +95,9 @@ Promise.all([
   setTimeout(() => {
     CardStartupService.runAll();
   }, 0);
+
+  // Auto-check for updates on startup
+  setTimeout(() => {
+    checkAndNotify();
+  }, 3000);
 });
