@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { GlassAlertDialog, GlassButton, GlassCard, GlassSkeleton, GlassSwitch } from "@/components/ui/glass";
 import { AppearanceSettings } from "@/components/appearance-settings";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { getVersion, getTauriVersion, getIdentifier } from "@tauri-apps/api/app";
 import { getConfig, setConfig } from "@/utils/configService";
@@ -11,10 +11,14 @@ import {
   fetchRemoteVersion,
   getRemoteVersion,
   subscribeRemoteVersion,
-  downloadAndInstall,
+  getChannel,
+  setChannel,
+  initializeChannel,
   type RemoteVersionState,
+  type UpdateChannel,
 } from "@/utils/updateService";
 import { pushGlobalAlert } from "@/components/ui/global-alert";
+import { UpdateDialog } from "@/components/update-dialog";
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -35,7 +39,8 @@ export default function SettingsPage() {
   const [appId, setAppId] = useState("");
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [remoteVersion, setRemoteVersion] = useState<RemoteVersionState>(getRemoteVersion());
-  const [isDownloadingUpdate, setIsDownloadingUpdate] = useState(false);
+  const [updateChannel, setUpdateChannel] = useState<UpdateChannel>("stable");
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
 
   const languages = [
     { key: "en", label: "English" },
@@ -62,6 +67,10 @@ export default function SettingsPage() {
       setTauriVersion(tauriVer);
       setAppId(identifier);
       setIsConfigLoading(false);
+
+      // Load update channel
+      await initializeChannel();
+      setUpdateChannel(getChannel());
     };
     loadConfig();
 
@@ -151,15 +160,10 @@ export default function SettingsPage() {
     }
   };
 
-  const handleDownloadUpdate = async () => {
-    if (isDownloadingUpdate) return;
-    setIsDownloadingUpdate(true);
-    try {
-      await downloadAndInstall();
-    } finally {
-      setIsDownloadingUpdate(false);
-    }
-  };
+  const handleChannelChange = useCallback(async (channel: UpdateChannel) => {
+    setUpdateChannel(channel);
+    await setChannel(channel);
+  }, []);
 
   const platformInfo = (() => {
     const ua = navigator.userAgent;
@@ -468,7 +472,7 @@ export default function SettingsPage() {
           )}
         </GlassCard>
 
-        {/* About */}
+        {/* Updates & About */}
         <GlassCard id="settings-about" className="p-6 glass-surface border border-separator/90">
           <h2 className="text-lg font-semibold mb-6 flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
@@ -477,7 +481,7 @@ export default function SettingsPage() {
                 <path d="M12 16v-4M12 8h.01" />
               </svg>
             </div>
-            {i18n.language === "zh" ? "关于" : "About"}
+            {i18n.language === "zh" ? "更新与关于" : "Updates & About"}
           </h2>
 
           <div className="space-y-5">
@@ -512,29 +516,99 @@ export default function SettingsPage() {
 
             <SettingsDivider />
 
+            {/* Update Channel */}
+            <div>
+              <p className="text-sm font-medium text-foreground mb-2">
+                {t("settings.update_channel.title")}
+              </p>
+              <p className="text-xs text-muted mb-3">
+                {t("settings.update_channel.desc")}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  className={`flex-1 p-3 rounded-xl border transition-all text-left ${
+                    updateChannel === "stable"
+                      ? "border-primary/50 bg-primary/5"
+                      : "border-separator/40 bg-transparent hover:bg-default-100/50"
+                  }`}
+                  onClick={() => handleChannelChange("stable")}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full border-2 flex items-center justify-center ${
+                      updateChannel === "stable"
+                        ? "border-primary"
+                        : "border-muted/40"
+                    }`}>
+                      {updateChannel === "stable" && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-foreground">
+                        {t("settings.update_channel.stable")}
+                      </p>
+                      <p className="text-[10px] text-muted mt-0.5">
+                        {t("settings.update_channel.stable_desc")}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  className={`flex-1 p-3 rounded-xl border transition-all text-left ${
+                    updateChannel === "preview"
+                      ? "border-primary/50 bg-primary/5"
+                      : "border-separator/40 bg-transparent hover:bg-default-100/50"
+                  }`}
+                  onClick={() => handleChannelChange("preview")}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full border-2 flex items-center justify-center ${
+                      updateChannel === "preview"
+                        ? "border-primary"
+                        : "border-muted/40"
+                    }`}>
+                      {updateChannel === "preview" && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-foreground">
+                        {t("settings.update_channel.preview")}
+                      </p>
+                      <p className="text-[10px] text-muted mt-0.5">
+                        {t("settings.update_channel.preview_desc")}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <SettingsDivider />
+
             {/* Version Info */}
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-xl glass-surface border border-separator/40">
                 <p className="text-[11px] text-muted uppercase tracking-wider mb-1">
-                  {i18n.language === "zh" ? "应用版本" : "App Version"}
+                  {t("settings.update.app_version")}
                 </p>
                 <p className="text-sm font-semibold text-foreground">{appVersion || "..."}</p>
               </div>
               <div className="p-3 rounded-xl glass-surface border border-separator/40">
                 <p className="text-[11px] text-muted uppercase tracking-wider mb-1">
-                  {i18n.language === "zh" ? "Tauri 版本" : "Tauri Version"}
+                  {t("settings.update.tauri_version")}
                 </p>
                 <p className="text-sm font-semibold text-foreground">{tauriVersion || "..."}</p>
               </div>
               <div className="p-3 rounded-xl glass-surface border border-separator/40">
                 <p className="text-[11px] text-muted uppercase tracking-wider mb-1">
-                  {i18n.language === "zh" ? "平台" : "Platform"}
+                  {t("settings.update.platform")}
                 </p>
                 <p className="text-sm font-semibold text-foreground">{platformInfo}</p>
               </div>
               <div className="p-3 rounded-xl glass-surface border border-separator/40">
                 <p className="text-[11px] text-muted uppercase tracking-wider mb-1">
-                  {i18n.language === "zh" ? "远端最新版本" : "Latest Version"}
+                  {t("settings.update.latest_version")}
                 </p>
                 <p className="text-sm font-semibold text-foreground">
                   {remoteVersion.loading
@@ -550,7 +624,7 @@ export default function SettingsPage() {
 
             {remoteVersion.date && (
               <div className="text-[11px] text-muted">
-                {i18n.language === "zh" ? "发布日期" : "Released"}: {new Date(remoteVersion.date).toLocaleDateString()}
+                {t("settings.update.release_date")}: {new Date(remoteVersion.date).toLocaleDateString()}
               </div>
             )}
 
@@ -559,17 +633,14 @@ export default function SettingsPage() {
               <GlassButton
                 variant="primary"
                 fullWidth
-                onPress={handleDownloadUpdate}
-                isLoading={isDownloadingUpdate}
+                onPress={() => setShowUpdateDialog(true)}
                 startContent={
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
                 }
               >
-                {isDownloadingUpdate
-                  ? (i18n.language === "zh" ? "下载中..." : "Downloading...")
-                  : (i18n.language === "zh" ? `更新到 v${remoteVersion.version}` : `Update to v${remoteVersion.version}`)}
+                {i18n.language === "zh" ? `更新到 v${remoteVersion.version}` : `Update to v${remoteVersion.version}`}
               </GlassButton>
             )}
 
@@ -602,15 +673,13 @@ export default function SettingsPage() {
             {/* License */}
             <div>
               <h4 className="text-sm font-semibold text-foreground mb-2">
-                {i18n.language === "zh" ? "许可证" : "License"}
+                {t("settings.update.license")}
               </h4>
               <p className="text-xs text-muted">
                 GNU Affero General Public License v3.0 (AGPL-3.0)
               </p>
               <p className="text-[11px] text-muted/60 mt-1">
-                {i18n.language === "zh"
-                  ? "本软件采用 AGPL-3.0 许可证开源"
-                  : "This software is open source under the AGPL-3.0 license"}
+                {t("settings.update.license_desc")}
               </p>
             </div>
 
@@ -619,7 +688,7 @@ export default function SettingsPage() {
             {/* Open Source Credits */}
             <div>
               <h4 className="text-sm font-semibold text-foreground mb-3">
-                {i18n.language === "zh" ? "开源致谢" : "Open Source Credits"}
+                {t("settings.update.open_source_credits")}
               </h4>
               <div className="space-y-1.5">
                 {[
@@ -720,6 +789,12 @@ export default function SettingsPage() {
           </GlassAlertDialog.Container>
         </GlassAlertDialog.Backdrop>
       </GlassAlertDialog>
+
+      {/* Update Dialog */}
+      <UpdateDialog
+        isOpen={showUpdateDialog}
+        onOpenChange={setShowUpdateDialog}
+      />
     </div>
   );
 }

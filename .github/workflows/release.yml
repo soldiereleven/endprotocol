@@ -25,6 +25,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch all tags
+        run: git fetch --tags --force
+
       # ==========================================================
       # Setup pnpm
       # ==========================================================
@@ -66,6 +69,66 @@ jobs:
             src-tauri -> target
 
       # ==========================================================
+      # Determine channel and find previous tag
+      #
+      # Uses SemVer to determine whether the current tag is stable
+      # or preview, then finds the previous tag in the same channel.
+      # ==========================================================
+      - name: Determine channel and previous tag
+        id: channel
+        shell: bash
+        run: |
+          set -e
+
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+
+          echo "Current tag: ${TAG}"
+          echo "Current version: ${VERSION}"
+
+          # ------------------------------------------------------
+          # Determine channel using SemVer prerelease detection
+          # ------------------------------------------------------
+          # A version with a prerelease identifier (e.g. 1.2.0-pre.1)
+          # belongs to the preview channel.
+          if echo "${VERSION}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+-.+'; then
+            CHANNEL="preview"
+          else
+            CHANNEL="stable"
+          fi
+
+          echo "Channel: ${CHANNEL}"
+          echo "channel=${CHANNEL}" >> "${GITHUB_OUTPUT}"
+
+          # ------------------------------------------------------
+          # Find previous tag in the same channel
+          # ------------------------------------------------------
+          PREVIOUS_TAG=""
+
+          if [ "${CHANNEL}" = "stable" ]; then
+            # Stable: only match vX.Y.Z (no prerelease)
+            PREVIOUS_TAG=$(
+              git tag --sort=-version:refname \
+                | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+                | grep -v "^${TAG}$" \
+                | head -n 1 \
+                || true
+            )
+          else
+            # Preview: only match tags with a prerelease (vX.Y.Z-*)
+            PREVIOUS_TAG=$(
+              git tag --sort=-version:refname \
+                | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+-.+$' \
+                | grep -v "^${TAG}$" \
+                | head -n 1 \
+                || true
+            )
+          fi
+
+          echo "Previous tag: ${PREVIOUS_TAG:-<none>}"
+          echo "previous_tag=${PREVIOUS_TAG}" >> "${GITHUB_OUTPUT}"
+
+      # ==========================================================
       # Generate changelog
       # ==========================================================
       - name: Generate changelog
@@ -74,21 +137,10 @@ jobs:
           set -e
 
           TAG="${GITHUB_REF_NAME}"
+          PREVIOUS_TAG="${{ steps.channel.outputs.previous_tag }}"
 
           echo "Current tag: ${TAG}"
-
-          # ------------------------------------------------------
-          # Find previous v* tag
-          # ------------------------------------------------------
-          PREVIOUS_TAG=$(
-            git tag --sort=-version:refname \
-              | grep '^v' \
-              | grep -v "^${TAG}$" \
-              | head -n 1 \
-              || true
-          )
-
-          echo "Previous tag: ${PREVIOUS_TAG}"
+          echo "Previous tag: ${PREVIOUS_TAG:-<none>}"
 
           # ------------------------------------------------------
           # Determine commit range
@@ -222,15 +274,15 @@ jobs:
           cat CHANGELOG.md
 
       # ==========================================================
-      # Determine prerelease
+      # Determine prerelease (using SemVer from channel step)
       # ==========================================================
       - name: Determine release type
         id: release-type
         shell: bash
         run: |
-          TAG="${GITHUB_REF_NAME}"
+          CHANNEL="${{ steps.channel.outputs.channel }}"
 
-          if [[ "${TAG}" == *"-pre"* ]]; then
+          if [ "${CHANNEL}" = "preview" ]; then
             echo "prerelease=true" >> "${GITHUB_OUTPUT}"
             echo "Release type: PREVIEW"
           else
@@ -289,6 +341,18 @@ jobs:
           args: "--target x86_64-pc-windows-msvc"
 
       # ==========================================================
+      # Upload CHANGELOG.md as release asset
+      # ==========================================================
+      - name: Upload CHANGELOG.md
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${GITHUB_REF_NAME}" \
+            CHANGELOG.md \
+            --clobber
+
+      # ==========================================================
       # Replace Release notes with our changelog
       # ==========================================================
       - name: Update release notes
@@ -329,6 +393,7 @@ jobs:
           echo "Release completed"
           echo "========================================"
           echo "Tag: ${GITHUB_REF_NAME}"
+          echo "Channel: ${{ steps.channel.outputs.channel }}"
           echo ""
 
           gh release view "${GITHUB_REF_NAME}"

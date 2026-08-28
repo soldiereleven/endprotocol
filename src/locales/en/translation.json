@@ -116,6 +116,38 @@
       "warning_confirm": "Enable",
       "warning_cancel": "Cancel"
     },
+    "update_channel": {
+      "title": "Update Channel",
+      "desc": "Choose which update channel to receive updates from",
+      "stable": "Stable",
+      "stable_desc": "Only receive stable releases",
+      "preview": "Preview",
+      "preview_desc": "Get early access to new features, may contain bugs"
+    },
+    "update": {
+      "title": "Update Available",
+      "new_version": "New version available",
+      "changelog_loading": "Loading changelog...",
+      "changelog_failed": "Changelog could not be loaded",
+      "update_now": "Update Now",
+      "later": "Later",
+      "downloading": "Downloading...",
+      "installing": "Installing...",
+      "check_update": "Check for Updates",
+      "checking": "Checking...",
+      "up_to_date": "Up to date",
+      "update_available": "Update Available",
+      "failed": "Failed",
+      "app_version": "App Version",
+      "tauri_version": "Tauri Version",
+      "platform": "Platform",
+      "latest_version": "Latest Version",
+      "release_date": "Release Date",
+      "about": "About",
+      "license": "License",
+      "license_desc": "This software is open source under the AGPL-3.0 license",
+      "open_source_credits": "Open Source Credits"
+    },
     "account": {
       "title": "Account Management",
       "subtitle": "Manage your logged-in accounts",

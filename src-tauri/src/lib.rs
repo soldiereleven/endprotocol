@@ -85,6 +85,9 @@ pub fn run() {
             // User info debug commands
             commands::wiki_debug::debug_dump_user_info,
             commands::wiki_debug::debug_user_info_dir,
+            // Updater commands
+            commands::updater::write_file,
+            commands::updater::get_temp_dir,
         ])
         .setup(|app| {
             // 初始化配置服务（使用 std::sync::Mutex，因为它是同步的）

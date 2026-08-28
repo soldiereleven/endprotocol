@@ -11,6 +11,7 @@ import AttendancePage from "@/pages/attendance";
 import GachaRecordsPage from "@/pages/gacha-records";
 import DashboardLayout from "@/layouts/dashboard";
 import { getConfig, setConfig } from "@/utils/configService";
+import { checkAndNotify } from "@/utils/updateService";
 
 const ROUTES = ["/", "/settings", "/account", "/characters", "/medals", "/attendance", "/gacha", "/developer"];
 
@@ -37,10 +38,23 @@ function RouteRestore() {
   return null;
 }
 
+function UpdateChecker() {
+  const notified = useRef(false);
+
+  useEffect(() => {
+    if (notified.current) return;
+    notified.current = true;
+    checkAndNotify();
+  }, []);
+
+  return null;
+}
+
 function App() {
   return (
     <>
       <RouteRestore />
+      <UpdateChecker />
       <Routes>
         <Route
           element={

@@ -116,6 +116,38 @@
       "warning_confirm": "启用",
       "warning_cancel": "取消"
     },
+    "update_channel": {
+      "title": "更新通道",
+      "desc": "选择接收更新的通道",
+      "stable": "稳定版",
+      "stable_desc": "只接收正式稳定版本",
+      "preview": "测试版",
+      "preview_desc": "提前体验新功能，可能存在问题"
+    },
+    "update": {
+      "title": "发现新版本",
+      "new_version": "发现新版本",
+      "changelog_loading": "正在加载更新日志...",
+      "changelog_failed": "更新日志获取失败",
+      "update_now": "立即更新",
+      "later": "稍后",
+      "downloading": "下载中...",
+      "installing": "安装中...",
+      "check_update": "检查更新",
+      "checking": "检查中...",
+      "up_to_date": "已是最新",
+      "update_available": "有新版本",
+      "failed": "获取失败",
+      "app_version": "应用版本",
+      "tauri_version": "Tauri 版本",
+      "platform": "平台",
+      "latest_version": "远端最新版本",
+      "release_date": "发布日期",
+      "about": "关于",
+      "license": "许可证",
+      "license_desc": "本软件采用 AGPL-3.0 许可证开源",
+      "open_source_credits": "开源致谢"
+    },
     "account": {
       "title": "账户管理",
       "subtitle": "管理您的登录账户",
