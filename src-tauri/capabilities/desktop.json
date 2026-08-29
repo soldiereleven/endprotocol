@@ -9,6 +9,7 @@
     "main"
   ],
   "permissions": [
-    "updater:default"
+    "updater:default",
+    "opener:allow-open-path"
   ]
 }

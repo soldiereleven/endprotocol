@@ -88,6 +88,9 @@ pub fn run() {
             // Updater commands
             commands::updater::write_file,
             commands::updater::get_temp_dir,
+            commands::updater::fetch_url,
+            commands::updater::download_file,
+            commands::updater::run_installer,
         ])
         .setup(|app| {
             // 初始化配置服务（使用 std::sync::Mutex，因为它是同步的）

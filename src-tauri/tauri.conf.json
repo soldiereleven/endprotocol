@@ -59,6 +59,8 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDkxRkJCMzc4NjkwODk0MEUKUldRT2xBaHBlTFA3a2NUUXN1L3o2VU13UDYzRnNjRVlVSXFDMlA0ODV0K25EWkozdU9Lcm9MRWQK",
       "endpoints": [
+        "https://updates.msk-network.cn/stable/latest.json",
+        "https://updates.msk-network.cn/preview/latest.json",
         "https://github.com/soldiereleven/endprotocol/releases/latest/download/latest.json"
       ]
     }

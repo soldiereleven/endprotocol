@@ -76,10 +76,23 @@ export function addMessage(
     timestamp: Date.now(),
     read: msg.read ?? false,
   };
+  // Deduplicate by tag: remove existing message with same tag
+  if (entry.tag) {
+    messages = messages.filter((m) => m.tag !== entry.tag);
+  }
   messages = [entry, ...messages].slice(0, MAX_MESSAGES);
   persist();
   emit();
   return entry;
+}
+
+export function updateMessage(
+  id: string,
+  updates: Partial<Pick<AppMessage, "title" | "body" | "type" | "actions">>,
+) {
+  messages = messages.map((m) => (m.id === id ? { ...m, ...updates } : m));
+  persist();
+  emit();
 }
 
 export function markRead(id: string) {

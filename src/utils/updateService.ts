@@ -1,7 +1,6 @@
 import { check, type Update, type DownloadEvent } from "@tauri-apps/plugin-updater";
 import { invoke } from "@tauri-apps/api/core";
-import { openPath } from "@tauri-apps/plugin-opener";
-import { addMessage, type AppMessage } from "./messageStore";
+import { addMessage, updateMessage, removeMessage, type AppMessage } from "./messageStore";
 import { pushGlobalAlert } from "@/components/ui/global-alert";
 import { getConfig, setConfig } from "./configService";
 import logger from "./logger";
@@ -11,6 +10,8 @@ import logger from "./logger";
 // ============================================================================
 
 export type UpdateChannel = "stable" | "preview";
+
+export type UpdateSource = "github" | "mirror";
 
 export type UpdateStatus =
   | "idle"
@@ -57,19 +58,6 @@ interface GitHubRelease {
   assets: Array<{ name: string; browser_download_url: string }>;
 }
 
-interface LatestJson {
-  version: string;
-  notes: string;
-  pub_date: string;
-  platforms: Record<
-    string,
-    {
-      signature: string;
-      url: string;
-    }
-  >;
-}
-
 interface ChangelogCacheEntry {
   changelog: string;
   timestamp: number;
@@ -82,7 +70,8 @@ interface ChangelogCacheEntry {
 const REPO_OWNER = "soldiereleven";
 const REPO_NAME = "endprotocol";
 const GITHUB_API_BASE = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`;
-const CHANGELOG_CACHE_TTL = 30 * 1000; // 30 seconds
+const MIRROR_BASE = "https://updates.msk-network.cn";
+const CHANGELOG_CACHE_TTL = 30 * 1000;
 const CHANGELOG_CACHE_KEY_PREFIX = "changelog_cache_";
 
 // ============================================================================
@@ -96,6 +85,7 @@ let downloadProgress = 0;
 let downloadTotal = 0;
 let downloadAbortController: AbortController | null = null;
 let currentChannel: UpdateChannel = "stable";
+let currentSource: UpdateSource = "github";
 let previousChannel: UpdateChannel | null = null;
 let channelSwitchDetected = false;
 let changelogCache: Map<string, ChangelogCacheEntry> = new Map();
@@ -136,11 +126,9 @@ function compareSemVer(a: SemVer, b: SemVer): number {
   if (a.minor !== b.minor) return a.minor - b.minor;
   if (a.patch !== b.patch) return a.patch - b.patch;
 
-  // No prerelease > has prerelease
   if (a.prerelease.length === 0 && b.prerelease.length > 0) return 1;
   if (a.prerelease.length > 0 && b.prerelease.length === 0) return -1;
 
-  // Compare prerelease identifiers
   const maxLen = Math.max(a.prerelease.length, b.prerelease.length);
   for (let i = 0; i < maxLen; i++) {
     const aId = a.prerelease[i];
@@ -171,29 +159,8 @@ function stripVPrefix(tag: string): string {
   return tag.startsWith("v") ? tag.slice(1) : tag;
 }
 
-/**
- * Determine the update channel from a version string.
- * - "1.2.0"      → "stable"
- * - "1.2.0-pre"  → "preview"
- * - "1.2.0-pre.1" → "preview"
- */
 function channelFromVersion(version: string): UpdateChannel {
   return isPreviewChannel(version) ? "preview" : "stable";
-}
-
-/**
- * Check if two versions have the same base version (major.minor.patch),
- * ignoring the prerelease suffix.
- */
-function hasSameBaseVersion(a: string, b: string): boolean {
-  const aSemver = parseSemVer(a);
-  const bSemver = parseSemVer(b);
-  if (!aSemver || !bSemver) return false;
-  return (
-    aSemver.major === bSemver.major &&
-    aSemver.minor === bSemver.minor &&
-    aSemver.patch === bSemver.patch
-  );
 }
 
 // ============================================================================
@@ -202,11 +169,9 @@ function hasSameBaseVersion(a: string, b: string): boolean {
 
 async function fetchGitHubReleases(): Promise<GitHubRelease[]> {
   const response = await fetch(`${GITHUB_API_BASE}/releases?per_page=100`);
-
   if (!response.ok) {
     throw new Error(`GitHub API ${response.status}: ${response.statusText}`);
   }
-
   return response.json();
 }
 
@@ -217,11 +182,7 @@ async function fetchGitHubReleaseByTag(
     const response = await fetch(
       `${GITHUB_API_BASE}/releases/tags/${encodeURIComponent(tag)}`,
     );
-
-    if (!response.ok) {
-      return null;
-    }
-
+    if (!response.ok) return null;
     return response.json();
   } catch {
     return null;
@@ -242,14 +203,11 @@ function getChangelogFromCache(
 ): string | null {
   const key = getCacheKey(channel, version);
   const entry = changelogCache.get(key);
-
   if (!entry) return null;
-
   if (Date.now() - entry.timestamp > CHANGELOG_CACHE_TTL) {
     changelogCache.delete(key);
     return null;
   }
-
   return entry.changelog;
 }
 
@@ -266,26 +224,6 @@ function setChangelogCache(
 // Channel Switch Detection
 // ============================================================================
 
-/**
- * Detect if a channel switch requires an update that the standard SemVer
- * comparison would miss.
- *
- * Key scenarios:
- *   1. Preview → Stable:
- *      Local: 1.2.0-pre, Remote stable: 1.2.0
- *      Standard SemVer: 1.2.0 > 1.2.0-pre → plugin WOULD offer update ✓
- *
- *   2. Stable → Preview:
- *      Local: 1.2.0, Remote preview: 1.2.0-pre
- *      Standard SemVer: 1.2.0-pre < 1.2.0 → plugin would NOT offer update ✗
- *      We must detect this and offer the update manually.
- *
- *   3. Stable → Preview with newer version:
- *      Local: 1.2.0, Remote preview: 1.3.0-pre
- *      Standard SemVer: 1.3.0-pre < 1.2.0 → plugin would NOT offer update ✗
- *      (because prerelease < release even though 1.3 > 1.2)
- *      We must detect this and offer the update manually.
- */
 function isChannelSwitchUpdateRequired(
   localVersion: string,
   remoteVersion: string,
@@ -294,347 +232,125 @@ function isChannelSwitchUpdateRequired(
   const localChannel = channelFromVersion(localVersion);
   const remoteChannel = channelFromVersion(remoteVersion);
 
-  // If channels are the same, standard SemVer comparison is sufficient
-  if (localChannel === remoteChannel) {
-    return false;
-  }
+  if (localChannel === remoteChannel) return false;
+  if (remoteChannel !== targetChannel) return false;
 
-  // If remote channel doesn't match the target channel, not relevant
-  if (remoteChannel !== targetChannel) {
-    return false;
-  }
-
-  // Remote is on the target channel but local is not.
-  // Any version difference means an update is required.
   return localVersion !== remoteVersion;
 }
 
 // ============================================================================
-// Resolve Stable Release
+// Get Mirror Changelog URL
 // ============================================================================
 
-async function resolveStableRelease(): Promise<Update | null> {
-  logger.info("Resolving stable release...", "Updater");
+async function fetchMirrorChangelogUrl(channel: UpdateChannel): Promise<string | null> {
+  const endpoint = channel === "stable"
+    ? `${MIRROR_BASE}/stable/latest.json`
+    : `${MIRROR_BASE}/preview/latest.json`;
+  try {
+    const text = await invoke<string>("fetch_url", { url: endpoint });
+    const json: { notes?: string } = JSON.parse(text);
+    if (json.notes?.startsWith("http")) {
+      return json.notes;
+    }
+  } catch {
+    // Ignore
+  }
+  return null;
+}
 
+// ============================================================================
+// Resolve Release (Unified)
+// ============================================================================
+
+async function resolveRelease(): Promise<Update | null> {
+  const channel = currentChannel;
+  logger.info(`Resolving ${channel} release (source: ${currentSource})...`, "Updater");
+
+  // Tauri updater plugin tries all endpoints from tauri.conf.json
+  // (mirror stable, mirror preview, github) and returns the first update found
   const update = await check();
 
   if (!update) {
-    logger.info("No stable update available via Tauri updater", "Updater");
+    logger.info(`No ${channel} update available via Tauri updater`, "Updater");
 
-    // If we detected a channel switch, the standard check may have missed
-    // an update. Do a manual check.
+    // Channel-switch fallback: the Tauri plugin only checks for newer versions.
+    // When switching channels (e.g. stable→preview), the remote may be on a
+    // "lower" SemVer (e.g. 1.2.0-pre < 1.2.0) so the plugin won't report it.
+    // We detect this by querying GitHub API manually.
     if (channelSwitchDetected) {
-      logger.info(
-        "Channel switch detected, performing manual stable check...",
-        "Updater",
-      );
-
-      const { getVersion } = await import("@tauri-apps/api/app");
-      const localVersion = await getVersion();
-
-      // Fetch latest stable release from GitHub
-      let releases: GitHubRelease[];
-      try {
-        releases = await fetchGitHubReleases();
-      } catch (error) {
-        logger.error("Failed to fetch GitHub releases: " + error, "Updater");
-        return null;
-      }
-
-      const stableReleases = releases.filter(
-        (r) => !r.prerelease && r.tag_name.startsWith("v"),
-      );
-
-      if (stableReleases.length === 0) return null;
-
-      // Sort by SemVer descending
-      stableReleases.sort((a, b) => {
-        const aVer = parseSemVer(stripVPrefix(a.tag_name));
-        const bVer = parseSemVer(stripVPrefix(b.tag_name));
-        if (!aVer || !bVer) return 0;
-        return compareSemVer(bVer, aVer);
-      });
-
-      const latestStable = stableReleases[0];
-      const remoteVersion = stripVPrefix(latestStable.tag_name);
-
-      // Check if this is a channel-switch update
-      if (
-        isChannelSwitchUpdateRequired(localVersion, remoteVersion, "stable")
-      ) {
-        logger.info(
-          `Channel switch update: ${localVersion} → ${remoteVersion}`,
-          "Updater",
-        );
-
-        // Fetch latest.json for this release
-        const latestJsonUrl = `https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${latestStable.tag_name}/latest.json`;
-
-        try {
-          const response = await fetch(latestJsonUrl);
-          if (!response.ok) return null;
-          const latestJson: LatestJson = await response.json();
-
-          const platformKey = "windows-x86_64";
-          const platformData = latestJson.platforms?.[platformKey];
-          if (!platformData) return null;
-
-          // Return a pseudo-Update object for the channel switch
-          return {
-            version: remoteVersion,
-            currentVersion: localVersion,
-            date: latestJson.pub_date,
-            body: latestJson.notes,
-            rawJson: latestJson,
-          } as unknown as Update;
-        } catch (error) {
-          logger.error(
-            "Failed to fetch stable latest.json for channel switch: " + error,
-            "Updater",
-          );
-          return null;
-        }
-      }
-
-      return null;
+      logger.info(`Channel switch detected, performing manual ${channel} check...`, "Updater");
+      return await resolveChannelSwitchRelease();
     }
 
     return null;
   }
 
-  // Ensure the discovered version is actually stable (no prerelease)
-  if (isPreviewChannel(update.version)) {
-    logger.info(
-      `Skipping preview version ${update.version} on stable channel`,
-      "Updater",
-    );
+  // Filter by channel: ensure the version matches what we expect
+  if (channel === "stable" && isPreviewChannel(update.version)) {
+    logger.info(`Skipping preview version ${update.version} on stable channel`, "Updater");
+    return null;
+  }
+  if (channel === "preview" && !isPreviewChannel(update.version)) {
+    logger.info(`Skipping stable version ${update.version} on preview channel`, "Updater");
     return null;
   }
 
   return update;
 }
 
-// ============================================================================
-// Resolve Preview Release
-// ============================================================================
-
-async function resolvePreviewRelease(): Promise<{
-  update: UpdateInfo;
-  installerUrl: string;
-  signature: string;
-} | null> {
-  logger.info("Resolving preview release via GitHub API...", "Updater");
+async function resolveChannelSwitchRelease(): Promise<Update | null> {
+  const { getVersion } = await import("@tauri-apps/api/app");
+  const localVersion = await getVersion();
+  const channel = currentChannel;
 
   let releases: GitHubRelease[];
   try {
     releases = await fetchGitHubReleases();
   } catch (error) {
     logger.error("Failed to fetch GitHub releases: " + error, "Updater");
-    throw error;
-  }
-
-  // Filter to only prerelease versions with a v-prefixed tag
-  const previewReleases = releases.filter(
-    (r) => r.prerelease && r.tag_name.startsWith("v"),
-  );
-
-  if (previewReleases.length === 0) {
-    logger.info("No preview releases found on GitHub", "Updater");
     return null;
   }
 
-  // Sort by SemVer descending to find the latest preview
-  previewReleases.sort((a, b) => {
+  const filtered = releases.filter((r) => {
+    if (!r.tag_name.startsWith("v")) return false;
+    return channel === "stable" ? !r.prerelease : r.prerelease;
+  });
+
+  if (filtered.length === 0) return null;
+
+  filtered.sort((a, b) => {
     const aVer = parseSemVer(stripVPrefix(a.tag_name));
     const bVer = parseSemVer(stripVPrefix(b.tag_name));
     if (!aVer || !bVer) return 0;
     return compareSemVer(bVer, aVer);
   });
 
-  const latestPreview = previewReleases[0];
-  const previewVersion = stripVPrefix(latestPreview.tag_name);
+  const latest = filtered[0];
+  const remoteVersion = stripVPrefix(latest.tag_name);
 
-  logger.info(`Latest preview version: ${previewVersion}`, "Updater");
+  if (!isChannelSwitchUpdateRequired(localVersion, remoteVersion, channel)) {
+    return null;
+  }
 
-  // Fetch latest.json from the preview release
-  const latestJsonUrl = `https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${latestPreview.tag_name}/latest.json`;
+  logger.info(`Channel switch update: ${localVersion} → ${remoteVersion}`, "Updater");
 
-  let latestJson: LatestJson;
+  const latestJsonUrl = `https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${latest.tag_name}/latest.json`;
+
   try {
     const response = await fetch(latestJsonUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch latest.json: ${response.status}`);
-    }
-    latestJson = await response.json();
+    if (!response.ok) return null;
+    const latestJson: { version: string; pub_date: string; notes: string; platforms?: Record<string, { signature: string; url: string }> } = await response.json();
+
+    return {
+      version: remoteVersion,
+      currentVersion: localVersion,
+      date: latestJson.pub_date,
+      body: latestJson.notes,
+    } as unknown as Update;
   } catch (error) {
-    logger.error("Failed to fetch preview latest.json: " + error, "Updater");
-    throw error;
-  }
-
-  // Get the Windows x64 platform data
-  const platformKey = "windows-x86_64";
-  const platformData = latestJson.platforms?.[platformKey];
-
-  if (!platformData) {
-    logger.error(
-      `No platform data for ${platformKey} in preview latest.json`,
-      "Updater",
-    );
+    logger.error("Failed to fetch latest.json for channel switch: " + error, "Updater");
     return null;
   }
-
-  // Get current version
-  const { getVersion } = await import("@tauri-apps/api/app");
-  const currentVersion = await getVersion();
-
-  // Compare versions
-  const currentSemver = parseSemVer(currentVersion);
-  const latestSemver = parseSemVer(latestJson.version);
-
-  if (!currentSemver || !latestSemver) {
-    logger.error("Failed to parse versions for comparison", "Updater");
-    return null;
-  }
-
-  const standardComparison = compareSemVer(latestSemver, currentSemver);
-
-  // Standard case: remote is strictly newer
-  if (standardComparison > 0) {
-    return {
-      update: {
-        currentVersion,
-        newVersion: latestJson.version,
-        date: latestJson.pub_date,
-        body: latestJson.notes,
-      },
-      installerUrl: platformData.url,
-      signature: platformData.signature,
-    };
-  }
-
-  // Channel switch case: remote version is different from local
-  // even if not strictly "newer" in SemVer terms
-  if (
-    standardComparison === 0 &&
-    channelSwitchDetected &&
-    isChannelSwitchUpdateRequired(currentVersion, latestJson.version, "preview")
-  ) {
-    logger.info(
-      `Channel switch update: ${currentVersion} → ${latestJson.version}`,
-      "Updater",
-    );
-
-    return {
-      update: {
-        currentVersion,
-        newVersion: latestJson.version,
-        date: latestJson.pub_date,
-        body: latestJson.notes,
-      },
-      installerUrl: platformData.url,
-      signature: platformData.signature,
-    };
-  }
-
-  // Also handle case where preview version has same base but prerelease suffix
-  // e.g., local 1.2.0 → remote 1.2.0-pre (same base, different channel)
-  if (
-    hasSameBaseVersion(currentVersion, latestJson.version) &&
-    channelSwitchDetected &&
-    isChannelSwitchUpdateRequired(currentVersion, latestJson.version, "preview")
-  ) {
-    logger.info(
-      `Channel switch update (same base): ${currentVersion} → ${latestJson.version}`,
-      "Updater",
-    );
-
-    return {
-      update: {
-        currentVersion,
-        newVersion: latestJson.version,
-        date: latestJson.pub_date,
-        body: latestJson.notes,
-      },
-      installerUrl: platformData.url,
-      signature: platformData.signature,
-    };
-  }
-
-  logger.info(
-    `Preview version ${latestJson.version} is not newer than ${currentVersion}`,
-    "Updater",
-  );
-  return null;
-}
-
-// ============================================================================
-// Preview Update Download & Install
-// ============================================================================
-
-async function downloadPreviewUpdate(
-  installerUrl: string,
-  signature: string,
-  signal?: AbortSignal,
-): Promise<void> {
-  logger.info("Downloading preview update installer...", "Updater");
-
-  // Get temp directory
-  const tempDir: string = await invoke("get_temp_dir");
-
-  // Extract filename from URL
-  const urlParts = installerUrl.split("/");
-  const filename = urlParts[urlParts.length - 1];
-  const installerPath = `${tempDir}\\${filename}`;
-  const signaturePath = `${installerPath}.sig`;
-
-  // Download installer with progress tracking
-  const installerResponse = await fetch(installerUrl, { signal });
-  if (!installerResponse.ok) {
-    throw new Error(
-      `Failed to download installer: ${installerResponse.status}`,
-    );
-  }
-
-  const contentLength = Number(installerResponse.headers.get("content-length")) || 0;
-  downloadTotal = contentLength;
-  downloadProgress = 0;
-  emitChange();
-
-  const reader = installerResponse.body?.getReader();
-  if (!reader) {
-    throw new Error("Failed to read response body");
-  }
-
-  const chunks: Uint8Array[] = [];
-  let received = 0;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    received += value.length;
-    downloadProgress = received;
-    emitChange();
-  }
-
-  const installerData = new Uint8Array(received);
-  let offset = 0;
-  for (const chunk of chunks) {
-    installerData.set(chunk, offset);
-    offset += chunk.length;
-  }
-
-  await invoke("write_file", { path: installerPath, data: Array.from(installerData) });
-  logger.info(`Installer saved to: ${installerPath}`, "Updater");
-
-  // Save signature file
-  const signatureData = new TextEncoder().encode(signature);
-  await invoke("write_file", { path: signaturePath, data: Array.from(signatureData) });
-  logger.info(`Signature saved to: ${signaturePath}`, "Updater");
-
-  // Open the installer with the system's default handler
-  await openPath(installerPath);
-  logger.info("Installer launched", "Updater");
 }
 
 // ============================================================================
@@ -646,7 +362,6 @@ async function fetchChangelog(
   version: string,
   tag: string,
 ): Promise<{ changelog: string | null; status: ChangelogStatus }> {
-  // Check cache first
   const cached = getChangelogFromCache(channel, version);
   if (cached !== null) {
     logger.debug(`Changelog cache hit for ${tag}`, "Updater");
@@ -655,27 +370,39 @@ async function fetchChangelog(
 
   logger.info(`Fetching changelog for ${tag}...`, "Updater");
 
-  // Strategy 1: Try to get changelog from GitHub Release body
+  // Strategy 1: Mirror source - fetch notes URL from mirror's latest.json
+  if (currentSource === "mirror") {
+    try {
+      const notesUrl = await fetchMirrorChangelogUrl(channel);
+      if (notesUrl) {
+        const text = await invoke<string>("fetch_url", { url: notesUrl });
+        if (text.trim().length > 0) {
+          logger.info("Changelog fetched from mirror notes URL", "Updater");
+          setChangelogCache(channel, version, text);
+          return { changelog: text, status: "success" };
+        }
+      }
+    } catch (error) {
+      logger.warn("Failed to fetch changelog from mirror: " + error, "Updater");
+    }
+  }
+
+  // Strategy 2: GitHub Release body
   try {
     const release = await fetchGitHubReleaseByTag(tag);
-
     if (release?.body && release.body.trim().length > 0) {
       logger.info("Changelog fetched from Release body", "Updater");
       setChangelogCache(channel, version, release.body);
       return { changelog: release.body, status: "success" };
     }
   } catch (error) {
-    logger.warn(
-      "Failed to fetch changelog from Release body: " + error,
-      "Updater",
-    );
+    logger.warn("Failed to fetch changelog from Release body: " + error, "Updater");
   }
 
-  // Strategy 2: Try to download CHANGELOG.md from release assets
+  // Strategy 3: CHANGELOG.md release asset
   try {
     const assetUrl = `https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${tag}/CHANGELOG.md`;
     const response = await fetch(assetUrl);
-
     if (response.ok) {
       const text = await response.text();
       if (text.trim().length > 0) {
@@ -685,13 +412,9 @@ async function fetchChangelog(
       }
     }
   } catch (error) {
-    logger.warn(
-      "Failed to fetch changelog from Release asset: " + error,
-      "Updater",
-    );
+    logger.warn("Failed to fetch changelog from Release asset: " + error, "Updater");
   }
 
-  // All strategies failed
   logger.warn(`Changelog not available for ${tag}`, "Updater");
   return { changelog: null, status: "failed" };
 }
@@ -702,133 +425,66 @@ async function fetchChangelog(
 
 async function performUpdateCheck(): Promise<UpdateCheckResult> {
   const channel = currentChannel;
+  logger.info(`Checking for updates on ${channel} channel (source: ${currentSource})...`, "Updater");
 
-  logger.info(`Checking for updates on ${channel} channel...`, "Updater");
+  let update: Update | null;
 
-  if (channel === "stable") {
-    // Stable channel: use Tauri updater plugin + channel-switch fallback
-    let update: Update | null;
-
-    try {
-      update = await resolveStableRelease();
-    } catch (error) {
-      logger.error("Stable update check failed: " + error, "Updater");
-      return {
-        available: false,
-        update: null,
-        changelog: null,
-        changelogStatus: "unavailable",
-        status: "error",
-        errorCode: "UPDATE_CHECK_FAILED",
-        errorMessage: String(error),
-      };
-    }
-
-    if (!update) {
-      return {
-        available: false,
-        update: null,
-        changelog: null,
-        changelogStatus: "unavailable",
-        status: "not-available",
-      };
-    }
-
-    const updateInfo: UpdateInfo = {
-      currentVersion: update.currentVersion,
-      newVersion: update.version,
-      date: update.date,
-      body: update.body,
-    };
-
-    currentUpdate = update;
-    currentUpdateInfo = updateInfo;
-
-    // Fetch changelog separately (must not block update)
-    let changelog: string | null = null;
-    let changelogStatus: ChangelogStatus = "loading";
-
-    try {
-      const tag = `v${update.version}`;
-      const result = await fetchChangelog(channel, update.version, tag);
-      changelog = result.changelog;
-      changelogStatus = result.status;
-    } catch (error) {
-      logger.error("Changelog fetch error: " + error, "Updater");
-      changelogStatus = "failed";
-    }
-
+  try {
+    update = await resolveRelease();
+  } catch (error) {
+    logger.error("Update check failed: " + error, "Updater");
     return {
-      available: true,
-      update: updateInfo,
-      changelog,
-      changelogStatus,
-      status: "available",
-    };
-  } else {
-    // Preview channel: manual resolution via GitHub API
-    let previewResult;
-
-    try {
-      previewResult = await resolvePreviewRelease();
-    } catch (error) {
-      logger.error("Preview update check failed: " + error, "Updater");
-      return {
-        available: false,
-        update: null,
-        changelog: null,
-        changelogStatus: "unavailable",
-        status: "error",
-        errorCode: "UPDATE_CHECK_FAILED",
-        errorMessage: String(error),
-      };
-    }
-
-    if (!previewResult) {
-      return {
-        available: false,
-        update: null,
-        changelog: null,
-        changelogStatus: "unavailable",
-        status: "not-available",
-      };
-    }
-
-    const { update: updateInfo, installerUrl, signature } = previewResult;
-
-    // Store preview update metadata for later download/install
-    currentUpdateInfo = updateInfo;
-    previewUpdateData = { installerUrl, signature };
-
-    // Fetch changelog separately (must not block update)
-    let changelog: string | null = null;
-    let changelogStatus: ChangelogStatus = "loading";
-
-    try {
-      const tag = `v${updateInfo.newVersion}`;
-      const result = await fetchChangelog(channel, updateInfo.newVersion, tag);
-      changelog = result.changelog;
-      changelogStatus = result.status;
-    } catch (error) {
-      logger.error("Changelog fetch error: " + error, "Updater");
-      changelogStatus = "failed";
-    }
-
-    return {
-      available: true,
-      update: updateInfo,
-      changelog,
-      changelogStatus,
-      status: "available",
+      available: false,
+      update: null,
+      changelog: null,
+      changelogStatus: "unavailable",
+      status: "error",
+      errorCode: "UPDATE_CHECK_FAILED",
+      errorMessage: String(error),
     };
   }
-}
 
-// Preview update metadata (stored for download/install)
-let previewUpdateData: {
-  installerUrl: string;
-  signature: string;
-} | null = null;
+  if (!update) {
+    return {
+      available: false,
+      update: null,
+      changelog: null,
+      changelogStatus: "unavailable",
+      status: "not-available",
+    };
+  }
+
+  const updateInfo: UpdateInfo = {
+    currentVersion: update.currentVersion,
+    newVersion: update.version,
+    date: update.date,
+    body: update.body,
+  };
+
+  currentUpdate = update;
+  currentUpdateInfo = updateInfo;
+
+  let changelog: string | null = null;
+  let changelogStatus: ChangelogStatus = "loading";
+
+  try {
+    const tag = `v${update.version}`;
+    const result = await fetchChangelog(channel, update.version, tag);
+    changelog = result.changelog;
+    changelogStatus = result.status;
+  } catch (error) {
+    logger.error("Changelog fetch error: " + error, "Updater");
+    changelogStatus = "failed";
+  }
+
+  return {
+    available: true,
+    update: updateInfo,
+    changelog,
+    changelogStatus,
+    status: "available",
+  };
+}
 
 // ============================================================================
 // Public API
@@ -838,24 +494,24 @@ export function getChannel(): UpdateChannel {
   return currentChannel;
 }
 
+export function getSource(): UpdateSource {
+  return currentSource;
+}
+
 export async function setChannel(channel: UpdateChannel): Promise<void> {
   if (currentChannel === channel) return;
 
-  // Save previous channel for channel-switch detection
   previousChannel = currentChannel;
   channelSwitchDetected = true;
 
   currentChannel = channel;
   await setConfig("update_channel", channel);
 
-  // Clear current state
   currentUpdate = null;
   currentUpdateInfo = null;
-  previewUpdateData = null;
   changelogCache.clear();
   status = "idle";
 
-  // Reset legacy remote version state so UI doesn't show stale data
   remoteState = {
     version: null,
     date: null,
@@ -873,10 +529,8 @@ export async function setChannel(channel: UpdateChannel): Promise<void> {
   );
   emitChange();
 
-  // Re-check with new channel (channel-switch detection is active)
   const result = await checkForUpdate();
 
-  // Sync result into legacy remoteState so UI reflects the new channel
   if (result.available && result.update) {
     remoteState = {
       version: result.update.newVersion,
@@ -897,21 +551,72 @@ export async function setChannel(channel: UpdateChannel): Promise<void> {
   }
   emitRemoteChange();
 
-  // Clear channel switch flag after check completes
   channelSwitchDetected = false;
   previousChannel = null;
 }
 
 export async function initializeChannel(): Promise<void> {
   try {
-    const saved = await getConfig<UpdateChannel>("update_channel");
-    if (saved === "stable" || saved === "preview") {
-      currentChannel = saved;
+    const [savedChannel, savedSource] = await Promise.all([
+      getConfig<UpdateChannel>("update_channel"),
+      getConfig<UpdateSource>("update_source"),
+    ]);
+    if (savedChannel === "stable" || savedChannel === "preview") {
+      currentChannel = savedChannel;
+    }
+    if (savedSource === "github" || savedSource === "mirror") {
+      currentSource = savedSource;
     }
   } catch {
-    // Use default
+    // Use defaults
   }
-  logger.info(`Initialized update channel: ${currentChannel}`, "Updater");
+  logger.info(`Initialized update channel: ${currentChannel}, source: ${currentSource}`, "Updater");
+}
+
+export async function setSource(source: UpdateSource): Promise<void> {
+  if (currentSource === source) return;
+  currentSource = source;
+  await setConfig("update_source", source);
+
+  currentUpdate = null;
+  currentUpdateInfo = null;
+  changelogCache.clear();
+  status = "idle";
+
+  remoteState = {
+    version: null,
+    date: null,
+    body: null,
+    checked: false,
+    loading: false,
+    error: false,
+    hasUpdate: false,
+  };
+  emitRemoteChange();
+
+  logger.info(`Update source set to: ${source}`, "Updater");
+  emitChange();
+
+  const result = await checkForUpdate();
+  if (result.available && result.update) {
+    remoteState = {
+      version: result.update.newVersion,
+      date: result.update.date ?? null,
+      body: result.changelog ?? result.update.body ?? null,
+      checked: true,
+      loading: false,
+      error: false,
+      hasUpdate: true,
+    };
+  } else {
+    remoteState = {
+      ...remoteState,
+      checked: true,
+      loading: false,
+      hasUpdate: false,
+    };
+  }
+  emitRemoteChange();
 }
 
 export async function checkForUpdate(): Promise<UpdateCheckResult> {
@@ -951,116 +656,91 @@ export function getDownloadTotal(): number {
 }
 
 export async function downloadAndInstall(): Promise<void> {
-  if (currentChannel === "preview" && previewUpdateData) {
-    // Preview channel: manual download and install
-    if (isDownloading) return;
-    isDownloading = true;
-    downloadProgress = 0;
-    downloadTotal = 0;
-    const controller = new AbortController();
-    downloadAbortController = controller;
-    emitChange();
-
-    try {
-      logger.info("Starting preview update download...", "Updater");
-      await downloadPreviewUpdate(
-        previewUpdateData.installerUrl,
-        previewUpdateData.signature,
-        controller.signal,
-      );
-      logger.info("Preview update installer launched", "Updater");
-      pushGlobalAlert(
-        "success",
-        "Installer launched. Follow the installer prompts to complete the update.",
-      );
-
-      currentUpdateInfo = null;
-      previewUpdateData = null;
-    } catch (error) {
-      if (controller.signal.aborted) {
-        logger.info("Preview download cancelled", "Updater");
-        return;
-      }
-      logger.error("Preview update failed: " + error, "Updater");
-      pushGlobalAlert("danger", "Update failed: " + String(error));
-    } finally {
-      isDownloading = false;
-      downloadAbortController = null;
-      downloadProgress = 0;
-      downloadTotal = 0;
-      emitChange();
-    }
-  } else if (currentUpdate) {
-    // Stable channel: use Tauri updater plugin
-    if (isDownloading) return;
-    isDownloading = true;
-    downloadProgress = 0;
-    downloadTotal = 0;
-    const controller = new AbortController();
-    downloadAbortController = controller;
-    emitChange();
-
-    try {
-      logger.info("Starting update download...", "Updater");
-
-      let contentLength = 0;
-      let downloaded = 0;
-
-      await currentUpdate.downloadAndInstall((event: DownloadEvent) => {
-        if (controller.signal.aborted) return;
-        switch (event.event) {
-          case "Started":
-            contentLength = event.data.contentLength ?? 0;
-            downloadTotal = contentLength;
-            downloadProgress = 0;
-            emitChange();
-            logger.info(
-              `Download started, size: ${(contentLength / 1024 / 1024).toFixed(1)}MB`,
-              "Updater",
-            );
-            break;
-          case "Progress":
-            downloaded += event.data.chunkLength;
-            downloadProgress = downloaded;
-            emitChange();
-            if (contentLength > 0) {
-              const pct = Math.round((downloaded / contentLength) * 100);
-              logger.debug(`Download progress: ${pct}%`, "Updater");
-            }
-            break;
-          case "Finished":
-            downloadProgress = downloadTotal;
-            emitChange();
-            logger.info("Download finished, installing...", "Updater");
-            break;
-        }
-      });
-
-      if (controller.signal.aborted) {
-        logger.info("Stable download cancelled", "Updater");
-        return;
-      }
-
-      await currentUpdate.install();
-      logger.info("Update installed successfully", "Updater");
-      pushGlobalAlert("success", "Update installed! Restart to apply.");
-
-      currentUpdate.close();
-      currentUpdate = null;
-      currentUpdateInfo = null;
-    } catch (error) {
-      if (controller.signal.aborted) {
-        logger.info("Stable download cancelled", "Updater");
-        return;
-      }
-      logger.error("Update failed: " + error, "Updater");
-      pushGlobalAlert("danger", "Update failed: " + String(error));
-    } finally {
-      isDownloading = false;
-      downloadAbortController = null;
-    }
-  } else {
+  if (!currentUpdate) {
     pushGlobalAlert("warning", "No update available");
+    return;
+  }
+
+  if (isDownloading) return;
+  isDownloading = true;
+  downloadProgress = 0;
+  downloadTotal = 0;
+  const controller = new AbortController();
+  downloadAbortController = controller;
+  emitChange();
+
+  try {
+    logger.info("Starting update download...", "Updater");
+    addProgressMessage("Downloading update...");
+
+    let contentLength = 0;
+    let downloaded = 0;
+
+    await currentUpdate.downloadAndInstall((event: DownloadEvent) => {
+      if (controller.signal.aborted) return;
+      switch (event.event) {
+        case "Started":
+          contentLength = event.data.contentLength ?? 0;
+          downloadTotal = contentLength;
+          downloadProgress = 0;
+          emitChange();
+          logger.info(
+            `Download started, size: ${(contentLength / 1024 / 1024).toFixed(1)}MB`,
+            "Updater",
+          );
+          break;
+        case "Progress":
+          downloaded += event.data.chunkLength;
+          downloadProgress = downloaded;
+          emitChange();
+          if (contentLength > 0) {
+            const pct = Math.round((downloaded / contentLength) * 100);
+            const downloadedMB = (downloaded / 1024 / 1024).toFixed(1);
+            const totalMB = (contentLength / 1024 / 1024).toFixed(1);
+            updateProgressMessage(
+              `Downloading update... ${pct}%`,
+              `${downloadedMB} MB / ${totalMB} MB`,
+            );
+          }
+          break;
+        case "Finished":
+          downloadProgress = downloadTotal;
+          emitChange();
+          updateProgressMessage("Installing update...");
+          logger.info("Download finished, installing...", "Updater");
+          break;
+      }
+    });
+
+    if (controller.signal.aborted) {
+      logger.info("Download cancelled", "Updater");
+      removeProgressMessage();
+      return;
+    }
+
+    await currentUpdate.install();
+    logger.info("Update installed successfully", "Updater");
+    updateProgressMessage("Update installed");
+    pushGlobalAlert("success", "Update installed! Restart to apply.");
+
+    currentUpdate.close();
+    currentUpdate = null;
+    currentUpdateInfo = null;
+  } catch (error) {
+    if (controller.signal.aborted) {
+      logger.info("Download cancelled", "Updater");
+      removeProgressMessage();
+      return;
+    }
+    logger.error("Update failed: " + error, "Updater");
+    removeProgressMessage();
+    pushGlobalAlert("danger", "Update failed: " + String(error));
+  } finally {
+    isDownloading = false;
+    downloadAbortController = null;
+    downloadProgress = 0;
+    downloadTotal = 0;
+    emitChange();
   }
 }
 
@@ -1071,6 +751,7 @@ export function cancelDownload(): void {
     isDownloading = false;
     downloadProgress = 0;
     downloadTotal = 0;
+    removeProgressMessage();
     emitChange();
     logger.info("Download cancelled by user", "Updater");
   }
@@ -1193,11 +874,10 @@ export function addUpdateMessage(info: UpdateInfo): AppMessage {
     tag: "app-update",
     actions: [
       {
-        label: "Update Now",
+        label: "Update",
         variant: "primary",
-        loadingLabel: "Updating...",
-        onClick: async () => {
-          await downloadAndInstall();
+        onClick: () => {
+          window.dispatchEvent(new CustomEvent("openUpdateDialog"));
         },
       },
     ],
@@ -1210,4 +890,28 @@ export async function checkAndNotify(): Promise<void> {
   if (result.available && result.update) {
     addUpdateMessage(result.update);
   }
+}
+
+let progressMessageId: string | null = null;
+
+export function addProgressMessage(title: string, body?: string): void {
+  if (progressMessageId) return;
+  const msg = addMessage({
+    type: "info",
+    title,
+    body,
+    tag: "update-progress",
+  });
+  progressMessageId = msg.id;
+}
+
+export function updateProgressMessage(title: string, body?: string): void {
+  if (!progressMessageId) return;
+  updateMessage(progressMessageId, { title, body });
+}
+
+export function removeProgressMessage(): void {
+  if (!progressMessageId) return;
+  removeMessage(progressMessageId);
+  progressMessageId = null;
 }

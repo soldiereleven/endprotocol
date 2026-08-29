@@ -13,9 +13,12 @@ import {
   subscribeRemoteVersion,
   getChannel,
   setChannel,
+  getSource,
+  setSource,
   initializeChannel,
   type RemoteVersionState,
   type UpdateChannel,
+  type UpdateSource,
 } from "@/utils/updateService";
 import { pushGlobalAlert } from "@/components/ui/global-alert";
 import { UpdateDialog } from "@/components/update-dialog";
@@ -40,6 +43,7 @@ export default function SettingsPage() {
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [remoteVersion, setRemoteVersion] = useState<RemoteVersionState>(getRemoteVersion());
   const [updateChannel, setUpdateChannel] = useState<UpdateChannel>("stable");
+  const [updateSource, setUpdateSource] = useState<UpdateSource>("github");
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
 
   const languages = [
@@ -68,9 +72,10 @@ export default function SettingsPage() {
       setAppId(identifier);
       setIsConfigLoading(false);
 
-      // Load update channel
+      // Load update channel and source
       await initializeChannel();
       setUpdateChannel(getChannel());
+      setUpdateSource(getSource());
     };
     loadConfig();
 
@@ -163,6 +168,18 @@ export default function SettingsPage() {
   const handleChannelChange = useCallback(async (channel: UpdateChannel) => {
     setUpdateChannel(channel);
     await setChannel(channel);
+  }, []);
+
+  const handleSourceChange = useCallback(async (source: UpdateSource) => {
+    setUpdateSource(source);
+    await setSource(source);
+  }, []);
+
+  // Global listener: open update dialog from message action
+  useEffect(() => {
+    const handler = () => setShowUpdateDialog(true);
+    window.addEventListener("openUpdateDialog", handler);
+    return () => window.removeEventListener("openUpdateDialog", handler);
   }, []);
 
   const platformInfo = (() => {
@@ -577,6 +594,76 @@ export default function SettingsPage() {
                       </p>
                       <p className="text-[10px] text-muted mt-0.5">
                         {t("settings.update_channel.preview_desc")}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <SettingsDivider />
+
+            {/* Update Source */}
+            <div>
+              <p className="text-sm font-medium text-foreground mb-2">
+                {t("settings.update_source.title")}
+              </p>
+              <p className="text-xs text-muted mb-3">
+                {t("settings.update_source.desc")}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  className={`flex-1 p-3 rounded-xl border transition-all text-left ${
+                    updateSource === "github"
+                      ? "border-primary/50 bg-primary/5"
+                      : "border-separator/40 bg-transparent hover:bg-default-100/50"
+                  }`}
+                  onClick={() => handleSourceChange("github")}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full border-2 flex items-center justify-center ${
+                      updateSource === "github"
+                        ? "border-primary"
+                        : "border-muted/40"
+                    }`}>
+                      {updateSource === "github" && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-foreground">
+                        {t("settings.update_source.github")}
+                      </p>
+                      <p className="text-[10px] text-muted mt-0.5">
+                        {t("settings.update_source.github_desc")}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  className={`flex-1 p-3 rounded-xl border transition-all text-left ${
+                    updateSource === "mirror"
+                      ? "border-primary/50 bg-primary/5"
+                      : "border-separator/40 bg-transparent hover:bg-default-100/50"
+                  }`}
+                  onClick={() => handleSourceChange("mirror")}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full border-2 flex items-center justify-center ${
+                      updateSource === "mirror"
+                        ? "border-primary"
+                        : "border-muted/40"
+                    }`}>
+                      {updateSource === "mirror" && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-foreground">
+                        {t("settings.update_source.mirror")}
+                      </p>
+                      <p className="text-[10px] text-muted mt-0.5">
+                        {t("settings.update_source.mirror_desc")}
                       </p>
                     </div>
                   </div>

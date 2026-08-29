@@ -124,6 +124,14 @@
       "preview": "测试版",
       "preview_desc": "提前体验新功能，可能存在问题"
     },
+    "update_source": {
+      "title": "更新源",
+      "desc": "选择检查更新的来源",
+      "github": "GitHub",
+      "github_desc": "直接从 GitHub Releases 获取",
+      "mirror": "镜像源",
+      "mirror_desc": "国内镜像（有 5-10 分钟延迟）"
+    },
     "update": {
       "title": "发现新版本",
       "new_version": "发现新版本",

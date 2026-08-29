@@ -147,7 +147,7 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
 
     if (changelogStatus === "success" && changelog) {
       return (
-        <div className="max-h-60 overflow-y-auto pr-1 space-y-2">
+        <div className="max-h-80 overflow-y-auto pr-1 space-y-2">
           {changelog.split("\n").map((line, i) => {
             if (line.startsWith("# ")) {
               return (
@@ -219,23 +219,23 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
 
     return (
       <div className="space-y-3">
-        <div className="flex items-center justify-between p-3 rounded-xl glass-surface border border-separator/40">
-          <span className="text-xs text-muted">
-            {isZh ? "当前版本" : "Current Version"}
-          </span>
-          <span className="text-sm font-semibold text-foreground">
-            v{result.update.currentVersion}
-          </span>
-        </div>
-        <div className="flex items-center justify-between p-3 rounded-xl glass-surface border border-primary/20">
-          <span className="text-xs text-muted">
-            {isZh ? "最新版本" : "Latest Version"}
-          </span>
-          <span className="text-sm font-semibold text-primary">
-            v{result.update.newVersion}
-          </span>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex items-center justify-between p-3 rounded-xl glass-surface border border-separator/40">
+            <span className="text-xs text-muted">
+              {isZh ? "当前版本" : "Current"}
+            </span>
+            <span className="text-sm font-semibold text-foreground">
+              v{result.update.currentVersion}
+            </span>
+          </div>
+          <div className="flex items-center justify-between p-3 rounded-xl glass-surface border border-primary/20">
+            <span className="text-xs text-muted">
+              {isZh ? "最新版本" : "Latest"}
+            </span>
+            <span className="text-sm font-semibold text-primary">
+              v{result.update.newVersion}
+            </span>
+          </div>
           <div className="flex items-center justify-between p-2 rounded-lg bg-muted/5">
             <span className="text-[11px] text-muted">
               {isZh ? "通道" : "Channel"}
@@ -264,9 +264,9 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
   return (
     <GlassModal isOpen={isOpen} onOpenChange={(o) => !o && handleClose()}>
       <GlassModal.Backdrop variant="blur" className="z-[100]">
-        <GlassModal.Container size="sm" placement="center" scroll="outside">
+        <GlassModal.Container size="xl" placement="center" scroll="outside">
           <GlassModal.Dialog className="glass-surface-strong border border-separator/90 p-0">
-            <GlassModal.Header className="px-6 pt-4 pb-2">
+            <GlassModal.Header className="px-8 pt-5 pb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
                   <svg
@@ -288,7 +288,7 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
                     {isZh ? "发现新版本" : "Update Available"}
                   </GlassModal.Heading>
                   {isChecking ? (
-                    <GlassSkeleton className="w-32 h-3 rounded-lg mt-1" />
+                    <GlassSkeleton className="w-40 h-3 rounded-lg mt-1" />
                   ) : result?.update ? (
                     <p className="text-xs text-muted mt-0.5">
                       v{result.update.currentVersion} → v{result.update.newVersion}
@@ -302,7 +302,7 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
               </div>
             </GlassModal.Header>
 
-            <GlassModal.Body className="px-6 py-3 space-y-4">
+            <GlassModal.Body className="px-8 py-5 space-y-5">
               {/* Version Info */}
               {renderVersionInfo()}
 
@@ -332,7 +332,7 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
               {renderChangelog()}
             </GlassModal.Body>
 
-            <GlassModal.Footer className="flex items-center justify-end gap-2 px-6 py-3.5 border-t border-separator">
+            <GlassModal.Footer className="flex items-center justify-end gap-3 px-8 py-4 border-t border-separator">
               {isDownloading ? (
                 <GlassButton variant="danger" onPress={handleCancel}>
                   {isZh ? "取消下载" : "Cancel"}
