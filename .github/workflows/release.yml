@@ -52,6 +52,37 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # ==========================================================
+      # Sync version from Git Tag to package.json and tauri.conf.json
+      # ==========================================================
+      - name: Update version from tag
+        shell: bash
+        run: |
+          set -e
+          # 提取纯版本号 (去掉前缀 'v')
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Updating files to version: ${VERSION}"
+
+          # 使用 Node.js 修改 package.json
+          node -e "
+            const fs = require('fs');
+            const pkgPath = 'package.json';
+            const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+            pkg.version = '${VERSION}';
+            fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+          # 使用 Node.js 修改 src-tauri/tauri.conf.json
+          node -e "
+            const fs = require('fs');
+            const confPath = 'src-tauri/tauri.conf.json';
+            const conf = JSON.parse(fs.readFileSync(confPath, 'utf8'));
+            conf.version = '${VERSION}';
+            fs.writeFileSync(confPath, JSON.stringify(conf, null, 2) + '\n');
+          "
+
+          echo "Version successfully updated in package.json and src-tauri/tauri.conf.json"
+
+      # ==========================================================
       # Setup Rust
       # ==========================================================
       - name: Setup Rust
@@ -70,9 +101,6 @@ jobs:
 
       # ==========================================================
       # Determine channel and find previous tag
-      #
-      # Uses SemVer to determine whether the current tag is stable
-      # or preview, then finds the previous tag in the same channel.
       # ==========================================================
       - name: Determine channel and previous tag
         id: channel
@@ -86,11 +114,6 @@ jobs:
           echo "Current tag: ${TAG}"
           echo "Current version: ${VERSION}"
 
-          # ------------------------------------------------------
-          # Determine channel using SemVer prerelease detection
-          # ------------------------------------------------------
-          # A version with a prerelease identifier (e.g. 1.2.0-pre.1)
-          # belongs to the preview channel.
           if echo "${VERSION}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+-.+'; then
             CHANNEL="preview"
           else
@@ -100,13 +123,9 @@ jobs:
           echo "Channel: ${CHANNEL}"
           echo "channel=${CHANNEL}" >> "${GITHUB_OUTPUT}"
 
-          # ------------------------------------------------------
-          # Find previous tag in the same channel
-          # ------------------------------------------------------
           PREVIOUS_TAG=""
 
           if [ "${CHANNEL}" = "stable" ]; then
-            # Stable: only match vX.Y.Z (no prerelease)
             PREVIOUS_TAG=$(
               git tag --sort=-version:refname \
                 | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
@@ -115,7 +134,6 @@ jobs:
                 || true
             )
           else
-            # Preview: only match tags with a prerelease (vX.Y.Z-*)
             PREVIOUS_TAG=$(
               git tag --sort=-version:refname \
                 | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+-.+$' \
@@ -142,9 +160,6 @@ jobs:
           echo "Current tag: ${TAG}"
           echo "Previous tag: ${PREVIOUS_TAG:-<none>}"
 
-          # ------------------------------------------------------
-          # Determine commit range
-          # ------------------------------------------------------
           if [ -n "${PREVIOUS_TAG}" ]; then
             RANGE="${PREVIOUS_TAG}..${TAG}"
           else
@@ -153,116 +168,48 @@ jobs:
 
           echo "Commit range: ${RANGE}"
 
-          # ------------------------------------------------------
-          # Generate changelog
-          # ------------------------------------------------------
           {
             echo "# ${TAG}"
             echo
 
-            # ----------------------------------------------------
-            # Features
-            # ----------------------------------------------------
             echo "## ✨ Features"
             echo
-
-            git log "${RANGE}" \
-              --pretty=format:'- %s (%h)' \
-              | grep -E '^- feat(\(.+\))?:' \
-              || true
-
+            git log "${RANGE}" --pretty=format:'- %s (%h)' | grep -E '^- feat(\(.+\))?:' || true
             echo
 
-            # ----------------------------------------------------
-            # Bug Fixes
-            # ----------------------------------------------------
             echo "## 🐛 Bug Fixes"
             echo
-
-            git log "${RANGE}" \
-              --pretty=format:'- %s (%h)' \
-              | grep -E '^- fix(\(.+\))?:' \
-              || true
-
+            git log "${RANGE}" --pretty=format:'- %s (%h)' | grep -E '^- fix(\(.+\))?:' || true
             echo
 
-            # ----------------------------------------------------
-            # Documentation
-            # ----------------------------------------------------
             echo "## 📚 Documentation"
             echo
-
-            git log "${RANGE}" \
-              --pretty=format:'- %s (%h)' \
-              | grep -E '^- docs(\(.+\))?:' \
-              || true
-
+            git log "${RANGE}" --pretty=format:'- %s (%h)' | grep -E '^- docs(\(.+\))?:' || true
             echo
 
-            # ----------------------------------------------------
-            # Refactoring
-            # ----------------------------------------------------
             echo "## ♻️ Refactoring"
             echo
-
-            git log "${RANGE}" \
-              --pretty=format:'- %s (%h)' \
-              | grep -E '^- refactor(\(.+\))?:' \
-              || true
-
+            git log "${RANGE}" --pretty=format:'- %s (%h)' | grep -E '^- refactor(\(.+\))?:' || true
             echo
 
-            # ----------------------------------------------------
-            # Performance
-            # ----------------------------------------------------
             echo "## ⚡ Performance"
             echo
-
-            git log "${RANGE}" \
-              --pretty=format:'- %s (%h)' \
-              | grep -E '^- perf(\(.+\))?:' \
-              || true
-
+            git log "${RANGE}" --pretty=format:'- %s (%h)' | grep -E '^- perf(\(.+\))?:' || true
             echo
 
-            # ----------------------------------------------------
-            # Tests
-            # ----------------------------------------------------
             echo "## 🧪 Tests"
             echo
-
-            git log "${RANGE}" \
-              --pretty=format:'- %s (%h)' \
-              | grep -E '^- test(\(.+\))?:' \
-              || true
-
+            git log "${RANGE}" --pretty=format:'- %s (%h)' | grep -E '^- test(\(.+\))?:' || true
             echo
 
-            # ----------------------------------------------------
-            # Chores
-            # ----------------------------------------------------
             echo "## 🔧 Chores"
             echo
-
-            git log "${RANGE}" \
-              --pretty=format:'- %s (%h)' \
-              | grep -E '^- chore(\(.+\))?:' \
-              || true
-
+            git log "${RANGE}" --pretty=format:'- %s (%h)' | grep -E '^- chore(\(.+\))?:' || true
             echo
 
-            # ----------------------------------------------------
-            # Other
-            # ----------------------------------------------------
             echo "## 📝 Other Changes"
             echo
-
-            git log "${RANGE}" \
-              --pretty=format:'- %s (%h)' \
-              | grep -Ev \
-                '^- (feat|fix|docs|refactor|perf|test|chore)(\(.+\))?:' \
-              || true
-
+            git log "${RANGE}" --pretty=format:'- %s (%h)' | grep -E '^- (feat|fix|docs|refactor|perf|test|chore)(\(.+\))?:' -v || true
             echo
 
           } > CHANGELOG.md
@@ -274,7 +221,7 @@ jobs:
           cat CHANGELOG.md
 
       # ==========================================================
-      # Determine prerelease (using SemVer from channel step)
+      # Determine prerelease
       # ==========================================================
       - name: Determine release type
         id: release-type
@@ -292,52 +239,18 @@ jobs:
 
       # ==========================================================
       # Build Tauri + create GitHub Release
-      #
-      # Tauri will:
-      #   - build Windows installer
-      #   - generate updater artifact
-      #   - generate .sig
-      #   - generate latest.json
-      #   - upload artifacts to GitHub Release
       # ==========================================================
       - name: Build and publish Tauri
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-          # ------------------------------------------------------
-          # Tauri updater signing private key
-          # ------------------------------------------------------
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-
         with:
-          # ------------------------------------------------------
-          # Use the tag that triggered this workflow
-          # ------------------------------------------------------
           tagName: ${{ github.ref_name }}
-
-          # ------------------------------------------------------
-          # Release name
-          # ------------------------------------------------------
           releaseName: "Release ${{ github.ref_name }}"
-
-          # ------------------------------------------------------
-          # Create as draft first.
-          #
-          # We will add our generated CHANGELOG afterwards
-          # and then publish the release.
-          # ------------------------------------------------------
           releaseDraft: true
-
-          # ------------------------------------------------------
-          # Preview / stable
-          # ------------------------------------------------------
           prerelease: ${{ steps.release-type.outputs.prerelease }}
-
-          # ------------------------------------------------------
-          # Tauri build target
-          # ------------------------------------------------------
           args: "--target x86_64-pc-windows-msvc"
 
       # ==========================================================
