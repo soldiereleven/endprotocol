@@ -1,4 +1,6 @@
 use crate::services::avatar_cache_service::{all_sub_dir_names, resolve_url_subdir};
+use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine as _;
 use crate::utils::paths;
 use crate::{log_info, log_warn};
 use std::fs;
@@ -131,6 +133,73 @@ pub async fn download_image(
 
     log_info!("[download_image] Saved to: {}", file_path.display());
     Ok(file_path.to_string_lossy().to_string())
+}
+
+/// 获取背景图片目录路径
+#[tauri::command]
+pub fn get_backgrounds_dir() -> Result<String, String> {
+    let result = paths::backgrounds_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .map_err(|e| e.to_string());
+    log_info!("[background] get_backgrounds_dir: {:?}", result);
+    result
+}
+
+/// 保存背景图片（base64 WebP 数据）到缓存目录
+/// 返回保存后的文件路径
+#[tauri::command]
+pub fn save_background_image(data: String) -> Result<String, String> {
+    let dir = paths::backgrounds_dir().map_err(|e| e.to_string())?;
+    fs::create_dir_all(&dir).map_err(|e| format!("Failed to create backgrounds dir: {}", e))?;
+
+    // 清除旧的背景图片
+    if dir.exists() {
+        for entry in fs::read_dir(&dir).map_err(|e| format!("Failed to read dir: {}", e))? {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+                if path.is_file() {
+                    let _ = fs::remove_file(&path);
+                }
+            }
+        }
+    }
+
+    // 解码 base64 数据
+    let base64_data = if data.starts_with("data:") {
+        data.split(',').nth(1).unwrap_or(&data)
+    } else {
+        &data
+    };
+
+    let bytes = BASE64
+        .decode(base64_data)
+        .map_err(|e| format!("Failed to decode base64: {}", e))?;
+
+    // 保存为 WebP 文件
+    let file_path = dir.join("bg.webp");
+    fs::write(&file_path, &bytes).map_err(|e| format!("Failed to save background: {}", e))?;
+
+    let path_str = file_path.to_string_lossy().to_string();
+    log_info!("[background] Saved to: {}", path_str);
+    Ok(path_str)
+}
+
+/// 删除背景图片
+#[tauri::command]
+pub fn delete_background_image() -> Result<(), String> {
+    let dir = paths::backgrounds_dir().map_err(|e| e.to_string())?;
+    if dir.exists() {
+        for entry in fs::read_dir(&dir).map_err(|e| format!("Failed to read dir: {}", e))? {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+                if path.is_file() {
+                    fs::remove_file(&path).map_err(|e| format!("Failed to delete: {}", e))?;
+                }
+            }
+        }
+    }
+    log_info!("[background] Deleted background image");
+    Ok(())
 }
 
 /// 从URL提取文件名

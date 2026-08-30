@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { isTauri } from "@tauri-apps/api/core";
+import { isTauri, invoke } from "@tauri-apps/api/core";
 import { SettingsDivider } from "@/components/ui/settings-row";
 import ScreenColorPicker from "@/components/screen-color-picker";
 import { getConfig, setConfig } from "@/utils/configService";
 import { MorphIcon } from "morphicons/react";
-import { Sun, Moon, Monitor, Check, Plus, Pencil, Trash2, Pipette } from "lucide";
+import { Sun, Moon, Monitor, Check, Plus, Pencil, Trash2, Pipette, ImagePlus, X } from "lucide";
 
 type ThemeMode = "light" | "dark" | "system";
 
@@ -217,6 +217,11 @@ export function AppearanceSettings() {
   });
   const [bgOpacity, setBgOpacity] = useState(0.33);
   const DEFAULT_BG_OPACITY = 0.33;
+  const [bgImagePath, setBgImagePath] = useState<string | null>(null);
+  const [bgImageOpacity, setBgImageOpacity] = useState(0.5);
+  const DEFAULT_BG_IMAGE_OPACITY = 0.5;
+  const bgFileInputRef = useRef<HTMLInputElement>(null);
+  const [bgImagePreview, setBgImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     const { r, g, b } = hexToRgb(pickerHex);
@@ -299,11 +304,13 @@ export function AppearanceSettings() {
 
   useEffect(() => {
     const loadConfig = async () => {
-      const [savedMode, savedColor, savedCustom, savedOpacity] = await Promise.all([
+      const [savedMode, savedColor, savedCustom, savedOpacity, savedBgPath, savedBgOpacity] = await Promise.all([
         getConfig<ThemeMode>("theme_mode"),
         getConfig<string>("theme_color"),
         getConfig<ThemeColor[]>("theme_custom_colors"),
         getConfig<number>("bg_opacity"),
+        getConfig<string>("bg_image_path"),
+        getConfig<number>("bg_image_opacity"),
       ]);
       setThemeMode(savedMode ?? "system");
       setThemeColor(savedColor ?? "indigo");
@@ -311,6 +318,23 @@ export function AppearanceSettings() {
       const opacity = savedOpacity ?? DEFAULT_BG_OPACITY;
       setBgOpacity(opacity);
       document.documentElement.style.setProperty("--bg-opacity", String(opacity));
+      const bgPath = savedBgPath ?? null;
+      setBgImagePath(bgPath);
+      const bgImgOpacity = savedBgOpacity ?? DEFAULT_BG_IMAGE_OPACITY;
+      setBgImageOpacity(bgImgOpacity);
+      document.documentElement.style.setProperty("--bg-image-opacity", String(bgImgOpacity));
+      if (bgPath) {
+        try {
+          const bytes = await invoke<number[]>("read_image_file", { path: bgPath });
+          const blob = new Blob([new Uint8Array(bytes)], { type: "image/webp" });
+          const url = URL.createObjectURL(blob);
+          setBgImagePreview(url);
+          document.documentElement.style.setProperty("--bg-image", `url(${url})`);
+        } catch {
+          setBgImagePreview(null);
+          document.documentElement.style.setProperty("--bg-image", "");
+        }
+      }
       setIsLoading(false);
     };
     loadConfig();
@@ -400,6 +424,72 @@ export function AppearanceSettings() {
     document.documentElement.style.setProperty("--bg-opacity", String(DEFAULT_BG_OPACITY));
     await setConfig("bg_opacity", DEFAULT_BG_OPACITY);
   };
+
+  const convertToWebP = useCallback((file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Failed to get canvas context"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        const dataUrl = canvas.toDataURL("image/webp", 0.92);
+        URL.revokeObjectURL(img.src);
+        resolve(dataUrl);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(img.src);
+        reject(new Error("Failed to load image"));
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  }, []);
+
+  const handleBgImageSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await convertToWebP(file);
+      const savedPath = await invoke<string>("save_background_image", { data: dataUrl });
+      setBgImagePath(savedPath);
+      setBgImagePreview(dataUrl);
+      document.documentElement.style.setProperty("--bg-image", `url(${dataUrl})`);
+      await setConfig("bg_image_path", savedPath);
+    } catch (err) {
+      console.error("Failed to save background image:", err);
+    }
+    if (bgFileInputRef.current) bgFileInputRef.current.value = "";
+  }, [convertToWebP]);
+
+  const handleBgImageRemove = useCallback(async () => {
+    try {
+      await invoke("delete_background_image");
+    } catch {
+      // ignore
+    }
+    setBgImagePath(null);
+    setBgImagePreview(null);
+    document.documentElement.style.setProperty("--bg-image", "");
+    await setConfig("bg_image_path", null);
+  }, []);
+
+  const handleBgImageOpacityChange = useCallback(async (value: number) => {
+    const clamped = Math.max(0, Math.min(1, value));
+    setBgImageOpacity(clamped);
+    document.documentElement.style.setProperty("--bg-image-opacity", String(clamped));
+    await setConfig("bg_image_opacity", clamped);
+  }, []);
+
+  const handleBgImageOpacityReset = useCallback(async () => {
+    setBgImageOpacity(DEFAULT_BG_IMAGE_OPACITY);
+    document.documentElement.style.setProperty("--bg-image-opacity", String(DEFAULT_BG_IMAGE_OPACITY));
+    await setConfig("bg_image_opacity", DEFAULT_BG_IMAGE_OPACITY);
+  }, []);
 
   const handleSaveCustom = async () => {
     const normalized = pickerHex.replace(/^#?([0-9a-fA-F]{6})$/, "#$1");
@@ -904,6 +994,87 @@ export function AppearanceSettings() {
             {t("common.reset")}
           </button>
         </div>
+      </div>
+
+      <SettingsDivider />
+
+      {/* Background Image */}
+      <div>
+        <div className="mb-4">
+          <p className="font-medium text-foreground">{t("settings.appearance.bg_image")}</p>
+          <p className="text-sm text-muted mt-0.5">{t("settings.appearance.bg_image_desc")}</p>
+        </div>
+
+        {/* Hidden file input */}
+        <input
+          ref={bgFileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleBgImageSelect}
+          className="hidden"
+        />
+
+        {bgImagePreview ? (
+          <div className="space-y-3">
+            {/* Preview - full width, clickable to change */}
+            <button
+              onClick={() => bgFileInputRef.current?.click()}
+              className="relative w-full rounded-xl overflow-hidden border border-separator cursor-pointer group block text-left flex items-center justify-center"
+            >
+              <img
+                src={bgImagePreview}
+                alt="Background preview"
+                className="w-full h-32 object-cover"
+              />
+              {/* Remove button - overlaid on image */}
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleBgImageRemove();
+                }}
+                className="absolute top-2 right-2 p-1.5 rounded-lg bg-danger/90 text-white hover:bg-danger transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95"
+                title={t("settings.appearance.bg_image_remove")}
+              >
+                <MorphIcon icon={X} size={14} strokeWidth={2} />
+              </span>
+            </button>
+
+            {/* Image opacity */}
+            <div>
+              <p className="text-sm text-muted mb-2">{t("settings.appearance.bg_image_opacity")}</p>
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={bgImageOpacity}
+                  onChange={(e) => handleBgImageOpacityChange(parseFloat(e.target.value))}
+                  className="flex-1 h-2 rounded-full appearance-none cursor-pointer bg-default-200 accent-primary"
+                />
+                <span className="w-14 text-center text-sm font-mono text-foreground tabular-nums">
+                  {Math.round(bgImageOpacity * 100)}%
+                </span>
+                <button
+                  onClick={handleBgImageOpacityReset}
+                  disabled={bgImageOpacity === DEFAULT_BG_IMAGE_OPACITY}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-separator text-muted hover:text-foreground hover:border-foreground/50 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  {t("common.reset")}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* No image - show select button */
+          <button
+            onClick={() => bgFileInputRef.current?.click()}
+            className="w-full flex items-center justify-center gap-3 p-6 rounded-xl border-2 border-dashed border-default-300 hover:border-primary/50 text-muted hover:text-foreground transition-all duration-200 cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+          >
+            <MorphIcon icon={ImagePlus} size={24} strokeWidth={1.5} />
+            <span className="text-sm">{t("settings.appearance.bg_image_select")}</span>
+          </button>
+        )}
       </div>
     </div>
   );

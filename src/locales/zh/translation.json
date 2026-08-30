@@ -108,7 +108,13 @@
       "theme_color_preset": "预设",
       "theme_color_custom": "自定义",
       "bg_opacity": "窗口背景透明度",
-      "bg_opacity_desc": "调整窗口背景的透明度"
+      "bg_opacity_desc": "调整窗口背景的透明度",
+      "bg_image": "背景图片",
+      "bg_image_desc": "设置窗口的自定义背景图片",
+      "bg_image_select": "选择图片",
+      "bg_image_remove": "移除",
+      "bg_image_opacity": "图片透明度",
+      "bg_image_none": "未设置背景图片"
     },
     "developer": {
       "title": "开发者模式",

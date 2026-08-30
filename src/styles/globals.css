@@ -185,6 +185,8 @@ html {
  * 透明度较高，桌面内容仍隐约可见。 */
 :root {
   --bg-opacity: 0.33;
+  --bg-image: '';
+  --bg-image-opacity: 0.5;
 }
 body {
   min-height: 100vh;
@@ -192,6 +194,15 @@ body {
 }
 .dark body {
   background: rgba(10, 12, 16, var(--bg-opacity));
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--bg-image) center/cover no-repeat;
+  opacity: var(--bg-image-opacity);
+  pointer-events: none;
+  z-index: -1;
 }
 
 ::selection {

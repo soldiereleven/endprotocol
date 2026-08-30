@@ -71,6 +71,9 @@ pub fn run() {
             commands::image::read_image_file,
             commands::image::get_image_cache_dir,
             commands::image::download_image,
+            commands::image::get_backgrounds_dir,
+            commands::image::save_background_image,
+            commands::image::delete_background_image,
             // Window commands
             commands::window::minimize_window,
             commands::window::toggle_maximize_window,

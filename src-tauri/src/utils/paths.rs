@@ -15,6 +15,11 @@ pub fn image_cache_dir() -> Result<PathBuf, &'static str> {
     app_data_dir().map(|d| d.join("image_cache"))
 }
 
+/// 背景图片目录
+pub fn backgrounds_dir() -> Result<PathBuf, &'static str> {
+    app_data_dir().map(|d| d.join("backgrounds"))
+}
+
 /// Wiki 详情缓存目录
 pub fn wiki_detail_cache_dir() -> Result<PathBuf, &'static str> {
     app_data_dir().map(|d| d.join("wiki_detail_cache"))

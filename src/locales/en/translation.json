@@ -108,7 +108,13 @@
       "theme_color_preset": "Preset",
       "theme_color_custom": "Custom",
       "bg_opacity": "Window Background Opacity",
-      "bg_opacity_desc": "Adjust the transparency of the window background"
+      "bg_opacity_desc": "Adjust the transparency of the window background",
+      "bg_image": "Background Image",
+      "bg_image_desc": "Set a custom background image for the window",
+      "bg_image_select": "Select Image",
+      "bg_image_remove": "Remove",
+      "bg_image_opacity": "Image Opacity",
+      "bg_image_none": "No background image set"
     },
     "developer": {
       "title": "Developer Mode",
