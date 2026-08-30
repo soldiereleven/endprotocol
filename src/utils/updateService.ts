@@ -776,12 +776,9 @@ export async function downloadUpdate(): Promise<void> {
 
       logger.info("Download complete, installing...", "Updater");
 
-      const { relaunch } = await import("@tauri-apps/plugin-process");
       await invoke("run_installer", {
         path: installerPath,
       });
-
-      await relaunch();
     } else {
       // Standard Tauri updater plugin download + install
       logger.info("Starting update download via Tauri updater...", "Updater");

@@ -120,19 +120,23 @@ pub async fn download_file(
     Ok(downloaded)
 }
 
-/// Run an installer file silently (NSIS /S flag), wait for it to finish, then restart the app.
+/// Spawn an installer file silently (NSIS /S flag) and exit the app.
+/// The installer will replace files and restart the app.
 #[tauri::command]
 pub async fn run_installer(app: tauri::AppHandle, path: String) -> Result<(), String> {
-    let status = std::process::Command::new(&path)
+    use std::os::windows::process::CommandExt;
+
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+    std::process::Command::new(&path)
         .args(["/S"])
+        .creation_flags(CREATE_NO_WINDOW)
         .spawn()
-        .map_err(|e| format!("Failed to run installer '{}': {}", path, e))?
-        .wait()
-        .map_err(|e| format!("Installer process error: {}", e))?;
+        .map_err(|e| format!("Failed to run installer '{}': {}", path, e))?;
 
-    if !status.success() {
-        return Err(format!("Installer exited with status: {}", status));
-    }
-
-    app.restart();
+    // Give the installer a moment to start, then exit the app so it can replace files.
+    // The installer will restart the app after installation.
+    std::thread::sleep(std::time::Duration::from_secs(2));
+    app.exit(0);
+    Ok(())
 }
