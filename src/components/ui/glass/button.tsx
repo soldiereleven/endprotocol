@@ -80,6 +80,7 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
           "transition-all duration-200 cursor-pointer",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
           "disabled:opacity-50 disabled:pointer-events-none",
+          "hover:scale-105 active:scale-95",
           variantClasses[variant],
           isIconOnly ? cn(iconOnlySize[size], "shrink-0 px-0") : sizeClasses[size],
           fullWidth && "w-full",

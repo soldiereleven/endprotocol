@@ -160,6 +160,7 @@ function CloseTrigger({ className }: { className?: string }) {
       className={cn(
         "glass-surface flex h-8 w-8 items-center justify-center rounded-xl border border-separator/70 text-muted",
         "transition-all duration-200 hover:border-primary/50 hover:text-foreground",
+        "hover:scale-110 active:scale-90",
         className,
       )}
     >
@@ -302,6 +303,7 @@ function AlertDialogCloseTrigger({ className }: { className?: string }) {
       className={cn(
         "glass-surface absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-xl border border-separator/70 text-muted",
         "transition-all duration-200 hover:border-primary/50 hover:text-foreground",
+        "hover:scale-110 active:scale-90",
         className,
       )}
     >

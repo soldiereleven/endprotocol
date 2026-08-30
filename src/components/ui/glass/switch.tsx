@@ -32,6 +32,8 @@ function GlassSwitch({
       onClick={() => !off && onValueChange?.(!isSelected)}
       className={cn(
         "group inline-flex items-center gap-2 select-none cursor-pointer",
+        "transition-all duration-200",
+        "hover:scale-105 active:scale-95",
         "disabled:opacity-50 disabled:pointer-events-none",
         className,
       )}

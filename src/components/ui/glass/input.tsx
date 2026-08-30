@@ -42,6 +42,7 @@ export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
         className={cn(
           "glass-field w-full min-w-0 rounded-xl px-3 text-foreground placeholder:text-muted/70",
           "transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/40",
+          "hover:border-primary/50 hover:shadow-sm",
           "disabled:opacity-50 disabled:pointer-events-none",
           isInvalid && "border border-danger",
           sizeClass,

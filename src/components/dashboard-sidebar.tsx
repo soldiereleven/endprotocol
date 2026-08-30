@@ -1220,8 +1220,8 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                         >
                           <HomeIcon
                             className={clsx(
-                              "w-5 h-5 transition-transform duration-200",
-                              location.pathname === "/" ? "" : "group-hover:scale-110",
+                              "w-5 h-5 transition-all duration-200",
+                              location.pathname === "" ? "" : "group-hover:scale-110 group-hover:rotate-12",
                             )}
                           />
                           <span className="text-sm font-semibold">{t("sidebar.dashboard")}</span>
@@ -1310,12 +1310,12 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                                           "flex items-center gap-3 px-3 pr-8 py-2 rounded-lg transition-all duration-200",
                                           draggingTab === tab.id ? "opacity-60" : "",
                                           isTabActive
-                                            ? "bg-primary/15 text-primary font-medium"
+                                            ? "bg-default-100 text-foreground font-medium"
                                             : "text-muted hover:text-foreground hover:bg-default-50",
                                         )}
                                       >
                                         {isTabActive && (
-                                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary rounded-full" />
+                                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-foreground rounded-full" />
                                         )}
                                         <Icon className="w-4 h-4 flex-shrink-0" />
                                         <span className="text-sm truncate">{tab.name}</span>
@@ -1363,8 +1363,8 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                       >
                         <UsersIcon
                           className={clsx(
-                            "w-5 h-5 transition-transform duration-200",
-                            location.pathname === "/characters" ? "" : "group-hover:scale-110",
+                            "w-5 h-5 transition-all duration-200",
+                            location.pathname === "/characters" ? "" : "group-hover:scale-110 group-hover:rotate-12",
                           )}
                         />
                         <span className="text-sm font-semibold">{t("sidebar.characters") || "Characters"}</span>
@@ -1399,8 +1399,8 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                       >
                         <MedalIcon
                           className={clsx(
-                            "w-5 h-5 transition-transform duration-200",
-                            location.pathname === "/medals" ? "" : "group-hover:scale-110",
+                            "w-5 h-5 transition-all duration-200",
+                            location.pathname === "/medals" ? "" : "group-hover:scale-110 group-hover:rotate-12",
                           )}
                         />
                         <span className="text-sm font-semibold">{t("sidebar.medals") || "Medals"}</span>
@@ -1435,8 +1435,8 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                       >
                         <CalendarIcon
                           className={clsx(
-                            "w-5 h-5 transition-transform duration-200",
-                            location.pathname === "/attendance" ? "" : "group-hover:scale-110",
+                            "w-5 h-5 transition-all duration-200",
+                            location.pathname === "/attendance" ? "" : "group-hover:scale-110 group-hover:rotate-12",
                           )}
                         />
                         <span className="text-sm font-semibold">{t("sidebar.attendance") || "Attendance"}</span>
@@ -1471,8 +1471,8 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                       >
                         <GachaIcon
                           className={clsx(
-                            "w-5 h-5 transition-transform duration-200",
-                            location.pathname === "/gacha" ? "" : "group-hover:scale-110",
+                            "w-5 h-5 transition-all duration-200",
+                            location.pathname === "/gacha" ? "" : "group-hover:scale-110 group-hover:rotate-12",
                           )}
                         />
                         <span className="text-sm font-semibold">{t("sidebar.gacha") || "Gacha"}</span>
@@ -1577,8 +1577,8 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                 >
                   <Icon
                     className={clsx(
-                      "w-5 h-5 transition-transform duration-200",
-                      isActive ? "" : "group-hover:scale-110",
+                      "w-5 h-5 transition-all duration-200",
+                      isActive ? "" : "group-hover:scale-110 group-hover:rotate-12",
                     )}
                   />
                   <span className="text-sm font-semibold">{item.label}</span>

@@ -461,7 +461,8 @@ export default function GachaRecordsPage() {
                         type="button"
                         onClick={() => handleSelectRole(acc.id)}
                         className={clsx(
-                          "w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors",
+                          "w-full flex items-center gap-3 px-3 py-2.5 text-left transition-all duration-150",
+                          "hover:translate-x-1 active:translate-x-0.5",
                           isSelected ? "bg-primary/15" : "hover:bg-default-100",
                         )}
                       >
@@ -519,6 +520,7 @@ export default function GachaRecordsPage() {
               className={clsx(
                 "flex-1 h-10 rounded-full text-sm lg:text-base font-semibold transition-all duration-200",
                 "flex items-center justify-center",
+                "hover:scale-105 active:scale-95",
                 active
                   ? "glass-surface-strong border border-primary/50 text-primary"
                   : "border border-transparent text-foreground/70 hover:text-foreground hover:bg-default-100",
@@ -629,7 +631,8 @@ export default function GachaRecordsPage() {
                     type="button"
                     onClick={() => setRarityFilter(opt.value)}
                     className={clsx(
-                      "h-8 px-3 rounded-full text-xs font-medium transition-all",
+                      "h-8 px-3 rounded-full text-xs font-medium transition-all duration-150",
+                      "hover:scale-105 active:scale-95",
                       rarityFilter === opt.value
                         ? "glass-surface-strong border border-primary/50 text-primary"
                         : "border border-transparent text-muted hover:text-foreground",
@@ -643,7 +646,8 @@ export default function GachaRecordsPage() {
                 type="button"
                 onClick={() => setOnlyNew(!onlyNew)}
                 className={clsx(
-                  "h-8 px-3 rounded-full text-xs font-medium border transition-all",
+                  "h-8 px-3 rounded-full text-xs font-medium border transition-all duration-150",
+                  "hover:scale-105 active:scale-95",
                   onlyNew
                     ? "border-success/60 bg-success/15 text-success"
                     : "border-separator text-muted hover:text-foreground hover:border-success/40",
@@ -656,7 +660,8 @@ export default function GachaRecordsPage() {
                   type="button"
                   onClick={() => setOnlyFree(!onlyFree)}
                   className={clsx(
-                    "h-8 px-3 rounded-full text-xs font-medium border transition-all",
+                    "h-8 px-3 rounded-full text-xs font-medium border transition-all duration-150",
+                    "hover:scale-105 active:scale-95",
                     onlyFree
                       ? "border-primary/60 bg-primary/15 text-primary"
                       : "border-separator text-muted hover:text-foreground hover:border-primary/40",
@@ -911,7 +916,7 @@ function StatCard({
   avg?: string | null;
 }) {
   return (
-    <GlassCard className="p-5 glass-surface border border-separator/90">
+    <GlassCard className="p-5 glass-surface border border-separator/90 hover:scale-[1.02] hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
       <p className="text-xs font-medium text-muted">{label}</p>
       <div className="mt-2 flex items-end justify-between gap-2">
         <p className={clsx("text-2xl lg:text-3xl font-bold tabular-nums", accent ?? "text-foreground")}>

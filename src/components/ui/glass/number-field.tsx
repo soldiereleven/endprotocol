@@ -52,7 +52,7 @@ function DecrementButton({ className, "aria-label": ariaLabel }: { className?: s
       onClick={() => onChange(value - 1)}
       className={cn(
         "glass-surface flex h-9 w-9 items-center justify-center rounded-xl border border-separator/70 text-foreground",
-        "transition-all duration-200 hover:border-primary/50 hover:text-primary disabled:opacity-40 disabled:pointer-events-none",
+        "transition-all duration-200 hover:border-primary/50 hover:text-primary hover:scale-110 active:scale-90 disabled:opacity-40 disabled:pointer-events-none",
         className,
       )}
     >
@@ -74,7 +74,7 @@ function IncrementButton({ className, "aria-label": ariaLabel }: { className?: s
       onClick={() => onChange(value + 1)}
       className={cn(
         "glass-surface flex h-9 w-9 items-center justify-center rounded-xl border border-separator/70 text-foreground",
-        "transition-all duration-200 hover:border-primary/50 hover:text-primary disabled:opacity-40 disabled:pointer-events-none",
+        "transition-all duration-200 hover:border-primary/50 hover:text-primary hover:scale-110 active:scale-90 disabled:opacity-40 disabled:pointer-events-none",
         className,
       )}
     >

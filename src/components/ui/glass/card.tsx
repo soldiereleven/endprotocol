@@ -23,6 +23,8 @@ export function GlassCard({
           "glass-surface rounded-xl overflow-hidden text-left w-full",
           "transition-all duration-200 cursor-pointer",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+          "hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.98] active:translate-y-0",
+          "hover:shadow-lg",
           shadow === "sm" && "shadow-sm",
           shadow === "md" && "shadow-md",
           shadow === "lg" && "shadow-lg",
@@ -38,6 +40,9 @@ export function GlassCard({
     <div
       className={cn(
         "glass-surface rounded-xl overflow-hidden",
+        "transition-all duration-200",
+        "hover:scale-[1.02] hover:-translate-y-0.5",
+        "hover:shadow-lg",
         shadow === "sm" && "shadow-sm",
         shadow === "md" && "shadow-md",
         shadow === "lg" && "shadow-lg",

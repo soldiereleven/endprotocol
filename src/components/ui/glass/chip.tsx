@@ -48,6 +48,8 @@ export function GlassChip({
     <span
       className={cn(
         "inline-flex items-center gap-1 whitespace-nowrap font-medium",
+        "transition-all duration-200 cursor-pointer",
+        "hover:scale-105 active:scale-95",
         size === "sm" ? "h-5 px-2 text-[11px]" : size === "lg" ? "h-8 px-3.5 text-sm" : "h-6 px-2.5 text-xs",
         "rounded-full",
         tone,

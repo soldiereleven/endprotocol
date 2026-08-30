@@ -106,7 +106,7 @@ export function TabSelector({
               return (
                 <div
                   key={tab.id}
-                  className="group relative glass-surface border border-separator/90 rounded-xl p-5 hover:border-primary/50 hover:shadow-md transition-all cursor-pointer"
+                  className="group relative glass-surface border border-separator/90 rounded-xl p-5 hover:border-primary/50 hover:shadow-md hover:scale-[1.02] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer active:scale-[0.98] active:translate-y-0"
                   onClick={() => onSelectTab(tab.id)}
                   onContextMenu={(e) => {
                     e.preventDefault();
@@ -149,7 +149,7 @@ export function TabSelector({
                         e.stopPropagation();
                         onEditTab(tab);
                       }}
-                      className="p-1.5 rounded-lg hover:bg-default-100 text-muted hover:text-foreground transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-default-100 text-muted hover:text-foreground transition-all duration-150 hover:scale-110 active:scale-90"
                     >
                       <EditIcon size={16} />
                     </button>
@@ -159,7 +159,7 @@ export function TabSelector({
                         e.stopPropagation();
                         onDeleteTab(tab.id);
                       }}
-                      className="p-1.5 rounded-lg hover:bg-danger/10 text-danger transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-danger/10 text-danger transition-all duration-150 hover:scale-110 active:scale-90"
                     >
                       <TrashIcon size={16} />
                     </button>

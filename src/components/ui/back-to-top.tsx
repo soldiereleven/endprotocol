@@ -54,7 +54,7 @@ export function BackToTopFab({
     <button
       type="button"
       className={cn(
-        "fixed bottom-6 right-6 z-[10003] w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110",
+        "fixed bottom-6 right-6 z-[10003] w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-90",
         className,
       )}
       onClick={() => getContainer()?.scrollTo({ top: 0, behavior: "smooth" })}

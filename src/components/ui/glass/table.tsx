@@ -53,7 +53,7 @@ function TableBody({ className, children }: GlassTableProps) {
 }
 
 function TableRow({ className, children }: GlassTableProps) {
-  return <tr className={cn("transition-colors hover:bg-default-50/50", className)}>{children}</tr>;
+  return <tr className={cn("transition-all duration-150 hover:bg-default-50/50 hover:scale-[1.005]", className)}>{children}</tr>;
 }
 
 function TableCell({ className, children }: GlassTableProps) {

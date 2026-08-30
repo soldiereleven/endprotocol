@@ -64,8 +64,10 @@ export function GlassSelect({
         type="button"
         onClick={handleToggle}
         className={cn(
-          "flex items-center gap-2 h-9 pl-3 pr-2.5 rounded-lg text-sm cursor-pointer transition-colors",
+          "flex items-center gap-2 h-9 pl-3 pr-2.5 rounded-lg text-sm cursor-pointer transition-all duration-200",
           "glass-surface border border-separator/90",
+          "hover:scale-105 hover:border-primary/50",
+          "active:scale-95",
           open && "border-primary/50",
         )}
       >

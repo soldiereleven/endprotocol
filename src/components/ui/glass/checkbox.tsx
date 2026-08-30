@@ -30,7 +30,8 @@ export function GlassCheckbox({
       <span
         aria-hidden
         className={cn(
-          "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border transition-colors duration-200",
+          "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border transition-all duration-200",
+          "hover:scale-110 active:scale-90",
           isSelected ? "border-primary bg-primary text-white" : "border-default-400 bg-transparent",
         )}
       >

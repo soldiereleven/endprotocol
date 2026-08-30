@@ -104,7 +104,7 @@ export const CustomTitlebar = () => {
           type="button"
           onClick={() => setInfoOpen(true)}
           aria-label="Messages"
-          className="relative flex h-7 w-7 items-center justify-center rounded-lg text-muted transition-colors duration-200 hover:bg-white/10 hover:text-foreground cursor-pointer mr-2"
+          className="relative flex h-7 w-7 items-center justify-center rounded-lg text-muted transition-all duration-200 hover:bg-white/10 hover:text-foreground hover:scale-110 active:scale-90 cursor-pointer mr-2"
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
           <BellIcon size={14} />
@@ -123,7 +123,7 @@ export const CustomTitlebar = () => {
             type="button"
             onClick={handleMinimize}
             aria-label="Minimize"
-            className="flex h-7 w-8 items-center justify-center rounded-l-xl text-muted transition-colors duration-200 hover:bg-white/10 hover:text-foreground cursor-pointer"
+            className="flex h-7 w-8 items-center justify-center rounded-l-xl text-muted transition-all duration-200 hover:bg-white/10 hover:text-foreground hover:scale-105 active:scale-95 cursor-pointer"
           >
             <MinimizeIcon size={14} />
           </button>
@@ -132,7 +132,7 @@ export const CustomTitlebar = () => {
             type="button"
             onClick={handleMaximize}
             aria-label={isMaximized ? "Restore" : "Maximize"}
-            className="flex h-7 w-8 items-center justify-center text-muted transition-colors duration-200 hover:bg-white/10 hover:text-foreground cursor-pointer"
+            className="flex h-7 w-8 items-center justify-center text-muted transition-all duration-200 hover:bg-white/10 hover:text-foreground hover:scale-105 active:scale-95 cursor-pointer"
           >
             {isMaximized ? <RestoreIcon size={14} /> : <MaximizeIcon size={14} />}
           </button>
@@ -141,7 +141,7 @@ export const CustomTitlebar = () => {
             type="button"
             onClick={handleClose}
             aria-label="Close"
-            className="flex h-7 w-8 items-center justify-center rounded-r-xl text-muted transition-colors duration-200 hover:bg-danger/20 hover:text-danger cursor-pointer"
+            className="flex h-7 w-8 items-center justify-center rounded-r-xl text-muted transition-all duration-200 hover:bg-danger/20 hover:text-danger hover:scale-105 active:scale-95 cursor-pointer"
           >
             <CloseIcon size={14} />
           </button>

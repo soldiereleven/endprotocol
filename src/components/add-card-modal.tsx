@@ -128,7 +128,7 @@ export function AddCardModal({
               <button
                 type="button"
                 onClick={() => setShowFilters((v) => !v)}
-                className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-all duration-150 cursor-pointer hover:scale-105 active:scale-95"
               >
                 <ChevronRightIcon
                   size={14}
@@ -153,7 +153,7 @@ export function AddCardModal({
                         key={tag.id}
                         type="button"
                         onClick={() => toggleTag(tag.id)}
-                        className={`px-2.5 py-1 text-xs rounded-full border transition-all cursor-pointer ${
+                        className={`px-2.5 py-1 text-xs rounded-full border transition-all duration-150 cursor-pointer hover:scale-105 active:scale-95 ${
                           isActive
                             ? "bg-primary text-white border-primary"
                             : "bg-default-50 text-muted border-separator hover:border-primary hover:text-primary"

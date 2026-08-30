@@ -487,20 +487,181 @@ body {
 .dark .glass-strong { background: transparent; }
 
 /* ======================================================
- * 卡片交互
+ * 交互效果系统
  * ====================================================== */
+
+/* 基础交互效果 */
+.interactive-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.interactive-hover:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px color-mix(in oklab, var(--foreground) 8%, transparent);
+}
+.dark .interactive-hover:hover {
+  box-shadow: 0 8px 25px color-mix(in oklab, var(--foreground) 6%, transparent);
+}
+.interactive-hover:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* 卡片交互效果 */
 .card-hover {
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .card-hover:hover {
-  transform: translateY(-2px);
+  transform: translateY(-2px) scale(1.02);
   box-shadow: 0 8px 25px color-mix(in oklab, var(--foreground) 8%, transparent);
 }
 .dark .card-hover:hover {
   box-shadow: 0 8px 25px color-mix(in oklab, var(--foreground) 6%, transparent);
 }
-
 .card-hover:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* 按钮交互效果 */
+.button-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.button-hover:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px color-mix(in oklab, var(--foreground) 10%, transparent);
+}
+.button-hover:active {
+  transform: scale(0.95);
+}
+
+/* 图标交互效果 */
+.icon-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.icon-hover:hover {
+  transform: scale(1.1) rotate(5deg);
+}
+.icon-hover:active {
+  transform: scale(0.9) rotate(-5deg);
+}
+
+/* 导航项交互效果 */
+.nav-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.nav-hover:hover {
+  transform: translateX(4px);
+  background: color-mix(in oklab, var(--primary) 8%, transparent);
+}
+.nav-hover:active {
+  transform: translateX(2px);
+}
+
+/* 列表项交互效果 */
+.list-item-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.list-item-hover:hover {
+  transform: translateX(4px);
+  background: color-mix(in oklab, var(--primary) 5%, transparent);
+}
+.list-item-hover:active {
+  transform: translateX(2px);
+}
+
+/* 输入框交互效果 */
+.input-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.input-hover:hover {
+  border-color: color-mix(in oklab, var(--primary) 50%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 10%, transparent);
+}
+.input-hover:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 20%, transparent);
+}
+
+/* 标签交互效果 */
+.chip-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.chip-hover:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px color-mix(in oklab, var(--foreground) 10%, transparent);
+}
+.chip-hover:active {
+  transform: scale(0.95);
+}
+
+/* 开关交互效果 */
+.switch-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.switch-hover:hover {
+  transform: scale(1.05);
+}
+.switch-hover:active {
+  transform: scale(0.95);
+}
+
+/* 复选框交互效果 */
+.checkbox-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.checkbox-hover:hover {
+  transform: scale(1.1);
+}
+.checkbox-hover:active {
+  transform: scale(0.9);
+}
+
+/* 模态框交互效果 */
+.modal-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.modal-hover:hover {
+  transform: scale(1.01);
+}
+.modal-hover:active {
+  transform: scale(0.99);
+}
+
+/* 工具提示交互效果 */
+.tooltip-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tooltip-hover:hover {
+  transform: translateY(-2px);
+}
+
+/* 下拉菜单项交互效果 */
+.dropdown-item-hover {
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dropdown-item-hover:hover {
+  transform: translateX(4px);
+  background: color-mix(in oklab, var(--primary) 10%, transparent);
+}
+.dropdown-item-hover:active {
+  transform: translateX(2px);
+}
+
+/* 表格行交互效果 */
+.table-row-hover {
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.table-row-hover:hover {
+  background: color-mix(in oklab, var(--primary) 5%, transparent);
+}
+
+/* 链接交互效果 */
+.link-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.link-hover:hover {
+  transform: translateY(-1px);
+  color: var(--primary);
+}
+.link-hover:active {
   transform: translateY(0);
 }
 

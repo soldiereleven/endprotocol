@@ -54,6 +54,7 @@ export const SimplePagination: React.FC<SimplePaginationProps> = ({
     cn(
       "glass-surface flex h-8 min-w-8 items-center justify-center rounded-xl border px-2 text-xs transition-all duration-200",
       "cursor-pointer select-none hover:border-primary/50 hover:text-primary",
+      "hover:scale-110 active:scale-90",
       active
         ? "border-primary bg-primary/15 text-primary font-semibold"
         : "border-separator/70 text-foreground",

@@ -52,7 +52,12 @@ function GlassProgressCircle({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={isIndeterminate ? undefined : clamped}
-      className={cn("inline-flex items-center justify-center", className)}
+      className={cn(
+        "inline-flex items-center justify-center",
+        "transition-all duration-200",
+        "hover:scale-110",
+        className,
+      )}
     >
       <ProgressCtx.Provider
         value={{ size: px, strokeWidth: sw, value: clamped, isIndeterminate }}
