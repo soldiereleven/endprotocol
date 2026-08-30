@@ -71,6 +71,7 @@
     "refreshing": "刷新中...",
     "delete": "删除",
     "edit": "编辑",
+    "reset": "重置",
     "characters": "个干员"
   },
   "filters": {
@@ -105,7 +106,9 @@
       "theme_color": "主题色",
       "theme_color_desc": "选择您偏好的主题色",
       "theme_color_preset": "预设",
-      "theme_color_custom": "自定义"
+      "theme_color_custom": "自定义",
+      "bg_opacity": "窗口背景透明度",
+      "bg_opacity_desc": "调整窗口背景的透明度"
     },
     "developer": {
       "title": "开发者模式",
@@ -140,9 +143,15 @@
       "update_now": "立即更新",
       "later": "稍后",
       "downloading": "下载中...",
+      "downloading_install": "下载安装中...",
       "installing": "安装中...",
       "check_update": "检查更新",
-      "checking": "检查中...",
+      "checking": "检查更新中...",
+      "current_version": "当前版本",
+      "latest_version": "最新版本",
+      "channel": "通道",
+      "release_date": "发布日期",
+      "download_update": "下载更新",
       "up_to_date": "已是最新",
       "update_available": "有新版本",
       "failed": "获取失败",
@@ -359,6 +368,13 @@
   },
   "messages": {
     "mark_all_read": "全部已读",
-    "empty": "暂无消息"
+    "empty": "暂无消息",
+    "just_now": "刚刚",
+    "minutes_ago": "{{count}}分钟前",
+    "hours_ago": "{{count}}小时前",
+    "days_ago": "{{count}}天前",
+    "working": "处理中...",
+    "loading": "加载中...",
+    "dismiss": "关闭"
   }
 }

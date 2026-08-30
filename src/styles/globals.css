@@ -183,12 +183,15 @@ html {
  * 叠加半透明底色 — 保证任何桌面背景下文字都清晰可读。
  * 颜色跟随主题模式：浅色主题 → 半透明白，深色主题 → 半透明深灰/黑。
  * 透明度较高，桌面内容仍隐约可见。 */
+:root {
+  --bg-opacity: 0.33;
+}
 body {
   min-height: 100vh;
-  background: rgba(255, 255, 255, 0.33);
+  background: rgba(255, 255, 255, var(--bg-opacity));
 }
 .dark body {
-  background: rgba(10, 12, 16, 0.33);
+  background: rgba(10, 12, 16, var(--bg-opacity));
 }
 
 ::selection {

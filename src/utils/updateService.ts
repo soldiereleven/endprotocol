@@ -1,5 +1,6 @@
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { invoke } from "@tauri-apps/api/core";
+import i18n from "@/i18n";
 import { addMessage, updateMessage, removeMessage, removeMessagesByTag, type AppMessage } from "./messageStore";
 import { pushGlobalAlert } from "@/components/ui/global-alert";
 import { getConfig, setConfig } from "./configService";
@@ -938,12 +939,12 @@ export function addUpdateMessage(info: UpdateInfo): AppMessage {
 
   return addMessage({
     type: "urgent",
-    title: `Update Available: v${info.newVersion}`,
+    title: `${i18n.t("settings.update.update_available")}: v${info.newVersion}`,
     body: bodyParts.join(" · "),
     tag: "app-update",
     actions: [
       {
-        label: "Update",
+        label: i18n.t("settings.update.update_now"),
         variant: "primary",
         onClick: () => {
           window.dispatchEvent(new CustomEvent("openUpdateDialog"));

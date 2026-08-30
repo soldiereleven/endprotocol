@@ -71,6 +71,7 @@
     "refreshing": "Refreshing...",
     "delete": "Delete",
     "edit": "Edit",
+    "reset": "Reset",
     "characters": "Characters"
   },
   "filters": {
@@ -105,7 +106,9 @@
       "theme_color": "Accent Color",
       "theme_color_desc": "Choose your preferred accent color",
       "theme_color_preset": "Preset",
-      "theme_color_custom": "Custom"
+      "theme_color_custom": "Custom",
+      "bg_opacity": "Window Background Opacity",
+      "bg_opacity_desc": "Adjust the transparency of the window background"
     },
     "developer": {
       "title": "Developer Mode",
@@ -140,9 +143,15 @@
       "update_now": "Update Now",
       "later": "Later",
       "downloading": "Downloading...",
+      "downloading_install": "Downloading and installing...",
       "installing": "Installing...",
       "check_update": "Check for Updates",
       "checking": "Checking...",
+      "current_version": "Current",
+      "latest_version": "Latest Version",
+      "channel": "Channel",
+      "release_date": "Release Date",
+      "download_update": "Download Update",
       "up_to_date": "Up to date",
       "update_available": "Update Available",
       "failed": "Failed",
@@ -359,6 +368,13 @@
   },
   "messages": {
     "mark_all_read": "Mark all read",
-    "empty": "No messages yet"
+    "empty": "No messages yet",
+    "just_now": "just now",
+    "minutes_ago": "{{count}}m ago",
+    "hours_ago": "{{count}}h ago",
+    "days_ago": "{{count}}d ago",
+    "working": "Working...",
+    "loading": "Loading...",
+    "dismiss": "Dismiss"
   }
 }

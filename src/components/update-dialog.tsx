@@ -20,8 +20,7 @@ interface UpdateDialogProps {
 }
 
 export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
-  const { i18n } = useTranslation();
-  const isZh = i18n.language === "zh";
+  const { t } = useTranslation();
 
   const [result, setResult] = useState<UpdateCheckResult | null>(null);
   const [isChecking, setIsChecking] = useState(false);
@@ -124,7 +123,7 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
               />
             </svg>
             <span className="text-sm text-warning">
-              {isZh ? "更新日志获取失败" : "Changelog could not be loaded"}
+              {t("settings.update.changelog_failed")}
             </span>
           </div>
         </div>
@@ -208,7 +207,7 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
         <div className="grid grid-cols-2 gap-3">
           <div className="flex items-center justify-between p-3 rounded-xl glass-surface border border-separator/40">
             <span className="text-xs text-muted">
-              {isZh ? "当前版本" : "Current"}
+              {t("settings.update.current_version")}
             </span>
             <span className="text-sm font-semibold text-foreground">
               v{result.update.currentVersion}
@@ -216,7 +215,7 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
           </div>
           <div className="flex items-center justify-between p-3 rounded-xl glass-surface border border-primary/20">
             <span className="text-xs text-muted">
-              {isZh ? "最新版本" : "Latest"}
+              {t("settings.update.latest_version")}
             </span>
             <span className="text-sm font-semibold text-primary">
               v{result.update.newVersion}
@@ -224,18 +223,18 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
           </div>
           <div className="flex items-center justify-between p-2 rounded-lg bg-muted/5">
             <span className="text-[11px] text-muted">
-              {isZh ? "通道" : "Channel"}
+              {t("settings.update.channel")}
             </span>
             <span className="text-[11px] font-medium text-foreground capitalize">
               {channel === "stable"
-                ? isZh ? "稳定版" : "Stable"
-                : isZh ? "测试版" : "Preview"}
+                ? t("settings.update_channel.stable")
+                : t("settings.update_channel.preview")}
             </span>
           </div>
           {result.update.date && (
             <div className="flex items-center justify-between p-2 rounded-lg bg-muted/5">
               <span className="text-[11px] text-muted">
-                {isZh ? "发布日期" : "Released"}
+                {t("settings.update.release_date")}
               </span>
               <span className="text-[11px] font-medium text-foreground">
                 {new Date(result.update.date).toLocaleDateString()}
@@ -275,7 +274,7 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
                 </div>
                 <div>
                   <GlassModal.Heading>
-                    {isZh ? "发现新版本" : "Update Available"}
+                    {t("settings.update.update_available")}
                   </GlassModal.Heading>
                   {isChecking ? (
                     <GlassSkeleton className="w-40 h-3 rounded-lg mt-1" />
@@ -285,7 +284,7 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
                     </p>
                   ) : (
                     <p className="text-xs text-muted mt-0.5">
-                      {isZh ? "检查更新中..." : "Checking..."}
+                      {t("settings.update.checking")}
                     </p>
                   )}
                 </div>
@@ -303,7 +302,7 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
                     <circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="36" strokeDashoffset="10" strokeLinecap="round" />
                   </svg>
                   <span className="text-sm text-muted">
-                    {isZh ? "下载安装中..." : "Downloading and installing..."}
+                    {t("settings.update.downloading_install")}
                   </span>
                 </div>
               )}
@@ -315,12 +314,12 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
             <GlassModal.Footer className="flex items-center justify-end gap-3 px-8 py-4 border-t border-separator">
               {isDownloading ? (
                 <GlassButton variant="tertiary" onPress={handleClose} isDisabled>
-                  {isZh ? "下载中..." : "Downloading..."}
+                  {t("settings.update.downloading")}
                 </GlassButton>
               ) : (
                 <>
                   <GlassButton variant="tertiary" onPress={handleClose}>
-                    {isZh ? "稍后" : "Later"}
+                    {t("settings.update.later")}
                   </GlassButton>
                   <GlassButton
                     variant="primary"
@@ -328,7 +327,7 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
                     isLoading={isChecking}
                     isDisabled={!result?.update || isChecking}
                   >
-                    {isZh ? "下载更新" : "Download Update"}
+                    {t("settings.update.download_update")}
                   </GlassButton>
                 </>
               )}

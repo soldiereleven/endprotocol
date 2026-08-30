@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/cn";
 import type { AppMessage } from "@/utils/messageStore";
 import { removeMessage, markRead } from "@/utils/messageStore";
@@ -59,19 +60,20 @@ function TypeIcon({ type }: { type: string }) {
   );
 }
 
-function timeAgo(ts: number): string {
+function timeAgo(ts: number, t: (key: string, options?: Record<string, unknown>) => string): string {
   const diff = Date.now() - ts;
   const sec = Math.floor(diff / 1000);
-  if (sec < 60) return "just now";
+  if (sec < 60) return t("messages.just_now");
   const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m ago`;
+  if (min < 60) return t("messages.minutes_ago", { count: min });
   const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
+  if (hr < 24) return t("messages.hours_ago", { count: hr });
   const d = Math.floor(hr / 24);
-  return `${d}d ago`;
+  return t("messages.days_ago", { count: d });
 }
 
 export function MessageCard({ msg }: { msg: AppMessage }) {
+  const { t } = useTranslation();
   const v = resolveType(msg.type);
   const s = TYPE_STYLES[v];
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -99,7 +101,7 @@ export function MessageCard({ msg }: { msg: AppMessage }) {
             <svg width="16" height="16" viewBox="0 0 16 16" className="animate-spin text-primary">
               <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round" />
             </svg>
-            <span className="text-[10px] text-primary">Working...</span>
+            <span className="text-[10px] text-primary">{t("messages.working")}</span>
           </div>
         )}
         {typeof msg.progress === "number" && msg.progress >= 0 && (
@@ -113,7 +115,7 @@ export function MessageCard({ msg }: { msg: AppMessage }) {
             <p className="text-[10px] text-primary mt-0.5">{Math.round(msg.progress)}%</p>
           </div>
         )}
-        <p className="text-[10px] text-muted/60 mt-1">{timeAgo(msg.timestamp)}</p>
+        <p className="text-[10px] text-muted/60 mt-1">{timeAgo(msg.timestamp, t)}</p>
 
         {msg.actions && msg.actions.length > 0 && (
           <div className="flex gap-2 mt-2">
@@ -143,7 +145,7 @@ export function MessageCard({ msg }: { msg: AppMessage }) {
                       "bg-danger text-white hover:bg-danger/90",
                   )}
                 >
-                  {isLoading ? (action.loadingLabel ?? "Loading...") : action.label}
+                  {isLoading ? (action.loadingLabel ?? t("messages.loading")) : action.label}
                 </button>
               );
             })}
@@ -159,7 +161,7 @@ export function MessageCard({ msg }: { msg: AppMessage }) {
             removeMessage(msg.id);
           }}
           className="opacity-0 group-hover:opacity-100 shrink-0 h-5 w-5 flex items-center justify-center rounded text-muted/50 hover:text-foreground transition-all"
-          aria-label="Dismiss"
+          aria-label={t("messages.dismiss")}
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
             <path d="M2 2l6 6M8 2 2 8" />

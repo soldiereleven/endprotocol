@@ -215,6 +215,8 @@ export function AppearanceSettings() {
     g: "102",
     b: "241",
   });
+  const [bgOpacity, setBgOpacity] = useState(0.33);
+  const DEFAULT_BG_OPACITY = 0.33;
 
   useEffect(() => {
     const { r, g, b } = hexToRgb(pickerHex);
@@ -297,14 +299,18 @@ export function AppearanceSettings() {
 
   useEffect(() => {
     const loadConfig = async () => {
-      const [savedMode, savedColor, savedCustom] = await Promise.all([
+      const [savedMode, savedColor, savedCustom, savedOpacity] = await Promise.all([
         getConfig<ThemeMode>("theme_mode"),
         getConfig<string>("theme_color"),
         getConfig<ThemeColor[]>("theme_custom_colors"),
+        getConfig<number>("bg_opacity"),
       ]);
       setThemeMode(savedMode ?? "system");
       setThemeColor(savedColor ?? "indigo");
       setCustomColors(savedCustom ?? []);
+      const opacity = savedOpacity ?? DEFAULT_BG_OPACITY;
+      setBgOpacity(opacity);
+      document.documentElement.style.setProperty("--bg-opacity", String(opacity));
       setIsLoading(false);
     };
     loadConfig();
@@ -380,6 +386,19 @@ export function AppearanceSettings() {
     setThemeColor(colorName);
     await setConfig("theme_color", colorName);
     dispatchThemeChange();
+  };
+
+  const handleBgOpacityChange = async (value: number) => {
+    const clamped = Math.max(0, Math.min(1, value));
+    setBgOpacity(clamped);
+    document.documentElement.style.setProperty("--bg-opacity", String(clamped));
+    await setConfig("bg_opacity", clamped);
+  };
+
+  const handleBgOpacityReset = async () => {
+    setBgOpacity(DEFAULT_BG_OPACITY);
+    document.documentElement.style.setProperty("--bg-opacity", String(DEFAULT_BG_OPACITY));
+    await setConfig("bg_opacity", DEFAULT_BG_OPACITY);
   };
 
   const handleSaveCustom = async () => {
@@ -854,6 +873,37 @@ export function AppearanceSettings() {
             />,
             document.body,
           )}
+      </div>
+
+      <SettingsDivider />
+
+      {/* Background Opacity */}
+      <div>
+        <div className="mb-4">
+          <p className="font-medium text-foreground">{t("settings.appearance.bg_opacity")}</p>
+          <p className="text-sm text-muted mt-0.5">{t("settings.appearance.bg_opacity_desc")}</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={bgOpacity}
+            onChange={(e) => handleBgOpacityChange(parseFloat(e.target.value))}
+            className="flex-1 h-2 rounded-full appearance-none cursor-pointer bg-default-200 accent-primary"
+          />
+          <span className="w-14 text-center text-sm font-mono text-foreground tabular-nums">
+            {Math.round(bgOpacity * 100)}%
+          </span>
+          <button
+            onClick={handleBgOpacityReset}
+            disabled={bgOpacity === DEFAULT_BG_OPACITY}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-separator text-muted hover:text-foreground hover:border-foreground/50 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+          >
+            {t("common.reset")}
+          </button>
+        </div>
       </div>
     </div>
   );
