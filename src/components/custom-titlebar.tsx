@@ -104,7 +104,7 @@ export const CustomTitlebar = () => {
           type="button"
           onClick={() => setInfoOpen(true)}
           aria-label="Messages"
-          className="relative flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-muted transition-colors duration-200 hover:border-separator/70 hover:text-foreground cursor-pointer mr-2"
+          className="relative flex h-7 w-7 items-center justify-center rounded-lg text-muted transition-colors duration-200 hover:bg-white/10 hover:text-foreground cursor-pointer mr-2"
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
           <BellIcon size={14} />
@@ -116,14 +116,14 @@ export const CustomTitlebar = () => {
         </button>
 
         <div
-          className="flex items-center gap-1 px-2 rounded-xl glass-surface border border-separator/60"
+          className="flex items-center glass-surface border border-separator/60 rounded-xl overflow-hidden"
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
           <button
             type="button"
             onClick={handleMinimize}
             aria-label="Minimize"
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-muted transition-colors duration-200 hover:border-separator/70 hover:text-foreground cursor-pointer"
+            className="flex h-7 w-8 items-center justify-center rounded-l-xl text-muted transition-colors duration-200 hover:bg-white/10 hover:text-foreground cursor-pointer"
           >
             <MinimizeIcon size={14} />
           </button>
@@ -132,7 +132,7 @@ export const CustomTitlebar = () => {
             type="button"
             onClick={handleMaximize}
             aria-label={isMaximized ? "Restore" : "Maximize"}
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-muted transition-colors duration-200 hover:border-separator/70 hover:text-foreground cursor-pointer"
+            className="flex h-7 w-8 items-center justify-center text-muted transition-colors duration-200 hover:bg-white/10 hover:text-foreground cursor-pointer"
           >
             {isMaximized ? <RestoreIcon size={14} /> : <MaximizeIcon size={14} />}
           </button>
@@ -141,7 +141,7 @@ export const CustomTitlebar = () => {
             type="button"
             onClick={handleClose}
             aria-label="Close"
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-muted transition-colors duration-200 hover:border-danger/40 hover:text-danger cursor-pointer"
+            className="flex h-7 w-8 items-center justify-center rounded-r-xl text-muted transition-colors duration-200 hover:bg-danger/20 hover:text-danger cursor-pointer"
           >
             <CloseIcon size={14} />
           </button>
