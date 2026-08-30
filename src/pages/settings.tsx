@@ -81,10 +81,10 @@ export default function SettingsPage() {
       setUpdateChannel(getChannel());
       setUpdateSource(getSource());
     };
-    loadConfig();
-
-    // Auto-fetch remote version on mount
-    fetchRemoteVersion();
+    loadConfig().then(() => {
+      // Auto-fetch remote version after channel is initialized
+      fetchRemoteVersion();
+    });
 
     // Subscribe to remote version changes
     const unsub = subscribeRemoteVersion(() => {
