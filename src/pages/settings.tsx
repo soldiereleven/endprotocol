@@ -179,7 +179,12 @@ export default function SettingsPage() {
       return;
     }
     setUpdateChannel(channel);
-    await setChannel(channel);
+    setIsCheckingUpdate(true);
+    try {
+      await setChannel(channel);
+    } finally {
+      setIsCheckingUpdate(false);
+    }
   }, [updateChannel]);
 
   const handleSourceChange = useCallback(async (source: UpdateSource) => {
@@ -189,14 +194,24 @@ export default function SettingsPage() {
       return;
     }
     setUpdateSource(source);
-    await setSource(source);
+    setIsCheckingUpdate(true);
+    try {
+      await setSource(source);
+    } finally {
+      setIsCheckingUpdate(false);
+    }
   }, [updateSource]);
 
   const confirmPreviewChannel = useCallback(async () => {
     setShowPreviewWarning(false);
     if (pendingChannel) {
       setUpdateChannel(pendingChannel);
-      await setChannel(pendingChannel);
+      setIsCheckingUpdate(true);
+      try {
+        await setChannel(pendingChannel);
+      } finally {
+        setIsCheckingUpdate(false);
+      }
       setPendingChannel(null);
     }
   }, [pendingChannel]);
@@ -205,7 +220,12 @@ export default function SettingsPage() {
     setShowGithubWarning(false);
     if (pendingSource) {
       setUpdateSource(pendingSource);
-      await setSource(pendingSource);
+      setIsCheckingUpdate(true);
+      try {
+        await setSource(pendingSource);
+      } finally {
+        setIsCheckingUpdate(false);
+      }
       setPendingSource(null);
     }
   }, [pendingSource]);
