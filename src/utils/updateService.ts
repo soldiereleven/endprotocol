@@ -92,7 +92,8 @@ let changelogCache: Map<string, ChangelogCacheEntry> = new Map();
 let status: UpdateStatus = "idle";
 let listeners: Array<() => void> = [];
 
-// Download state
+// Manual preview download state
+let manualDownloadUrl: string | null = null;
 
 // ============================================================================
 // SemVer Helpers
@@ -268,17 +269,20 @@ async function resolveRelease(): Promise<Update | null> {
   const channel = currentChannel;
   logger.info(`Resolving ${channel} release (source: ${currentSource})...`, "Updater");
 
-  // Tauri updater plugin tries all endpoints from tauri.conf.json
-  // (mirror stable, mirror preview, github) and returns the first update found
+  // Preview channel: bypass Tauri plugin, fetch preview endpoint directly.
+  // The plugin tries endpoints in order and returns the first newer version,
+  // so on preview channel it always returns the stable update (listed first),
+  // which our filter then discards.
+  if (channel === "preview") {
+    return await resolvePreviewRelease();
+  }
+
+  // Stable channel: use Tauri updater plugin (reads endpoints from tauri.conf.json)
   const update = await check();
 
   if (!update) {
     logger.info(`No ${channel} update available via Tauri updater`, "Updater");
 
-    // Channel-switch fallback: the Tauri plugin only checks for newer versions.
-    // When switching channels (e.g. stable→preview), the remote may be on a
-    // "lower" SemVer (e.g. 1.2.0-pre < 1.2.0) so the plugin won't report it.
-    // We detect this by querying GitHub API manually.
     if (channelSwitchDetected) {
       logger.info(`Channel switch detected, performing manual ${channel} check...`, "Updater");
       return await resolveChannelSwitchRelease();
@@ -287,17 +291,94 @@ async function resolveRelease(): Promise<Update | null> {
     return null;
   }
 
-  // Filter by channel: ensure the version matches what we expect
-  if (channel === "stable" && isPreviewChannel(update.version)) {
+  if (isPreviewChannel(update.version)) {
     logger.info(`Skipping preview version ${update.version} on stable channel`, "Updater");
-    return null;
-  }
-  if (channel === "preview" && !isPreviewChannel(update.version)) {
-    logger.info(`Skipping stable version ${update.version} on preview channel`, "Updater");
     return null;
   }
 
   return update;
+}
+
+async function resolvePreviewRelease(): Promise<Update | null> {
+  const { getVersion } = await import("@tauri-apps/api/app");
+  const localVersion = await getVersion();
+
+  // Determine preview endpoint based on source
+  const endpoint = currentSource === "mirror"
+    ? `${MIRROR_BASE}/preview/latest.json`
+    : `https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/latest/download/latest.json`;
+
+  logger.info(`Fetching preview endpoint: ${endpoint}`, "Updater");
+
+  let latestJson: {
+    version: string;
+    pub_date?: string;
+    notes?: string;
+    platforms?: Record<string, { signature: string; url: string }>;
+  };
+
+  try {
+    const text = await invoke<string>("fetch_url", { url: endpoint });
+    latestJson = JSON.parse(text);
+  } catch (error) {
+    logger.error("Failed to fetch preview endpoint: " + error, "Updater");
+
+    // Channel-switch fallback
+    if (channelSwitchDetected) {
+      logger.info("Channel switch detected, performing manual preview check...", "Updater");
+      return await resolveChannelSwitchRelease();
+    }
+
+    return null;
+  }
+
+  const remoteVersion = latestJson.version;
+  if (!remoteVersion) {
+    logger.error("Preview endpoint returned no version", "Updater");
+    return null;
+  }
+
+  // Must be a prerelease version
+  if (!isPreviewChannel(remoteVersion)) {
+    logger.info(`Remote version ${remoteVersion} is not a prerelease, skipping`, "Updater");
+    return null;
+  }
+
+  // Compare versions
+  const localParsed = parseSemVer(localVersion);
+  const remoteParsed = parseSemVer(remoteVersion);
+  if (!localParsed || !remoteParsed) {
+    logger.error(`Failed to parse versions: local=${localVersion}, remote=${remoteVersion}`, "Updater");
+    return null;
+  }
+
+  if (compareSemVer(remoteParsed, localParsed) <= 0) {
+    logger.info(`No preview update: ${localVersion} >= ${remoteVersion}`, "Updater");
+    return null;
+  }
+
+  // Get platform download URL
+  const platformKey = "windows-x86_64";
+  const platform = latestJson.platforms?.[platformKey];
+  if (!platform?.url) {
+    logger.error(`No download URL for ${platformKey} in preview latest.json`, "Updater");
+    return null;
+  }
+
+  logger.info(`Preview update available: ${localVersion} → ${remoteVersion}`, "Updater");
+
+  // Store download URL for use by downloadUpdate()
+  manualDownloadUrl = platform.url;
+
+  // Return an Update-like object
+  return {
+    version: remoteVersion,
+    currentVersion: localVersion,
+    date: latestJson.pub_date,
+    body: latestJson.notes,
+    download: async () => {},
+    install: async () => {},
+  } as unknown as Update;
 }
 
 async function resolveChannelSwitchRelease(): Promise<Update | null> {
@@ -672,18 +753,39 @@ export async function downloadUpdate(): Promise<void> {
   emitChange();
 
   try {
-    logger.info("Starting update download via Tauri updater...", "Updater");
+    // Manual preview download: use Rust commands directly
+    if (manualDownloadUrl) {
+      const url = manualDownloadUrl;
+      logger.info(`Starting manual preview download from: ${url}`, "Updater");
 
-    await currentUpdate.download();
+      await invoke("reset_download_cancel");
 
-    logger.info("Download complete, installing...", "Updater");
+      const tempDir = await invoke<string>("get_temp_dir");
+      const installerPath = `${tempDir}\\endprotocol-update.exe`;
 
-    await currentUpdate.install();
+      await invoke("download_file", {
+        url,
+        path: installerPath,
+      });
 
-    logger.info("Install complete, restarting...", "Updater");
+      logger.info("Download complete, installing...", "Updater");
 
-    const { relaunch } = await import("@tauri-apps/plugin-process");
-    await relaunch();
+      const { relaunch } = await import("@tauri-apps/plugin-process");
+      await invoke("run_installer", {
+        path: installerPath,
+      });
+
+      await relaunch();
+    } else {
+      // Standard Tauri updater plugin download + install
+      logger.info("Starting update download via Tauri updater...", "Updater");
+      await currentUpdate.download();
+      logger.info("Download complete, installing...", "Updater");
+      await currentUpdate.install();
+      logger.info("Install complete, restarting...", "Updater");
+      const { relaunch } = await import("@tauri-apps/plugin-process");
+      await relaunch();
+    }
   } catch (error) {
     if (controller.signal.aborted) {
       logger.info("Download cancelled", "Updater");
@@ -698,6 +800,7 @@ export async function downloadUpdate(): Promise<void> {
     downloadAbortController = null;
     downloadProgress = 0;
     downloadTotal = 0;
+    manualDownloadUrl = null;
     emitChange();
   }
 }
