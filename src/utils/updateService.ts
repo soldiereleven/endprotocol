@@ -1,6 +1,6 @@
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { invoke } from "@tauri-apps/api/core";
-import { addMessage, updateMessage, removeMessage, type AppMessage } from "./messageStore";
+import { addMessage, updateMessage, removeMessage, removeMessagesByTag, type AppMessage } from "./messageStore";
 import { pushGlobalAlert } from "@/components/ui/global-alert";
 import { getConfig, setConfig } from "./configService";
 import logger from "./logger";
@@ -624,6 +624,8 @@ export async function setChannel(channel: UpdateChannel): Promise<void> {
       error: false,
       hasUpdate: true,
     };
+    removeMessagesByTag("app-update");
+    addUpdateMessage(result.update);
   } else {
     remoteState = {
       ...remoteState,
@@ -631,6 +633,7 @@ export async function setChannel(channel: UpdateChannel): Promise<void> {
       loading: false,
       hasUpdate: false,
     };
+    removeMessagesByTag("app-update");
   }
   emitRemoteChange();
 
@@ -691,6 +694,8 @@ export async function setSource(source: UpdateSource): Promise<void> {
       error: false,
       hasUpdate: true,
     };
+    removeMessagesByTag("app-update");
+    addUpdateMessage(result.update);
   } else {
     remoteState = {
       ...remoteState,
@@ -698,6 +703,7 @@ export async function setSource(source: UpdateSource): Promise<void> {
       loading: false,
       hasUpdate: false,
     };
+    removeMessagesByTag("app-update");
   }
   emitRemoteChange();
 }

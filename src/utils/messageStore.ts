@@ -122,6 +122,12 @@ export function removeMessage(id: string) {
   emit();
 }
 
+export function removeMessagesByTag(tag: string) {
+  messages = messages.filter((m) => m.tag !== tag);
+  persist();
+  emit();
+}
+
 export function subscribeMessages(fn: () => void): () => void {
   listeners.push(fn);
   return () => {
