@@ -130,7 +130,7 @@
       "github": "GitHub",
       "github_desc": "Direct from GitHub Releases",
       "mirror": "Mirror",
-      "mirror_desc": "Domestic mirror (5-10 min delay)"
+      "mirror_desc": "Cloudflare R2 sync source, syncs every 5 min"
     },
     "update": {
       "title": "Update Available",

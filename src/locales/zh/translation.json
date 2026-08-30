@@ -130,7 +130,7 @@
       "github": "GitHub",
       "github_desc": "直接从 GitHub Releases 获取",
       "mirror": "镜像源",
-      "mirror_desc": "国内镜像（有 5-10 分钟延迟）"
+      "mirror_desc": "Cloudflare R2同步源，每5分钟同步"
     },
     "update": {
       "title": "发现新版本",
