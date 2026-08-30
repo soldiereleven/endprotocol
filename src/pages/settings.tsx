@@ -45,6 +45,10 @@ export default function SettingsPage() {
   const [updateChannel, setUpdateChannel] = useState<UpdateChannel>("stable");
   const [updateSource, setUpdateSource] = useState<UpdateSource>("github");
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+  const [showPreviewWarning, setShowPreviewWarning] = useState(false);
+  const [showGithubWarning, setShowGithubWarning] = useState(false);
+  const [pendingChannel, setPendingChannel] = useState<UpdateChannel | null>(null);
+  const [pendingSource, setPendingSource] = useState<UpdateSource | null>(null);
 
   const languages = [
     { key: "en", label: "English" },
@@ -169,14 +173,42 @@ export default function SettingsPage() {
   };
 
   const handleChannelChange = useCallback(async (channel: UpdateChannel) => {
+    if (channel === "preview" && updateChannel === "stable") {
+      setPendingChannel(channel);
+      setShowPreviewWarning(true);
+      return;
+    }
     setUpdateChannel(channel);
     await setChannel(channel);
-  }, []);
+  }, [updateChannel]);
 
   const handleSourceChange = useCallback(async (source: UpdateSource) => {
+    if (source === "github" && updateSource === "mirror") {
+      setPendingSource(source);
+      setShowGithubWarning(true);
+      return;
+    }
     setUpdateSource(source);
     await setSource(source);
-  }, []);
+  }, [updateSource]);
+
+  const confirmPreviewChannel = useCallback(async () => {
+    setShowPreviewWarning(false);
+    if (pendingChannel) {
+      setUpdateChannel(pendingChannel);
+      await setChannel(pendingChannel);
+      setPendingChannel(null);
+    }
+  }, [pendingChannel]);
+
+  const confirmGithubSource = useCallback(async () => {
+    setShowGithubWarning(false);
+    if (pendingSource) {
+      setUpdateSource(pendingSource);
+      await setSource(pendingSource);
+      setPendingSource(null);
+    }
+  }, [pendingSource]);
 
   // Global listener: open update dialog from message action
   useEffect(() => {
@@ -873,6 +905,114 @@ export default function SettingsPage() {
                 </GlassButton>
                 <GlassButton variant="primary" onPress={confirmDevMode}>
                   {t("settings.developer.warning_confirm")}
+                </GlassButton>
+              </GlassAlertDialog.Footer>
+            </GlassAlertDialog.Dialog>
+          </GlassAlertDialog.Container>
+        </GlassAlertDialog.Backdrop>
+      </GlassAlertDialog>
+
+      {/* Preview Channel Warning Dialog */}
+      <GlassAlertDialog isOpen={showPreviewWarning} onOpenChange={setShowPreviewWarning}>
+        <GlassAlertDialog.Backdrop>
+          <GlassAlertDialog.Container>
+            <GlassAlertDialog.Dialog className="sm:max-w-[420px]">
+              <GlassAlertDialog.CloseTrigger />
+              <GlassAlertDialog.Header>
+                <GlassAlertDialog.Icon status="warning" />
+                <GlassAlertDialog.Heading>
+                  {i18n.language === "zh" ? "切换到测试版通道？" : "Switch to Preview Channel?"}
+                </GlassAlertDialog.Heading>
+              </GlassAlertDialog.Header>
+              <GlassAlertDialog.Body>
+                <div className="space-y-2">
+                  <p>
+                    {i18n.language === "zh"
+                      ? "测试版包含尚在开发中的新功能和实验性改动，可能存在以下风险："
+                      : "Preview builds contain new features and experimental changes still under development. Risks include:"}
+                  </p>
+                  <ul className="list-disc pl-4 space-y-1 text-[13px]">
+                    {i18n.language === "zh" ? (
+                      <>
+                        <li>功能不稳定，可能导致应用崩溃或数据异常</li>
+                        <li>尚未经过完整测试，可能存在未知缺陷</li>
+                        <li>界面和交互可能在后续版本中发生变更</li>
+                      </>
+                    ) : (
+                      <>
+                        <li>Unstable features that may cause crashes or data issues</li>
+                        <li>Incomplete testing with potential unknown bugs</li>
+                        <li>UI and behavior may change in future versions</li>
+                      </>
+                    )}
+                  </ul>
+                  <p className="text-muted text-[13px]">
+                    {i18n.language === "zh"
+                      ? "建议仅在需要提前体验新功能时使用测试版。"
+                      : "We recommend using preview only if you want early access to new features."}
+                  </p>
+                </div>
+              </GlassAlertDialog.Body>
+              <GlassAlertDialog.Footer>
+                <GlassButton variant="tertiary" onPress={() => { setShowPreviewWarning(false); setPendingChannel(null); }}>
+                  {i18n.language === "zh" ? "取消" : "Cancel"}
+                </GlassButton>
+                <GlassButton variant="primary" onPress={confirmPreviewChannel}>
+                  {i18n.language === "zh" ? "确认切换" : "Confirm Switch"}
+                </GlassButton>
+              </GlassAlertDialog.Footer>
+            </GlassAlertDialog.Dialog>
+          </GlassAlertDialog.Container>
+        </GlassAlertDialog.Backdrop>
+      </GlassAlertDialog>
+
+      {/* GitHub Source Warning Dialog */}
+      <GlassAlertDialog isOpen={showGithubWarning} onOpenChange={setShowGithubWarning}>
+        <GlassAlertDialog.Backdrop>
+          <GlassAlertDialog.Container>
+            <GlassAlertDialog.Dialog className="sm:max-w-[420px]">
+              <GlassAlertDialog.CloseTrigger />
+              <GlassAlertDialog.Header>
+                <GlassAlertDialog.Icon status="warning" />
+                <GlassAlertDialog.Heading>
+                  {i18n.language === "zh" ? "切换到 GitHub 源？" : "Switch to GitHub Source?"}
+                </GlassAlertDialog.Heading>
+              </GlassAlertDialog.Header>
+              <GlassAlertDialog.Body>
+                <div className="space-y-2">
+                  <p>
+                    {i18n.language === "zh"
+                      ? "GitHub 是应用的官方更新源，但在中国大陆地区可能存在以下问题："
+                      : "GitHub is the official update source, but may present issues in certain regions:"}
+                  </p>
+                  <ul className="list-disc pl-4 space-y-1 text-[13px]">
+                    {i18n.language === "zh" ? (
+                      <>
+                        <li>由于网络环境差异，下载速度可能较慢或连接超时</li>
+                        <li>更新检查和安装过程可能因网络波动而失败</li>
+                        <li>如遇网络问题，请切换回镜像源重试</li>
+                      </>
+                    ) : (
+                      <>
+                        <li>Download speeds may be slow or connections may timeout</li>
+                        <li>Update checks and installations may fail due to network issues</li>
+                        <li>If network problems occur, switch back to the mirror source</li>
+                      </>
+                    )}
+                  </ul>
+                  <p className="text-muted text-[13px]">
+                    {i18n.language === "zh"
+                      ? "如需更稳定的下载体验，建议使用镜像源。"
+                      : "For a more stable download experience, consider using the mirror source."}
+                  </p>
+                </div>
+              </GlassAlertDialog.Body>
+              <GlassAlertDialog.Footer>
+                <GlassButton variant="tertiary" onPress={() => { setShowGithubWarning(false); setPendingSource(null); }}>
+                  {i18n.language === "zh" ? "取消" : "Cancel"}
+                </GlassButton>
+                <GlassButton variant="primary" onPress={confirmGithubSource}>
+                  {i18n.language === "zh" ? "确认切换" : "Confirm Switch"}
                 </GlassButton>
               </GlassAlertDialog.Footer>
             </GlassAlertDialog.Dialog>
