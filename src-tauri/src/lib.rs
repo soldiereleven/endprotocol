@@ -23,6 +23,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
@@ -91,6 +92,8 @@ pub fn run() {
             commands::updater::fetch_url,
             commands::updater::download_file,
             commands::updater::run_installer,
+            commands::updater::cancel_download,
+            commands::updater::reset_download_cancel,
         ])
         .setup(|app| {
             // 初始化配置服务（使用 std::sync::Mutex，因为它是同步的）

@@ -94,6 +94,25 @@ export function MessageCard({ msg }: { msg: AppMessage }) {
         {msg.body && (
           <p className="text-[11px] text-muted mt-0.5 leading-relaxed line-clamp-2">{msg.body}</p>
         )}
+        {typeof msg.progress === "number" && msg.progress === -1 && (
+          <div className="mt-1.5 flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 16 16" className="animate-spin text-primary">
+              <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round" />
+            </svg>
+            <span className="text-[10px] text-primary">Working...</span>
+          </div>
+        )}
+        {typeof msg.progress === "number" && msg.progress >= 0 && (
+          <div className="mt-1.5">
+            <div className="h-1.5 w-full rounded-full bg-primary/10 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
+                style={{ width: `${Math.min(100, Math.max(0, msg.progress))}%` }}
+              />
+            </div>
+            <p className="text-[10px] text-primary mt-0.5">{Math.round(msg.progress)}%</p>
+          </div>
+        )}
         <p className="text-[10px] text-muted/60 mt-1">{timeAgo(msg.timestamp)}</p>
 
         {msg.actions && msg.actions.length > 0 && (
@@ -132,19 +151,21 @@ export function MessageCard({ msg }: { msg: AppMessage }) {
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          removeMessage(msg.id);
-        }}
-        className="opacity-0 group-hover:opacity-100 shrink-0 h-5 w-5 flex items-center justify-center rounded text-muted/50 hover:text-foreground transition-all"
-        aria-label="Dismiss"
-      >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-          <path d="M2 2l6 6M8 2 2 8" />
-        </svg>
-      </button>
+      {msg.dismissable !== false && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            removeMessage(msg.id);
+          }}
+          className="opacity-0 group-hover:opacity-100 shrink-0 h-5 w-5 flex items-center justify-center rounded text-muted/50 hover:text-foreground transition-all"
+          aria-label="Dismiss"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <path d="M2 2l6 6M8 2 2 8" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }

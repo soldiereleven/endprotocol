@@ -2,16 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { GlassButton } from "@/components/ui/glass";
 import { GlassModalCompound as GlassModal } from "@/components/ui/glass/modal";
-import { GlassMeter } from "@/components/ui/glass/progress";
 import { GlassSkeleton } from "@/components/ui/glass/skeleton";
 import {
   checkForUpdate,
-  downloadAndInstall,
-  cancelDownload,
-  getDownloadProgress,
-  getDownloadTotal,
-  subscribeDownloadProgress,
+  downloadUpdate,
   getChannel,
+  getCurrentUpdateInfo,
+  getIsDownloading,
   type UpdateCheckResult,
   type ChangelogStatus,
   type UpdateChannel,
@@ -20,13 +17,6 @@ import {
 interface UpdateDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
 }
 
 export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
@@ -40,16 +30,32 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
     useState<ChangelogStatus>("idle");
   const [changelog, setChangelog] = useState<string | null>(null);
   const [channel, setChannel] = useState<UpdateChannel>("stable");
-  const [downloadProgress, setDownloadProgress] = useState(0);
-  const [downloadTotal, setDownloadTotal] = useState(0);
 
-  // When dialog opens, check for update
+  // When dialog opens, check for update or restore state during download
   useEffect(() => {
     if (!isOpen) {
-      setResult(null);
-      setChangelog(null);
-      setChangelogStatus("idle");
-      setIsChecking(false);
+      return;
+    }
+
+    // If already downloading, restore state
+    if (getIsDownloading()) {
+      setIsDownloading(true);
+      const cached = getCurrentUpdateInfo();
+      if (cached) {
+        setResult({
+          available: true,
+          update: cached,
+          changelog: null,
+          changelogStatus: "loading",
+          status: "available",
+        });
+        setChannel(getChannel());
+        (async () => {
+          const res = await checkForUpdate();
+          if (res.changelog) setChangelog(res.changelog);
+          if (res.changelogStatus) setChangelogStatus(res.changelogStatus);
+        })();
+      }
       return;
     }
 
@@ -74,35 +80,15 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
     };
   }, [isOpen]);
 
-  // Subscribe to download progress
-  useEffect(() => {
-    if (!isOpen) return;
-    setDownloadProgress(getDownloadProgress());
-    setDownloadTotal(getDownloadTotal());
-    return subscribeDownloadProgress(() => {
-      setDownloadProgress(getDownloadProgress());
-      setDownloadTotal(getDownloadTotal());
-    });
-  }, [isOpen]);
-
-  const progressPercent =
-    downloadTotal > 0 ? Math.round((downloadProgress / downloadTotal) * 100) : 0;
-
   const handleDownload = useCallback(async () => {
     if (isDownloading) return;
     setIsDownloading(true);
     try {
-      await downloadAndInstall();
-      onOpenChange(false);
+      await downloadUpdate();
     } finally {
       setIsDownloading(false);
     }
-  }, [isDownloading, onOpenChange]);
-
-  const handleCancel = useCallback(() => {
-    cancelDownload();
-    setIsDownloading(false);
-  }, []);
+  }, [isDownloading]);
 
   const handleClose = useCallback(() => {
     onOpenChange(false);
@@ -262,11 +248,15 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
   };
 
   return (
-    <GlassModal isOpen={isOpen} onOpenChange={(o) => !o && handleClose()}>
+    <GlassModal isOpen={isOpen} onOpenChange={(o) => {
+      // Allow closing during download (download continues in background)
+      onOpenChange(o);
+    }}>
       <GlassModal.Backdrop variant="blur" className="z-[100]">
         <GlassModal.Container size="xl" placement="center" scroll="outside">
           <GlassModal.Dialog className="glass-surface-strong border border-separator/90 p-0">
-            <GlassModal.Header className="px-8 pt-5 pb-3">
+            <GlassModal.Header className="relative px-8 pt-5 pb-3">
+              <GlassModal.CloseTrigger className="absolute right-3 top-3" />
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
                   <svg
@@ -308,23 +298,13 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
 
               {/* Download Progress */}
               {isDownloading && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-muted">
-                    <span>{isZh ? "下载中..." : "Downloading..."}</span>
-                    <span>
-                      {downloadTotal > 0
-                        ? `${formatBytes(downloadProgress)} / ${formatBytes(downloadTotal)}`
-                        : `${progressPercent}%`}
-                    </span>
-                  </div>
-                  <GlassMeter
-                    value={progressPercent}
-                    aria-label={isZh ? "下载进度" : "Download progress"}
-                  >
-                    <GlassMeter.Track>
-                      <GlassMeter.Fill />
-                    </GlassMeter.Track>
-                  </GlassMeter>
+                <div className="flex items-center gap-3 py-2">
+                  <svg width="20" height="20" viewBox="0 0 20 20" className="animate-spin text-primary shrink-0">
+                    <circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="36" strokeDashoffset="10" strokeLinecap="round" />
+                  </svg>
+                  <span className="text-sm text-muted">
+                    {isZh ? "下载安装中..." : "Downloading and installing..."}
+                  </span>
                 </div>
               )}
 
@@ -334,23 +314,23 @@ export function UpdateDialog({ isOpen, onOpenChange }: UpdateDialogProps) {
 
             <GlassModal.Footer className="flex items-center justify-end gap-3 px-8 py-4 border-t border-separator">
               {isDownloading ? (
-                <GlassButton variant="danger" onPress={handleCancel}>
-                  {isZh ? "取消下载" : "Cancel"}
+                <GlassButton variant="tertiary" onPress={handleClose} isDisabled>
+                  {isZh ? "下载中..." : "Downloading..."}
                 </GlassButton>
               ) : (
-                <GlassButton variant="tertiary" onPress={handleClose}>
-                  {isZh ? "稍后" : "Later"}
-                </GlassButton>
-              )}
-              {!isDownloading && (
-                <GlassButton
-                  variant="primary"
-                  onPress={handleDownload}
-                  isLoading={isChecking}
-                  isDisabled={!result?.update || isChecking}
-                >
-                  {isZh ? "立即更新" : "Update Now"}
-                </GlassButton>
+                <>
+                  <GlassButton variant="tertiary" onPress={handleClose}>
+                    {isZh ? "稍后" : "Later"}
+                  </GlassButton>
+                  <GlassButton
+                    variant="primary"
+                    onPress={handleDownload}
+                    isLoading={isChecking}
+                    isDisabled={!result?.update || isChecking}
+                  >
+                    {isZh ? "下载更新" : "Download Update"}
+                  </GlassButton>
+                </>
               )}
             </GlassModal.Footer>
           </GlassModal.Dialog>

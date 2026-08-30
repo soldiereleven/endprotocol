@@ -86,7 +86,10 @@ export default function SettingsPage() {
     const unsub = subscribeRemoteVersion(() => {
       setRemoteVersion(getRemoteVersion());
     });
-    return unsub;
+
+    return () => {
+      unsub();
+    };
   }, []);
 
   useEffect(() => {

@@ -16,6 +16,8 @@ export interface AppMessage {
   read: boolean;
   tag?: string;
   actions?: AppMessageAction[];
+  dismissable?: boolean;
+  progress?: number;
 }
 
 const STORAGE_KEY = "app_messages";
@@ -75,6 +77,7 @@ export function addMessage(
     id: crypto.randomUUID(),
     timestamp: Date.now(),
     read: msg.read ?? false,
+    dismissable: msg.dismissable ?? true,
   };
   // Deduplicate by tag: remove existing message with same tag
   if (entry.tag) {
@@ -88,7 +91,7 @@ export function addMessage(
 
 export function updateMessage(
   id: string,
-  updates: Partial<Pick<AppMessage, "title" | "body" | "type" | "actions">>,
+  updates: Partial<Pick<AppMessage, "title" | "body" | "type" | "actions" | "progress">>,
 ) {
   messages = messages.map((m) => (m.id === id ? { ...m, ...updates } : m));
   persist();

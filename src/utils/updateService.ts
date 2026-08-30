@@ -1,4 +1,4 @@
-import { check, type Update, type DownloadEvent } from "@tauri-apps/plugin-updater";
+import { check, type Update } from "@tauri-apps/plugin-updater";
 import { invoke } from "@tauri-apps/api/core";
 import { addMessage, updateMessage, removeMessage, type AppMessage } from "./messageStore";
 import { pushGlobalAlert } from "@/components/ui/global-alert";
@@ -91,6 +91,8 @@ let channelSwitchDetected = false;
 let changelogCache: Map<string, ChangelogCacheEntry> = new Map();
 let status: UpdateStatus = "idle";
 let listeners: Array<() => void> = [];
+
+// Download state
 
 // ============================================================================
 // SemVer Helpers
@@ -655,7 +657,7 @@ export function getDownloadTotal(): number {
   return downloadTotal;
 }
 
-export async function downloadAndInstall(): Promise<void> {
+export async function downloadUpdate(): Promise<void> {
   if (!currentUpdate) {
     pushGlobalAlert("warning", "No update available");
     return;
@@ -670,62 +672,18 @@ export async function downloadAndInstall(): Promise<void> {
   emitChange();
 
   try {
-    logger.info("Starting update download...", "Updater");
-    addProgressMessage("Downloading update...");
+    logger.info("Starting update download via Tauri updater...", "Updater");
 
-    let contentLength = 0;
-    let downloaded = 0;
+    await currentUpdate.download();
 
-    await currentUpdate.downloadAndInstall((event: DownloadEvent) => {
-      if (controller.signal.aborted) return;
-      switch (event.event) {
-        case "Started":
-          contentLength = event.data.contentLength ?? 0;
-          downloadTotal = contentLength;
-          downloadProgress = 0;
-          emitChange();
-          logger.info(
-            `Download started, size: ${(contentLength / 1024 / 1024).toFixed(1)}MB`,
-            "Updater",
-          );
-          break;
-        case "Progress":
-          downloaded += event.data.chunkLength;
-          downloadProgress = downloaded;
-          emitChange();
-          if (contentLength > 0) {
-            const pct = Math.round((downloaded / contentLength) * 100);
-            const downloadedMB = (downloaded / 1024 / 1024).toFixed(1);
-            const totalMB = (contentLength / 1024 / 1024).toFixed(1);
-            updateProgressMessage(
-              `Downloading update... ${pct}%`,
-              `${downloadedMB} MB / ${totalMB} MB`,
-            );
-          }
-          break;
-        case "Finished":
-          downloadProgress = downloadTotal;
-          emitChange();
-          updateProgressMessage("Installing update...");
-          logger.info("Download finished, installing...", "Updater");
-          break;
-      }
-    });
-
-    if (controller.signal.aborted) {
-      logger.info("Download cancelled", "Updater");
-      removeProgressMessage();
-      return;
-    }
+    logger.info("Download complete, installing...", "Updater");
 
     await currentUpdate.install();
-    logger.info("Update installed successfully", "Updater");
-    updateProgressMessage("Update installed");
-    pushGlobalAlert("success", "Update installed! Restart to apply.");
 
-    currentUpdate.close();
-    currentUpdate = null;
-    currentUpdateInfo = null;
+    logger.info("Install complete, restarting...", "Updater");
+
+    const { relaunch } = await import("@tauri-apps/plugin-process");
+    await relaunch();
   } catch (error) {
     if (controller.signal.aborted) {
       logger.info("Download cancelled", "Updater");
@@ -748,13 +706,18 @@ export function cancelDownload(): void {
   if (downloadAbortController) {
     downloadAbortController.abort();
     downloadAbortController = null;
-    isDownloading = false;
-    downloadProgress = 0;
-    downloadTotal = 0;
-    removeProgressMessage();
-    emitChange();
-    logger.info("Download cancelled by user", "Updater");
   }
+
+  isDownloading = false;
+  downloadProgress = 0;
+  downloadTotal = 0;
+  removeProgressMessage();
+  emitChange();
+  logger.info("Download cancelled by user", "Updater");
+}
+
+export function openUpdateDialog(): void {
+  window.dispatchEvent(new CustomEvent("openUpdateDialog"));
 }
 
 // ============================================================================
@@ -894,20 +857,25 @@ export async function checkAndNotify(): Promise<void> {
 
 let progressMessageId: string | null = null;
 
-export function addProgressMessage(title: string, body?: string): void {
+export function addProgressMessage(title: string, body?: string, dismissable = false, actions?: AppMessage['actions'], tag = "update-progress", progress?: number): void {
   if (progressMessageId) return;
   const msg = addMessage({
     type: "info",
     title,
     body,
-    tag: "update-progress",
+    tag,
+    dismissable,
+    actions,
+    progress,
   });
   progressMessageId = msg.id;
 }
 
-export function updateProgressMessage(title: string, body?: string): void {
+export function updateProgressMessage(title: string, body?: string, progress?: number): void {
   if (!progressMessageId) return;
-  updateMessage(progressMessageId, { title, body });
+  const updates: Partial<Pick<AppMessage, "title" | "body" | "progress">> = { title, body };
+  if (typeof progress === "number") updates.progress = progress;
+  updateMessage(progressMessageId, updates);
 }
 
 export function removeProgressMessage(): void {
