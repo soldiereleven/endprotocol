@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 responses
+
+# Promotional assets
+prom-assets/
+promotional-demo.html
+promotional-cover.html
