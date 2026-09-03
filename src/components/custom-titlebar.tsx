@@ -10,7 +10,9 @@ import {
   BellIcon,
 } from "@/components/ui/app-icon";
 import { AppInfoDrawer } from "@/components/app-info-drawer";
+import { CloseConfirmDialog } from "@/components/close-confirm-dialog";
 import { getUnreadCount, hasUrgentUnread, subscribeMessages } from "@/utils/messageStore";
+import { getConfig } from "@/utils/configService";
 import logger from "@/utils/logger";
 
 export const CustomTitlebar = () => {
@@ -18,11 +20,20 @@ export const CustomTitlebar = () => {
   const [infoOpen, setInfoOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(() => getUnreadCount());
   const [hasUrgent, setHasUrgent] = useState(() => hasUrgentUnread());
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const [closeAction, setCloseAction] = useState<string>("ask");
 
   useEffect(() => {
     return subscribeMessages(() => {
       setUnreadCount(getUnreadCount());
       setHasUrgent(hasUrgentUnread());
+    });
+  }, []);
+
+  // Load close action setting
+  useEffect(() => {
+    getConfig<string>("close_action").then((value) => {
+      setCloseAction(value ?? "ask");
     });
   }, []);
 
@@ -75,9 +86,32 @@ export const CustomTitlebar = () => {
 
   const handleClose = async () => {
     try {
-      await invoke("close_window");
+      if (closeAction === "ask") {
+        setShowCloseConfirm(true);
+      } else if (closeAction === "minimize_to_tray") {
+        await invoke("minimize_to_tray");
+      } else {
+        await invoke("close_window");
+      }
     } catch (error) {
       logger.error("Failed to close window: " + error, "Titlebar");
+    }
+  };
+
+  const handleConfirmClose = async (action: "close" | "minimize_to_tray") => {
+    try {
+      if (action === "minimize_to_tray") {
+        await invoke("minimize_to_tray");
+      } else {
+        await invoke("close_window");
+      }
+      // Update local state if user chose to remember
+      const newAction = await getConfig<string>("close_action");
+      if (newAction) {
+        setCloseAction(newAction);
+      }
+    } catch (error) {
+      logger.error("Failed to execute close action: " + error, "Titlebar");
     }
   };
 
@@ -149,6 +183,11 @@ export const CustomTitlebar = () => {
       </div>
 
       <AppInfoDrawer isOpen={infoOpen} onClose={() => setInfoOpen(false)} />
+      <CloseConfirmDialog
+        isOpen={showCloseConfirm}
+        onOpenChange={setShowCloseConfirm}
+        onConfirm={handleConfirmClose}
+      />
     </>
   );
 };

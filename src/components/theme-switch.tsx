@@ -2,6 +2,7 @@ import { FC, useState, useEffect, useCallback, useRef } from "react";
 import { MorphIcon } from "morphicons/react";
 import { Sun, Moon } from "lucide";
 import { getConfig, setConfig } from "@/utils/configService";
+import { emit } from "@tauri-apps/api/event";
 
 type ThemeMode = "light" | "dark" | "system";
 
@@ -58,7 +59,10 @@ export const ThemeSwitch: FC<ThemeSwitchProps> = ({ className }) => {
   useEffect(() => {
     if (themeMode !== "system") return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = () => applyThemeMode("system");
+    const handler = () => {
+      applyThemeMode("system");
+      emit("theme-changed", "system");
+    };
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, [themeMode]);
@@ -71,6 +75,7 @@ export const ThemeSwitch: FC<ThemeSwitchProps> = ({ className }) => {
     setThemeMode(nextMode);
     await setConfig("theme_mode", nextMode);
     window.dispatchEvent(new CustomEvent("themeChange"));
+    emit("theme-changed", nextMode);
 
     // 淡出 → 应用 → 淡入（与设置页一致的时序）
     const rootEl = document.getElementById("root");

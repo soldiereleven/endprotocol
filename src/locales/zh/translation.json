@@ -97,7 +97,14 @@
       "theme": "主题",
       "theme_light": "浅色",
       "theme_dark": "深色",
-      "theme_system": "跟随系统"
+      "theme_system": "跟随系统",
+      "close_action": "关闭窗口时",
+      "close_action_desc": "点击关闭按钮时的行为",
+      "close_action_close": "关闭程序",
+      "close_action_minimize": "最小化到托盘",
+      "close_action_ask": "每次询问",
+      "tray_user": "托盘显示用户",
+      "tray_user_desc": "选择在系统托盘中显示用户信息"
     },
     "appearance": {
       "title": "外观",

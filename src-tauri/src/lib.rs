@@ -5,6 +5,7 @@ use tokio::sync::Mutex;
 mod commands;
 mod models;
 mod services;
+mod tray;
 mod utils;
 
 use services::account_service::AccountService;
@@ -78,6 +79,7 @@ pub fn run() {
             commands::window::minimize_window,
             commands::window::toggle_maximize_window,
             commands::window::close_window,
+            commands::window::minimize_to_tray,
             // Color picker commands
             commands::color_picker::capture_screen,
             commands::color_picker::finish_screen_pick,
@@ -97,6 +99,14 @@ pub fn run() {
             commands::updater::run_installer,
             commands::updater::cancel_download,
             commands::updater::reset_download_cancel,
+            // Tray commands
+            commands::tray::get_tray_user_info,
+            commands::tray::set_tray_user,
+            commands::tray::update_tray_user_data,
+            commands::tray::show_tray_panel,
+            commands::tray::hide_tray_panel,
+            commands::tray::show_main_window,
+            commands::tray::app_quit,
         ])
         .setup(|app| {
             // 初始化配置服务（使用 std::sync::Mutex，因为它是同步的）
@@ -104,6 +114,11 @@ pub fn run() {
                 ConfigService::new().map_err(|e| e.to_string())?,
             ));
             app.manage(config_service.clone());
+
+            // 初始化系统托盘
+            if let Err(e) = tray::setup_tray(app.handle(), config_service.clone()) {
+                eprintln!("Failed to setup tray: {}", e);
+            }
 
             // 初始化 Skland 服务
             let skland_service = Arc::new(SklandService::new(config_service.clone()));
@@ -136,6 +151,37 @@ pub fn run() {
 
             // 启动自动刷新定时器（此时 tokio runtime 已启动）
             AccountService::start_auto_refresh(timer_service);
+
+            // 处理窗口关闭事件：根据配置决定是关闭还是最小化到托盘
+            let config_for_close = config_service.clone();
+            if let Some(window) = app.get_webview_window("main") {
+                let window_clone = window.clone();
+                window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        let action = config_for_close
+                            .lock()
+                            .ok()
+                            .and_then(|c| c.get::<String>("close_action"))
+                            .unwrap_or_else(|| "ask".to_string());
+
+                        match action.as_str() {
+                            "minimize_to_tray" | "ask" => {
+                                // For "ask" from OS close button, hide to tray as default
+                                api.prevent_close();
+                                let _ = window_clone.hide();
+                            }
+                            "close" => {
+                                // Allow default close behavior
+                            }
+                            _ => {
+                                // Default: hide to tray
+                                api.prevent_close();
+                                let _ = window_clone.hide();
+                            }
+                        }
+                    }
+                });
+            }
 
             Ok(())
         })

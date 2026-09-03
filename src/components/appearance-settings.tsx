@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useLayoutEffect, type Pointer
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { isTauri, invoke } from "@tauri-apps/api/core";
+import { emit } from "@tauri-apps/api/event";
 import { SettingsDivider } from "@/components/ui/settings-row";
 import ScreenColorPicker from "@/components/screen-color-picker";
 import { getConfig, setConfig } from "@/utils/configService";
@@ -367,7 +368,10 @@ export function AppearanceSettings() {
   useEffect(() => {
     if (themeMode !== "system") return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = () => applyThemeModeLocal("system");
+    const handler = () => {
+      applyThemeModeLocal("system");
+      emit("theme-changed", "system");
+    };
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, [themeMode]);
@@ -388,6 +392,7 @@ export function AppearanceSettings() {
     setThemeMode(mode);
     await setConfig("theme_mode", mode);
     dispatchThemeChange();
+    emit("theme-changed", mode);
 
     const rootEl = document.getElementById("root");
     if (rootEl) {

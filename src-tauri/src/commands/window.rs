@@ -24,3 +24,11 @@ pub fn close_window<R: Runtime>(app: tauri::AppHandle<R>) {
         let _ = window.close();
     }
 }
+
+#[tauri::command]
+pub fn minimize_to_tray<R: Runtime>(app: tauri::AppHandle<R>) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        window.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}

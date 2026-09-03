@@ -1,11 +1,14 @@
 import { useTranslation } from "react-i18next";
-import { GlassAlertDialog, GlassButton, GlassCard, GlassSkeleton, GlassSwitch } from "@/components/ui/glass";
+import { GlassAlertDialog, GlassButton, GlassCard, GlassSelect, GlassSkeleton, GlassSwitch } from "@/components/ui/glass";
 import { AppearanceSettings } from "@/components/appearance-settings";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { invoke } from "@tauri-apps/api/core";
 import { getVersion, getTauriVersion, getIdentifier } from "@tauri-apps/api/app";
 import { getConfig, setConfig } from "@/utils/configService";
 import { roleDetailService } from "@/utils/roleDetailService";
+import { roleDataService } from "@/utils/roleDataService";
+import { getAccounts } from "@/utils/accountService";
 import { SettingsDivider } from "@/components/ui/settings-row";
 import {
   fetchRemoteVersion,
@@ -33,6 +36,9 @@ export default function SettingsPage() {
   const [refreshOnSwitch, setRefreshOnSwitch] = useState(false);
   const [lazyLoadEnabled, setLazyLoadEnabled] = useState(true);
   const [wikiDetailPreload, setWikiDetailPreload] = useState(false);
+  const [closeAction, setCloseAction] = useState<string>("ask");
+  const [trayUserRoleId, setTrayUserRoleId] = useState<string>("");
+  const [accounts, setAccounts] = useState<Array<{ id: string; nickname: string; avatar: string }>>([]);
 
   const [developerMode, setDeveloperMode] = useState(false);
   const [showDevWarning, setShowDevWarning] = useState(false);
@@ -58,7 +64,7 @@ export default function SettingsPage() {
   useEffect(() => {
     const loadConfig = async () => {
       setIsConfigLoading(true);
-      const [value, lazyLoadValue, devMode, wikiPreload, version, tauriVer, identifier] = await Promise.all([
+      const [value, lazyLoadValue, devMode, wikiPreload, version, tauriVer, identifier, closeAct, trayUser] = await Promise.all([
         getConfig<boolean>("refresh_on_account_switch"),
         roleDetailService.isLazyLoadEnabled(),
         getConfig<boolean>("developer_mode"),
@@ -66,6 +72,8 @@ export default function SettingsPage() {
         getVersion(),
         getTauriVersion(),
         getIdentifier(),
+        getConfig<string>("close_action"),
+        getConfig<string>("tray_user_role_id"),
       ]);
       setRefreshOnSwitch(value ?? false);
       setLazyLoadEnabled(lazyLoadValue);
@@ -74,7 +82,18 @@ export default function SettingsPage() {
       setAppVersion(version);
       setTauriVersion(tauriVer);
       setAppId(identifier);
+      setCloseAction(closeAct ?? "ask");
+      setTrayUserRoleId(trayUser ?? "");
       setIsConfigLoading(false);
+
+      // Load accounts for tray user selection
+      try {
+        const { getAccounts } = await import("@/utils/accountService");
+        const accts = await getAccounts();
+        setAccounts(accts.map(a => ({ id: a.id, nickname: a.nickname, avatar: a.avatar })));
+      } catch {
+        // ignore
+      }
 
       // Load update channel and source
       await initializeChannel();
@@ -129,6 +148,52 @@ export default function SettingsPage() {
   const handleWikiDetailPreloadChange = async (value: boolean) => {
     setWikiDetailPreload(value);
     await setConfig("wiki_detail_preload", value);
+  };
+
+  const handleCloseActionChange = async (value: string) => {
+    setCloseAction(value);
+    await setConfig("close_action", value);
+  };
+
+  const handleTrayUserChange = async (value: string) => {
+    setTrayUserRoleId(value);
+    await setConfig("tray_user_role_id", value);
+    try {
+      await invoke("set_tray_user", { roleId: value });
+    } catch {
+      // ignore
+    }
+    // Fetch role data and update tray
+    if (value) {
+      try {
+        const result = await roleDataService.queryData(value, "char_detail", [
+          "dungeon",
+          "bpSystem",
+          "dailyMission",
+          "weeklyMission",
+        ]);
+        const accs = await getAccounts();
+        const account = accs.find((a) => a.id === value);
+        await invoke("update_tray_user_data", {
+          userInfo: {
+            roleId: value,
+            nickname: account?.nickname ?? null,
+            avatar: account?.avatar ?? null,
+            curStamina: Number(result?.dungeon?.curStamina) || 0,
+            maxStamina: Number(result?.dungeon?.maxStamina) || 0,
+            maxTs: Number(result?.dungeon?.maxTs) || 0,
+            dailyActivation: Number(result?.dailyMission?.dailyActivation) || 0,
+            maxDailyActivation: Number(result?.dailyMission?.maxDailyActivation) || 0,
+            weeklyScore: Number(result?.weeklyMission?.score) || 0,
+            weeklyTotal: Number(result?.weeklyMission?.total) || 0,
+            bpCurLevel: Number(result?.bpSystem?.curLevel) || 0,
+            bpMaxLevel: Number(result?.bpSystem?.maxLevel) || 0,
+          },
+        });
+      } catch (err) {
+        console.error("Failed to update tray user data:", err);
+      }
+    }
   };
 
   const handleDevModeToggle = (value: boolean) => {
@@ -479,6 +544,63 @@ export default function SettingsPage() {
                   <GlassSwitch.Thumb />
                 </GlassSwitch.Control>
               </GlassSwitch>
+            </div>
+
+            <SettingsDivider />
+
+            {/* Close Action */}
+            <div id="settings-close-action">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="font-medium text-foreground">
+                    {t("settings.general.close_action")}
+                  </p>
+                  <p className="text-sm text-muted mt-0.5">
+                    {t("settings.general.close_action_desc")}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  {[
+                    { value: "close", label: t("settings.general.close_action_close") },
+                    { value: "minimize_to_tray", label: t("settings.general.close_action_minimize") },
+                    { value: "ask", label: t("settings.general.close_action_ask") },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
+                        closeAction === opt.value
+                          ? "border-primary/50 bg-primary/10 text-primary font-medium"
+                          : "border-separator/40 text-muted hover:bg-default-100/50"
+                      }`}
+                      onClick={() => handleCloseActionChange(opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <SettingsDivider />
+
+            {/* Tray User */}
+            <div id="settings-tray-user">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="font-medium text-foreground">
+                    {t("settings.general.tray_user")}
+                  </p>
+                  <p className="text-sm text-muted mt-0.5">
+                    {t("settings.general.tray_user_desc")}
+                  </p>
+                </div>
+                <GlassSelect
+                  value={trayUserRoleId || null}
+                  placeholder={i18n.language === "zh" ? "未选择" : "None"}
+                  options={accounts.map(a => ({ value: a.id, label: a.nickname }))}
+                  onChange={handleTrayUserChange}
+                />
+              </div>
             </div>
           </div>
           )}

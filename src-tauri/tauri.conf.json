@@ -23,6 +23,23 @@
           "effects": ["acrylic"],
           "color": [18, 18, 20, 30]
         }
+      },
+      {
+        "label": "tray-panel",
+        "title": "tray-panel",
+        "url": "/tray-panel.html",
+        "width": 260,
+        "height": 340,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "alwaysOnTop": true,
+        "windowEffects": {
+          "effects": ["acrylic"],
+          "color": [18, 18, 20, 30]
+        }
       }
     ],
     "security": {

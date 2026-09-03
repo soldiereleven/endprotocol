@@ -34,6 +34,12 @@ export default defineConfig(async () => ({
   build: {
     outDir: path.resolve(__dirname, "dist"),
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, "index.html"),
+        "tray-panel": path.resolve(__dirname, "tray-panel.html"),
+      },
+    },
   },
   base: "./",
 }));

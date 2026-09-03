@@ -97,7 +97,14 @@
       "theme": "Theme",
       "theme_light": "Light",
       "theme_dark": "Dark",
-      "theme_system": "System"
+      "theme_system": "System",
+      "close_action": "Close Button Action",
+      "close_action_desc": "What happens when you click the close button",
+      "close_action_close": "Close Program",
+      "close_action_minimize": "Minimize to Tray",
+      "close_action_ask": "Ask Each Time",
+      "tray_user": "Tray Display User",
+      "tray_user_desc": "Select which user's info to show in the system tray"
     },
     "appearance": {
       "title": "Appearance",

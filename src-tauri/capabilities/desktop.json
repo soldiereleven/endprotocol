@@ -6,7 +6,8 @@
     "linux"
   ],
   "windows": [
-    "main"
+    "main",
+    "tray-panel"
   ],
   "permissions": [
     "updater:default",
