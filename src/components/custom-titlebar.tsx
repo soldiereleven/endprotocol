@@ -91,7 +91,7 @@ export const CustomTitlebar = () => {
       } else if (closeAction === "minimize_to_tray") {
         await invoke("minimize_to_tray");
       } else {
-        await invoke("close_window");
+        await invoke("app_quit");
       }
     } catch (error) {
       logger.error("Failed to close window: " + error, "Titlebar");
@@ -103,7 +103,7 @@ export const CustomTitlebar = () => {
       if (action === "minimize_to_tray") {
         await invoke("minimize_to_tray");
       } else {
-        await invoke("close_window");
+        await invoke("app_quit");
       }
       // Update local state if user chose to remember
       const newAction = await getConfig<string>("close_action");
