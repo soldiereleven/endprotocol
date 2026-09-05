@@ -30,6 +30,33 @@ pub struct TrayUserInfo {
     pub bp_max_level: Option<i32>,
 }
 
+/// Show the main window and bring it to focus (cross-desktop on Windows)
+pub fn show_main_window_focus<R: Runtime>(app: &tauri::AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+
+        #[cfg(target_os = "windows")]
+        {
+            use windows_sys::Win32::UI::WindowsAndMessaging::{
+                SetForegroundWindow, ShowWindow, SW_SHOW,
+            };
+
+            if let Ok(hwnd) = window.hwnd() {
+                unsafe {
+                    ShowWindow(hwnd.0, SW_SHOW);
+                    SetForegroundWindow(hwnd.0);
+                }
+            }
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = window.set_focus();
+        }
+    }
+}
+
 /// Position and show the tray panel near the tray icon
 fn show_panel_at_position<R: Runtime>(
     app: &tauri::AppHandle<R>,
@@ -81,11 +108,7 @@ pub fn setup_tray<R: Runtime>(
                     ..
                 } => {
                     // Left double-click → show main window
-                    if let Some(window) = app.get_webview_window("main") {
-                        let _ = window.unminimize();
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    }
+                    show_main_window_focus(app);
                     // Also hide panel if open
                     let _ = hide_tray_panel(app);
                 }

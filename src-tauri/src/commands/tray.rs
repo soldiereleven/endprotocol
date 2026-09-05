@@ -67,10 +67,7 @@ pub fn hide_tray_panel<R: Runtime>(app: tauri::AppHandle<R>) -> Result<(), Strin
 /// Show the main window (from tray panel)
 #[tauri::command]
 pub fn show_main_window<R: Runtime>(app: tauri::AppHandle<R>) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("main") {
-        window.show().map_err(|e: tauri::Error| e.to_string())?;
-        window.set_focus().map_err(|e: tauri::Error| e.to_string())?;
-    }
+    crate::tray::show_main_window_focus(&app);
     // Hide tray panel
     let _ = crate::tray::hide_tray_panel(&app);
     Ok(())
