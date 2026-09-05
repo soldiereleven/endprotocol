@@ -36,7 +36,7 @@ function StatItem({
   max,
   recovery,
 }: {
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   cur: number;
   max: number;
@@ -45,7 +45,7 @@ function StatItem({
   const pct = max > 0 ? Math.min((cur / max) * 100, 100) : 0;
   return (
     <div className="flex items-center gap-2 px-3 py-1.5">
-      <span className="text-sm w-5 text-center shrink-0">{icon}</span>
+      <span className="w-4 h-4 shrink-0 flex items-center justify-center text-primary/80">{icon}</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-0.5">
           <span className="text-[11px] font-medium text-foreground/80">{label}</span>
@@ -166,10 +166,31 @@ export function TrayPanel() {
 
           <div className="h-px bg-separator/40 mx-3 my-0.5" />
 
-          <StatItem icon="⚡" label="理智" cur={curStamina} max={maxStamina} recovery={recovery ?? undefined} />
-          <StatItem icon="📅" label="每日活跃" cur={userInfo.dailyActivation ?? 0} max={userInfo.maxDailyActivation ?? 0} />
-          <StatItem icon="📊" label="每周事务" cur={userInfo.weeklyScore ?? 0} max={userInfo.weeklyTotal ?? 0} />
-          <StatItem icon="🎖️" label="通行证" cur={userInfo.bpCurLevel ?? 0} max={userInfo.bpMaxLevel ?? 0} />
+          <StatItem
+            icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>}
+            label="理智"
+            cur={curStamina}
+            max={maxStamina}
+            recovery={recovery ?? undefined}
+          />
+          <StatItem
+            icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>}
+            label="每日活跃"
+            cur={userInfo.dailyActivation ?? 0}
+            max={userInfo.maxDailyActivation ?? 0}
+          />
+          <StatItem
+            icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>}
+            label="每周事务"
+            cur={userInfo.weeklyScore ?? 0}
+            max={userInfo.weeklyTotal ?? 0}
+          />
+          <StatItem
+            icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.996.29-1.75.836-1.75 1.608v12.072c0 .503.23.962.622 1.288m11.132-6.386c.996.29 1.75.836 1.75 1.608v12.072c0 .503-.23.962-.622 1.288M13.5 4.236c-.996.29-1.75.836-1.75 1.608v12.072c0 .503.23.962.622 1.288m0 0h3.75" /></svg>}
+            label="通行证"
+            cur={userInfo.bpCurLevel ?? 0}
+            max={userInfo.bpMaxLevel ?? 0}
+          />
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center px-3 py-4">
