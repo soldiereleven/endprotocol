@@ -17,6 +17,7 @@
     "core:window:allow-primary-monitor",
     "core:window:allow-outer-position",
     "core:window:allow-outer-size",
-    "opener:default"
+    "opener:default",
+    "opener:allow-open-url"
   ]
 }

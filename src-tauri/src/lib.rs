@@ -11,6 +11,7 @@ mod utils;
 use services::account_service::AccountService;
 use services::avatar_cache_service::AvatarCacheService;
 use services::config_service::ConfigService;
+use services::game_launcher_service::GameLauncherService;
 use services::gacha_service::GachaService;
 use services::network_service::NetworkService;
 use services::skland_service::SklandService;
@@ -107,6 +108,26 @@ pub fn run() {
             commands::tray::hide_tray_panel,
             commands::tray::show_main_window,
             commands::tray::app_quit,
+            // Launcher commands
+            commands::launcher::launcher_check_status,
+            commands::launcher::launcher_install_or_update,
+            commands::launcher::launcher_verify_and_repair,
+            commands::launcher::launcher_preload_download,
+            commands::launcher::launcher_get_remote_version,
+            commands::launcher::launcher_get_payload_state,
+            commands::launcher::launcher_cancel_download,
+            commands::launcher::launcher_has_download_cache,
+            commands::launcher::launcher_reset_download_cancel,
+            commands::launcher::launcher_decrypt_file,
+            commands::launcher::launcher_get_banners,
+            commands::launcher::launcher_get_announcements,
+            commands::launcher::launcher_get_notice_content,
+            commands::launcher::launcher_get_background_image,
+            commands::launcher::launcher_start_game,
+            commands::launcher::launcher_browse_folder,
+            commands::launcher::launcher_check_executable,
+            commands::launcher::launcher_check_game_running,
+            commands::launcher::launcher_kill_game,
         ])
         .setup(|app| {
             // 初始化配置服务（使用 std::sync::Mutex，因为它是同步的）
@@ -148,6 +169,10 @@ pub fn run() {
             let managed_service = Arc::new(Mutex::new(account_service));
             let timer_service = managed_service.clone();
             app.manage(managed_service);
+
+            // 初始化游戏启动器服务
+            let game_launcher_service = Arc::new(Mutex::new(GameLauncherService::new()));
+            app.manage(game_launcher_service);
 
             // 启动自动刷新定时器（此时 tokio runtime 已启动）
             AccountService::start_auto_refresh(timer_service);

@@ -5,6 +5,7 @@ pub mod color_picker;
 pub mod config;
 pub mod gacha;
 pub mod image;
+pub mod launcher;
 pub mod logs;
 pub mod tray;
 pub mod updater;
