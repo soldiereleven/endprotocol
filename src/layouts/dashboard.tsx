@@ -1,7 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { CustomTitlebar } from "@/components/custom-titlebar";
 import { Sidebar } from "@/components/dashboard-sidebar";
+import {
+  getLauncherMode,
+  subscribeLauncherMode,
+  getLauncherBgMedia,
+  setLauncherBgMedia,
+  subscribeLauncherBgMedia,
+  type LauncherBgMedia,
+} from "@/stores/launcherMode";
+import { openInAppBrowser, suspendInAppBrowser, resumeInAppBrowser } from "@/stores/inAppBrowser";
+import { InAppBrowser } from "@/components/in-app-browser";
+import { GameActionPanel } from "@/components/game-action-panel";
+import {
+  type GameChannel,
+  type BannerItem,
+  type AnnouncementItem,
+  getNoticeContent,
+  getBackgroundImage,
+} from "@/utils/launcherService";
+
+const STORAGE_KEY_CHANNEL = "launcher_channel";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -10,13 +30,258 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [viewMode, setViewMode] = useState(getLauncherMode);
+  const [bgMedia, setBgMedia] = useState<LauncherBgMedia | null>(getLauncherBgMedia);
+  const [channel] = useState<GameChannel>(() => {
+    return (localStorage.getItem(STORAGE_KEY_CHANNEL) as GameChannel) || "official";
+  });
+  const [banners, setBanners] = useState<BannerItem[]>([]);
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
+  const [bannerIndex, setBannerIndex] = useState(0);
+  const [bannerHovered, setBannerHovered] = useState(false);
+  const [announcementTab, setAnnouncementTab] = useState(0);
 
+  useEffect(() => {
+    return subscribeLauncherMode(() => {
+      setViewMode(getLauncherMode());
+    });
+  }, []);
+
+  const prevModeRef = useRef(viewMode);
+  useEffect(() => {
+    const prev = prevModeRef.current;
+    if (prev === "game" && viewMode === "data") {
+      suspendInAppBrowser();
+    } else if (prev === "data" && viewMode === "game") {
+      resumeInAppBrowser();
+    }
+    prevModeRef.current = viewMode;
+  }, [viewMode]);
+
+  useEffect(() => {
+    return subscribeLauncherBgMedia(() => {
+      setBgMedia(getLauncherBgMedia());
+    });
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_CHANNEL, channel);
+  }, [channel]);
+
+  // Fetch background + banners when channel changes
+  useEffect(() => {
+    getBackgroundImage(channel)
+      .then(setLauncherBgMedia)
+      .catch(() => setLauncherBgMedia(null));
+
+    getNoticeContent(channel)
+      .then((content) => {
+        console.log("[Dashboard] Notices loaded:", content.banners.length, "banners,", content.announcements.length, "announcements");
+        setBanners(content.banners);
+        setAnnouncements(content.announcements);
+      })
+      .catch((e) => {
+        console.error("[Dashboard] Failed to load notices:", e);
+        setBanners([]);
+        setAnnouncements([]);
+      });
+  }, [channel]);
+
+  // Banner auto-rotate (paused on hover)
+  useEffect(() => {
+    if (banners.length <= 1 || bannerHovered) return;
+    const timer = setInterval(() => {
+      setBannerIndex((i) => (i + 1) % banners.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [banners.length, bannerHovered]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      setLauncherBgMedia(null);
+    };
+  }, []);
+
+  const isGameMode = viewMode === "game";
+  const announcementCategories = [...new Set(announcements.map((a) => a.category))];
+  const activeAnnouncementCategory = announcementCategories[announcementTab] || announcementCategories[0];
+  const filteredAnnouncements = announcements.filter((a) => a.category === activeAnnouncementCategory);
+
+  // ========== GAME MODE ==========
+  if (isGameMode) {
+    return (
+      <div className="flex flex-col h-screen">
+        {/* Full-bleed background */}
+        <div className="fixed inset-0 z-0">
+          {bgMedia ? (
+            <>
+              {bgMedia.media_type === "video" ? (
+                <video
+                  src={bgMedia.url}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <img
+                  src={bgMedia.url}
+                  alt="Background"
+                  className="w-full h-full object-cover"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-background/50 via-transparent to-background/10" />
+            </>
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-primary/10 via-background to-background" />
+          )}
+        </div>
+
+        <CustomTitlebar />
+
+        {/* In-app browser overlay — below titlebar */}
+        <InAppBrowser />
+
+        {/* Content layer */}
+        <div className="relative z-10 flex-1 flex flex-col p-4 lg:p-8">
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Bottom: banner/announcements (left) + game action (right) */}
+          <div className="flex items-end justify-between gap-4">
+            {/* Banner + announcements box */}
+            <div className="flex items-stretch h-40 max-w-2xl flex-1 min-w-0 rounded-xl bg-black/40 backdrop-blur-md border border-white/10 overflow-hidden shadow-2xl">
+              {/* Banner — left side, 4px margin top/left/bottom, auto width by aspect ratio */}
+              {banners.length > 0 && (
+                <div
+                  className="relative shrink-0 my-1 ml-1 flex items-center group"
+                  onMouseEnter={() => setBannerHovered(true)}
+                  onMouseLeave={() => setBannerHovered(false)}
+                >
+                  <img
+                    src={banners[bannerIndex].image_url}
+                    alt="Banner"
+                    className="h-full w-auto object-contain rounded-lg cursor-pointer"
+                    onClick={() => {
+                      const url = banners[bannerIndex].jump_url;
+                      if (url) openInAppBrowser(url);
+                    }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+
+                  {/* Left / Right arrows — visible on hover */}
+                  {banners.length > 1 && bannerHovered && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setBannerIndex((i) => (i - 1 + banners.length) % banners.length);
+                        }}
+                        className="absolute left-0.5 top-1/2 -translate-y-1/2 w-5 h-14 flex items-center justify-center rounded-full bg-black/50 text-white/80 hover:bg-black/70 hover:text-white transition-colors cursor-pointer z-10"
+                      >
+                        ‹
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setBannerIndex((i) => (i + 1) % banners.length);
+                        }}
+                        className="absolute right-0.5 top-1/2 -translate-y-1/2 w-5 h-14 flex items-center justify-center rounded-full bg-black/50 text-white/80 hover:bg-black/70 hover:text-white transition-colors cursor-pointer z-10"
+                      >
+                        ›
+                      </button>
+                    </>
+                  )}
+
+                  {/* Dots */}
+                  {banners.length > 1 && (
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+                      {banners.map((_, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          className={`w-1.5 h-1.5 rounded-full transition-all cursor-pointer ${
+                            i === bannerIndex ? "bg-white w-3" : "bg-white/40"
+                          }`}
+                          onClick={() => setBannerIndex(i)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Announcements — right side */}
+              {announcementCategories.length > 0 ? (
+                <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                  {/* Tabs */}
+                  <div className="flex items-center gap-0 px-3 pt-2 shrink-0">
+                    {announcementCategories.map((cat, i) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setAnnouncementTab(i)}
+                        className={`px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                          i === announcementTab
+                            ? "text-white border-b-2 border-white"
+                            : "text-white/50 hover:text-white/80"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* List */}
+                  <div className="flex-1 px-3 pb-2 pt-1 space-y-0.5 overflow-y-auto">
+                    {filteredAnnouncements.slice(0, 6).map((item, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between py-1.5 px-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                        onClick={() => {
+                          if (item.jump_url) openInAppBrowser(item.jump_url);
+                        }}
+                      >
+                        <span className="text-xs text-white/80 truncate mr-2">
+                          {item.title}
+                        </span>
+                        <span className="text-[10px] text-white/40 shrink-0">
+                          {item.date}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-xs text-white/30">
+                  No announcements
+                </div>
+              )}
+            </div>
+
+            {/* Game action panel — right side */}
+            <div className="shrink-0 self-end mb-2">
+              <GameActionPanel />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ========== DATA MODE ==========
   return (
     <div className="flex flex-col h-screen glass-window">
       <CustomTitlebar />
 
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Desktop Sidebar — 与标题栏同一液态玻璃容器，不再单独设玻璃/边框 */}
+        {/* Desktop Sidebar */}
         <div className="hidden lg:flex w-72 shrink-0">
           <Sidebar />
         </div>
@@ -45,7 +310,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </div>
 
-      {/* Mobile menu trigger — 放在 overflow-hidden 容器外避免 position:fixed 被限制 */}
+      {/* Mobile menu trigger */}
       <button
         type="button"
         onClick={() => setMobileOpen(true)}

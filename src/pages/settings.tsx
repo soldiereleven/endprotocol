@@ -37,6 +37,8 @@ export default function SettingsPage() {
   const [lazyLoadEnabled, setLazyLoadEnabled] = useState(true);
   const [wikiDetailPreload, setWikiDetailPreload] = useState(false);
   const [closeAction, setCloseAction] = useState<string>("ask");
+  const [cancelBehavior, setCancelBehavior] = useState<string>("ask");
+  const [verifyThreads, setVerifyThreads] = useState<number>(4);
   const [trayUserRoleId, setTrayUserRoleId] = useState<string>("");
   const [accounts, setAccounts] = useState<Array<{ id: string; nickname: string; avatar: string }>>([]);
 
@@ -84,6 +86,8 @@ export default function SettingsPage() {
       setAppId(identifier);
       setCloseAction(closeAct ?? "ask");
       setTrayUserRoleId(trayUser ?? "");
+      setCancelBehavior(localStorage.getItem("launcher_cancel_behavior") || "ask");
+      setVerifyThreads(parseInt(localStorage.getItem("launcher_verify_threads") || "4", 10));
       setIsConfigLoading(false);
 
       // Load accounts for tray user selection
@@ -604,6 +608,90 @@ export default function SettingsPage() {
             </div>
           </div>
           )}
+        </GlassCard>
+
+        {/* Game Launch Settings */}
+        <GlassCard id="settings-game-launch" className="p-6 glass-surface border border-separator/90">
+          <h2 className="text-lg font-semibold mb-6 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
+              <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            {t("settings.game_launch.title")}
+          </h2>
+          <div className="space-y-6">
+            {/* Cancel Download Behavior */}
+            <div id="settings-cancel-behavior">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="font-medium text-foreground">
+                    {t("launcher.cancel_download_behavior")}
+                  </p>
+                  <p className="text-sm text-muted mt-0.5">
+                    {t("launcher.cancel_download_behavior_desc")}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  {[
+                    { value: "ask", label: t("launcher.cancel_behavior_ask") },
+                    { value: "keep", label: t("launcher.cancel_behavior_keep") },
+                    { value: "delete", label: t("launcher.cancel_behavior_delete") },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
+                        cancelBehavior === opt.value
+                          ? "border-primary/50 bg-primary/10 text-primary font-medium"
+                          : "border-separator/40 text-muted hover:bg-default-100/50"
+                      }`}
+                      onClick={() => {
+                        setCancelBehavior(opt.value);
+                        localStorage.setItem("launcher_cancel_behavior", opt.value);
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <SettingsDivider />
+
+            {/* Verify Threads */}
+            <div id="settings-verify-threads">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="font-medium text-foreground">
+                    {t("settings.game_launch.verify_threads")}
+                  </p>
+                  <p className="text-sm text-muted mt-0.5">
+                    {t("settings.game_launch.verify_threads_desc")}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  {[2, 4, 6, 8].map((n) => (
+                    <button
+                      key={n}
+                      className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
+                        verifyThreads === n
+                          ? "border-primary/50 bg-primary/10 text-primary font-medium"
+                          : "border-separator/40 text-muted hover:bg-default-100/50"
+                      }`}
+                      onClick={() => {
+                        setVerifyThreads(n);
+                        localStorage.setItem("launcher_verify_threads", String(n));
+                      }}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </GlassCard>
 
         {/* Appearance Settings */}

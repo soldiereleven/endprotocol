@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
@@ -13,20 +14,34 @@ import { AppInfoDrawer } from "@/components/app-info-drawer";
 import { CloseConfirmDialog } from "@/components/close-confirm-dialog";
 import { getUnreadCount, hasUrgentUnread, subscribeMessages } from "@/utils/messageStore";
 import { getConfig } from "@/utils/configService";
+import {
+  getLauncherMode,
+  setLauncherMode,
+  subscribeLauncherMode,
+  type LauncherViewMode,
+} from "@/stores/launcherMode";
 import logger from "@/utils/logger";
 
 export const CustomTitlebar = () => {
+  const { t } = useTranslation();
   const [isMaximized, setIsMaximized] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(() => getUnreadCount());
   const [hasUrgent, setHasUrgent] = useState(() => hasUrgentUnread());
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [closeAction, setCloseAction] = useState<string>("ask");
+  const [viewMode, setViewMode] = useState<LauncherViewMode>(getLauncherMode);
 
   useEffect(() => {
     return subscribeMessages(() => {
       setUnreadCount(getUnreadCount());
       setHasUrgent(hasUrgentUnread());
+    });
+  }, []);
+
+  useEffect(() => {
+    return subscribeLauncherMode(() => {
+      setViewMode(getLauncherMode());
     });
   }, []);
 
@@ -126,7 +141,38 @@ export const CustomTitlebar = () => {
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
           <div className="w-2 h-2 rounded-full bg-primary/60" />
-          <h1 className="text-sm font-bold text-foreground tracking-widest">ENDPROTOCOL</h1>
+          <h1 className="text-sm font-bold text-foreground tracking-widest">
+            {viewMode === "game" ? t("launcher.game_title") : "ENDPROTOCOL"}
+          </h1>
+        </div>
+
+        {/* Launcher mode toggle */}
+        <div
+          className="flex items-center ml-3 h-6 rounded-lg bg-default-100/50 border border-separator/40 overflow-hidden"
+          style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+        >
+          <button
+            type="button"
+            onClick={() => setLauncherMode("data")}
+            className={`px-2.5 h-full text-[10px] font-medium transition-all duration-200 cursor-pointer ${
+              viewMode === "data"
+                ? "bg-primary/20 text-primary"
+                : "text-muted hover:text-foreground"
+            }`}
+          >
+            {t("launcher.mode_data")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setLauncherMode("game")}
+            className={`px-2.5 h-full text-[10px] font-medium transition-all duration-200 cursor-pointer ${
+              viewMode === "game"
+                ? "bg-primary/20 text-primary"
+                : "text-muted hover:text-foreground"
+            }`}
+          >
+            {t("launcher.mode_game")}
+          </button>
         </div>
 
         <div
