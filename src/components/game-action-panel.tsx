@@ -34,6 +34,7 @@ const STORAGE_KEY_CANCEL_BEHAVIOR = "launcher_cancel_behavior"; // "ask" | "keep
 // Module-level progress store — survives component remounts during mode switches
 let _persistedProgress: DownloadProgress | null = null;
 let _persistedPreparing = false;
+let _persistedLastStage: string | null = null;
 
 export function GameActionPanel() {
   const { t } = useTranslation();
@@ -65,7 +66,7 @@ export function GameActionPanel() {
   const verifySpeedRef = useRef({ lastVerifiedBytes: 0, lastTime: Date.now() });
   const cancellingRef = useRef(localStorage.getItem(STORAGE_KEY_CANCELLED) === "1");
   const preparingRef = useRef(_persistedPreparing);
-  const lastStageRef = useRef<string | null>(null);
+  const lastStageRef = useRef<string | null>(_persistedLastStage);
   const menuFlyoutRef = useRef<HTMLDivElement>(null);
 
   // Confirm dialog state
@@ -75,6 +76,15 @@ export function GameActionPanel() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_CHANNEL, channel);
   }, [channel]);
+
+  // Reset persisted preparing on unmount (mode switch) — backend keeps running,
+  // but on remount we need to re-detect the actual stage from progress events
+  useEffect(() => {
+    return () => {
+      _persistedPreparing = false;
+      preparingRef.current = false;
+    };
+  }, []);
 
   // Check game status
   const checkStatus = useCallback(async () => {
@@ -108,6 +118,12 @@ export function GameActionPanel() {
   }, [channel, installPath]);
 
   useEffect(() => {
+    // If an action is already running (persisted from before remount), the service
+    // lock is held — check_status would block forever. Skip and use persisted state.
+    if (_persistedProgress && _persistedProgress.stage !== "completed" && _persistedProgress.stage !== "error") {
+      setStatusReady(true);
+      return;
+    }
     checkStatus();
   }, [checkStatus]);
 
@@ -148,6 +164,7 @@ export function GameActionPanel() {
       _persistedProgress = p;
       if (p.stage !== "completed" && p.stage !== "error") {
         lastStageRef.current = p.stage;
+        _persistedLastStage = p.stage;
       }
       setProgress(p);
       if (p.stage === "downloading") {
@@ -183,24 +200,11 @@ export function GameActionPanel() {
         _persistedPreparing = false;
         preparingRef.current = false;
         const wasVerify = lastStageRef.current === "verifying" || lastStageRef.current === "checking" || lastStageRef.current === "comparing";
-        if (p.stage === "completed" && wasVerify) {
-          const checked = p.file_index;
-          const total = p.file_count;
-          addMessage({
-            type: "info",
-            title: t("launcher.verify_complete_title"),
-            body: t("launcher.verify_complete_body", { checked, total }),
-            tag: "verify-result",
-          });
-        } else if (p.stage === "error" && wasVerify) {
-          addMessage({
-            type: "warn",
-            title: t("launcher.verify_failed_title"),
-            body: t("launcher.verify_failed_body"),
-            tag: "verify-result",
-          });
+        if ((p.stage === "completed" || p.stage === "error") && wasVerify) {
+          // 校验结果由 handleVerify / handleQuickVerify 根据返回值显示，此处跳过
         }
         lastStageRef.current = null;
+        _persistedLastStage = null;
         setTimeout(() => {
           setProgress(null);
           setPreparing(false);
@@ -315,6 +319,25 @@ export function GameActionPanel() {
     }
   }, [channel, installPath]);
 
+  // 解析校验结果 JSON，构建本地化消息
+  const formatVerifyResult = useCallback((msg: string): { type: "info" | "warn"; body: string } => {
+    try {
+      const data = JSON.parse(msg);
+      const { ok, failed, repaired, files } = data as { ok: number; failed: number; repaired: number; files: string[] };
+      if (failed > 0) {
+        const lines = [
+          t("launcher.verify_repair_summary", { total: ok + failed, ok, failed }),
+          t("launcher.verify_repair_detail", { repaired, failed }),
+          ...files.map((f) => `  ${f}`),
+        ];
+        return { type: "warn", body: lines.join("\n") };
+      }
+      return { type: "info", body: t("launcher.verify_complete_body", { checked: ok, total: ok }) };
+    } catch {
+      return { type: "info", body: msg };
+    }
+  }, [t]);
+
   const handleVerify = useCallback(async () => {
     if (!installPath) return;
     setFlyoutOpen(false);
@@ -327,7 +350,31 @@ export function GameActionPanel() {
     _persistedPreparing = true;
     try {
       setProgress(null);
-      await verifyAndRepair(channel, installPath, threads);
+      const result = await verifyAndRepair(channel, installPath, threads);
+      const { type, body } = formatVerifyResult(result.message);
+      addMessage({ type, title: t("launcher.verify_complete_title"), body, tag: "verify-result" });
+    } catch {
+      // error handled by progress
+    } finally {
+      checkStatus();
+    }
+  }, [channel, installPath, checkStatus, formatVerifyResult]);
+
+  const handleQuickVerify = useCallback(async () => {
+    if (!installPath) return;
+    setFlyoutOpen(false);
+    cancellingRef.current = false;
+    localStorage.removeItem(STORAGE_KEY_CANCELLED);
+    await resetDownloadCancel();
+    const threads = parseInt(localStorage.getItem("launcher_verify_threads") || "4", 10);
+    setPreparing(true);
+    preparingRef.current = true;
+    _persistedPreparing = true;
+    try {
+      setProgress(null);
+      const result = await verifyAndRepair(channel, installPath, threads, true);
+      const { type, body } = formatVerifyResult(result.message);
+      addMessage({ type, title: t("launcher.verify_complete_title"), body, tag: "verify-result" });
     } catch {
       // error handled by progress
     } finally {
@@ -795,6 +842,22 @@ export function GameActionPanel() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
               {t("launcher.verify_integrity")}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setFlyoutOpen(false);
+                setMenuFlyoutPos(null);
+                handleQuickVerify();
+              }}
+              disabled={isActionRunning}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/80 hover:bg-white/10 hover:text-foreground transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg className="w-4 h-4 text-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              {t("launcher.quick_verify")}
             </button>
 
             <button

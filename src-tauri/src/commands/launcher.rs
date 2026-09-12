@@ -73,13 +73,14 @@ pub async fn launcher_verify_and_repair(
     channel: String,
     install_path: String,
     max_concurrent: Option<usize>,
+    quick: Option<bool>,
 ) -> Result<LauncherResult, String> {
     let ch = parse_channel(&channel)?;
     let svc = service.lock().await;
 
     tracing::info!(
-        "[launcher] verify_and_repair called: channel={:?}, max_concurrent={:?}, install_path={}",
-        ch, max_concurrent, install_path
+        "[launcher] verify_and_repair called: channel={:?}, max_concurrent={:?}, quick={:?}, install_path={}",
+        ch, max_concurrent, quick, install_path
     );
 
     let app_handle = app.clone();
@@ -88,7 +89,7 @@ pub async fn launcher_verify_and_repair(
     });
 
     match svc
-        .verify_and_repair(&ch, &install_path, progress_cb, max_concurrent.unwrap_or(4))
+        .verify_and_repair(&ch, &install_path, progress_cb, max_concurrent.unwrap_or(4), quick.unwrap_or(false))
         .await
     {
         Ok(msg) => Ok(LauncherResult {

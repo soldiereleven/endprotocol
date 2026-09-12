@@ -429,6 +429,8 @@
     "preparing": "Preparing...",
     "verify_complete_title": "Verification Complete",
     "verify_complete_body": "Checked {{checked}}/{{total}} files. All game files verified successfully.",
+    "verify_repair_summary": "Checked {{total}} files: {{ok}} passed, {{failed}} damaged",
+    "verify_repair_detail": "Repaired {{repaired}}/{{failed}} files:",
     "verify_failed_title": "Verification Failed",
     "verify_failed_body": "An error occurred during file verification.",
     "downloading": "Downloading...",
@@ -466,6 +468,8 @@
     "cancel_behavior_delete": "Always delete files",
     "preload": "Preload",
     "preload_tooltip": "Download update files before they're released",
-    "preloaded": "Preloaded"
+    "preloaded": "Preloaded",
+    "quick_verify": "Quick Verify",
+    "quick_verify_result_title": "Quick Verify Result"
   }
 }

@@ -1035,21 +1035,49 @@ impl GameLauncherService {
         install_path: &str,
         progress_callback: Arc<dyn Fn(DownloadProgress) + Send + Sync>,
         max_concurrent: usize,
+        quick: bool,
     ) -> Result<String, String> {
+        tracing::info!(
+            "[verify] ======== verify_and_repair START ======== channel={:?}, install_path={}, max_concurrent={}, quick={}",
+            channel, install_path, max_concurrent, quick
+        );
+
         // 1. 获取远程清单
+        tracing::info!("[verify] Step 1: Fetching remote package info...");
         let remote = self.get_latest_package(channel).await?;
+        tracing::info!(
+            "[verify] Remote package: version={}, resource_base_url={}",
+            remote.version, remote.resource_base_url
+        );
+
+        tracing::info!("[verify] Step 2: Fetching manifest from {}/game_files ...", remote.resource_base_url);
         let (manifest, _) = self.fetch_manifest(&remote.resource_base_url).await?;
+        tracing::info!("[verify] Manifest parsed: {} files", manifest.len());
+        if manifest.is_empty() {
+            tracing::warn!("[verify] WARNING: Manifest is empty! Nothing to verify.");
+        }
 
         let total_verify_bytes: u64 = manifest.iter().map(|e| e.size as u64).sum();
         let file_count = manifest.len();
         let install_dir = Path::new(install_path);
 
         tracing::info!(
-            "[verify] Starting verify: {} files, {} bytes total",
-            file_count, total_verify_bytes
+            "[verify] Total expected: {} files, {} bytes ({:.2} MB)",
+            file_count, total_verify_bytes, total_verify_bytes as f64 / 1048576.0
         );
 
+        // 检查安装目录
+        if !install_dir.exists() {
+            tracing::error!(
+                "[verify] ERROR: Install directory does not exist: {}",
+                install_path
+            );
+            return Err(format!("Install directory does not exist: {}", install_path));
+        }
+        tracing::info!("[verify] Install directory exists: {}", install_path);
+
         // ==================== Phase 1: 检查所有文件 ====================
+        tracing::info!("[verify] ======== Phase 1: Check files (quick={}) ========", quick);
         progress_callback(DownloadProgress {
             downloaded: 0,
             total: total_verify_bytes,
@@ -1098,7 +1126,12 @@ impl GameLauncherService {
             }
         });
 
-        for entry in &manifest {
+        tracing::info!(
+            "[verify] Spawning {} check tasks (max_concurrent={})...",
+            file_count, max_concurrent
+        );
+
+        for (idx, entry) in manifest.iter().enumerate() {
             let local_path = install_dir.join(&entry.path);
             let entryClone = entry.clone();
             let entry_path = entry.path.clone();
@@ -1113,33 +1146,71 @@ impl GameLauncherService {
                 let _permit = sem.acquire().await.unwrap();
 
                 if DOWNLOAD_CANCELLED.load(Ordering::Relaxed) {
+                    tracing::debug!("[verify] Cancelled, skipping {}", entry_path);
                     vb.fetch_add(entry_size, Ordering::Relaxed);
                     cc.fetch_add(1, Ordering::Relaxed);
                     return;
                 }
 
-                // 检查文件是否存在 + 大小 + MD5
-                let needs_repair = if !local_path.exists() {
-                    true
-                } else if let Ok(meta) = fs::metadata(&local_path) {
-                    if meta.len() as u64 != entry_size {
-                        true
-                    } else {
-                        match hg_crypto::verify_md5(
-                            local_path.to_str().unwrap_or(""),
-                            &entry_md5,
-                        ) {
-                            Ok(true) => false,
-                            _ => true,
-                        }
-                    }
+                // 检查文件是否存在 + 大小（快速模式跳过 MD5）
+                let exists = local_path.exists();
+                let actual_size = if exists {
+                    fs::metadata(&local_path).map(|m| m.len()).unwrap_or(0)
                 } else {
-                    true
+                    0
                 };
 
+                let size_ok = exists && actual_size == entry_size;
+
+                let md5_ok = if !exists {
+                    false
+                } else if !size_ok {
+                    false
+                } else if quick {
+                    true // 快速模式跳过 MD5
+                } else {
+                    match hg_crypto::verify_md5(
+                        local_path.to_str().unwrap_or(""),
+                        &entry_md5,
+                    ) {
+                        Ok(true) => true,
+                        Ok(false) => {
+                            tracing::debug!(
+                                "[verify]   MD5 mismatch: {} (expected={}, actual=?)",
+                                entry_path, entry_md5
+                            );
+                            false
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                "[verify]   MD5 check error for {}: {}",
+                                entry_path, e
+                            );
+                            false
+                        }
+                    }
+                };
+
+                let needs_repair = !exists || !size_ok || !md5_ok;
+
                 if needs_repair {
-                    tracing::info!("[verify] File needs repair: {}", entry_path);
+                    let reason = if !exists {
+                        "MISSING"
+                    } else if !size_ok {
+                        &format!("SIZE_MISMATCH(expected={},actual={})", entry_size, actual_size)
+                    } else {
+                        "MD5_MISMATCH"
+                    };
+                    tracing::info!(
+                        "[verify]   [{}] NEEDS_REPAIR: {} ({})",
+                        idx, entry_path, reason
+                    );
                     rl.lock().await.push((entryClone, entry_path));
+                } else if idx % 500 == 0 || idx < 5 {
+                    tracing::debug!(
+                        "[verify]   [{}] OK: {} ({} bytes)",
+                        idx, entry_path, entry_size
+                    );
                 }
 
                 vb.fetch_add(entry_size, Ordering::Relaxed);
@@ -1148,20 +1219,43 @@ impl GameLauncherService {
         }
 
         // 等待所有检查任务完成
-        while let Some(_) = check_set.join_next().await {}
+        tracing::info!("[verify] Waiting for all check tasks to complete...");
+        while let Some(result) = check_set.join_next().await {
+            if let Err(e) = result {
+                tracing::error!("[verify] Check task panicked: {}", e);
+            }
+        }
         let _ = check_progress_handle.await;
 
         let total_checked = checked_count.load(Ordering::Relaxed);
         let pending_repair = repair_list.lock().await;
 
         tracing::info!(
-            "[verify] Check phase done: {}/{} files checked, {} need repair",
+            "[verify] ======== Phase 1 DONE: {}/{} files checked, {} need repair ========",
             total_checked, file_count, pending_repair.len()
         );
 
+        if !pending_repair.is_empty() {
+            for (entry, path) in pending_repair.iter().take(10) {
+                tracing::info!(
+                    "[verify]   damaged: {} (size={}, md5={})",
+                    path, entry.size, entry.md5
+                );
+            }
+            if pending_repair.len() > 10 {
+                tracing::info!(
+                    "[verify]   ... and {} more damaged files",
+                    pending_repair.len() - 10
+                );
+            }
+        }
+
         // ==================== Phase 2: 修复有问题的文件 ====================
+        // 在 drop 前收集损坏文件名列表
+        let damaged_files: Vec<String> = pending_repair.iter().map(|(_, p)| p.clone()).collect();
+        let damaged_count = damaged_files.len();
+
         if pending_repair.is_empty() {
-            // 无损坏文件，直接完成
             progress_callback(DownloadProgress {
                 downloaded: 0,
                 total: total_verify_bytes,
@@ -1171,10 +1265,14 @@ impl GameLauncherService {
                 file_count,
                 verified_bytes: total_verify_bytes,
             });
-            tracing::info!("[verify] All files verified OK");
+            tracing::info!("[verify] All files verified OK — no repair needed");
             return Ok("All files verified OK".to_string());
         }
 
+        tracing::info!(
+            "[verify] ======== Phase 2: Repair {} files ========",
+            pending_repair.len()
+        );
         let repair_total: u64 = pending_repair.iter().map(|(e, _)| e.size.max(0) as u64).sum();
         let repair_count = pending_repair.len();
 
@@ -1237,6 +1335,7 @@ impl GameLauncherService {
                 let _permit = sem.acquire().await.unwrap();
 
                 if DOWNLOAD_CANCELLED.load(Ordering::Relaxed) {
+                    tracing::debug!("[verify] Repair cancelled, skipping {}", entry_path);
                     rb.fetch_add(entry_size, Ordering::Relaxed);
                     rc.fetch_add(1, Ordering::Relaxed);
                     return;
@@ -1247,12 +1346,17 @@ impl GameLauncherService {
                 let dest_file = dest.join(local_path.file_name().unwrap_or_default());
                 let dest_str = dest_file.to_string_lossy().to_string();
                 let download_url = format!("{}/{}", resource_url, entry_path);
+                tracing::info!(
+                    "[verify] Repairing: {} -> {} ({} bytes, md5={})",
+                    download_url, dest_str, entry_size, entry_md5
+                );
                 match download_single_file(&download_url, &dest_str, &entry_md5, Arc::new(AtomicU64::new(0)), entry_size).await {
                     Ok(()) => {
+                        tracing::info!("[verify] Repair OK: {}", entry_path);
                         rc.fetch_add(1, Ordering::Relaxed);
                     }
                     Err(e) => {
-                        tracing::error!("[verify] Failed to repair {}: {}", entry_path, e);
+                        tracing::error!("[verify] FAILED to repair {}: {}", entry_path, e);
                     }
                 }
 
@@ -1263,10 +1367,20 @@ impl GameLauncherService {
         drop(pending_repair);
 
         // 等待所有修复任务完成
-        while let Some(_) = repair_set.join_next().await {}
+        tracing::info!("[verify] Waiting for all repair tasks to complete...");
+        while let Some(result) = repair_set.join_next().await {
+            if let Err(e) = result {
+                tracing::error!("[verify] Repair task panicked: {}", e);
+            }
+        }
         let _ = repair_progress_handle.await;
 
         let total_repaired = repaired_count.load(Ordering::Relaxed);
+
+        tracing::info!(
+            "[verify] ======== Phase 2 DONE: repaired {}/{} files ========",
+            total_repaired, repair_count
+        );
 
         // 最终进度
         progress_callback(DownloadProgress {
@@ -1279,8 +1393,27 @@ impl GameLauncherService {
             verified_bytes: total_verify_bytes,
         });
 
-        tracing::info!("[verify] Repaired {} files", total_repaired);
-        Ok(format!("Repaired {} files", total_repaired))
+        tracing::info!("[verify] ======== verify_and_repair END ======== Repaired {} files", total_repaired);
+
+        // 构建结果：返回 JSON 结构数据，由前端做本地化
+        let result = if damaged_count > 0 {
+            let ok_count = total_checked.saturating_sub(damaged_count);
+            let files: Vec<String> = damaged_files.iter().cloned().collect();
+            serde_json::json!({
+                "ok": ok_count,
+                "failed": damaged_count,
+                "repaired": total_repaired,
+                "files": files,
+            }).to_string()
+        } else {
+            serde_json::json!({
+                "ok": total_checked,
+                "failed": 0,
+                "repaired": 0,
+                "files": Vec::<String>::new(),
+            }).to_string()
+        };
+        Ok(result)
     }
 
     // ========== 预下载 ==========

@@ -233,6 +233,91 @@ pub fn get_logger() -> &'static Logger {
     }
 }
 
+/// tracing 层：将 tracing 事件桥接到自定义 Logger
+struct TracingBridgeLayer;
+
+impl<S> tracing_subscriber::Layer<S> for TracingBridgeLayer
+where
+    S: tracing::Subscriber,
+{
+    fn on_event(
+        &self,
+        event: &tracing::Event<'_>,
+        _ctx: tracing_subscriber::layer::Context<'_, S>,
+    ) {
+        let meta = event.metadata();
+        let level = *meta.level();
+        let module = meta.module_path().unwrap_or("unknown");
+        let target = meta.target();
+
+        // 收集字段信息
+        let mut visitor = TracingVisitor(String::new());
+        event.record(&mut visitor);
+
+        let message = format!("[{}] {}", target, visitor.0);
+
+        let logger = get_logger();
+        match level {
+            tracing::Level::ERROR => logger.error_with_module(module, &message),
+            tracing::Level::WARN => logger.warn_with_module(module, &message),
+            tracing::Level::INFO => logger.info_with_module(module, &message),
+            tracing::Level::DEBUG | tracing::Level::TRACE => {
+                logger.debug_with_module(module, &message)
+            }
+        }
+    }
+}
+
+struct TracingVisitor(String);
+
+impl tracing::field::Visit for TracingVisitor {
+    fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
+        if !self.0.is_empty() {
+            self.0.push(' ');
+        }
+        self.0.push_str(&format!("{}={:?}", field.name(), value));
+    }
+
+    fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
+        if !self.0.is_empty() {
+            self.0.push(' ');
+        }
+        self.0.push_str(&format!("{}={}", field.name(), value));
+    }
+
+    fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
+        if !self.0.is_empty() {
+            self.0.push(' ');
+        }
+        self.0.push_str(&format!("{}={}", field.name(), value));
+    }
+
+    fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
+        if !self.0.is_empty() {
+            self.0.push(' ');
+        }
+        self.0.push_str(&format!("{}={}", field.name(), value));
+    }
+
+    fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
+        if !self.0.is_empty() {
+            self.0.push(' ');
+        }
+        self.0.push_str(&format!("{}={}", field.name(), value));
+    }
+}
+
+/// 初始化 tracing subscriber，桥接到自定义 Logger
+pub fn init_tracing_subscriber() {
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+
+    tracing_subscriber::registry()
+        .with(TracingBridgeLayer)
+        .try_init()
+        .ok(); // ignore if already initialized
+}
+
 /// 便捷宏
 #[macro_export]
 macro_rules! log_debug {

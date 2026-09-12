@@ -23,6 +23,9 @@ pub fn run() {
         eprintln!("Failed to initialize logger: {}", e);
     }
 
+    // 初始化 tracing subscriber，将 tracing 事件桥接到自定义 Logger
+    utils::logger::init_tracing_subscriber();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())

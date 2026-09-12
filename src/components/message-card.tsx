@@ -94,7 +94,7 @@ export function MessageCard({ msg }: { msg: AppMessage }) {
           {msg.title}
         </p>
         {msg.body && (
-          <p className="text-[11px] text-muted mt-0.5 leading-relaxed line-clamp-2">{msg.body}</p>
+          <p className="text-[11px] text-muted mt-0.5 leading-relaxed whitespace-pre-line">{msg.body}</p>
         )}
         {typeof msg.progress === "number" && msg.progress === -1 && (
           <div className="mt-1.5 flex items-center gap-2">

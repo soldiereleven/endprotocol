@@ -92,12 +92,18 @@ export async function verifyAndRepair(
   channel: GameChannel,
   installPath: string,
   maxConcurrent?: number,
+  quick?: boolean,
 ): Promise<LauncherResult> {
-  return invoke<LauncherResult>("launcher_verify_and_repair", {
+  const result = await invoke<LauncherResult>("launcher_verify_and_repair", {
     channel,
     installPath,
     maxConcurrent: maxConcurrent ?? null,
+    quick: quick ?? false,
   });
+  if (!result.success) {
+    throw result.message;
+  }
+  return result;
 }
 
 export async function getRemoteVersion(

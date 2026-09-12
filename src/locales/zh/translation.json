@@ -429,6 +429,8 @@
     "preparing": "准备中...",
     "verify_complete_title": "校验完成",
     "verify_complete_body": "已校验 {{checked}}/{{total}} 个文件，所有游戏文件验证通过。",
+    "verify_repair_summary": "共校验 {{total}} 个文件：{{ok}} 个通过，{{failed}} 个损坏",
+    "verify_repair_detail": "已修复 {{repaired}}/{{failed}} 个文件：",
     "verify_failed_title": "校验失败",
     "verify_failed_body": "文件校验过程中发生错误。",
     "downloading": "下载中...",
@@ -466,6 +468,8 @@
     "cancel_behavior_delete": "默认删除文件",
     "preload": "预下载",
     "preload_tooltip": "提前下载更新资源",
-    "preloaded": "已预下载"
+    "preloaded": "已预下载",
+    "quick_verify": "快速校验",
+    "quick_verify_result_title": "快速校验结果"
   }
 }
