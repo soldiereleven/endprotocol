@@ -69,6 +69,24 @@ export interface LauncherNoticeContent {
   announcements: AnnouncementItem[];
 }
 
+export interface FileScanResult {
+  channel_detected: boolean;
+  detected_channel: string | null;
+  total_files: number;
+  valid_files: number;
+  corrupted_files: number;
+  missing_files: number;
+  existing_bytes: number;
+  download_bytes: number;
+  corrupted_file_list: string[];
+  missing_file_list: string[];
+}
+
+export interface DiskSpace {
+  total: number;
+  free: number;
+}
+
 // ========== API Calls ==========
 
 export async function checkGameStatus(
@@ -208,6 +226,26 @@ export async function killGame(
   return invoke<boolean>("launcher_kill_game", {
     channel,
   });
+}
+
+export async function detectChannel(
+  installPath: string,
+): Promise<GameChannel | null> {
+  return invoke<GameChannel | null>("launcher_detect_channel", { installPath });
+}
+
+export async function scanInstallDir(
+  channel: GameChannel,
+  installPath: string,
+): Promise<FileScanResult> {
+  return invoke<FileScanResult>("launcher_scan_install_dir", {
+    channel,
+    installPath,
+  });
+}
+
+export async function getDiskSpace(path: string): Promise<DiskSpace> {
+  return invoke<DiskSpace>("launcher_get_disk_space", { path });
 }
 
 // ========== Event Listener ==========

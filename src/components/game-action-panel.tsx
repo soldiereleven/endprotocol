@@ -7,6 +7,9 @@ import {
   type GameChannel,
   type GameStatus,
   type DownloadProgress,
+  type FileScanResult,
+  type DiskSpace,
+  ALL_CHANNELS,
   checkGameStatus,
   installOrUpdate,
   verifyAndRepair,
@@ -18,10 +21,12 @@ import {
   browseFolder,
   checkGameRunning,
   killGame,
+  detectChannel,
+  scanInstallDir,
+  getDiskSpace,
   onLauncherProgress,
   formatBytes,
   CHANNEL_LABELS,
-  ALL_CHANNELS,
 } from "@/utils/launcherService";
 import { addMessage } from "@/utils/messageStore";
 
@@ -37,7 +42,8 @@ let _persistedPreparing = false;
 let _persistedLastStage: string | null = null;
 
 export function GameActionPanel() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language === "zh" ? "zh" : "en";
   const [channel, setChannel] = useState<GameChannel>(() => {
     return (localStorage.getItem(STORAGE_KEY_CHANNEL) as GameChannel) || "official";
   });
@@ -45,17 +51,24 @@ export function GameActionPanel() {
   const [installPath, setInstallPath] = useState(() => {
     return localStorage.getItem(STORAGE_KEY_INSTALL_PATH) || "";
   });
+  const [detectedChannel, setDetectedChannel] = useState<GameChannel | null>(null);
+  const [detecting, setDetecting] = useState(false);
   const [statusReady, setStatusReady] = useState(false);
   const [progress, setProgress] = useState<DownloadProgress | null>(_persistedProgress);
   const [preparing, setPreparing] = useState(_persistedPreparing);
   const [flyoutOpen, setFlyoutOpen] = useState(false);
   const [hasTempFiles, setHasTempFiles] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [channelPickerOpen, setChannelPickerOpen] = useState(false);
   const [gameRunning, setGameRunning] = useState(false);
   const [btnHovered, setBtnHovered] = useState(false);
   const [preloadHovered, setPreloadHovered] = useState(false);
   const [downloadSpeed, setDownloadSpeed] = useState(0);
+  const [channelSelectOpen, setChannelSelectOpen] = useState(false);
+  const [pendingInstallPath, setPendingInstallPath] = useState<string | null>(null);
+  const [scanResult, setScanResult] = useState<FileScanResult | null>(null);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [diskSpace, setDiskSpace] = useState<DiskSpace | null>(null);
   const [verifySpeed, setVerifySpeed] = useState(0);
   const flyoutRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -102,6 +115,32 @@ export function GameActionPanel() {
       setStatusReady(true);
     }
   }, [channel, installPath]);
+
+  // Auto-detect channel from install path
+  useEffect(() => {
+    if (!installPath) {
+      setDetectedChannel(null);
+      return;
+    }
+    let cancelled = false;
+    setDetecting(true);
+    detectChannel(installPath)
+      .then((detected) => {
+        if (cancelled) return;
+        setDetectedChannel(detected);
+        if (detected && detected !== channel) {
+          setChannel(detected);
+          localStorage.setItem(STORAGE_KEY_CHANNEL, detected);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setDetectedChannel(null);
+      })
+      .finally(() => {
+        if (!cancelled) setDetecting(false);
+      });
+    return () => { cancelled = true; };
+  }, [installPath]);
 
   // Silent status refresh — used by progress listener
   const refreshStatus = useCallback(async () => {
@@ -233,8 +272,16 @@ export function GameActionPanel() {
       setFlyoutOpen(false);
       setMenuFlyoutPos(null);
     };
+    const onScroll = () => {
+      setFlyoutOpen(false);
+      setMenuFlyoutPos(null);
+    };
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      window.removeEventListener("scroll", onScroll, true);
+    };
   }, [flyoutOpen]);
 
   const handleLocate = useCallback(async () => {
@@ -243,7 +290,19 @@ export function GameActionPanel() {
     if (selected) {
       setInstallPath(selected);
       localStorage.setItem(STORAGE_KEY_INSTALL_PATH, selected);
-      setChannelPickerOpen(true);
+      setDetecting(true);
+      try {
+        const detected = await detectChannel(selected);
+        if (detected) {
+          setDetectedChannel(detected);
+          setChannel(detected);
+          localStorage.setItem(STORAGE_KEY_CHANNEL, detected);
+        }
+      } catch {
+        // detection failed, leave channel as-is
+      } finally {
+        setDetecting(false);
+      }
     }
   }, []);
 
@@ -260,7 +319,11 @@ export function GameActionPanel() {
     _persistedPreparing = true;
     try {
       setProgress(null);
-      await installOrUpdate(channel, installPath);
+      const result = await installOrUpdate(channel, installPath);
+      // After successful install, run quick verify
+      if (result.success) {
+        await verifyAndRepair(channel, installPath, 4, true);
+      }
     } catch {
       // error handled by progress
     }
@@ -272,8 +335,39 @@ export function GameActionPanel() {
       if (selected) {
         setInstallPath(selected);
         localStorage.setItem(STORAGE_KEY_INSTALL_PATH, selected);
-        setChannelPickerOpen(true);
+        setDetecting(true);
+        try {
+          const detected = await detectChannel(selected);
+          if (detected) {
+            setDetectedChannel(detected);
+            setChannel(detected);
+            localStorage.setItem(STORAGE_KEY_CHANNEL, detected);
+            // Channel detected, check for cache and install
+            const hasCache = await hasDownloadCache(selected);
+            if (hasCache) {
+              setConfirmAction("resume-install");
+              setConfirmCheckbox(false);
+            } else {
+              startInstall(false);
+            }
+          } else {
+            // No channel detected, show channel picker
+            setPendingInstallPath(selected);
+            setChannelSelectOpen(true);
+          }
+        } catch {
+          setPendingInstallPath(selected);
+          setChannelSelectOpen(true);
+        } finally {
+          setDetecting(false);
+        }
       }
+      return;
+    }
+    // Has install path but no channel detected
+    if (!detectedChannel) {
+      setPendingInstallPath(installPath);
+      setChannelSelectOpen(true);
       return;
     }
     const hasCache = await hasDownloadCache(installPath);
@@ -283,7 +377,40 @@ export function GameActionPanel() {
     } else {
       startInstall(false);
     }
-  }, [installPath, startInstall]);
+  }, [installPath, detectedChannel, startInstall]);
+
+  const handleChannelSelected = useCallback(async (selectedChannel: GameChannel) => {
+    setChannelSelectOpen(false);
+    const path = pendingInstallPath || installPath;
+    if (!path) return;
+
+    setChannel(selectedChannel);
+    setDetectedChannel(selectedChannel);
+    localStorage.setItem(STORAGE_KEY_CHANNEL, selectedChannel);
+
+    // Scan existing files before installing
+    setScanning(true);
+    try {
+      const [result, ds] = await Promise.all([
+        scanInstallDir(selectedChannel, path),
+        getDiskSpace(path).catch(() => null),
+      ]);
+      setScanResult(result);
+      setDiskSpace(ds);
+      setScanOpen(true);
+    } catch {
+      // Scan failed, proceed directly
+      const hasCache = await hasDownloadCache(path);
+      if (hasCache) {
+        setConfirmAction("resume-install");
+        setConfirmCheckbox(false);
+      } else {
+        startInstall(false);
+      }
+    } finally {
+      setScanning(false);
+    }
+  }, [pendingInstallPath, installPath, startInstall]);
 
   const handleStart = useCallback(async () => {
     if (!installPath) {
@@ -291,7 +418,19 @@ export function GameActionPanel() {
       if (selected) {
         setInstallPath(selected);
         localStorage.setItem(STORAGE_KEY_INSTALL_PATH, selected);
-        setChannelPickerOpen(true);
+        setDetecting(true);
+        try {
+          const detected = await detectChannel(selected);
+          if (detected) {
+            setDetectedChannel(detected);
+            setChannel(detected);
+            localStorage.setItem(STORAGE_KEY_CHANNEL, detected);
+          }
+        } catch {
+          // detection failed
+        } finally {
+          setDetecting(false);
+        }
       }
       return;
     }
@@ -589,6 +728,22 @@ export function GameActionPanel() {
   return (
     <>
       <div className="relative inline-flex items-center gap-2" ref={flyoutRef}>
+        {/* Detected channel badge */}
+        {installPath && isInstalled && detectedChannel && (
+          <div className="h-11 px-4 rounded-full glass-surface border border-white/15 flex items-center gap-1.5 text-sm text-white/80 shrink-0">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/80" />
+            <span>{CHANNEL_LABELS[detectedChannel][lang]}</span>
+          </div>
+        )}
+
+        {/* Detecting channel indicator */}
+        {installPath && detecting && !detectedChannel && (
+          <div className="h-11 px-4 rounded-full glass-surface border border-white/15 flex items-center gap-1.5 text-sm text-white/50 shrink-0">
+            <div className="w-1.5 h-1.5 rounded-full bg-yellow-400/60 animate-pulse" />
+            <span>{t("launcher.detecting_channel")}</span>
+          </div>
+        )}
+
         {/* Preload button */}
         {hasUpdate && hasPreload && !preloadCompleted && isInstalled && (
           <button
@@ -697,16 +852,18 @@ export function GameActionPanel() {
                 <div className="flex items-center justify-between text-[10px] text-white/40">
                   <span>{downloadSpeed > 0 ? `${formatBytes(Math.round(downloadSpeed))}/s` : "—"}</span>
                   <span>
-                    {downloadSpeed > 0 && progress.total > progress.downloaded
-                      ? (() => {
-                          const remaining = Math.round((progress.total - progress.downloaded) / downloadSpeed);
-                          const h = Math.floor(remaining / 3600);
-                          const m = Math.floor((remaining % 3600) / 60);
-                          const s = remaining % 60;
-                          return h > 0
-                            ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
-                            : `${m}:${String(s).padStart(2, "0")}`;
-                        })()
+                    {progress.total > progress.downloaded
+                      ? downloadSpeed > 0
+                        ? (() => {
+                            const remaining = Math.round((progress.total - progress.downloaded) / downloadSpeed);
+                            const h = Math.floor(remaining / 3600);
+                            const m = Math.floor((remaining % 3600) / 60);
+                            const s = remaining % 60;
+                            return h > 0
+                              ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+                              : `${m}:${String(s).padStart(2, "0")}`;
+                          })()
+                        : t("launcher.calculating")
                       : ""}
                   </span>
                 </div>
@@ -896,27 +1053,13 @@ export function GameActionPanel() {
         )}
       </div>
 
-      {channelPickerOpen && (
-        <ChannelPickerModal
-          currentChannel={channel}
-          onSelect={(ch) => {
-            setChannel(ch);
-            setChannelPickerOpen(false);
-            checkStatus();
-          }}
-          onClose={() => setChannelPickerOpen(false)}
-        />
-      )}
-
       {settingsOpen && (
         <GameSettingsModal
-          currentChannel={channel}
           initialPath={installPath}
           onClose={() => setSettingsOpen(false)}
-          onSave={(path, ch) => {
+          onSave={(path) => {
             setInstallPath(path);
             localStorage.setItem(STORAGE_KEY_INSTALL_PATH, path);
-            if (ch) setChannel(ch);
             setSettingsOpen(false);
             checkStatus();
           }}
@@ -1019,96 +1162,196 @@ export function GameActionPanel() {
           </GlassAlertDialog.Container>
         </GlassAlertDialog.Backdrop>
       </GlassAlertDialog>
-    </>
-  );
-}
 
-// ========== Channel Picker Modal ==========
+      {/* Channel Selection Dialog */}
+      {channelSelectOpen && (
+        <GlassAlertDialog isOpen onOpenChange={(o) => { if (!o) { setChannelSelectOpen(false); setPendingInstallPath(null); } }}>
+          <GlassAlertDialog.Backdrop className="z-[300]">
+            <GlassAlertDialog.Container>
+              <GlassAlertDialog.Dialog className="sm:max-w-[420px]">
+                <GlassAlertDialog.CloseTrigger />
+                <GlassAlertDialog.Header>
+                  <GlassAlertDialog.Icon status="info" />
+                  <GlassAlertDialog.Heading>{t("launcher.select_channel_title")}</GlassAlertDialog.Heading>
+                </GlassAlertDialog.Header>
+                <GlassAlertDialog.Body>
+                  <p className="text-sm text-muted mb-4">{t("launcher.select_channel_desc")}</p>
+                  <div className="flex flex-col gap-2">
+                    {ALL_CHANNELS.map((ch) => (
+                      <button
+                        key={ch}
+                        type="button"
+                        onClick={() => handleChannelSelected(ch)}
+                        disabled={scanning}
+                        className="flex items-center gap-3 p-3 rounded-lg glass-surface border border-separator/50 hover:border-primary/50 hover:bg-primary/10 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                          <span className="text-sm font-bold text-primary">
+                            {ch === "official" ? "官" : ch === "bilibili" ? "B" : ch === "global" ? "G" : "GP"}
+                          </span>
+                        </div>
+                        <span className="text-sm font-medium text-foreground/80">
+                          {CHANNEL_LABELS[ch]?.[lang] || ch}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  {scanning && (
+                    <div className="flex items-center gap-2 mt-4 text-xs text-muted">
+                      <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                      <span>{t("launcher.scanning_files")}</span>
+                    </div>
+                  )}
+                </GlassAlertDialog.Body>
+                <GlassAlertDialog.Footer>
+                  <GlassButton variant="tertiary" onPress={() => { setChannelSelectOpen(false); setPendingInstallPath(null); }}>
+                    {t("launcher.cancel")}
+                  </GlassButton>
+                </GlassAlertDialog.Footer>
+              </GlassAlertDialog.Dialog>
+            </GlassAlertDialog.Container>
+          </GlassAlertDialog.Backdrop>
+        </GlassAlertDialog>
+      )}
 
-interface ChannelPickerModalProps {
-  currentChannel: GameChannel;
-  onSelect: (channel: GameChannel) => void;
-  onClose: () => void;
-}
-
-function ChannelPickerModal({ currentChannel, onSelect, onClose }: ChannelPickerModalProps) {
-  const { t, i18n } = useTranslation();
-  const lang = i18n.language === "zh" ? "zh" : "en";
-  const [selected, setSelected] = useState<GameChannel>(currentChannel);
-
-  return (
-    <GlassModal isOpen onOpenChange={(open) => !open && onClose()}>
-      <GlassModal.Backdrop isDismissable>
-        <GlassModal.Container size="xs">
-          <GlassModal.Dialog>
-            <GlassModal.Header>
-              <div className="flex items-center justify-between px-5 py-4 border-b border-separator/50">
-                <GlassModal.Heading className="text-sm">{t("launcher.select_channel")}</GlassModal.Heading>
-                <GlassModal.CloseTrigger />
-              </div>
-            </GlassModal.Header>
-            <GlassModal.Body>
-              <div className="p-3 space-y-1">
-                {ALL_CHANNELS.map((ch) => (
-                  <button
-                    key={ch}
-                    type="button"
-                    onClick={() => setSelected(ch)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-colors cursor-pointer ${
-                      ch === selected
-                        ? "bg-primary/20 text-primary border border-primary/30"
-                        : "text-white/80 hover:bg-white/10 hover:text-white border border-transparent"
-                    }`}
+      {/* Scan Result Dialog */}
+      {scanOpen && scanResult && (
+        <GlassAlertDialog isOpen onOpenChange={(o) => { if (!o) { setScanOpen(false); setScanResult(null); setDiskSpace(null); } }}>
+          <GlassAlertDialog.Backdrop className="z-[300]">
+            <GlassAlertDialog.Container>
+              <GlassAlertDialog.Dialog className="sm:max-w-[400px]">
+                <GlassAlertDialog.CloseTrigger />
+                <GlassAlertDialog.Header>
+                  <GlassAlertDialog.Icon status={
+                    scanResult.download_bytes === 0
+                      ? "success"
+                      : diskSpace !== null && diskSpace.free < scanResult.download_bytes
+                        ? "danger"
+                        : "info"
+                  } />
+                  <GlassAlertDialog.Heading>
+                    {scanResult.download_bytes === 0
+                      ? t("launcher.scan_result_all_valid")
+                      : t("launcher.confirm_install")
+                    }
+                  </GlassAlertDialog.Heading>
+                </GlassAlertDialog.Header>
+                <GlassAlertDialog.Body>
+                  {scanResult.download_bytes === 0 ? (
+                    <p className="text-sm text-muted">{t("launcher.no_files_found")}</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Disk space usage bar */}
+                      {diskSpace !== null && (() => {
+                        const downloadBytes = scanResult.download_bytes;
+                        const diskUsed = diskSpace.total - diskSpace.free;
+                        const freeAfter = diskSpace.free - downloadBytes;
+                        const totalSpace = diskSpace.total;
+                        const usedPct = totalSpace > 0 ? (diskUsed / totalSpace) * 100 : 0;
+                        const downloadPct = totalSpace > 0 ? (downloadBytes / totalSpace) * 100 : 0;
+                        const freePct = totalSpace > 0 ? (freeAfter / totalSpace) * 100 : 0;
+                        const insufficient = freeAfter < 0;
+                        return (
+                          <div className="space-y-2">
+                            <div className="w-full h-3 rounded-full bg-white/5 overflow-hidden flex">
+                              {usedPct > 0 && (
+                                <div
+                                  className="h-full bg-blue-400/70 transition-all duration-300"
+                                  style={{ width: `${Math.min(usedPct, 100)}%` }}
+                                />
+                              )}
+                              {downloadPct > 0 && (
+                                <div
+                                  className={`h-full transition-all duration-300 ${insufficient ? "bg-red-400/70" : "bg-emerald-400/70"}`}
+                                  style={{ width: `${Math.min(downloadPct, 100 - usedPct)}%` }}
+                                />
+                              )}
+                              {freePct > 0 && (
+                                <div
+                                  className="h-full bg-white/10 transition-all duration-300"
+                                  style={{ width: `${Math.min(freePct, 100 - usedPct - downloadPct)}%` }}
+                                />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-4 text-[11px] text-muted">
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-2 h-2 rounded-sm bg-blue-400/70" />
+                                <span>{t("launcher.disk_used")}: {formatBytes(diskUsed)}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <div className={`w-2 h-2 rounded-sm ${insufficient ? "bg-red-400/70" : "bg-emerald-400/70"}`} />
+                                <span>{t("launcher.need_download")}: {formatBytes(downloadBytes)}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-2 h-2 rounded-sm bg-white/10" />
+                                <span>{t("launcher.disk_free_space")}: {formatBytes(freeAfter > 0 ? freeAfter : 0)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      {diskSpace === null && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted">{t("launcher.need_download")}</span>
+                          <span className="font-medium text-foreground">
+                            {scanResult.missing_files + scanResult.corrupted_files} {t("launcher.files_count")}，{formatBytes(scanResult.download_bytes)}
+                          </span>
+                        </div>
+                      )}
+                      {diskSpace !== null && diskSpace.free < scanResult.download_bytes && (
+                        <p className="text-xs text-red-400">{t("launcher.disk_space_insufficient")}</p>
+                      )}
+                    </div>
+                  )}
+                </GlassAlertDialog.Body>
+                <GlassAlertDialog.Footer>
+                  <GlassButton variant="tertiary" onPress={() => { setScanOpen(false); setScanResult(null); setDiskSpace(null); }}>
+                    {t("launcher.cancel")}
+                  </GlassButton>
+                  <GlassButton
+                    variant="primary"
+                    disabled={scanResult.download_bytes > 0 && diskSpace !== null && diskSpace.free < scanResult.download_bytes}
+                    onPress={() => {
+                      setScanOpen(false);
+                      setScanResult(null);
+                      setDiskSpace(null);
+                      if (scanResult.download_bytes === 0) {
+                        startInstall(false);
+                      } else {
+                        hasDownloadCache(installPath).then((has) => {
+                          if (has) {
+                            setConfirmAction("resume-install");
+                            setConfirmCheckbox(false);
+                          } else {
+                            startInstall(false);
+                          }
+                        });
+                      }
+                    }}
                   >
-                    <span className="font-medium">{CHANNEL_LABELS[ch][lang]}</span>
-                    {ch === selected && (
-                      <svg className="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </GlassModal.Body>
-            <GlassModal.Footer>
-              <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-separator/50">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="h-8 px-4 rounded-lg text-xs font-medium text-muted hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer"
-                >
-                  {t("launcher.cancel")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onSelect(selected)}
-                  className="h-8 px-4 rounded-lg text-xs font-medium text-white bg-primary hover:bg-primary/90 transition-colors cursor-pointer"
-                >
-                  {t("launcher.confirm")}
-                </button>
-              </div>
-            </GlassModal.Footer>
-          </GlassModal.Dialog>
-        </GlassModal.Container>
-      </GlassModal.Backdrop>
-    </GlassModal>
+                    {scanResult.download_bytes === 0 ? t("launcher.start_game") : t("launcher.confirm_install_btn")}
+                  </GlassButton>
+                </GlassAlertDialog.Footer>
+              </GlassAlertDialog.Dialog>
+            </GlassAlertDialog.Container>
+          </GlassAlertDialog.Backdrop>
+        </GlassAlertDialog>
+      )}
+    </>
   );
 }
 
 // ========== Game Settings Modal ==========
 
 interface GameSettingsModalProps {
-  currentChannel: GameChannel;
   initialPath: string;
   onClose: () => void;
-  onSave: (path: string, channel?: GameChannel) => void;
+  onSave: (path: string) => void;
 }
 
-function GameSettingsModal({ currentChannel, initialPath, onClose, onSave }: GameSettingsModalProps) {
-  const { t, i18n } = useTranslation();
-  const lang = i18n.language === "zh" ? "zh" : "en";
+function GameSettingsModal({ initialPath, onClose, onSave }: GameSettingsModalProps) {
+  const { t } = useTranslation();
   const [path, setPath] = useState(initialPath);
-  const [channel, setChannel] = useState<GameChannel>(currentChannel);
 
   const handleBrowse = useCallback(async () => {
     const selected = await browseFolder();
@@ -1147,26 +1390,6 @@ function GameSettingsModal({ currentChannel, initialPath, onClose, onSave }: Gam
                     </button>
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-muted mb-1.5">{t("launcher.channel")}</label>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {ALL_CHANNELS.map((ch) => (
-                      <button
-                        key={ch}
-                        type="button"
-                        onClick={() => setChannel(ch)}
-                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                          ch === channel
-                            ? "bg-primary/20 text-primary border border-primary/30"
-                            : "glass-field border border-separator text-muted hover:text-foreground"
-                        }`}
-                      >
-                        {CHANNEL_LABELS[ch][lang]}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
             </GlassModal.Body>
             <GlassModal.Footer>
@@ -1180,7 +1403,7 @@ function GameSettingsModal({ currentChannel, initialPath, onClose, onSave }: Gam
                 </button>
                 <button
                   type="button"
-                  onClick={() => onSave(path, channel)}
+                  onClick={() => onSave(path)}
                   className="h-8 px-4 rounded-lg text-xs font-medium text-white bg-primary hover:bg-primary/90 transition-colors cursor-pointer"
                 >
                   OK
