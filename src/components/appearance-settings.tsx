@@ -384,8 +384,13 @@ export function AppearanceSettings() {
         setShowPicker(false);
       }
     };
+    const onScroll = () => setShowPicker(false);
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      window.removeEventListener("scroll", onScroll, true);
+    };
   }, [showPicker, screenPickerOpen]);
 
   const handleModeChange = async (mode: ThemeMode) => {

@@ -159,9 +159,9 @@
   --color-danger-50: var(--danger-50);
 }
 
-/* 液态玻璃控件 — 小控件（按钮/输入框）用更轻的玻璃层 */
+/* 液态玻璃控件 — 小控件（按钮/输入框）用更轻的玻璃层（透明） */
 .glass-field {
-  background: var(--aura-glass-neutral-level1-surface-base);
+  background: transparent;
   backdrop-filter: blur(var(--aura-glass-neutral-level1-backdrop-blur)) saturate(1.6);
   -webkit-backdrop-filter: blur(var(--aura-glass-neutral-level1-backdrop-blur)) saturate(1.6);
   box-shadow:
@@ -454,9 +454,9 @@ body::before {
       var(--aura-glass-neutral-level1-shadow-spread) var(--aura-glass-neutral-level1-shadow-color);
 }
 
-/* 液态玻璃 — 强（neutral-level2：blur 24px，Modal、突出面板） */
+/* 液态玻璃 — 强（neutral-level2：blur 24px，Modal、突出面板）（透明） */
 .glass-surface-strong {
-  background: color-mix(in oklab, var(--surface) 55%, transparent);
+  background: transparent;
   backdrop-filter: blur(var(--aura-glass-neutral-level2-backdrop-blur)) saturate(1.8) brightness(1.05);
   -webkit-backdrop-filter: blur(var(--aura-glass-neutral-level2-backdrop-blur)) saturate(1.8) brightness(1.05);
   box-shadow:
@@ -468,9 +468,9 @@ body::before {
       var(--aura-glass-neutral-level2-shadow-spread) var(--aura-glass-neutral-level2-shadow-color);
 }
 
-/* 液态玻璃 — Modal 背景层（透明液态玻璃 + 统一叠加色） */
+/* 液态玻璃 — Modal 背景层（透明液态玻璃 + 80% 半透明黑） */
 .glass-backdrop {
-  background: color-mix(in oklab, var(--surface) 40%, transparent);
+  background: rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(16px) saturate(1.2);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
 }

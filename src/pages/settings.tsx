@@ -126,8 +126,13 @@ export default function SettingsPage() {
       if (langDropdownRef.current?.contains(event.target as Node)) return;
       setIsLangDropdownOpen(false);
     };
+    const onScroll = () => setIsLangDropdownOpen(false);
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", onScroll, true);
+    };
   }, [isLangDropdownOpen]);
 
   const handleLanguageChange = (langKey: string) => {

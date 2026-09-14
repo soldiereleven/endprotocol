@@ -64,8 +64,13 @@ export const LanguageSwitch = () => {
       if (wrapperRef.current?.contains(event.target as Node)) return;
       setIsOpen(false);
     };
+    const onScroll = () => setIsOpen(false);
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", onScroll, true);
+    };
   }, [isOpen]);
 
   const handleLanguageChange = async (langKey: string) => {

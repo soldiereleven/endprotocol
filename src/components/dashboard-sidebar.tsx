@@ -784,8 +784,13 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
       if (searchRef.current?.contains(event.target as Node)) return;
       setShowResults(false);
     };
+    const onScroll = () => setShowResults(false);
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", onScroll, true);
+    };
   }, [showResults]);
 
   // Handle keyboard navigation in search results

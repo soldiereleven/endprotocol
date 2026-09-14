@@ -42,8 +42,13 @@ export function GlassSelect({
       if (wrapRef.current?.contains(e.target as Node)) return;
       setOpen(false);
     };
+    const onScroll = () => setOpen(false);
     document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      window.removeEventListener("scroll", onScroll, true);
+    };
   }, [open]);
 
   const normalized = value ?? "";

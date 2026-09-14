@@ -32,11 +32,14 @@ export function CardContextMenu({
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+    const onScroll = () => onClose();
     document.addEventListener("mousedown", handleClick);
     document.addEventListener("keydown", handleKey);
+    window.addEventListener("scroll", onScroll, true);
     return () => {
       document.removeEventListener("mousedown", handleClick);
       document.removeEventListener("keydown", handleKey);
+      window.removeEventListener("scroll", onScroll, true);
     };
   }, [onClose]);
 
