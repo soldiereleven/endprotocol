@@ -139,7 +139,7 @@ export const LanguageSwitch = () => {
       {isOpen && createPortal(
         <div
           ref={menuRef}
-          className="fixed z-[9999] w-[220px] bg-background glass-surface-strong border border-separator/80 rounded-lg shadow-xl overflow-hidden"
+          className="fixed z-[9999] w-[220px] bg-background glass-surface-strong border border-separator/80 rounded-lg shadow-xl overflow-hidden animate-scale-in"
           style={{ top: dropdownPos.top, left: dropdownPos.left }}
           onClick={(e) => e.stopPropagation()}
         >

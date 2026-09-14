@@ -295,7 +295,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               aria-label="Close sidebar"
               role="button"
             />
-            <div className="lg:hidden fixed inset-y-0 left-0 z-50 w-72 glass-surface-strong border-r border-separator/70 animate-slide-in-right">
+            <div className="lg:hidden fixed inset-y-0 left-0 z-50 w-72 glass-surface-strong border-r border-separator/70 animate-slide-in-left">
               <Sidebar onNavigate={() => setMobileOpen(false)} />
             </div>
           </>

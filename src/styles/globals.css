@@ -277,6 +277,14 @@ body::before {
   animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+@keyframes slide-in-left {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(0); }
+}
+.animate-slide-in-left {
+  animation: slide-in-left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 @keyframes scale-in {
   0% { opacity: 0; transform: scale(0.95); }
   100% { opacity: 1; transform: scale(1); }

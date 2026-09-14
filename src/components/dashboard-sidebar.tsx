@@ -1061,7 +1061,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
               {showResults && searchQuery.trim() && createPortal(
                 <div
                   ref={searchMenuRef}
-                  className="fixed z-[9999] bg-background glass-surface-strong border-2 border-separator/80 rounded-lg shadow-2xl max-h-[400px] overflow-y-auto"
+                  className="fixed z-[9999] bg-background glass-surface-strong border-2 border-separator/80 rounded-lg shadow-2xl max-h-[400px] overflow-y-auto animate-scale-in"
                   style={{ top: searchMenuPos.top + 8, left: searchMenuPos.left, width: searchMenuPos.width || 320 }}
                   onClick={(e) => e.stopPropagation()}
                 >

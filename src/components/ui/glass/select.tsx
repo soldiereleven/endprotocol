@@ -88,7 +88,7 @@ export function GlassSelect({
         createPortal(
           <div
             ref={menuRef}
-            className="fixed z-[9999] min-w-[150px] rounded-xl border border-separator/70 glass-surface-strong shadow-xl py-1 overflow-y-auto"
+            className="fixed z-[9999] min-w-[150px] rounded-xl border border-separator/70 glass-surface-strong shadow-xl py-1 overflow-y-auto animate-scale-in"
             style={{
               top: pos.top,
               left: pos.left,

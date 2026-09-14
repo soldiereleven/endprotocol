@@ -79,7 +79,7 @@ function Backdrop({ isDismissable = true, className, children }: ModalBackdropPr
   return (
     <div
       className={cn(
-        "glass-backdrop fixed inset-0 z-[100] flex items-center justify-center",
+        "glass-backdrop fixed inset-0 z-[100] flex items-center justify-center animate-fade-in",
         className,
       )}
       onMouseDown={(e) => {
@@ -230,7 +230,7 @@ function AlertDialogBackdrop({ className, children }: { className?: string; chil
   return (
     <div
       className={cn(
-        "glass-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4",
+        "glass-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in",
         className,
       )}
     >

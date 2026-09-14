@@ -158,7 +158,7 @@ export function FloatSelect({
       {open && createPortal(
         <div
           ref={menuRef}
-          className="fixed z-[9999] min-w-[120px] max-h-64 overflow-y-auto rounded-md border border-separator bg-background glass-surface-strong shadow-lg"
+          className="fixed z-[9999] min-w-[120px] max-h-64 overflow-y-auto rounded-md border border-separator bg-background glass-surface-strong shadow-lg animate-scale-in"
           style={{ top: menuPos.top, left: menuPos.left, width: Math.max(120, menuPos.width || 0) }}
           onClick={(e) => e.stopPropagation()}
         >

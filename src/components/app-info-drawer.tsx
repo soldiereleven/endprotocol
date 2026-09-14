@@ -33,7 +33,7 @@ export function AppInfoDrawer({ isOpen, onClose }: AppInfoDrawerProps) {
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[200]" onClick={handleBackdropClick} style={{ pointerEvents: "auto" }}>
+    <div className="fixed inset-0 z-[200] animate-fade-in" onClick={handleBackdropClick} style={{ pointerEvents: "auto" }}>
       <div
         className="fixed inset-y-0 right-0 z-[210] w-[380px] max-w-[85vw] glass-surface-strong border-l border-separator/70 animate-slide-in-right flex flex-col rounded-l-2xl"
         style={{ pointerEvents: "auto" }}
