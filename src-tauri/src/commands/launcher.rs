@@ -322,6 +322,123 @@ pub fn launcher_browse_folder() -> Result<Option<String>, String> {
     Ok(dialog.pick_folder().map(|p| p.to_string_lossy().to_string()))
 }
 
+/// 磁盘空间信息
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct DiskSpace {
+    pub total: u64,
+    pub free: u64,
+}
+
+/// 获取指定路径所在磁盘的总空间和可用空间（字节）
+#[tauri::command]
+pub async fn launcher_get_disk_space(path: String) -> Result<DiskSpace, String> {
+    let p = std::path::Path::new(&path);
+    let root = if let Some(root) = p.ancestors().find(|a| a.exists()) {
+        root.to_path_buf()
+    } else {
+        p.to_path_buf()
+    };
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+        let root_str = root.to_str().unwrap_or("C:\\");
+        let output = Command::new("powershell")
+            .args([
+                "-NoProfile",
+                "-Command",
+                &format!(
+                    "$d = Get-PSDrive -Name (Get-Item '{}').PSDrive.Name; \"$($d.Used)|$($d.Free)\"",
+                    root_str
+                ),
+            ])
+            .output()
+            .map_err(|e| format!("Failed to get disk space: {}", e))?;
+
+        if output.status.success() {
+            let s = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            let parts: Vec<&str> = s.split('|').collect();
+            if parts.len() == 2 {
+                let used = parts[0].parse::<u64>().map_err(|_| format!("Invalid used value: {}", parts[0]))?;
+                let free = parts[1].parse::<u64>().map_err(|_| format!("Invalid free value: {}", parts[1]))?;
+                Ok(DiskSpace { total: used + free, free })
+            } else {
+                Err(format!("Unexpected output format: {}", s))
+            }
+        } else {
+            Err(String::from_utf8_lossy(&output.stderr).to_string())
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Ok(DiskSpace { total: u64::MAX, free: u64::MAX })
+    }
+}
+
+/// 扫描安装目录，检查已有文件的完整性
+#[tauri::command]
+pub async fn launcher_scan_install_dir(
+    service: tauri::State<'_, Arc<Mutex<GameLauncherService>>>,
+    channel: String,
+    install_path: String,
+) -> Result<FileScanResult, String> {
+    let ch = parse_channel(&channel)?;
+    let svc = service.lock().await;
+    svc.scan_install_dir(&ch, &install_path).await
+}
+
+/// 根据目录下的文件特征自动识别游戏渠道
+#[tauri::command]
+pub async fn launcher_detect_channel(install_path: String) -> Result<Option<String>, String> {
+    let path = std::path::Path::new(&install_path);
+
+    // 检查基本游戏文件是否存在
+    let has_exe = path.join("Endfield.exe").exists();
+    let has_data = path.join("Endfield_Data").is_dir();
+    let has_config = path.join("config.ini").exists();
+
+    if !has_exe || !has_data || !has_config {
+        // 游戏未安装或目录无效
+        return Ok(None);
+    }
+
+    // 检查渠道特征文件
+    let has_hgsdk = path.join("hgsdk.dll").exists();
+    let has_pc_sdk = path.join("PCGameSDK.dll").exists();
+    let has_gfsdk = path.join("gfsdk.dll").exists();
+    let has_gl_foundation = path.join("glfoundation.dll").exists();
+    let has_gl_extra = path.join("glextra.dll").exists();
+    let has_play_pc_sdk = path.join("play_pc_sdk.dll").exists();
+    let has_manifest_xml = path.join("manifest.xml").exists();
+    let has_eld_db = path.join("eld_Endfield.db").exists();
+
+    // 渠道识别逻辑：
+    // Google Play: glextra.dll + play_pc_sdk.dll + manifest.xml
+    // Global: gfsdk.dll + glfoundation.dll (无 PCGameSDK)
+    // B服: hgsdk.dll + PCGameSDK.dll + eld_Endfield.db
+    // 官服: hgsdk.dll + eld_Endfield.db (无 PCGameSDK)
+
+    if has_gl_extra && has_play_pc_sdk && has_manifest_xml {
+        return Ok(Some("google_play".to_string()));
+    }
+
+    if has_gfsdk && has_gl_foundation {
+        return Ok(Some("global".to_string()));
+    }
+
+    if has_hgsdk && has_pc_sdk && has_eld_db {
+        return Ok(Some("bilibili".to_string()));
+    }
+
+    if has_hgsdk && has_eld_db {
+        return Ok(Some("official".to_string()));
+    }
+
+    // 无法识别渠道
+    Ok(None)
+}
+
 /// 检查可执行文件是否存在
 #[tauri::command]
 pub fn launcher_check_executable(install_path: String, channel: String) -> Result<bool, String> {

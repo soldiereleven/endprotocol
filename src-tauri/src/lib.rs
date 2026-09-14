@@ -131,6 +131,9 @@ pub fn run() {
             commands::launcher::launcher_check_executable,
             commands::launcher::launcher_check_game_running,
             commands::launcher::launcher_kill_game,
+            commands::launcher::launcher_detect_channel,
+            commands::launcher::launcher_scan_install_dir,
+            commands::launcher::launcher_get_disk_space,
         ])
         .setup(|app| {
             // 初始化配置服务（使用 std::sync::Mutex，因为它是同步的）

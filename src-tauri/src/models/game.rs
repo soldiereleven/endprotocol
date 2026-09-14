@@ -360,3 +360,28 @@ pub struct BackgroundMedia {
     pub url: String,
     pub media_type: String,
 }
+
+/// 安装目录扫描结果
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileScanResult {
+    /// 渠道是否已识别
+    pub channel_detected: bool,
+    /// 识别到的渠道
+    pub detected_channel: Option<String>,
+    /// 清单中的总文件数
+    pub total_files: usize,
+    /// 已存在且完整的文件数
+    pub valid_files: usize,
+    /// 已存在但损坏的文件数
+    pub corrupted_files: usize,
+    /// 不存在的文件数
+    pub missing_files: usize,
+    /// 已存在文件的总字节数
+    pub existing_bytes: u64,
+    /// 需要下载的总字节数
+    pub download_bytes: u64,
+    /// 损坏的文件路径列表（最多20条）
+    pub corrupted_file_list: Vec<String>,
+    /// 不存在的文件路径列表（最多20条）
+    pub missing_file_list: Vec<String>,
+}

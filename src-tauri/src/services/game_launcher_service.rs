@@ -257,6 +257,107 @@ impl GameLauncherService {
         })
     }
 
+    /// 扫描安装目录，检查已有文件的完整性
+    pub async fn scan_install_dir(
+        &self,
+        channel: &GameChannel,
+        install_path: &str,
+    ) -> Result<FileScanResult, String> {
+        let path = Path::new(install_path);
+
+        // 检查核心文件
+        let has_exe = path.join(channel.executable_name()).exists();
+        let has_data = path.join("Endfield_Data").is_dir();
+        let has_config = path.join("config.ini").exists();
+        let channel_detected = has_exe && has_data && has_config;
+
+        // 获取远程清单
+        let remote = self.get_latest_package(channel).await?;
+        let (manifest, _) = self.fetch_manifest(&remote.resource_base_url).await?;
+
+        let total_files = manifest.len();
+        let install_dir = Path::new(install_path);
+        let mut valid_files = 0usize;
+        let mut corrupted_files = 0usize;
+        let mut missing_files = 0usize;
+        let mut existing_bytes: u64 = 0;
+        let mut download_bytes: u64 = 0;
+        let mut corrupted_file_list = Vec::new();
+        let mut missing_file_list = Vec::new();
+
+        for entry in &manifest {
+            let local_path = install_dir.join(&entry.path);
+            let entry_size = entry.size.max(0) as u64;
+
+            if !local_path.exists() {
+                missing_files += 1;
+                download_bytes += entry_size;
+                if missing_file_list.len() < 20 {
+                    missing_file_list.push(entry.path.clone());
+                }
+                continue;
+            }
+
+            match fs::metadata(&local_path) {
+                Ok(meta) => {
+                    if meta.len() as i64 != entry.size {
+                        // 大小不匹配
+                        corrupted_files += 1;
+                        download_bytes += entry_size;
+                        if corrupted_file_list.len() < 20 {
+                            corrupted_file_list.push(entry.path.clone());
+                        }
+                        continue;
+                    }
+                }
+                Err(_) => {
+                    corrupted_files += 1;
+                    download_bytes += entry_size;
+                    if corrupted_file_list.len() < 20 {
+                        corrupted_file_list.push(entry.path.clone());
+                    }
+                    continue;
+                }
+            }
+
+            // 大小匹配，检查 MD5
+            match hg_crypto::verify_md5(
+                local_path.to_str().unwrap_or(""),
+                &entry.md5,
+            ) {
+                Ok(true) => {
+                    valid_files += 1;
+                    existing_bytes += entry_size;
+                }
+                _ => {
+                    corrupted_files += 1;
+                    download_bytes += entry_size;
+                    if corrupted_file_list.len() < 20 {
+                        corrupted_file_list.push(entry.path.clone());
+                    }
+                }
+            }
+        }
+
+        tracing::info!(
+            "[scan] channel_detected={}, total={}, valid={}, corrupted={}, missing={}, existing_bytes={}, download_bytes={}",
+            channel_detected, total_files, valid_files, corrupted_files, missing_files, existing_bytes, download_bytes
+        );
+
+        Ok(FileScanResult {
+            channel_detected,
+            detected_channel: Some(channel.as_str().to_string()),
+            total_files,
+            valid_files,
+            corrupted_files,
+            missing_files,
+            existing_bytes,
+            download_bytes,
+            corrupted_file_list,
+            missing_file_list,
+        })
+    }
+
     /// 读取本地 config.ini 中的版本号
     fn read_local_version(&self, install_path: &str) -> Result<String, String> {
         let config_path = Path::new(install_path).join("config.ini");
