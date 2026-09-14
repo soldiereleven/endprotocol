@@ -1,7 +1,16 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useCallback,
+} from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { GlassAlertDialogCompound as GlassAlertDialog, GlassModalCompound as GlassModal } from "@/components/ui/glass/modal";
+import {
+  GlassAlertDialogCompound as GlassAlertDialog,
+  GlassModalCompound as GlassModal,
+} from "@/components/ui/glass/modal";
 import { GlassButton } from "@/components/ui/glass/button";
 import {
   type GameChannel,
@@ -45,26 +54,36 @@ export function GameActionPanel() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language === "zh" ? "zh" : "en";
   const [channel, setChannel] = useState<GameChannel>(() => {
-    return (localStorage.getItem(STORAGE_KEY_CHANNEL) as GameChannel) || "official";
+    return (
+      (localStorage.getItem(STORAGE_KEY_CHANNEL) as GameChannel) || "official"
+    );
   });
   const [gameStatus, setGameStatus] = useState<GameStatus | null>(null);
   const [installPath, setInstallPath] = useState(() => {
     return localStorage.getItem(STORAGE_KEY_INSTALL_PATH) || "";
   });
-  const [detectedChannel, setDetectedChannel] = useState<GameChannel | null>(null);
+  const [detectedChannel, setDetectedChannel] = useState<GameChannel | null>(
+    null,
+  );
   const [detecting, setDetecting] = useState(false);
   const [statusReady, setStatusReady] = useState(false);
-  const [progress, setProgress] = useState<DownloadProgress | null>(_persistedProgress);
+  const [progress, setProgress] = useState<DownloadProgress | null>(
+    _persistedProgress,
+  );
   const [preparing, setPreparing] = useState(_persistedPreparing);
   const [flyoutOpen, setFlyoutOpen] = useState(false);
   const [hasTempFiles, setHasTempFiles] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [gameRunning, setGameRunning] = useState(false);
   const [btnHovered, setBtnHovered] = useState(false);
+  const [btnLabelKey, setBtnLabelKey] = useState(0);
+  const prevBtnLabelRef = useRef<string>("");
   const [preloadHovered, setPreloadHovered] = useState(false);
   const [downloadSpeed, setDownloadSpeed] = useState(0);
   const [channelSelectOpen, setChannelSelectOpen] = useState(false);
-  const [pendingInstallPath, setPendingInstallPath] = useState<string | null>(null);
+  const [pendingInstallPath, setPendingInstallPath] = useState<string | null>(
+    null,
+  );
   const [scanResult, setScanResult] = useState<FileScanResult | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -73,17 +92,32 @@ export function GameActionPanel() {
   const flyoutRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const hamburgerRef = useRef<HTMLButtonElement>(null);
-  const [progressFlyoutPos, setProgressFlyoutPos] = useState<{ x: number; y: number } | null>(null);
-  const [menuFlyoutPos, setMenuFlyoutPos] = useState<{ x: number; y: number } | null>(null);
+  const [progressFlyoutPos, setProgressFlyoutPos] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const [menuFlyoutPos, setMenuFlyoutPos] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const speedRef = useRef({ lastBytes: 0, lastTime: Date.now() });
   const verifySpeedRef = useRef({ lastVerifiedBytes: 0, lastTime: Date.now() });
-  const cancellingRef = useRef(localStorage.getItem(STORAGE_KEY_CANCELLED) === "1");
+  const cancellingRef = useRef(
+    localStorage.getItem(STORAGE_KEY_CANCELLED) === "1",
+  );
   const preparingRef = useRef(_persistedPreparing);
   const lastStageRef = useRef<string | null>(_persistedLastStage);
   const menuFlyoutRef = useRef<HTMLDivElement>(null);
 
   // Confirm dialog state
-  const [confirmAction, setConfirmAction] = useState<"cancel-download" | "stop-game" | "resume-install" | "delete-temp" | "verify-confirm" | null>(null);
+  const [confirmAction, setConfirmAction] = useState<
+    | "cancel-download"
+    | "stop-game"
+    | "resume-install"
+    | "delete-temp"
+    | "verify-confirm"
+    | null
+  >(null);
   const [confirmCheckbox, setConfirmCheckbox] = useState(false);
 
   useEffect(() => {
@@ -139,7 +173,9 @@ export function GameActionPanel() {
       .finally(() => {
         if (!cancelled) setDetecting(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [installPath]);
 
   // Silent status refresh — used by progress listener
@@ -159,7 +195,11 @@ export function GameActionPanel() {
   useEffect(() => {
     // If an action is already running (persisted from before remount), the service
     // lock is held — check_status would block forever. Skip and use persisted state.
-    if (_persistedProgress && _persistedProgress.stage !== "completed" && _persistedProgress.stage !== "error") {
+    if (
+      _persistedProgress &&
+      _persistedProgress.stage !== "completed" &&
+      _persistedProgress.stage !== "error"
+    ) {
       setStatusReady(true);
       return;
     }
@@ -238,7 +278,10 @@ export function GameActionPanel() {
         _persistedProgress = null;
         _persistedPreparing = false;
         preparingRef.current = false;
-        const wasVerify = lastStageRef.current === "verifying" || lastStageRef.current === "checking" || lastStageRef.current === "comparing";
+        const wasVerify =
+          lastStageRef.current === "verifying" ||
+          lastStageRef.current === "checking" ||
+          lastStageRef.current === "comparing";
         if ((p.stage === "completed" || p.stage === "error") && wasVerify) {
           // 校验结果由 handleVerify / handleQuickVerify 根据返回值显示，此处跳过
         }
@@ -265,7 +308,7 @@ export function GameActionPanel() {
       const target = e.target as Node;
       if (
         (flyoutRef.current && flyoutRef.current.contains(target)) ||
-        document.querySelector('[data-flyout-menu]')?.contains(target)
+        document.querySelector("[data-flyout-menu]")?.contains(target)
       ) {
         return;
       }
@@ -306,28 +349,31 @@ export function GameActionPanel() {
     }
   }, []);
 
-  const startInstall = useCallback(async (cleanCache: boolean) => {
-    if (!installPath) return;
-    if (cleanCache) {
-      await cancelDownload(installPath);
-    }
-    cancellingRef.current = false;
-    localStorage.removeItem(STORAGE_KEY_CANCELLED);
-    await resetDownloadCancel();
-    setPreparing(true);
-    preparingRef.current = true;
-    _persistedPreparing = true;
-    try {
-      setProgress(null);
-      const result = await installOrUpdate(channel, installPath);
-      // After successful install, run quick verify
-      if (result.success) {
-        await verifyAndRepair(channel, installPath, 4, true);
+  const startInstall = useCallback(
+    async (cleanCache: boolean) => {
+      if (!installPath) return;
+      if (cleanCache) {
+        await cancelDownload(installPath);
       }
-    } catch {
-      // error handled by progress
-    }
-  }, [channel, installPath]);
+      cancellingRef.current = false;
+      localStorage.removeItem(STORAGE_KEY_CANCELLED);
+      await resetDownloadCancel();
+      setPreparing(true);
+      preparingRef.current = true;
+      _persistedPreparing = true;
+      try {
+        setProgress(null);
+        const result = await installOrUpdate(channel, installPath);
+        // After successful install, run quick verify
+        if (result.success) {
+          await verifyAndRepair(channel, installPath, 4, true);
+        }
+      } catch {
+        // error handled by progress
+      }
+    },
+    [channel, installPath],
+  );
 
   const handleInstall = useCallback(async () => {
     if (!installPath) {
@@ -379,38 +425,41 @@ export function GameActionPanel() {
     }
   }, [installPath, detectedChannel, startInstall]);
 
-  const handleChannelSelected = useCallback(async (selectedChannel: GameChannel) => {
-    setChannelSelectOpen(false);
-    const path = pendingInstallPath || installPath;
-    if (!path) return;
+  const handleChannelSelected = useCallback(
+    async (selectedChannel: GameChannel) => {
+      setChannelSelectOpen(false);
+      const path = pendingInstallPath || installPath;
+      if (!path) return;
 
-    setChannel(selectedChannel);
-    setDetectedChannel(selectedChannel);
-    localStorage.setItem(STORAGE_KEY_CHANNEL, selectedChannel);
+      setChannel(selectedChannel);
+      setDetectedChannel(selectedChannel);
+      localStorage.setItem(STORAGE_KEY_CHANNEL, selectedChannel);
 
-    // Scan existing files before installing
-    setScanning(true);
-    try {
-      const [result, ds] = await Promise.all([
-        scanInstallDir(selectedChannel, path),
-        getDiskSpace(path).catch(() => null),
-      ]);
-      setScanResult(result);
-      setDiskSpace(ds);
-      setScanOpen(true);
-    } catch {
-      // Scan failed, proceed directly
-      const hasCache = await hasDownloadCache(path);
-      if (hasCache) {
-        setConfirmAction("resume-install");
-        setConfirmCheckbox(false);
-      } else {
-        startInstall(false);
+      // Scan existing files before installing
+      setScanning(true);
+      try {
+        const [result, ds] = await Promise.all([
+          scanInstallDir(selectedChannel, path),
+          getDiskSpace(path).catch(() => null),
+        ]);
+        setScanResult(result);
+        setDiskSpace(ds);
+        setScanOpen(true);
+      } catch {
+        // Scan failed, proceed directly
+        const hasCache = await hasDownloadCache(path);
+        if (hasCache) {
+          setConfirmAction("resume-install");
+          setConfirmCheckbox(false);
+        } else {
+          startInstall(false);
+        }
+      } finally {
+        setScanning(false);
       }
-    } finally {
-      setScanning(false);
-    }
-  }, [pendingInstallPath, installPath, startInstall]);
+    },
+    [pendingInstallPath, installPath, startInstall],
+  );
 
   const handleStart = useCallback(async () => {
     if (!installPath) {
@@ -459,23 +508,38 @@ export function GameActionPanel() {
   }, [channel, installPath]);
 
   // 解析校验结果 JSON，构建本地化消息
-  const formatVerifyResult = useCallback((msg: string): { type: "info" | "warn"; body: string } => {
-    try {
-      const data = JSON.parse(msg);
-      const { ok, failed, repaired, files } = data as { ok: number; failed: number; repaired: number; files: string[] };
-      if (failed > 0) {
-        const lines = [
-          t("launcher.verify_repair_summary", { total: ok + failed, ok, failed }),
-          t("launcher.verify_repair_detail", { repaired, failed }),
-          ...files.map((f) => `  ${f}`),
-        ];
-        return { type: "warn", body: lines.join("\n") };
+  const formatVerifyResult = useCallback(
+    (msg: string): { type: "info" | "warn"; body: string } => {
+      try {
+        const data = JSON.parse(msg);
+        const { ok, failed, repaired, files } = data as {
+          ok: number;
+          failed: number;
+          repaired: number;
+          files: string[];
+        };
+        if (failed > 0) {
+          const lines = [
+            t("launcher.verify_repair_summary", {
+              total: ok + failed,
+              ok,
+              failed,
+            }),
+            t("launcher.verify_repair_detail", { repaired, failed }),
+            ...files.map((f) => `  ${f}`),
+          ];
+          return { type: "warn", body: lines.join("\n") };
+        }
+        return {
+          type: "info",
+          body: t("launcher.verify_complete_body", { checked: ok, total: ok }),
+        };
+      } catch {
+        return { type: "info", body: msg };
       }
-      return { type: "info", body: t("launcher.verify_complete_body", { checked: ok, total: ok }) };
-    } catch {
-      return { type: "info", body: msg };
-    }
-  }, [t]);
+    },
+    [t],
+  );
 
   const handleVerify = useCallback(async () => {
     if (!installPath) return;
@@ -483,7 +547,10 @@ export function GameActionPanel() {
     cancellingRef.current = false;
     localStorage.removeItem(STORAGE_KEY_CANCELLED);
     await resetDownloadCancel();
-    const threads = parseInt(localStorage.getItem("launcher_verify_threads") || "4", 10);
+    const threads = parseInt(
+      localStorage.getItem("launcher_verify_threads") || "4",
+      10,
+    );
     setPreparing(true);
     preparingRef.current = true;
     _persistedPreparing = true;
@@ -491,7 +558,12 @@ export function GameActionPanel() {
       setProgress(null);
       const result = await verifyAndRepair(channel, installPath, threads);
       const { type, body } = formatVerifyResult(result.message);
-      addMessage({ type, title: t("launcher.verify_complete_title"), body, tag: "verify-result" });
+      addMessage({
+        type,
+        title: t("launcher.verify_complete_title"),
+        body,
+        tag: "verify-result",
+      });
     } catch {
       // error handled by progress
     } finally {
@@ -505,7 +577,10 @@ export function GameActionPanel() {
     cancellingRef.current = false;
     localStorage.removeItem(STORAGE_KEY_CANCELLED);
     await resetDownloadCancel();
-    const threads = parseInt(localStorage.getItem("launcher_verify_threads") || "4", 10);
+    const threads = parseInt(
+      localStorage.getItem("launcher_verify_threads") || "4",
+      10,
+    );
     setPreparing(true);
     preparingRef.current = true;
     _persistedPreparing = true;
@@ -513,7 +588,12 @@ export function GameActionPanel() {
       setProgress(null);
       const result = await verifyAndRepair(channel, installPath, threads, true);
       const { type, body } = formatVerifyResult(result.message);
-      addMessage({ type, title: t("launcher.verify_complete_title"), body, tag: "verify-result" });
+      addMessage({
+        type,
+        title: t("launcher.verify_complete_title"),
+        body,
+        tag: "verify-result",
+      });
     } catch {
       // error handled by progress
     } finally {
@@ -566,7 +646,14 @@ export function GameActionPanel() {
   const isComparing = progress?.stage === "comparing";
   const isRepairing = progress?.stage === "repairing";
   const isApplying = progress?.stage === "applying";
-  const isActionRunning = preparing || isDownloading || isApplying || isVerifying || isChecking || isComparing || isRepairing;
+  const isActionRunning =
+    preparing ||
+    isDownloading ||
+    isApplying ||
+    isVerifying ||
+    isChecking ||
+    isComparing ||
+    isRepairing;
 
   // Recalculate progress flyout position when button content changes (label width shift)
   useLayoutEffect(() => {
@@ -584,7 +671,13 @@ export function GameActionPanel() {
 
   // Adjust menu flyout position after render to place it above the hamburger
   useLayoutEffect(() => {
-    if (!flyoutOpen || !menuFlyoutPos || !hamburgerRef.current || !menuFlyoutRef.current) return;
+    if (
+      !flyoutOpen ||
+      !menuFlyoutPos ||
+      !hamburgerRef.current ||
+      !menuFlyoutRef.current
+    )
+      return;
     const hr = hamburgerRef.current.getBoundingClientRect();
     const fh = menuFlyoutRef.current.offsetHeight;
     const fw = 208;
@@ -599,65 +692,165 @@ export function GameActionPanel() {
   }, [flyoutOpen, menuFlyoutPos]);
 
   const getButtonLabel = (): string => {
-    if (gameRunning) return btnHovered ? t("launcher.stop") : t("launcher.running");
+    if (gameRunning)
+      return btnHovered ? t("launcher.stop") : t("launcher.running");
     if (!installPath) return t("launcher.locate_game");
-    if (preparing) return btnHovered ? t("launcher.cancel_verify") : t("launcher.preparing");
+    if (preparing)
+      return btnHovered ? t("launcher.cancel_verify") : t("launcher.preparing");
     if (isChecking) return t("launcher.checking");
     if (isComparing) return t("launcher.checking");
-    if (isVerifying) return btnHovered ? t("launcher.cancel_verify") : t("launcher.verifying");
-    if (isRepairing) return btnHovered ? t("launcher.cancel_verify") : t("launcher.repairing");
-    if (isDownloading) return btnHovered ? t("launcher.cancel_download") : t("launcher.installing");
-    if (isApplying) return btnHovered ? t("launcher.cancel_download") : t("launcher.installing");
+    if (isVerifying)
+      return btnHovered ? t("launcher.cancel_verify") : t("launcher.verifying");
+    if (isRepairing)
+      return btnHovered ? t("launcher.cancel_verify") : t("launcher.repairing");
+    if (isDownloading)
+      return btnHovered
+        ? t("launcher.cancel_download")
+        : t("launcher.installing");
+    if (isApplying)
+      return btnHovered
+        ? t("launcher.cancel_download")
+        : t("launcher.installing");
     if (!isInstalled) return t("launcher.install_game");
     if (hasUpdate) return t("launcher.update_game");
     return t("launcher.start_game");
   };
 
+  // Trigger fade animation when button label changes
+  const currentBtnLabel = getButtonLabel();
+  if (prevBtnLabelRef.current !== currentBtnLabel) {
+    prevBtnLabelRef.current = currentBtnLabel;
+    setBtnLabelKey((k) => k + 1);
+  }
+
   const getButtonIcon = () => {
     if (gameRunning) {
+      if (btnHovered) {
+        return (
+          <svg
+            className="w-4 h-4 transition-transform duration-200 relative z-10"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        );
+      }
       return (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          {btnHovered ? (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          ) : (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0zM10 9v6m4-6v6" />
-          )}
+        <svg
+          className="w-4 h-4 transition-transform duration-200 relative z-10"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21 12a9 9 0 11-18 0 9 9 0 0118 0zM10 9v6m4-6v6"
+          />
         </svg>
       );
     }
     if (isActionRunning) {
       if (btnHovered) {
         return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            className="w-4 h-4 transition-transform duration-200 relative z-10"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         );
       }
       return (
-        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        <svg
+          className="w-4 h-4 animate-spin transition-transform duration-200 relative z-10"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          />
         </svg>
       );
     }
     if (!isInstalled) {
       return (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        <svg
+          className="w-4 h-4 relative z-10"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+          />
         </svg>
       );
     }
     if (hasUpdate) {
       return (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        <svg
+          className="w-4 h-4 relative z-10"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+          />
         </svg>
       );
     }
     return (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <svg
+        className="w-4 h-4 relative z-10"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+        />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
       </svg>
     );
   };
@@ -670,10 +863,17 @@ export function GameActionPanel() {
         setConfirmAction("stop-game");
         setConfirmCheckbox(false);
       }
-    } else if (preparing || isVerifying || isChecking || isComparing || isRepairing) {
+    } else if (
+      preparing ||
+      isVerifying ||
+      isChecking ||
+      isComparing ||
+      isRepairing
+    ) {
       handleCancel();
     } else if (isDownloading || isApplying) {
-      const behavior = localStorage.getItem(STORAGE_KEY_CANCEL_BEHAVIOR) || "ask";
+      const behavior =
+        localStorage.getItem(STORAGE_KEY_CANCEL_BEHAVIOR) || "ask";
       if (behavior === "keep") {
         cancellingRef.current = true;
         localStorage.setItem(STORAGE_KEY_CANCELLED, "1");
@@ -696,34 +896,46 @@ export function GameActionPanel() {
     }
   };
 
-  const handleConfirmAction = useCallback((deleteFiles: boolean) => {
-    if (confirmAction === "cancel-download") {
-      cancellingRef.current = true;
-      localStorage.setItem(STORAGE_KEY_CANCELLED, "1");
-      setProgress(null);
-      setDownloadSpeed(0);
-      if (deleteFiles) {
-        cancelDownload(installPath);
-      } else {
-        cancelDownload(); // no path → just set flag, no cleanup
-      }
-      checkStatus();
-    } else if (confirmAction === "stop-game") {
-      if (confirmCheckbox) localStorage.setItem(STORAGE_KEY_SKIP_STOP_CONFIRM, "1");
-      handleKill();
-    } else if (confirmAction === "resume-install") {
-      startInstall(deleteFiles); // deleteFiles=true → clean cache → fresh; deleteFiles=false → resume
-    } else if (confirmAction === "delete-temp") {
-      if (installPath) {
-        cancelDownload(installPath);
+  const handleConfirmAction = useCallback(
+    (deleteFiles: boolean) => {
+      if (confirmAction === "cancel-download") {
+        cancellingRef.current = true;
+        localStorage.setItem(STORAGE_KEY_CANCELLED, "1");
+        setProgress(null);
+        setDownloadSpeed(0);
+        if (deleteFiles) {
+          cancelDownload(installPath);
+        } else {
+          cancelDownload(); // no path → just set flag, no cleanup
+        }
         checkStatus();
+      } else if (confirmAction === "stop-game") {
+        if (confirmCheckbox)
+          localStorage.setItem(STORAGE_KEY_SKIP_STOP_CONFIRM, "1");
+        handleKill();
+      } else if (confirmAction === "resume-install") {
+        startInstall(deleteFiles); // deleteFiles=true → clean cache → fresh; deleteFiles=false → resume
+      } else if (confirmAction === "delete-temp") {
+        if (installPath) {
+          cancelDownload(installPath);
+          checkStatus();
+        }
+      } else if (confirmAction === "verify-confirm") {
+        handleVerify();
       }
-    } else if (confirmAction === "verify-confirm") {
-      handleVerify();
-    }
-    setConfirmAction(null);
-    setConfirmCheckbox(false);
-  }, [confirmAction, confirmCheckbox, installPath, handleKill, checkStatus, startInstall, handleVerify]);
+      setConfirmAction(null);
+      setConfirmCheckbox(false);
+    },
+    [
+      confirmAction,
+      confirmCheckbox,
+      installPath,
+      handleKill,
+      checkStatus,
+      startInstall,
+      handleVerify,
+    ],
+  );
 
   return (
     <>
@@ -760,8 +972,18 @@ export function GameActionPanel() {
               flex items-center gap-2"
             title={t("launcher.preload_tooltip")}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"
+              />
             </svg>
             <span className="whitespace-nowrap">{t("launcher.preload")}</span>
           </button>
@@ -770,8 +992,18 @@ export function GameActionPanel() {
         {/* Preload completed indicator */}
         {hasUpdate && hasPreload && preloadCompleted && isInstalled && (
           <div className="h-11 px-3 rounded-full flex items-center gap-1.5 text-xs text-emerald-400/80">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
             <span>{t("launcher.preloaded")}</span>
           </div>
@@ -790,142 +1022,227 @@ export function GameActionPanel() {
               let x = r.left + r.width / 2;
               let y = r.top - 8;
               if (x - fw / 2 < 8) x = fw / 2 + 8;
-              if (x + fw / 2 > window.innerWidth - 8) x = window.innerWidth - fw / 2 - 8;
+              if (x + fw / 2 > window.innerWidth - 8)
+                x = window.innerWidth - fw / 2 - 8;
               if (y - fh < 8) {
                 y = r.bottom + 8;
               }
               setProgressFlyoutPos({ x, y });
             }
           }}
-          onMouseLeave={() => { setBtnHovered(false); setProgressFlyoutPos(null); }}
+          onMouseLeave={() => {
+            setBtnHovered(false);
+            setProgressFlyoutPos(null);
+          }}
           disabled={!statusReady}
-          className={`h-11 px-6 rounded-full text-sm font-semibold text-white
+          className={`relative h-11 min-w-[120px] px-5 rounded-full text-sm font-semibold text-white overflow-hidden
             glass-surface border border-white/15
             shadow-lg active:scale-95
             disabled:opacity-50 disabled:cursor-not-allowed
-            transition-all duration-200 cursor-pointer
-            flex items-center gap-2.5 ${
+            transition-all duration-300 cursor-pointer
+            inline-flex items-center justify-center gap-2.5 ${
               gameRunning
-                ? btnHovered
-                  ? "bg-red-500/80 hover:bg-red-500 shadow-red-500/20"
-                  : "bg-red-500/40 shadow-red-500/10"
-                : (preparing || isDownloading || isApplying || isVerifying || isComparing || isRepairing) && btnHovered
-                  ? "bg-red-500/60 hover:bg-red-500/80 shadow-red-500/20"
-                  : "bg-gradient-to-r from-primary/80 to-primary/60 hover:from-primary hover:to-primary/80 shadow-primary/20"
+                ? "bg-gradient-to-r from-red-500/40 to-red-500/30"
+                : "bg-gradient-to-r from-primary/80 to-primary/60 hover:from-primary hover:to-primary/80 shadow-primary/20"
             }`}
         >
+          {/* Red warning overlay */}
+          <div
+            className={`absolute inset-0 bg-red-500/40 transition-opacity duration-300 pointer-events-none ${
+              (gameRunning ||
+                preparing ||
+                isDownloading ||
+                isApplying ||
+                isVerifying ||
+                isComparing ||
+                isRepairing) &&
+              btnHovered
+                ? "opacity-100"
+                : "opacity-0"
+            }`}
+          />
           {getButtonIcon()}
-          <span className="whitespace-nowrap">{getButtonLabel()}</span>
+          <span
+            key={btnLabelKey}
+            className="whitespace-nowrap animate-fade-in relative z-10"
+          >
+            {getButtonLabel()}
+          </span>
         </button>
 
         {/* Progress flyout — fixed portal, auraglass styling */}
-        {btnHovered && isActionRunning && (preparing || progress) && (preparing || isDownloading || isApplying || isVerifying || isComparing || isRepairing) && progressFlyoutPos && !confirmAction && createPortal(
-          <div
-            className="fixed z-[200] w-64 rounded-xl glass-surface-strong border border-separator/70 shadow-2xl px-4 py-3 pointer-events-none"
-            style={{
-              left: progressFlyoutPos.x,
-              top: progressFlyoutPos.y,
-              transform: progressFlyoutPos.y < 200 ? "translate(-50%, 0)" : "translate(-50%, -100%)",
-            }}
-          >
-            {preparing && !progress && (
-              <div className="flex items-center gap-2 text-xs text-white/50">
-                <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                <span>{t("launcher.preparing")}</span>
-              </div>
-            )}
-            {isDownloading && (
-              <>
-                <div className="flex items-center justify-between text-xs text-white/50 mb-1.5">
-                  <span>{formatBytes(progress.downloaded)}</span>
-                  <span>{formatBytes(progress.total)}</span>
+        {btnHovered &&
+          isActionRunning &&
+          (preparing || progress) &&
+          (preparing ||
+            isDownloading ||
+            isApplying ||
+            isVerifying ||
+            isComparing ||
+            isRepairing) &&
+          progressFlyoutPos &&
+          !confirmAction &&
+          createPortal(
+            <div
+              className="fixed z-[200] w-64 rounded-xl glass-surface-strong border border-separator/70 shadow-2xl px-4 py-3 pointer-events-none animate-fade-in"
+              style={{
+                left: progressFlyoutPos.x,
+                top: progressFlyoutPos.y,
+                transform:
+                  progressFlyoutPos.y < 200
+                    ? "translate(-50%, 0)"
+                    : "translate(-50%, -100%)",
+              }}
+            >
+              {preparing && !progress && (
+                <div className="flex items-center gap-2 text-xs text-white/50">
+                  <svg
+                    className="w-3 h-3 animate-spin"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    />
+                  </svg>
+                  <span>{t("launcher.preparing")}</span>
                 </div>
-                <div className="w-full h-1.5 rounded-full bg-white/10 mb-2 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all duration-300"
-                    style={{ width: `${progress.total > 0 ? (progress.downloaded / progress.total) * 100 : 0}%` }}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-[10px] text-white/40">
-                  <span>{downloadSpeed > 0 ? `${formatBytes(Math.round(downloadSpeed))}/s` : "—"}</span>
-                  <span>
-                    {progress.total > progress.downloaded
-                      ? downloadSpeed > 0
-                        ? (() => {
-                            const remaining = Math.round((progress.total - progress.downloaded) / downloadSpeed);
-                            const h = Math.floor(remaining / 3600);
-                            const m = Math.floor((remaining % 3600) / 60);
-                            const s = remaining % 60;
-                            return h > 0
-                              ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
-                              : `${m}:${String(s).padStart(2, "0")}`;
-                          })()
-                        : t("launcher.calculating")
-                      : ""}
-                  </span>
-                </div>
-                {progress.current_file && (
-                  <div className="mt-1.5 text-[10px] text-white/30 truncate" title={progress.current_file}>
-                    {progress.current_file.split("/").pop()}
+              )}
+              {isDownloading && (
+                <>
+                  <div className="flex items-center justify-between text-xs text-white/50 mb-1.5">
+                    <span>{formatBytes(progress.downloaded)}</span>
+                    <span>{formatBytes(progress.total)}</span>
                   </div>
-                )}
-              </>
-            )}
-            {isVerifying && (
-              <>
-                <div className="flex items-center justify-between text-xs text-white/50 mb-1.5">
-                  <span>{t("launcher.verifying")}</span>
-                  <span>{progress.total > 0 ? `${Math.round((progress.verified_bytes / progress.total) * 100)}%` : ""}</span>
-                </div>
-                {progress.total > 0 && (
                   <div className="w-full h-1.5 rounded-full bg-white/10 mb-2 overflow-hidden">
                     <div
                       className="h-full rounded-full bg-primary transition-all duration-300"
-                      style={{ width: `${(progress.verified_bytes / progress.total) * 100}%` }}
+                      style={{
+                        width: `${progress.total > 0 ? (progress.downloaded / progress.total) * 100 : 0}%`,
+                      }}
                     />
                   </div>
-                )}
-                <div className="flex items-center justify-between text-[10px] text-white/40">
-                  <span>{verifySpeed > 0 ? `${(verifySpeed / 1048576).toFixed(1)} MB/s` : "—"}</span>
-                  <span>{progress.file_count > 0 ? `${progress.file_index + 1} / ${progress.file_count}` : ""}</span>
-                </div>
-              </>
-            )}
-            {isComparing && (
-              <div className="text-xs text-white/60 text-center py-1">
-                {t("launcher.checking")}
-              </div>
-            )}
-            {isRepairing && (
-              <>
-                <div className="flex items-center justify-between text-xs text-white/50 mb-1.5">
-                  <span>{t("launcher.repairing")}</span>
-                  <span>{progress.total > 0 ? `${Math.round((progress.verified_bytes / progress.total) * 100)}%` : ""}</span>
-                </div>
-                {progress.total > 0 && (
-                  <div className="w-full h-1.5 rounded-full bg-white/10 mb-2 overflow-hidden">
+                  <div className="flex items-center justify-between text-[10px] text-white/40">
+                    <span>
+                      {downloadSpeed > 0
+                        ? `${formatBytes(Math.round(downloadSpeed))}/s`
+                        : "—"}
+                    </span>
+                    <span>
+                      {progress.total > progress.downloaded
+                        ? downloadSpeed > 0
+                          ? (() => {
+                              const remaining = Math.round(
+                                (progress.total - progress.downloaded) /
+                                  downloadSpeed,
+                              );
+                              const h = Math.floor(remaining / 3600);
+                              const m = Math.floor((remaining % 3600) / 60);
+                              const s = remaining % 60;
+                              return h > 0
+                                ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+                                : `${m}:${String(s).padStart(2, "0")}`;
+                            })()
+                          : t("launcher.calculating")
+                        : ""}
+                    </span>
+                  </div>
+                  {progress.current_file && (
                     <div
-                      className="h-full rounded-full bg-primary transition-all duration-300"
-                      style={{ width: `${(progress.verified_bytes / progress.total) * 100}%` }}
-                    />
+                      className="mt-1.5 text-[10px] text-white/30 truncate"
+                      title={progress.current_file}
+                    >
+                      {progress.current_file.split("/").pop()}
+                    </div>
+                  )}
+                </>
+              )}
+              {isVerifying && (
+                <>
+                  <div className="flex items-center justify-between text-xs text-white/50 mb-1.5">
+                    <span>{t("launcher.verifying")}</span>
+                    <span>
+                      {progress.total > 0
+                        ? `${Math.round((progress.verified_bytes / progress.total) * 100)}%`
+                        : ""}
+                    </span>
                   </div>
-                )}
-                <div className="flex items-center justify-between text-[10px] text-white/40">
-                  <span>{progress.file_count > 0 ? `${progress.file_index + 1} / ${progress.file_count}` : ""}</span>
+                  {progress.total > 0 && (
+                    <div className="w-full h-1.5 rounded-full bg-white/10 mb-2 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all duration-300"
+                        style={{
+                          width: `${(progress.verified_bytes / progress.total) * 100}%`,
+                        }}
+                      />
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-[10px] text-white/40">
+                    <span>
+                      {verifySpeed > 0
+                        ? `${(verifySpeed / 1048576).toFixed(1)} MB/s`
+                        : "—"}
+                    </span>
+                    <span>
+                      {progress.file_count > 0
+                        ? `${progress.file_index + 1} / ${progress.file_count}`
+                        : ""}
+                    </span>
+                  </div>
+                </>
+              )}
+              {isComparing && (
+                <div className="text-xs text-white/60 text-center py-1">
+                  {t("launcher.checking")}
                 </div>
-              </>
-            )}
-            {isApplying && (
-              <div className="text-xs text-white/60 text-center py-1">
-                {t("launcher.applying")}
-              </div>
-            )}
-          </div>,
-          document.body
-        )}
+              )}
+              {isRepairing && (
+                <>
+                  <div className="flex items-center justify-between text-xs text-white/50 mb-1.5">
+                    <span>{t("launcher.repairing")}</span>
+                    <span>
+                      {progress.total > 0
+                        ? `${Math.round((progress.verified_bytes / progress.total) * 100)}%`
+                        : ""}
+                    </span>
+                  </div>
+                  {progress.total > 0 && (
+                    <div className="w-full h-1.5 rounded-full bg-white/10 mb-2 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all duration-300"
+                        style={{
+                          width: `${(progress.verified_bytes / progress.total) * 100}%`,
+                        }}
+                      />
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-[10px] text-white/40">
+                    <span>
+                      {progress.file_count > 0
+                        ? `${progress.file_index + 1} / ${progress.file_count}`
+                        : ""}
+                    </span>
+                  </div>
+                </>
+              )}
+              {isApplying && (
+                <div className="text-xs text-white/60 text-center py-1">
+                  {t("launcher.applying")}
+                </div>
+              )}
+            </div>,
+            document.body,
+          )}
 
         <button
           ref={hamburgerRef}
@@ -939,7 +1256,8 @@ export function GameActionPanel() {
               let x = r.right - fw;
               let y = r.top - 8;
               if (x < 8) x = 8;
-              if (x + fw > window.innerWidth - 8) x = window.innerWidth - fw - 8;
+              if (x + fw > window.innerWidth - 8)
+                x = window.innerWidth - fw - 8;
               setMenuFlyoutPos({ x, y });
               if (installPath) {
                 hasDownloadCache(installPath).then(setHasTempFiles);
@@ -953,104 +1271,171 @@ export function GameActionPanel() {
             text-white/70 hover:text-white hover:bg-white/20
             transition-all duration-200 cursor-pointer"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6h16M4 12h16M4 18h16"
+            />
           </svg>
         </button>
 
-        {flyoutOpen && menuFlyoutPos && createPortal(
-          <div
-            ref={menuFlyoutRef}
-            data-flyout-menu
-            className="fixed z-[200] w-52 rounded-xl glass-surface-strong border border-separator/70 shadow-2xl"
-            style={{
-              left: menuFlyoutPos.x,
-              top: menuFlyoutPos.y,
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => {
-                setFlyoutOpen(false);
-                setMenuFlyoutPos(null);
-                setSettingsOpen(true);
+        {flyoutOpen &&
+          menuFlyoutPos &&
+          createPortal(
+            <div
+              ref={menuFlyoutRef}
+              data-flyout-menu
+              className="fixed z-[200] w-52 rounded-xl glass-surface-strong border border-separator/70 shadow-2xl animate-fade-in"
+              style={{
+                left: menuFlyoutPos.x,
+                top: menuFlyoutPos.y,
               }}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/80 hover:bg-white/10 hover:text-foreground transition-colors cursor-pointer"
             >
-              <svg className="w-4 h-4 text-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              {t("launcher.game_settings")}
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFlyoutOpen(false);
+                  setMenuFlyoutPos(null);
+                  setSettingsOpen(true);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/80 hover:bg-white/10 hover:text-foreground transition-colors cursor-pointer"
+              >
+                <svg
+                  className="w-4 h-4 text-foreground/50"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+                {t("launcher.game_settings")}
+              </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setFlyoutOpen(false);
-                setMenuFlyoutPos(null);
-                setConfirmAction("verify-confirm");
-                setConfirmCheckbox(false);
-              }}
-              disabled={isActionRunning}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/80 hover:bg-white/10 hover:text-foreground transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <svg className="w-4 h-4 text-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              {t("launcher.verify_integrity")}
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFlyoutOpen(false);
+                  setMenuFlyoutPos(null);
+                  setConfirmAction("verify-confirm");
+                  setConfirmCheckbox(false);
+                }}
+                disabled={isActionRunning}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/80 hover:bg-white/10 hover:text-foreground transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <svg
+                  className="w-4 h-4 text-foreground/50"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                  />
+                </svg>
+                {t("launcher.verify_integrity")}
+              </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setFlyoutOpen(false);
-                setMenuFlyoutPos(null);
-                handleQuickVerify();
-              }}
-              disabled={isActionRunning}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/80 hover:bg-white/10 hover:text-foreground transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <svg className="w-4 h-4 text-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              {t("launcher.quick_verify")}
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFlyoutOpen(false);
+                  setMenuFlyoutPos(null);
+                  handleQuickVerify();
+                }}
+                disabled={isActionRunning}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/80 hover:bg-white/10 hover:text-foreground transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <svg
+                  className="w-4 h-4 text-foreground/50"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                  />
+                </svg>
+                {t("launcher.quick_verify")}
+              </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setFlyoutOpen(false);
-                setMenuFlyoutPos(null);
-                setConfirmAction("delete-temp");
-                setConfirmCheckbox(false);
-              }}
-              disabled={isActionRunning || !installPath || !hasTempFiles}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/80 hover:bg-white/10 hover:text-foreground transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <svg className="w-4 h-4 text-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              {t("launcher.delete_temp_files")}
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFlyoutOpen(false);
+                  setMenuFlyoutPos(null);
+                  setConfirmAction("delete-temp");
+                  setConfirmCheckbox(false);
+                }}
+                disabled={isActionRunning || !installPath || !hasTempFiles}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/80 hover:bg-white/10 hover:text-foreground transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <svg
+                  className="w-4 h-4 text-foreground/50"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+                {t("launcher.delete_temp_files")}
+              </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setFlyoutOpen(false);
-                setMenuFlyoutPos(null);
-                handleLocate();
-              }}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/80 hover:bg-white/10 hover:text-foreground transition-colors cursor-pointer border-t border-separator/50"
-            >
-              <svg className="w-4 h-4 text-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-              </svg>
-              {t("launcher.locate_game")}
-            </button>
-          </div>,
-          document.body
-        )}
+              <button
+                type="button"
+                onClick={() => {
+                  setFlyoutOpen(false);
+                  setMenuFlyoutPos(null);
+                  handleLocate();
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/80 hover:bg-white/10 hover:text-foreground transition-colors cursor-pointer border-t border-separator/50"
+              >
+                <svg
+                  className="w-4 h-4 text-foreground/50"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                  />
+                </svg>
+                {t("launcher.locate_game")}
+              </button>
+            </div>,
+            document.body,
+          )}
       </div>
 
       {settingsOpen && (
@@ -1067,13 +1452,25 @@ export function GameActionPanel() {
       )}
 
       {/* Confirm dialog for cancel download / stop game / resume install / delete temp / verify */}
-      <GlassAlertDialog isOpen={confirmAction !== null} onOpenChange={(o) => { if (!o) { setConfirmAction(null); setConfirmCheckbox(false); } }}>
+      <GlassAlertDialog
+        isOpen={confirmAction !== null}
+        onOpenChange={(o) => {
+          if (!o) {
+            setConfirmAction(null);
+            setConfirmCheckbox(false);
+          }
+        }}
+      >
         <GlassAlertDialog.Backdrop className="z-[300]">
           <GlassAlertDialog.Container>
             <GlassAlertDialog.Dialog className="sm:max-w-[380px]">
               <GlassAlertDialog.CloseTrigger />
               <GlassAlertDialog.Header>
-                <GlassAlertDialog.Icon status={confirmAction === "verify-confirm" ? "warning" : "danger"} />
+                <GlassAlertDialog.Icon
+                  status={
+                    confirmAction === "verify-confirm" ? "warning" : "danger"
+                  }
+                />
                 <GlassAlertDialog.Heading>
                   {confirmAction === "cancel-download"
                     ? t("launcher.cancel_download_confirm_title")
@@ -1106,53 +1503,94 @@ export function GameActionPanel() {
                       onChange={(e) => setConfirmCheckbox(e.target.checked)}
                       className="w-4 h-4 rounded border-separator bg-background accent-primary cursor-pointer"
                     />
-                    <span className="text-xs text-muted">{t("launcher.dont_ask_again")}</span>
+                    <span className="text-xs text-muted">
+                      {t("launcher.dont_ask_again")}
+                    </span>
                   </label>
                 )}
               </GlassAlertDialog.Body>
               <GlassAlertDialog.Footer>
                 {confirmAction === "cancel-download" ? (
                   <>
-                    <GlassButton variant="tertiary" onPress={() => handleConfirmAction(false)}>
+                    <GlassButton
+                      variant="tertiary"
+                      onPress={() => handleConfirmAction(false)}
+                    >
                       {t("launcher.keep_files")}
                     </GlassButton>
-                    <GlassButton variant="danger" onPress={() => handleConfirmAction(true)}>
+                    <GlassButton
+                      variant="danger"
+                      onPress={() => handleConfirmAction(true)}
+                    >
                       {t("launcher.delete_files")}
                     </GlassButton>
                   </>
                 ) : confirmAction === "resume-install" ? (
                   <>
-                    <GlassButton variant="tertiary" onPress={() => handleConfirmAction(true)}>
+                    <GlassButton
+                      variant="tertiary"
+                      onPress={() => handleConfirmAction(true)}
+                    >
                       {t("launcher.start_fresh")}
                     </GlassButton>
-                    <GlassButton variant="primary" onPress={() => handleConfirmAction(false)}>
+                    <GlassButton
+                      variant="primary"
+                      onPress={() => handleConfirmAction(false)}
+                    >
                       {t("launcher.continue_download")}
                     </GlassButton>
                   </>
                 ) : confirmAction === "delete-temp" ? (
                   <>
-                    <GlassButton variant="tertiary" onPress={() => { setConfirmAction(null); setConfirmCheckbox(false); }}>
+                    <GlassButton
+                      variant="tertiary"
+                      onPress={() => {
+                        setConfirmAction(null);
+                        setConfirmCheckbox(false);
+                      }}
+                    >
                       {t("launcher.cancel")}
                     </GlassButton>
-                    <GlassButton variant="danger" onPress={() => handleConfirmAction(true)}>
+                    <GlassButton
+                      variant="danger"
+                      onPress={() => handleConfirmAction(true)}
+                    >
                       {t("launcher.delete_files")}
                     </GlassButton>
                   </>
                 ) : confirmAction === "verify-confirm" ? (
                   <>
-                    <GlassButton variant="tertiary" onPress={() => { setConfirmAction(null); setConfirmCheckbox(false); }}>
+                    <GlassButton
+                      variant="tertiary"
+                      onPress={() => {
+                        setConfirmAction(null);
+                        setConfirmCheckbox(false);
+                      }}
+                    >
                       {t("launcher.cancel")}
                     </GlassButton>
-                    <GlassButton variant="primary" onPress={() => handleConfirmAction(false)}>
+                    <GlassButton
+                      variant="primary"
+                      onPress={() => handleConfirmAction(false)}
+                    >
                       {t("launcher.confirm")}
                     </GlassButton>
                   </>
                 ) : (
                   <>
-                    <GlassButton variant="tertiary" onPress={() => { setConfirmAction(null); setConfirmCheckbox(false); }}>
+                    <GlassButton
+                      variant="tertiary"
+                      onPress={() => {
+                        setConfirmAction(null);
+                        setConfirmCheckbox(false);
+                      }}
+                    >
                       {t("launcher.cancel")}
                     </GlassButton>
-                    <GlassButton variant="danger" onPress={() => handleConfirmAction(false)}>
+                    <GlassButton
+                      variant="danger"
+                      onPress={() => handleConfirmAction(false)}
+                    >
                       {t("launcher.confirm_stop")}
                     </GlassButton>
                   </>
@@ -1165,17 +1603,29 @@ export function GameActionPanel() {
 
       {/* Channel Selection Dialog */}
       {channelSelectOpen && (
-        <GlassAlertDialog isOpen onOpenChange={(o) => { if (!o) { setChannelSelectOpen(false); setPendingInstallPath(null); } }}>
+        <GlassAlertDialog
+          isOpen
+          onOpenChange={(o) => {
+            if (!o) {
+              setChannelSelectOpen(false);
+              setPendingInstallPath(null);
+            }
+          }}
+        >
           <GlassAlertDialog.Backdrop className="z-[300]">
             <GlassAlertDialog.Container>
               <GlassAlertDialog.Dialog className="sm:max-w-[420px]">
                 <GlassAlertDialog.CloseTrigger />
                 <GlassAlertDialog.Header>
                   <GlassAlertDialog.Icon status="info" />
-                  <GlassAlertDialog.Heading>{t("launcher.select_channel_title")}</GlassAlertDialog.Heading>
+                  <GlassAlertDialog.Heading>
+                    {t("launcher.select_channel_title")}
+                  </GlassAlertDialog.Heading>
                 </GlassAlertDialog.Header>
                 <GlassAlertDialog.Body>
-                  <p className="text-sm text-muted mb-4">{t("launcher.select_channel_desc")}</p>
+                  <p className="text-sm text-muted mb-4">
+                    {t("launcher.select_channel_desc")}
+                  </p>
                   <div className="flex flex-col gap-2">
                     {ALL_CHANNELS.map((ch) => (
                       <button
@@ -1187,7 +1637,13 @@ export function GameActionPanel() {
                       >
                         <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
                           <span className="text-sm font-bold text-primary">
-                            {ch === "official" ? "官" : ch === "bilibili" ? "B" : ch === "global" ? "G" : "GP"}
+                            {ch === "official"
+                              ? "官"
+                              : ch === "bilibili"
+                                ? "B"
+                                : ch === "global"
+                                  ? "G"
+                                  : "GP"}
                           </span>
                         </div>
                         <span className="text-sm font-medium text-foreground/80">
@@ -1204,7 +1660,13 @@ export function GameActionPanel() {
                   )}
                 </GlassAlertDialog.Body>
                 <GlassAlertDialog.Footer>
-                  <GlassButton variant="tertiary" onPress={() => { setChannelSelectOpen(false); setPendingInstallPath(null); }}>
+                  <GlassButton
+                    variant="tertiary"
+                    onPress={() => {
+                      setChannelSelectOpen(false);
+                      setPendingInstallPath(null);
+                    }}
+                  >
                     {t("launcher.cancel")}
                   </GlassButton>
                 </GlassAlertDialog.Footer>
@@ -1216,101 +1678,156 @@ export function GameActionPanel() {
 
       {/* Scan Result Dialog */}
       {scanOpen && scanResult && (
-        <GlassAlertDialog isOpen onOpenChange={(o) => { if (!o) { setScanOpen(false); setScanResult(null); setDiskSpace(null); } }}>
+        <GlassAlertDialog
+          isOpen
+          onOpenChange={(o) => {
+            if (!o) {
+              setScanOpen(false);
+              setScanResult(null);
+              setDiskSpace(null);
+            }
+          }}
+        >
           <GlassAlertDialog.Backdrop className="z-[300]">
             <GlassAlertDialog.Container>
               <GlassAlertDialog.Dialog className="sm:max-w-[400px]">
                 <GlassAlertDialog.CloseTrigger />
                 <GlassAlertDialog.Header>
-                  <GlassAlertDialog.Icon status={
-                    scanResult.download_bytes === 0
-                      ? "success"
-                      : diskSpace !== null && diskSpace.free < scanResult.download_bytes
-                        ? "danger"
-                        : "info"
-                  } />
+                  <GlassAlertDialog.Icon
+                    status={
+                      scanResult.download_bytes === 0
+                        ? "success"
+                        : diskSpace !== null &&
+                            diskSpace.free < scanResult.download_bytes
+                          ? "danger"
+                          : "info"
+                    }
+                  />
                   <GlassAlertDialog.Heading>
                     {scanResult.download_bytes === 0
                       ? t("launcher.scan_result_all_valid")
-                      : t("launcher.confirm_install")
-                    }
+                      : t("launcher.confirm_install")}
                   </GlassAlertDialog.Heading>
                 </GlassAlertDialog.Header>
                 <GlassAlertDialog.Body>
                   {scanResult.download_bytes === 0 ? (
-                    <p className="text-sm text-muted">{t("launcher.no_files_found")}</p>
+                    <p className="text-sm text-muted">
+                      {t("launcher.no_files_found")}
+                    </p>
                   ) : (
                     <div className="space-y-4">
                       {/* Disk space usage bar */}
-                      {diskSpace !== null && (() => {
-                        const downloadBytes = scanResult.download_bytes;
-                        const diskUsed = diskSpace.total - diskSpace.free;
-                        const freeAfter = diskSpace.free - downloadBytes;
-                        const totalSpace = diskSpace.total;
-                        const usedPct = totalSpace > 0 ? (diskUsed / totalSpace) * 100 : 0;
-                        const downloadPct = totalSpace > 0 ? (downloadBytes / totalSpace) * 100 : 0;
-                        const freePct = totalSpace > 0 ? (freeAfter / totalSpace) * 100 : 0;
-                        const insufficient = freeAfter < 0;
-                        return (
-                          <div className="space-y-2">
-                            <div className="w-full h-3 rounded-full bg-white/5 overflow-hidden flex">
-                              {usedPct > 0 && (
-                                <div
-                                  className="h-full bg-blue-400/70 transition-all duration-300"
-                                  style={{ width: `${Math.min(usedPct, 100)}%` }}
-                                />
-                              )}
-                              {downloadPct > 0 && (
-                                <div
-                                  className={`h-full transition-all duration-300 ${insufficient ? "bg-red-400/70" : "bg-emerald-400/70"}`}
-                                  style={{ width: `${Math.min(downloadPct, 100 - usedPct)}%` }}
-                                />
-                              )}
-                              {freePct > 0 && (
-                                <div
-                                  className="h-full bg-white/10 transition-all duration-300"
-                                  style={{ width: `${Math.min(freePct, 100 - usedPct - downloadPct)}%` }}
-                                />
-                              )}
+                      {diskSpace !== null &&
+                        (() => {
+                          const downloadBytes = scanResult.download_bytes;
+                          const diskUsed = diskSpace.total - diskSpace.free;
+                          const freeAfter = diskSpace.free - downloadBytes;
+                          const totalSpace = diskSpace.total;
+                          const usedPct =
+                            totalSpace > 0 ? (diskUsed / totalSpace) * 100 : 0;
+                          const downloadPct =
+                            totalSpace > 0
+                              ? (downloadBytes / totalSpace) * 100
+                              : 0;
+                          const freePct =
+                            totalSpace > 0 ? (freeAfter / totalSpace) * 100 : 0;
+                          const insufficient = freeAfter < 0;
+                          return (
+                            <div className="space-y-2">
+                              <div className="w-full h-3 rounded-full bg-white/5 overflow-hidden flex">
+                                {usedPct > 0 && (
+                                  <div
+                                    className="h-full bg-blue-400/70 transition-all duration-300"
+                                    style={{
+                                      width: `${Math.min(usedPct, 100)}%`,
+                                    }}
+                                  />
+                                )}
+                                {downloadPct > 0 && (
+                                  <div
+                                    className={`h-full transition-all duration-300 ${insufficient ? "bg-red-400/70" : "bg-emerald-400/70"}`}
+                                    style={{
+                                      width: `${Math.min(downloadPct, 100 - usedPct)}%`,
+                                    }}
+                                  />
+                                )}
+                                {freePct > 0 && (
+                                  <div
+                                    className="h-full bg-white/10 transition-all duration-300"
+                                    style={{
+                                      width: `${Math.min(freePct, 100 - usedPct - downloadPct)}%`,
+                                    }}
+                                  />
+                                )}
+                              </div>
+                              <div className="flex items-center gap-4 text-[11px] text-muted">
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-2 h-2 rounded-sm bg-blue-400/70" />
+                                  <span>
+                                    {t("launcher.disk_used")}:{" "}
+                                    {formatBytes(diskUsed)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <div
+                                    className={`w-2 h-2 rounded-sm ${insufficient ? "bg-red-400/70" : "bg-emerald-400/70"}`}
+                                  />
+                                  <span>
+                                    {t("launcher.need_download")}:{" "}
+                                    {formatBytes(downloadBytes)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-2 h-2 rounded-sm bg-white/10" />
+                                  <span>
+                                    {t("launcher.disk_free_space")}:{" "}
+                                    {formatBytes(freeAfter > 0 ? freeAfter : 0)}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-4 text-[11px] text-muted">
-                              <div className="flex items-center gap-1.5">
-                                <div className="w-2 h-2 rounded-sm bg-blue-400/70" />
-                                <span>{t("launcher.disk_used")}: {formatBytes(diskUsed)}</span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <div className={`w-2 h-2 rounded-sm ${insufficient ? "bg-red-400/70" : "bg-emerald-400/70"}`} />
-                                <span>{t("launcher.need_download")}: {formatBytes(downloadBytes)}</span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <div className="w-2 h-2 rounded-sm bg-white/10" />
-                                <span>{t("launcher.disk_free_space")}: {formatBytes(freeAfter > 0 ? freeAfter : 0)}</span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })()}
+                          );
+                        })()}
                       {diskSpace === null && (
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted">{t("launcher.need_download")}</span>
+                          <span className="text-muted">
+                            {t("launcher.need_download")}
+                          </span>
                           <span className="font-medium text-foreground">
-                            {scanResult.missing_files + scanResult.corrupted_files} {t("launcher.files_count")}，{formatBytes(scanResult.download_bytes)}
+                            {scanResult.missing_files +
+                              scanResult.corrupted_files}{" "}
+                            {t("launcher.files_count")}，
+                            {formatBytes(scanResult.download_bytes)}
                           </span>
                         </div>
                       )}
-                      {diskSpace !== null && diskSpace.free < scanResult.download_bytes && (
-                        <p className="text-xs text-red-400">{t("launcher.disk_space_insufficient")}</p>
-                      )}
+                      {diskSpace !== null &&
+                        diskSpace.free < scanResult.download_bytes && (
+                          <p className="text-xs text-red-400">
+                            {t("launcher.disk_space_insufficient")}
+                          </p>
+                        )}
                     </div>
                   )}
                 </GlassAlertDialog.Body>
                 <GlassAlertDialog.Footer>
-                  <GlassButton variant="tertiary" onPress={() => { setScanOpen(false); setScanResult(null); setDiskSpace(null); }}>
+                  <GlassButton
+                    variant="tertiary"
+                    onPress={() => {
+                      setScanOpen(false);
+                      setScanResult(null);
+                      setDiskSpace(null);
+                    }}
+                  >
                     {t("launcher.cancel")}
                   </GlassButton>
                   <GlassButton
                     variant="primary"
-                    disabled={scanResult.download_bytes > 0 && diskSpace !== null && diskSpace.free < scanResult.download_bytes}
+                    disabled={
+                      scanResult.download_bytes > 0 &&
+                      diskSpace !== null &&
+                      diskSpace.free < scanResult.download_bytes
+                    }
                     onPress={() => {
                       setScanOpen(false);
                       setScanResult(null);
@@ -1329,7 +1846,9 @@ export function GameActionPanel() {
                       }
                     }}
                   >
-                    {scanResult.download_bytes === 0 ? t("launcher.start_game") : t("launcher.confirm_install_btn")}
+                    {scanResult.download_bytes === 0
+                      ? t("launcher.start_game")
+                      : t("launcher.confirm_install_btn")}
                   </GlassButton>
                 </GlassAlertDialog.Footer>
               </GlassAlertDialog.Dialog>
@@ -1349,7 +1868,11 @@ interface GameSettingsModalProps {
   onSave: (path: string) => void;
 }
 
-function GameSettingsModal({ initialPath, onClose, onSave }: GameSettingsModalProps) {
+function GameSettingsModal({
+  initialPath,
+  onClose,
+  onSave,
+}: GameSettingsModalProps) {
   const { t } = useTranslation();
   const [path, setPath] = useState(initialPath);
 
@@ -1365,14 +1888,18 @@ function GameSettingsModal({ initialPath, onClose, onSave }: GameSettingsModalPr
           <GlassModal.Dialog>
             <GlassModal.Header>
               <div className="flex items-center justify-between px-5 py-4 border-b border-separator/50">
-                <GlassModal.Heading className="text-sm">{t("launcher.game_settings")}</GlassModal.Heading>
+                <GlassModal.Heading className="text-sm">
+                  {t("launcher.game_settings")}
+                </GlassModal.Heading>
                 <GlassModal.CloseTrigger />
               </div>
             </GlassModal.Header>
             <GlassModal.Body>
               <div className="px-5 py-4 space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1.5">{t("launcher.install_path")}</label>
+                  <label className="block text-xs font-medium text-muted mb-1.5">
+                    {t("launcher.install_path")}
+                  </label>
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
