@@ -629,6 +629,7 @@ export function GameActionPanel() {
 
   const handleCancel = useCallback(async () => {
     cancellingRef.current = true;
+    setLocalActiveOp(null);
     setDownloadSpeed(0);
     await cancelDownload(installPath);
     refreshStatus();
@@ -914,6 +915,8 @@ export function GameActionPanel() {
 
   const handleButtonClick = () => {
     if (switching) {
+      cancellingRef.current = true;
+      setLocalActiveOp(null);
       cancelSwitch();
       return;
     }
