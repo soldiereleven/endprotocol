@@ -261,6 +261,11 @@ body::before {
   animation: fade-in 0.3s ease-out;
 }
 
+@keyframes switch-flyin {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
 @keyframes fade-out {
   0% { opacity: 1; transform: translateY(0); }
   100% { opacity: 0; transform: translateY(-8px); }
