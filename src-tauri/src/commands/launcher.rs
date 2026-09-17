@@ -12,9 +12,14 @@ pub async fn launcher_check_status(
     channel: String,
     install_path: String,
 ) -> Result<GameStatus, String> {
+    tracing::info!("[cmd] launcher_check_status: channel={}, path={}", channel, install_path);
     let ch = parse_channel(&channel)?;
+    tracing::info!("[cmd] check_status acquiring lock...");
     let svc = service.lock().await;
-    svc.check_status(&ch, &install_path).await
+    tracing::info!("[cmd] check_status lock acquired, calling check_status...");
+    let result = svc.check_status(&ch, &install_path).await;
+    tracing::info!("[cmd] check_status returned: {:?}", result.is_ok());
+    result
 }
 
 /// 安装或更新游戏
@@ -187,7 +192,19 @@ pub async fn launcher_reset_download_cancel() -> Result<(), String> {
     Ok(())
 }
 
-/// 解密鹰角加密文件（用于读取 config.ini 等）
+#[tauri::command]
+pub async fn launcher_cancel_switch() -> Result<(), String> {
+    crate::services::game_launcher_service::cancel_switch();
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn launcher_cancel_all() -> Result<(), String> {
+    crate::services::game_launcher_service::cancel_download();
+    crate::services::game_launcher_service::cancel_switch();
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn launcher_decrypt_file(file_path: String) -> Result<String, String> {
     crate::utils::hg_crypto::decrypt_file_to_string(&file_path)
@@ -416,8 +433,8 @@ pub async fn launcher_detect_channel(install_path: String) -> Result<Option<Stri
     // 渠道识别逻辑：
     // Google Play: glextra.dll + play_pc_sdk.dll + manifest.xml
     // Global: gfsdk.dll + glfoundation.dll (无 PCGameSDK)
-    // B服: hgsdk.dll + PCGameSDK.dll + eld_Endfield.db
-    // 官服: hgsdk.dll + eld_Endfield.db (无 PCGameSDK)
+    // B服: PCGameSDK.dll
+    // 官服: hgsdk.dll (无 PCGameSDK)
 
     if has_gl_extra && has_play_pc_sdk && has_manifest_xml {
         return Ok(Some("google_play".to_string()));
@@ -427,11 +444,11 @@ pub async fn launcher_detect_channel(install_path: String) -> Result<Option<Stri
         return Ok(Some("global".to_string()));
     }
 
-    if has_hgsdk && has_pc_sdk && has_eld_db {
+    if has_pc_sdk {
         return Ok(Some("bilibili".to_string()));
     }
 
-    if has_hgsdk && has_eld_db {
+    if has_hgsdk {
         return Ok(Some("official".to_string()));
     }
 
@@ -464,12 +481,49 @@ pub fn launcher_check_game_running(channel: String) -> Result<bool, String> {
 pub async fn launcher_kill_game(channel: String) -> Result<bool, String> {
     let ch = parse_channel(&channel)?;
     let process_name = ch.process_name();
-    let output = std::process::Command::new("taskkill")
-        .args(["/F", "/IM", process_name])
+    let exe_name = ch.executable_name();
+
+    // 先用 taskkill /T /F /IM 杀进程树（非阻塞）
+    let output = tokio::process::Command::new("taskkill")
+        .args(["/T", "/F", "/IM", &process_name])
         .output()
+        .await
         .map_err(|e| e.to_string())?;
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-    Ok(output.status.success())
+
+    if !output.status.success() {
+        // 尝试用可执行文件名杀
+        let output2 = tokio::process::Command::new("taskkill")
+            .args(["/T", "/F", "/IM", &exe_name])
+            .output()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        if !output2.status.success() {
+            // 最后尝试 wmic 按标题模糊杀
+            let _ = tokio::process::Command::new("wmic")
+                .args(["process", "where", &format!("name like '%Endfield%'"), "call", "terminate"])
+                .output()
+                .await;
+        }
+    }
+
+    Ok(true)
+}
+
+/// 切换游戏渠道
+#[tauri::command]
+pub async fn launcher_switch_channel(
+    service: tauri::State<'_, Arc<Mutex<GameLauncherService>>>,
+    from_channel: String,
+    to_channel: String,
+    install_path: String,
+    app: tauri::AppHandle,
+) -> Result<String, String> {
+    tracing::info!("[cmd] launcher_switch_channel: {} -> {}, path={}", from_channel, to_channel, install_path);
+    let from = parse_channel(&from_channel)?;
+    let to = parse_channel(&to_channel)?;
+    let svc = service.lock().await;
+    svc.switch_channel(&from, &to, &install_path, app).await
 }
 
 fn parse_channel(s: &str) -> Result<GameChannel, String> {

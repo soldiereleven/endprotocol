@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use futures_util::StreamExt;
 use reqwest::Client;
+use tauri::Emitter;
 use tokio::sync::{Semaphore, Mutex};
 use walkdir::WalkDir;
 
@@ -15,6 +16,7 @@ use crate::utils::hg_crypto;
 
 /// 全局下载取消标志
 static DOWNLOAD_CANCELLED: AtomicBool = AtomicBool::new(false);
+static SWITCH_CANCELLED: AtomicBool = AtomicBool::new(false);
 
 pub fn cancel_download() {
     DOWNLOAD_CANCELLED.store(true, Ordering::SeqCst);
@@ -24,19 +26,35 @@ pub fn reset_download_cancel() {
     DOWNLOAD_CANCELLED.store(false, Ordering::SeqCst);
 }
 
+pub fn cancel_switch() {
+    SWITCH_CANCELLED.store(true, Ordering::SeqCst);
+}
+
+pub fn reset_switch_cancel() {
+    SWITCH_CANCELLED.store(false, Ordering::SeqCst);
+}
+
 /// 清理指定安装路径下的所有暂存目录和 .download 缓存文件
 pub fn cleanup_staging_files(install_path: &str) {
     let install_dir = Path::new(install_path);
+    // 删除切换暂存目录
+    let switch_staging = format!("{}.switch.download", install_path);
+    if Path::new(&switch_staging).exists() {
+        tracing::info!("[cleanup] Removing switch staging: {}", switch_staging);
+        let _ = fs::remove_dir_all(&switch_staging);
+    }
+    // 删除旧格式 staging 目录
     if let Some(parent) = install_dir.parent() {
-        // 删除 *.staging.* 目录
         if let Ok(entries) = fs::read_dir(parent) {
             for entry in entries.flatten() {
                 let name = entry.file_name();
                 let name_str = name.to_string_lossy();
                 if let Some(stem) = install_dir.file_name().and_then(|s| s.to_str()) {
-                    if name_str.starts_with(&format!("{}.staging.", stem)) {
+                    if name_str.starts_with(&format!("{}.staging.", stem)) ||
+                       name_str.starts_with(&format!("{}.switch.", stem)) ||
+                       name_str.starts_with(&format!("{}.backup.", stem)) {
                         let path = entry.path();
-                        tracing::info!("[cleanup] Removing staging dir: {}", path.display());
+                        tracing::info!("[cleanup] Removing old dir: {}", path.display());
                         let _ = fs::remove_dir_all(&path);
                     }
                 }
@@ -94,6 +112,7 @@ pub fn has_download_cache(install_path: &str) -> bool {
 pub struct GameLauncherService {
     http_client: Client,
     download_client: Client,
+    active_operation: Arc<Mutex<Option<ActiveOperation>>>,
 }
 
 impl GameLauncherService {
@@ -113,7 +132,20 @@ impl GameLauncherService {
         Self {
             http_client,
             download_client,
+            active_operation: Arc::new(Mutex::new(None)),
         }
+    }
+
+    pub async fn has_active_operation(&self) -> bool {
+        self.active_operation.lock().await.is_some()
+    }
+
+    pub async fn set_active_operation(&self, op: Option<ActiveOperation>) {
+        *self.active_operation.lock().await = op;
+    }
+
+    pub async fn get_active_operation(&self) -> Option<ActiveOperation> {
+        self.active_operation.lock().await.clone()
     }
 
     // ========== 版本检查 ==========
@@ -209,17 +241,21 @@ impl GameLauncherService {
         channel: &GameChannel,
         install_path: &str,
     ) -> Result<GameStatus, String> {
+        tracing::info!("[check_status] channel={}, path={}", channel.as_str(), install_path);
         let path = Path::new(install_path);
         let exe_exists = path.join(channel.executable_name()).exists();
         let config_exists = path.join("config.ini").exists();
         let is_installed = exe_exists && config_exists;
+        tracing::info!("[check_status] is_installed={}", is_installed);
 
         let mut local_version = None;
         if is_installed {
             local_version = self.read_local_version(install_path).ok();
         }
 
+        tracing::info!("[check_status] fetching remote package...");
         let remote = self.get_latest_package(channel).await?;
+        tracing::info!("[check_status] got remote: version={}", remote.version);
         let remote_version = Some(remote.version.clone());
 
         let has_update = if let (Some(ref local), Some(ref remote)) =
@@ -246,6 +282,8 @@ impl GameLauncherService {
             false
         };
 
+        let active_operation = self.get_active_operation().await;
+
         Ok(GameStatus {
             is_installed,
             has_update,
@@ -254,6 +292,7 @@ impl GameLauncherService {
             has_preload,
             preload_version: remote.preload_version,
             preload_completed,
+            active_operation,
         })
     }
 
@@ -742,6 +781,9 @@ impl GameLauncherService {
         install_path: &str,
         progress_callback: Arc<dyn Fn(DownloadProgress) + Send + Sync>,
     ) -> Result<String, String> {
+        if self.has_active_operation().await {
+            return Err("Another operation is in progress".to_string());
+        }
         // 1. 检查阶段
         tracing::info!("[install] Starting install_or_update: channel={}, path={}", channel.as_str(), install_path);
         progress_callback(DownloadProgress {
@@ -1138,6 +1180,9 @@ impl GameLauncherService {
         max_concurrent: usize,
         quick: bool,
     ) -> Result<String, String> {
+        if self.has_active_operation().await {
+            return Err("Another operation is in progress".to_string());
+        }
         tracing::info!(
             "[verify] ======== verify_and_repair START ======== channel={:?}, install_path={}, max_concurrent={}, quick={}",
             channel, install_path, max_concurrent, quick
@@ -1994,18 +2039,47 @@ impl GameLauncherService {
     }
 
     /// 获取启动器公告内容（Banner + 公告合并返回）
+    async fn batch_proxy_web_raw(
+        &self,
+        channel: &GameChannel,
+        proxy_reqs: serde_json::Value,
+    ) -> Result<serde_json::Value, String> {
+        let req_body = serde_json::json!({
+            "seq": channel.seq(),
+            "proxy_reqs": proxy_reqs
+        });
+
+        let resp = self
+            .http_client
+            .post(channel.web_api_url())
+            .json(&req_body)
+            .send()
+            .await
+            .map_err(|e| format!("Web API request failed: {}", e))?;
+
+        let text = resp.text().await.map_err(|e| format!("Failed to read response body: {}", e))?;
+
+        let raw: serde_json::Value = serde_json::from_str(&text)
+            .map_err(|e| format!("Failed to parse web API response: {}", e))?;
+
+        Ok(raw)
+    }
+
     pub async fn get_notice_content(
         &self,
         channel: &GameChannel,
     ) -> Result<LauncherNoticeContent, String> {
+        // B服公告API与官服相同，直接用官服参数
+        let api_channel = if *channel == GameChannel::Bilibili { &GameChannel::Official } else { channel };
+
         let proxy_reqs = serde_json::json!([
             {
                 "kind": "get_banner",
                 "get_banner_req": {
-                    "appcode": channel.app_code(),
+                    "appcode": api_channel.app_code(),
                     "language": "zh-cn",
-                    "channel": channel.channel(),
-                    "sub_channel": channel.sub_channel(),
+                    "channel": api_channel.channel(),
+                    "sub_channel": api_channel.sub_channel(),
                     "platform": "Windows",
                     "source": "launcher"
                 }
@@ -2013,59 +2087,99 @@ impl GameLauncherService {
             {
                 "kind": "get_announcement",
                 "get_announcement_req": {
-                    "appcode": channel.app_code(),
+                    "appcode": api_channel.app_code(),
                     "language": "zh-cn",
-                    "channel": channel.channel(),
-                    "sub_channel": channel.sub_channel(),
+                    "channel": api_channel.channel(),
+                    "sub_channel": api_channel.sub_channel(),
                     "platform": "Windows",
                     "source": "launcher"
                 }
             }
         ]);
 
-        let body = self.batch_proxy_web(channel, proxy_reqs).await?;
+        let raw = self.batch_proxy_web_raw(api_channel, proxy_reqs).await?;
 
         let mut banners = Vec::new();
         let mut announcements = Vec::new();
 
-        for rsp in &body.proxy_rsps {
-            if let Some(ref banner_rsp) = rsp.get_banner_rsp {
-                for b in &banner_rsp.banners {
-                    banners.push(BannerItem {
-                        image_url: b.url.clone(),
-                        jump_url: b.jump_url.clone(),
-                    });
-                }
-            }
-            if let Some(ref announcement_rsp) = rsp.get_announcement_rsp {
-                for tab in &announcement_rsp.tabs {
-                    for a in &tab.announcements {
-                        let date = a
-                            .start_ts
-                            .as_ref()
-                            .and_then(|ts| ts.parse::<i64>().ok())
-                            .map(|ts| {
-                                let dt = chrono::DateTime::from_timestamp(ts, 0)
-                                    .unwrap_or_default();
-                                dt.format("%m/%d").to_string()
-                            })
-                            .unwrap_or_default();
+        if let Some(rsps) = raw.get("proxy_rsps").and_then(|v| v.as_array()) {
+            for rsp in rsps {
+                let kind = rsp.get("kind").and_then(|v| v.as_str()).unwrap_or("");
 
-                        let title = a.content.trim().to_string();
-                        if title.is_empty() {
-                            continue;
+                if kind == "get_banner" {
+                    if let Some(banner_rsp) = rsp.get("get_banner_rsp") {
+                        if let Some(items) = banner_rsp.get("banners").and_then(|v| v.as_array()) {
+                            for b in items {
+                                let image_url = b.get("url").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                                let jump_url = b.get("jump_url").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                                if !image_url.is_empty() {
+                                    banners.push(BannerItem { image_url, jump_url });
+                                }
+                            }
                         }
-
-                        announcements.push(AnnouncementItem {
-                            category: tab.tab_name.clone(),
-                            title,
-                            date,
-                            jump_url: a.jump_url.clone().unwrap_or_default(),
-                        });
                     }
                 }
-            } else {
-                eprintln!("[Launcher] get_announcement_rsp is None for kind={}, raw response will be logged by batch_proxy_web", rsp.kind);
+
+                if kind == "get_announcement" {
+                    if let Some(ann_rsp) = rsp.get("get_announcement_rsp") {
+                        if let Some(tabs) = ann_rsp.get("tabs").and_then(|v| v.as_array()) {
+                            for tab in tabs {
+                                let tab_name = tab.get("tabName")
+                                    .or_else(|| tab.get("tab_name"))
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("")
+                                    .to_string();
+                                if let Some(items) = tab.get("announcements").and_then(|v| v.as_array()) {
+                                    for a in items {
+                                        let title = a.get("title")
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or("")
+                                            .trim()
+                                            .to_string();
+                                        let content = a.get("content")
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or("")
+                                            .trim()
+                                            .to_string();
+                                        let display_title = if !title.is_empty() { title } else { content };
+                                        if display_title.is_empty() { continue; }
+
+                                        let date = a.get("start_ts")
+                                            .or_else(|| a.get("startTs"))
+                                            .and_then(|v| {
+                                                // 尝试从字符串或数字解析时间戳
+                                                if let Some(s) = v.as_str() {
+                                                    s.parse::<i64>().ok()
+                                                } else {
+                                                    v.as_i64()
+                                                }
+                                            })
+                                            .map(|ts| {
+                                                // 如果时间戳大于1e12，认为是毫秒，转换为秒
+                                                let secs = if ts > 1_000_000_000_000 { ts / 1000 } else { ts };
+                                                let dt = chrono::DateTime::from_timestamp(secs, 0).unwrap_or_default();
+                                                dt.format("%m/%d").to_string()
+                                            })
+                                            .unwrap_or_default();
+
+                                        let jump_url = a.get("jump_url")
+                                            .or_else(|| a.get("jumpUrl"))
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or("")
+                                            .to_string();
+
+                                        announcements.push(AnnouncementItem {
+                                            category: tab_name.clone(),
+                                            title: display_title,
+                                            date,
+                                            jump_url,
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -2129,6 +2243,258 @@ impl GameLauncherService {
             "image".to_string()
         }
     }
+
+    /// 切换游戏渠道（5阶段流程）
+    pub async fn switch_channel(
+        &self,
+        from_channel: &GameChannel,
+        to_channel: &GameChannel,
+        install_path: &str,
+        app: tauri::AppHandle,
+    ) -> Result<String, String> {
+        if self.has_active_operation().await {
+            return Err("Another operation is in progress".to_string());
+        }
+
+        tracing::info!(
+            "[switch] Starting: {} -> {}, path={}",
+            from_channel.as_str(),
+            to_channel.as_str(),
+            install_path
+        );
+
+        let game_dir = Path::new(install_path);
+        let staging_dir = game_dir.join(".switch.download");
+        let backup_root = game_dir.join(".switch");
+
+        let emit = |phase: &str, downloaded: u64, total: u64, file: Option<String>, idx: usize, count: usize| {
+            let progress = SwitchProgress {
+                phase: phase.to_string(),
+                downloaded,
+                total,
+                current_file: file,
+                file_index: idx,
+                file_count: count,
+                from_channel: from_channel.as_str().to_string(),
+                to_channel: to_channel.as_str().to_string(),
+            };
+            let _ = app.emit("launcher://switch-progress", &progress);
+            let _ = app.emit("launcher://progress", &ActiveOperation::Switching(progress));
+        };
+
+        // ===== Phase 1: Fetch manifests + diff =====
+        self.set_active_operation(Some(ActiveOperation::Switching(SwitchProgress {
+            phase: "checking".to_string(),
+            downloaded: 0, total: 0,
+            current_file: None, file_index: 0, file_count: 0,
+            from_channel: from_channel.as_str().to_string(),
+            to_channel: to_channel.as_str().to_string(),
+        }))).await;
+
+        if SWITCH_CANCELLED.load(Ordering::SeqCst) {
+            self.set_active_operation(None).await;
+            reset_switch_cancel();
+            return Err("Switch cancelled".to_string());
+        }
+
+        let from_remote = self.get_latest_package(from_channel).await?;
+        if SWITCH_CANCELLED.load(Ordering::SeqCst) {
+            self.set_active_operation(None).await;
+            reset_switch_cancel();
+            return Err("Switch cancelled".to_string());
+        }
+        let to_remote = self.get_latest_package(to_channel).await?;
+        if SWITCH_CANCELLED.load(Ordering::SeqCst) {
+            self.set_active_operation(None).await;
+            reset_switch_cancel();
+            return Err("Switch cancelled".to_string());
+        }
+        let (from_manifest, _) = self.fetch_manifest(&from_remote.resource_base_url).await?;
+        if SWITCH_CANCELLED.load(Ordering::SeqCst) {
+            self.set_active_operation(None).await;
+            reset_switch_cancel();
+            return Err("Switch cancelled".to_string());
+        }
+        let (to_manifest, _) = self.fetch_manifest(&to_remote.resource_base_url).await?;
+
+        let from_map: std::collections::HashMap<&str, &ManifestFile> = from_manifest.iter().map(|f| (f.path.as_str(), f)).collect();
+        let to_map: std::collections::HashMap<&str, &ManifestFile> = to_manifest.iter().map(|f| (f.path.as_str(), f)).collect();
+
+        let mut files_to_download: Vec<ManifestFile> = Vec::new();
+        let mut files_to_remove: Vec<ManifestFile> = Vec::new();
+
+        for (path, to_entry) in &to_map {
+            match from_map.get(path) {
+                Some(from_entry) => {
+                    if from_entry.md5 != to_entry.md5 || from_entry.size != to_entry.size {
+                        files_to_download.push((*to_entry).clone());
+                    }
+                }
+                None => {
+                    files_to_download.push((*to_entry).clone());
+                }
+            }
+        }
+        for (path, from_entry) in &from_map {
+            if !to_map.contains_key(path) {
+                files_to_remove.push((*from_entry).clone());
+            }
+        }
+
+        tracing::info!(
+            "[switch] Diff: {} to download, {} to remove",
+            files_to_download.len(),
+            files_to_remove.len()
+        );
+
+        if files_to_download.is_empty() && files_to_remove.is_empty() {
+            self.set_active_operation(None).await;
+            return Ok(to_remote.version);
+        }
+
+        // ===== Phase 2: Download to staging =====
+        fs::create_dir_all(&staging_dir).map_err(|e| format!("Create staging dir: {}", e))?;
+        let mut downloaded_files: Vec<PathBuf> = Vec::new();
+
+        let total_download_bytes: u64 = files_to_download.iter().map(|f| f.size.max(0) as u64).sum();
+        let mut accumulated_bytes: u64 = 0;
+
+        for (idx, file) in files_to_download.iter().enumerate() {
+            if SWITCH_CANCELLED.load(Ordering::SeqCst) {
+                tracing::info!("[switch] Cancelled during download, cleaning staging");
+                for f in &downloaded_files { let _ = fs::remove_file(f); }
+                let _ = fs::remove_dir_all(&staging_dir);
+                self.set_active_operation(None).await;
+                reset_switch_cancel();
+                return Err("Switch cancelled".to_string());
+            }
+
+            let dest = staging_dir.join(&file.path);
+            if let Some(parent) = dest.parent() { fs::create_dir_all(parent).ok(); }
+
+            let backup_path = backup_root.join(to_channel.as_str()).join(&file.path);
+            let file_size = file.size.max(0) as u64;
+
+            if backup_path.exists() {
+                if let Ok(meta) = fs::metadata(&backup_path) {
+                    if meta.len() as i64 == file.size {
+                        if hg_crypto::verify_md5(backup_path.to_str().unwrap_or(""), &file.md5).unwrap_or(false) {
+                            tracing::info!("[switch] Reusing backup for {}", file.path);
+                            fs::copy(&backup_path, &dest).map_err(|e| format!("Copy backup: {}", e))?;
+                            accumulated_bytes += file_size;
+                            downloaded_files.push(dest);
+                            emit("downloading", accumulated_bytes, total_download_bytes, Some(file.path.clone()), idx, files_to_download.len());
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            let download_url = format!("{}/{}", to_remote.resource_base_url, file.path);
+            emit("downloading", accumulated_bytes, total_download_bytes, Some(file.path.clone()), idx, files_to_download.len());
+
+            let dl_counter = Arc::new(AtomicU64::new(0));
+            let dl_counter_clone = dl_counter.clone();
+            let dest_clone = dest.to_string_lossy().to_string();
+            let md5_clone = file.md5.clone();
+            let url_clone = download_url.clone();
+
+            let result = download_single_file(&url_clone, &dest_clone, &md5_clone, dl_counter_clone, file_size).await;
+            match result {
+                Ok(()) => {
+                    accumulated_bytes += file_size;
+                    downloaded_files.push(dest);
+                }
+                Err(e) => {
+                    tracing::error!("[switch] Download failed for {}: {}", file.path, e);
+                    for f in &downloaded_files { let _ = fs::remove_file(f); }
+                    let _ = fs::remove_dir_all(&staging_dir);
+                    self.set_active_operation(None).await;
+                    return Err(format!("Download failed for {}: {}", file.path, e));
+                }
+            }
+        }
+
+        tracing::info!("[switch] Phase 2 complete: {} files in staging", downloaded_files.len());
+
+        // ===== Phase 3: Backup old files + delete =====
+        let backup_dir = backup_root.join(from_channel.as_str());
+        let mut backed_up_files: Vec<(PathBuf, PathBuf)> = Vec::new();
+
+        for (idx, file) in files_to_remove.iter().enumerate() {
+            if SWITCH_CANCELLED.load(Ordering::SeqCst) {
+                tracing::info!("[switch] Cancelled during backup, restoring");
+                for (original, backup) in &backed_up_files {
+                    if !original.exists() && backup.exists() {
+                        if let Some(parent) = original.parent() { fs::create_dir_all(parent).ok(); }
+                        fs::copy(backup, original).ok();
+                    }
+                }
+                self.set_active_operation(None).await;
+                reset_switch_cancel();
+                return Err("Switch cancelled".to_string());
+            }
+
+            let original = game_dir.join(&file.path);
+            let backup = backup_dir.join(&file.path);
+            if let Some(parent) = backup.parent() { fs::create_dir_all(parent).ok(); }
+
+            emit("backing_up", idx as u64, files_to_remove.len() as u64,
+                Some(file.path.clone()), idx, files_to_remove.len());
+
+            if original.exists() {
+                fs::copy(&original, &backup).map_err(|e| format!("Backup copy: {}", e))?;
+                fs::remove_file(&original).map_err(|e| format!("Delete original: {}", e))?;
+                backed_up_files.push((original, backup));
+            }
+        }
+
+        tracing::info!("[switch] Phase 3 complete: {} files backed up", backed_up_files.len());
+
+        // ===== Phase 4: Copy staging to game dir =====
+        let mut moved_files: Vec<PathBuf> = Vec::new();
+
+        for (idx, file) in files_to_download.iter().enumerate() {
+            if SWITCH_CANCELLED.load(Ordering::SeqCst) {
+                tracing::info!("[switch] Cancelled during move, rolling back");
+                for dst in &moved_files {
+                    let _ = fs::remove_file(dst);
+                    let relative = dst.strip_prefix(game_dir).unwrap_or(dst);
+                    let backup = backup_dir.join(relative);
+                    if backup.exists() {
+                        if let Some(parent) = dst.parent() { fs::create_dir_all(parent).ok(); }
+                        fs::copy(backup, dst).ok();
+                    }
+                }
+                self.set_active_operation(None).await;
+                reset_switch_cancel();
+                return Err("Switch cancelled".to_string());
+            }
+
+            let src = staging_dir.join(&file.path);
+            let dst = game_dir.join(&file.path);
+            if let Some(parent) = dst.parent() { fs::create_dir_all(parent).ok(); }
+
+            emit("moving", idx as u64, files_to_download.len() as u64,
+                Some(file.path.clone()), idx, files_to_download.len());
+
+            fs::copy(&src, &dst).map_err(|e| format!("Move to game dir: {}", e))?;
+            moved_files.push(dst);
+        }
+
+        tracing::info!("[switch] Phase 4 complete: {} files moved to game dir", moved_files.len());
+
+        // ===== Phase 5: Cleanup =====
+        let _ = fs::remove_dir_all(&staging_dir);
+
+        emit("completed", 0, 0, None, 0, 0);
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        self.set_active_operation(None).await;
+
+        tracing::info!("[switch] Channel switch complete: {} -> {}", from_channel.as_str(), to_channel.as_str());
+        Ok(to_remote.version)
+    }
+
 }
 
 /// 单文件下载+验证（供并发下载使用）

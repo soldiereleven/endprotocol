@@ -115,6 +115,46 @@ impl GameChannel {
     }
 }
 
+/// 活跃操作（统一管理安装/校验/切服状态）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum ActiveOperation {
+    #[serde(rename = "installing")]
+    Installing(OperationProgress),
+    #[serde(rename = "verifying")]
+    Verifying(OperationProgress),
+    #[serde(rename = "repairing")]
+    Repairing(OperationProgress),
+    #[serde(rename = "switching")]
+    Switching(SwitchProgress),
+}
+
+/// 通用操作进度（安装/校验/修复共用）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OperationProgress {
+    pub stage: String,
+    pub downloaded: u64,
+    pub total: u64,
+    pub current_file: Option<String>,
+    pub file_index: usize,
+    pub file_count: usize,
+    #[serde(default)]
+    pub verified_bytes: u64,
+}
+
+/// 切服进度（含阶段和渠道信息）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SwitchProgress {
+    pub phase: String,
+    pub downloaded: u64,
+    pub total: u64,
+    pub current_file: Option<String>,
+    pub file_index: usize,
+    pub file_count: usize,
+    pub from_channel: String,
+    pub to_channel: String,
+}
+
 /// 游戏安装状态
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameStatus {
@@ -125,6 +165,8 @@ pub struct GameStatus {
     pub has_preload: bool,
     pub preload_version: Option<String>,
     pub preload_completed: bool,
+    #[serde(default)]
+    pub active_operation: Option<ActiveOperation>,
 }
 
 /// API 响应结构
@@ -314,13 +356,13 @@ pub struct BannerRspItem {
 /// 公告 API 响应
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnnouncementRsp {
-    #[serde(default)]
+    #[serde(default, alias = "tab_list")]
     pub tabs: Vec<AnnouncementTab>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnnouncementTab {
-    #[serde(rename = "tabName", default)]
+    #[serde(alias = "tab_name", alias = "tabName", default)]
     pub tab_name: String,
     #[serde(default)]
     pub announcements: Vec<AnnouncementApiItem>,
@@ -330,9 +372,11 @@ pub struct AnnouncementTab {
 pub struct AnnouncementApiItem {
     #[serde(default)]
     pub content: String,
-    #[serde(rename = "start_ts", default)]
+    #[serde(default, alias = "title")]
+    pub title: Option<String>,
+    #[serde(default, alias = "startTs", alias = "start_ts")]
     pub start_ts: Option<String>,
-    #[serde(rename = "jump_url", default)]
+    #[serde(default, alias = "jumpUrl", alias = "jump_url")]
     pub jump_url: Option<String>,
 }
 
