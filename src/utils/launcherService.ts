@@ -13,6 +13,21 @@ export interface GameStatus {
   has_preload: boolean;
   preload_version: string | null;
   preload_completed: boolean;
+  active_operation: ActiveOperation | null;
+}
+
+export interface ActiveOperation {
+  type: "installing" | "verifying" | "repairing" | "switching";
+  stage?: string;
+  phase?: string;
+  downloaded?: number;
+  total?: number;
+  current_file?: string | null;
+  file_index?: number;
+  file_count?: number;
+  verified_bytes?: number;
+  from_channel?: string;
+  to_channel?: string;
 }
 
 export interface RemotePackage {
@@ -248,12 +263,48 @@ export async function getDiskSpace(path: string): Promise<DiskSpace> {
   return invoke<DiskSpace>("launcher_get_disk_space", { path });
 }
 
+export async function switchChannel(
+  fromChannel: GameChannel,
+  toChannel: GameChannel,
+  installPath: string,
+): Promise<string> {
+  return invoke<string>("launcher_switch_channel", {
+    fromChannel,
+    toChannel,
+    installPath,
+  });
+}
+
+export async function cancelSwitch(): Promise<void> {
+  return invoke<void>("launcher_cancel_switch");
+}
+
+export async function cancelAll(): Promise<void> {
+  return invoke<void>("launcher_cancel_all");
+}
+
 // ========== Event Listener ==========
 
 export function onLauncherProgress(
   callback: (progress: DownloadProgress) => void,
 ): Promise<UnlistenFn> {
   return listen<DownloadProgress>("launcher-progress", (event) => {
+    callback(event.payload);
+  });
+}
+
+export function onProgress(
+  callback: (op: ActiveOperation) => void,
+): Promise<UnlistenFn> {
+  return listen<ActiveOperation>("launcher://progress", (event) => {
+    callback(event.payload);
+  });
+}
+
+export function onSwitchProgress(
+  callback: (progress: DownloadProgress) => void,
+): Promise<UnlistenFn> {
+  return listen<DownloadProgress>("launcher://switch-progress", (event) => {
     callback(event.payload);
   });
 }
