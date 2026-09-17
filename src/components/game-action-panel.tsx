@@ -114,7 +114,7 @@ export function GameActionPanel() {
 
   // Derived state: prefer localActiveOp (real-time from events) over gameStatus.active_operation (polled)
   const activeOp = localActiveOp ?? gameStatus?.active_operation ?? null;
-  const progress = (activeOp && (activeOp.type === "installing" || activeOp.type === "repairing"))
+  const progress = (activeOp && (activeOp.type === "installing" || activeOp.type === "verifying" || activeOp.type === "repairing"))
     ? { downloaded: activeOp.downloaded ?? 0, total: activeOp.total ?? 0, stage: activeOp.stage ?? "",
         current_file: activeOp.current_file ?? null, file_index: activeOp.file_index ?? 0,
         file_count: activeOp.file_count ?? 0, verified_bytes: activeOp.verified_bytes ?? 0 }
