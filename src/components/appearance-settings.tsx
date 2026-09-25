@@ -1,4 +1,11 @@
-import { useState, useEffect, useCallback, useRef, useLayoutEffect, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useLayoutEffect,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { isTauri, invoke } from "@tauri-apps/api/core";
@@ -7,7 +14,18 @@ import { SettingsDivider } from "@/components/ui/settings-row";
 import ScreenColorPicker from "@/components/screen-color-picker";
 import { getConfig, setConfig } from "@/utils/configService";
 import { MorphIcon } from "morphicons/react";
-import { Sun, Moon, Monitor, Check, Plus, Pencil, Trash2, Pipette, ImagePlus, X } from "lucide";
+import {
+  Sun,
+  Moon,
+  Monitor,
+  Check,
+  Plus,
+  Pencil,
+  Trash2,
+  Pipette,
+  ImagePlus,
+  X,
+} from "lucide";
 
 type ThemeMode = "light" | "dark" | "system";
 
@@ -15,36 +33,122 @@ interface ThemeColor {
   name: string;
   label: string;
   colors: {
-    50: string; 100: string; 200: string; 300: string; 400: string;
-    500: string; 600: string; 700: string; 800: string; 900: string;
+    50: string;
+    100: string;
+    200: string;
+    300: string;
+    400: string;
+    500: string;
+    600: string;
+    700: string;
+    800: string;
+    900: string;
     foreground: string;
   };
 }
 
 const PRESET_COLORS: ThemeColor[] = [
   {
-    name: "indigo", label: "Indigo",
-    colors: { 50:"#eef2ff",100:"#e0e7ff",200:"#c7d2fe",300:"#a5b4fc",400:"#818cf8",500:"#6366f1",600:"#4f46e5",700:"#4338ca",800:"#3730a3",900:"#312e81",foreground:"#ffffff" },
+    name: "indigo",
+    label: "Indigo",
+    colors: {
+      50: "#eef2ff",
+      100: "#e0e7ff",
+      200: "#c7d2fe",
+      300: "#a5b4fc",
+      400: "#818cf8",
+      500: "#6366f1",
+      600: "#4f46e5",
+      700: "#4338ca",
+      800: "#3730a3",
+      900: "#312e81",
+      foreground: "#ffffff",
+    },
   },
   {
-    name: "blue", label: "Blue",
-    colors: { 50:"#eff6ff",100:"#dbeafe",200:"#bfdbfe",300:"#93c5fd",400:"#60a5fa",500:"#3b82f6",600:"#2563eb",700:"#1d4ed8",800:"#1e40af",900:"#1e3a8a",foreground:"#ffffff" },
+    name: "blue",
+    label: "Blue",
+    colors: {
+      50: "#eff6ff",
+      100: "#dbeafe",
+      200: "#bfdbfe",
+      300: "#93c5fd",
+      400: "#60a5fa",
+      500: "#3b82f6",
+      600: "#2563eb",
+      700: "#1d4ed8",
+      800: "#1e40af",
+      900: "#1e3a8a",
+      foreground: "#ffffff",
+    },
   },
   {
-    name: "emerald", label: "Emerald",
-    colors: { 50:"#ecfdf5",100:"#d1fae5",200:"#a7f3d0",300:"#6ee7b7",400:"#34d399",500:"#10b981",600:"#059669",700:"#047857",800:"#065f46",900:"#064e3b",foreground:"#ffffff" },
+    name: "emerald",
+    label: "Emerald",
+    colors: {
+      50: "#ecfdf5",
+      100: "#d1fae5",
+      200: "#a7f3d0",
+      300: "#6ee7b7",
+      400: "#34d399",
+      500: "#10b981",
+      600: "#059669",
+      700: "#047857",
+      800: "#065f46",
+      900: "#064e3b",
+      foreground: "#ffffff",
+    },
   },
   {
-    name: "rose", label: "Rose",
-    colors: { 50:"#fff1f2",100:"#ffe4e6",200:"#fecdd3",300:"#fda4af",400:"#fb7185",500:"#f43f5e",600:"#e11d48",700:"#be123c",800:"#9f1239",900:"#881337",foreground:"#ffffff" },
+    name: "rose",
+    label: "Rose",
+    colors: {
+      50: "#fff1f2",
+      100: "#ffe4e6",
+      200: "#fecdd3",
+      300: "#fda4af",
+      400: "#fb7185",
+      500: "#f43f5e",
+      600: "#e11d48",
+      700: "#be123c",
+      800: "#9f1239",
+      900: "#881337",
+      foreground: "#ffffff",
+    },
   },
   {
-    name: "amber", label: "Amber",
-    colors: { 50:"#fffbeb",100:"#fef3c7",200:"#fde68a",300:"#fcd34d",400:"#fbbf24",500:"#f59e0b",600:"#d97706",700:"#b45309",800:"#92400e",900:"#78350f",foreground:"#ffffff" },
+    name: "amber",
+    label: "Amber",
+    colors: {
+      50: "#fffbeb",
+      100: "#fef3c7",
+      200: "#fde68a",
+      300: "#fcd34d",
+      400: "#fbbf24",
+      500: "#f59e0b",
+      600: "#d97706",
+      700: "#b45309",
+      800: "#92400e",
+      900: "#78350f",
+      foreground: "#ffffff",
+    },
   },
   {
-    name: "slate", label: "Slate",
-    colors: { 50:"#f8fafc",100:"#f1f5f9",200:"#e2e8f0",300:"#cbd5e1",400:"#94a3b8",500:"#64748b",600:"#475569",700:"#334155",800:"#1e293b",900:"#0f172a",foreground:"#ffffff" },
+    name: "slate",
+    label: "Slate",
+    colors: {
+      50: "#f8fafc",
+      100: "#f1f5f9",
+      200: "#e2e8f0",
+      300: "#cbd5e1",
+      400: "#94a3b8",
+      500: "#64748b",
+      600: "#475569",
+      700: "#334155",
+      800: "#1e293b",
+      900: "#0f172a",
+      foreground: "#ffffff",
+    },
   },
 ];
 
@@ -52,8 +156,10 @@ function hexToHsl(hex: string): [number, number, number] {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
   const b = parseInt(hex.slice(5, 7), 16) / 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let h = 0, s = 0;
+  const max = Math.max(r, g, b),
+    min = Math.min(r, g, b);
+  let h = 0,
+    s = 0;
   const l = (max + min) / 2;
   if (max !== min) {
     const d = max - min;
@@ -66,12 +172,15 @@ function hexToHsl(hex: string): [number, number, number] {
 }
 
 function hslToHex(h: number, s: number, l: number): string {
-  s /= 100; l /= 100;
+  s /= 100;
+  l /= 100;
   const a = s * Math.min(l, 1 - l);
   const f = (n: number) => {
     const k = (n + h / 30) % 12;
     const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color).toString(16).padStart(2, "0");
+    return Math.round(255 * color)
+      .toString(16)
+      .padStart(2, "0");
   };
   return `#${f(0)}${f(8)}${f(4)}`;
 }
@@ -113,14 +222,19 @@ function hsvToHex(h: number, s: number, v: number): string {
   const c = vv * ss;
   const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
   const m = vv - c;
-  let r = 0, g = 0, b = 0;
+  let r = 0,
+    g = 0,
+    b = 0;
   if (h < 60) [r, g, b] = [c, x, 0];
   else if (h < 120) [r, g, b] = [x, c, 0];
   else if (h < 180) [r, g, b] = [0, c, x];
   else if (h < 240) [r, g, b] = [0, x, c];
   else if (h < 300) [r, g, b] = [x, 0, c];
   else [r, g, b] = [c, 0, x];
-  const f = (n: number) => Math.round((n + m) * 255).toString(16).padStart(2, "0");
+  const f = (n: number) =>
+    Math.round((n + m) * 255)
+      .toString(16)
+      .padStart(2, "0");
   return `#${f(r)}${f(g)}${f(b)}`;
 }
 
@@ -139,24 +253,36 @@ function useDragArea(onPosition: (left: number, top: number) => void) {
     onPositionRef.current(left, top);
   }, []);
 
-  const onPointerDown = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    dragging.current = true;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    move(e.clientX, e.clientY);
-  }, [move]);
+  const onPointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      dragging.current = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+      move(e.clientX, e.clientY);
+    },
+    [move],
+  );
 
-  const onPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
-    if (!dragging.current) return;
-    e.preventDefault();
-    move(e.clientX, e.clientY);
-  }, [move]);
+  const onPointerMove = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (!dragging.current) return;
+      e.preventDefault();
+      move(e.clientX, e.clientY);
+    },
+    [move],
+  );
 
   const end = useCallback(() => {
     dragging.current = false;
   }, []);
 
-  return { ref, onPointerDown, onPointerMove, onPointerUp: end, onPointerCancel: end };
+  return {
+    ref,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp: end,
+    onPointerCancel: end,
+  };
 }
 
 function generateColorScale(hex: string): ThemeColor["colors"] {
@@ -164,9 +290,17 @@ function generateColorScale(hex: string): ThemeColor["colors"] {
   const lighter = (l: number) => hslToHex(h, Math.max(s - 10, 10), l);
   const darker = (l: number) => hslToHex(h, Math.min(s + 10, 90), l);
   return {
-    50: lighter(97), 100: lighter(93), 200: lighter(86), 300: lighter(76),
-    400: lighter(64), 500: hex, 600: darker(42), 700: darker(34),
-    800: darker(26), 900: darker(18), foreground: "#ffffff",
+    50: lighter(97),
+    100: lighter(93),
+    200: lighter(86),
+    300: lighter(76),
+    400: lighter(64),
+    500: hex,
+    600: darker(42),
+    700: darker(34),
+    800: darker(26),
+    900: darker(18),
+    foreground: "#ffffff",
   };
 }
 
@@ -190,7 +324,10 @@ export function getAllColors(customColors: ThemeColor[]): ThemeColor[] {
   return [...PRESET_COLORS, ...customColors];
 }
 
-export function findColorByName(name: string, customColors: ThemeColor[]): ThemeColor | undefined {
+export function findColorByName(
+  name: string,
+  customColors: ThemeColor[],
+): ThemeColor | undefined {
   return getAllColors(customColors).find((c) => c.name === name);
 }
 
@@ -203,24 +340,34 @@ export function AppearanceSettings() {
   const [showPicker, setShowPicker] = useState(false);
   const [pickerHex, setPickerHex] = useState("#6366f1");
   const [pickerLabel, setPickerLabel] = useState("");
-  const [pickerPos, setPickerPos] = useState<{ top: number; left: number } | null>(null);
+  const [pickerPos, setPickerPos] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
   const [hexDraft, setHexDraft] = useState("");
   const [editingColor, setEditingColor] = useState<ThemeColor | null>(null);
-  const [ctxMenu, setCtxMenu] = useState<{ color: ThemeColor; x: number; y: number } | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{
+    color: ThemeColor;
+    x: number;
+    y: number;
+  } | null>(null);
   const [screenPickerOpen, setScreenPickerOpen] = useState(false);
-  const supportsEyeDropper = typeof window !== "undefined" && "EyeDropper" in window;
-  const [rgbDraft, setRgbDraft] = useState<{ r: string; g: string; b: string }>({
-    r: "99",
-    g: "102",
-    b: "241",
-  });
-  const [bgOpacity, setBgOpacity] = useState(0.33);
-  const DEFAULT_BG_OPACITY = 0.33;
+  const supportsEyeDropper =
+    typeof window !== "undefined" && "EyeDropper" in window;
+  const [rgbDraft, setRgbDraft] = useState<{ r: string; g: string; b: string }>(
+    {
+      r: "99",
+      g: "102",
+      b: "241",
+    },
+  );
   const [bgImagePath, setBgImagePath] = useState<string | null>(null);
   const [bgImageOpacity, setBgImageOpacity] = useState(0.5);
   const DEFAULT_BG_IMAGE_OPACITY = 0.5;
+  const [bgBlur, setBgBlur] = useState(16);
+  const DEFAULT_BG_BLUR = 16;
   const bgFileInputRef = useRef<HTMLInputElement>(null);
   const [bgImagePreview, setBgImagePreview] = useState<string | null>(null);
 
@@ -234,15 +381,23 @@ export function AppearanceSettings() {
     setHexDraft(hex.startsWith("#") ? hex.slice(1) : hex);
   }, []);
 
-  const handleSatChange = useCallback((left: number, top: number) => {
-    const { h } = hexToHsv(pickerHex);
-    applyHex(hsvToHex(h, Math.round(left * 100), Math.round((1 - top) * 100)));
-  }, [pickerHex, applyHex]);
+  const handleSatChange = useCallback(
+    (left: number, top: number) => {
+      const { h } = hexToHsv(pickerHex);
+      applyHex(
+        hsvToHex(h, Math.round(left * 100), Math.round((1 - top) * 100)),
+      );
+    },
+    [pickerHex, applyHex],
+  );
 
-  const handleHueChange = useCallback((left: number) => {
-    const { s, v } = hexToHsv(pickerHex);
-    applyHex(hsvToHex(Math.round(left * 360), s, v));
-  }, [pickerHex, applyHex]);
+  const handleHueChange = useCallback(
+    (left: number) => {
+      const { s, v } = hexToHsv(pickerHex);
+      applyHex(hsvToHex(Math.round(left * 360), s, v));
+    },
+    [pickerHex, applyHex],
+  );
 
   const satDrag = useDragArea(handleSatChange);
   const hueDrag = useDragArea(handleHueChange);
@@ -305,35 +460,52 @@ export function AppearanceSettings() {
 
   useEffect(() => {
     const loadConfig = async () => {
-      const [savedMode, savedColor, savedCustom, savedOpacity, savedBgPath, savedBgOpacity] = await Promise.all([
+      const [
+        savedMode,
+        savedColor,
+        savedCustom,
+        savedBgPath,
+        savedBgOpacity,
+        savedBgBlur,
+      ] = await Promise.all([
         getConfig<ThemeMode>("theme_mode"),
         getConfig<string>("theme_color"),
         getConfig<ThemeColor[]>("theme_custom_colors"),
-        getConfig<number>("bg_opacity"),
         getConfig<string>("bg_image_path"),
         getConfig<number>("bg_image_opacity"),
+        getConfig<number>("bg_blur"),
       ]);
       setThemeMode(savedMode ?? "system");
       setThemeColor(savedColor ?? "indigo");
       setCustomColors(savedCustom ?? []);
-      const opacity = savedOpacity ?? DEFAULT_BG_OPACITY;
-      setBgOpacity(opacity);
-      document.documentElement.style.setProperty("--bg-opacity", String(opacity));
       const bgPath = savedBgPath ?? null;
       setBgImagePath(bgPath);
       const bgImgOpacity = savedBgOpacity ?? DEFAULT_BG_IMAGE_OPACITY;
       setBgImageOpacity(bgImgOpacity);
-      document.documentElement.style.setProperty("--bg-image-opacity", String(bgImgOpacity));
+      document.documentElement.style.setProperty(
+        "--bg-image-opacity",
+        String(bgImgOpacity),
+      );
+      const bgBlurVal = savedBgBlur ?? DEFAULT_BG_BLUR;
+      setBgBlur(bgBlurVal);
+      document.documentElement.style.setProperty("--bg-blur", `${bgBlurVal}px`);
       if (bgPath) {
         try {
-          const bytes = await invoke<number[]>("read_image_file", { path: bgPath });
-          const blob = new Blob([new Uint8Array(bytes)], { type: "image/webp" });
+          const bytes = await invoke<number[]>("read_image_file", {
+            path: bgPath,
+          });
+          const blob = new Blob([new Uint8Array(bytes)], {
+            type: "image/webp",
+          });
           const url = URL.createObjectURL(blob);
           setBgImagePreview(url);
-          document.documentElement.style.setProperty("--bg-image", `url(${url})`);
+          document.documentElement.style.setProperty(
+            "--bg-image",
+            `url(${url})`,
+          );
         } catch {
           setBgImagePreview(null);
-          document.documentElement.style.setProperty("--bg-image", "");
+          document.documentElement.style.setProperty("--bg-image", "none");
         }
       }
       setIsLoading(false);
@@ -422,19 +594,6 @@ export function AppearanceSettings() {
     dispatchThemeChange();
   };
 
-  const handleBgOpacityChange = async (value: number) => {
-    const clamped = Math.max(0, Math.min(1, value));
-    setBgOpacity(clamped);
-    document.documentElement.style.setProperty("--bg-opacity", String(clamped));
-    await setConfig("bg_opacity", clamped);
-  };
-
-  const handleBgOpacityReset = async () => {
-    setBgOpacity(DEFAULT_BG_OPACITY);
-    document.documentElement.style.setProperty("--bg-opacity", String(DEFAULT_BG_OPACITY));
-    await setConfig("bg_opacity", DEFAULT_BG_OPACITY);
-  };
-
   const convertToWebP = useCallback((file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -460,21 +619,29 @@ export function AppearanceSettings() {
     });
   }, []);
 
-  const handleBgImageSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const dataUrl = await convertToWebP(file);
-      const savedPath = await invoke<string>("save_background_image", { data: dataUrl });
-      setBgImagePath(savedPath);
-      setBgImagePreview(dataUrl);
-      document.documentElement.style.setProperty("--bg-image", `url(${dataUrl})`);
-      await setConfig("bg_image_path", savedPath);
-    } catch (err) {
-      console.error("Failed to save background image:", err);
-    }
-    if (bgFileInputRef.current) bgFileInputRef.current.value = "";
-  }, [convertToWebP]);
+  const handleBgImageSelect = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const dataUrl = await convertToWebP(file);
+        const savedPath = await invoke<string>("save_background_image", {
+          data: dataUrl,
+        });
+        setBgImagePath(savedPath);
+        setBgImagePreview(dataUrl);
+        document.documentElement.style.setProperty(
+          "--bg-image",
+          `url(${dataUrl})`,
+        );
+        await setConfig("bg_image_path", savedPath);
+      } catch (err) {
+        console.error("Failed to save background image:", err);
+      }
+      if (bgFileInputRef.current) bgFileInputRef.current.value = "";
+    },
+    [convertToWebP],
+  );
 
   const handleBgImageRemove = useCallback(async () => {
     try {
@@ -484,21 +651,43 @@ export function AppearanceSettings() {
     }
     setBgImagePath(null);
     setBgImagePreview(null);
-    document.documentElement.style.setProperty("--bg-image", "");
+    document.documentElement.style.setProperty("--bg-image", "none");
     await setConfig("bg_image_path", null);
   }, []);
 
   const handleBgImageOpacityChange = useCallback(async (value: number) => {
     const clamped = Math.max(0, Math.min(1, value));
     setBgImageOpacity(clamped);
-    document.documentElement.style.setProperty("--bg-image-opacity", String(clamped));
+    document.documentElement.style.setProperty(
+      "--bg-image-opacity",
+      String(clamped),
+    );
     await setConfig("bg_image_opacity", clamped);
   }, []);
 
   const handleBgImageOpacityReset = useCallback(async () => {
     setBgImageOpacity(DEFAULT_BG_IMAGE_OPACITY);
-    document.documentElement.style.setProperty("--bg-image-opacity", String(DEFAULT_BG_IMAGE_OPACITY));
+    document.documentElement.style.setProperty(
+      "--bg-image-opacity",
+      String(DEFAULT_BG_IMAGE_OPACITY),
+    );
     await setConfig("bg_image_opacity", DEFAULT_BG_IMAGE_OPACITY);
+  }, []);
+
+  const handleBgBlurChange = useCallback(async (value: number) => {
+    const clamped = Math.max(0, Math.min(40, value));
+    setBgBlur(clamped);
+    document.documentElement.style.setProperty("--bg-blur", `${clamped}px`);
+    await setConfig("bg_blur", clamped);
+  }, []);
+
+  const handleBgBlurReset = useCallback(async () => {
+    setBgBlur(DEFAULT_BG_BLUR);
+    document.documentElement.style.setProperty(
+      "--bg-blur",
+      `${DEFAULT_BG_BLUR}px`,
+    );
+    await setConfig("bg_blur", DEFAULT_BG_BLUR);
   }, []);
 
   const handleSaveCustom = async () => {
@@ -556,7 +745,11 @@ export function AppearanceSettings() {
   const openPicker = (mode: "add" | "edit", color?: ThemeColor) => {
     if (mode === "edit" && color) {
       setPickerHex(color.colors[500]);
-      setHexDraft(color.colors[500].startsWith("#") ? color.colors[500].slice(1) : color.colors[500]);
+      setHexDraft(
+        color.colors[500].startsWith("#")
+          ? color.colors[500].slice(1)
+          : color.colors[500],
+      );
       setPickerLabel(color.label);
       setEditingColor(color);
     } else {
@@ -589,9 +782,11 @@ export function AppearanceSettings() {
     if (typeof window === "undefined" || !("EyeDropper" in window)) return;
     (async () => {
       try {
-        const dropper = new (window as unknown as {
-          EyeDropper: new () => { open(): Promise<{ sRGBHex: string }> };
-        }).EyeDropper();
+        const dropper = new (
+          window as unknown as {
+            EyeDropper: new () => { open(): Promise<{ sRGBHex: string }> };
+          }
+        ).EyeDropper();
         const result = await dropper.open();
         if (result?.sRGBHex) {
           const hex = result.sRGBHex;
@@ -606,11 +801,24 @@ export function AppearanceSettings() {
 
   if (isLoading) return null;
 
-  const modeOptions: { value: ThemeMode; label: string; icon: JSX.Element }[] = [
-    { value: "light", label: t("settings.general.theme_light"), icon: <MorphIcon icon={Sun} size={16} /> },
-    { value: "dark", label: t("settings.general.theme_dark"), icon: <MorphIcon icon={Moon} size={16} /> },
-    { value: "system", label: t("settings.general.theme_system"), icon: <MorphIcon icon={Monitor} size={16} /> },
-  ];
+  const modeOptions: { value: ThemeMode; label: string; icon: JSX.Element }[] =
+    [
+      {
+        value: "light",
+        label: t("settings.general.theme_light"),
+        icon: <MorphIcon icon={Sun} size={16} />,
+      },
+      {
+        value: "dark",
+        label: t("settings.general.theme_dark"),
+        icon: <MorphIcon icon={Moon} size={16} />,
+      },
+      {
+        value: "system",
+        label: t("settings.general.theme_system"),
+        icon: <MorphIcon icon={Monitor} size={16} />,
+      },
+    ];
 
   const hsv = hexToHsv(pickerHex);
 
@@ -619,8 +827,12 @@ export function AppearanceSettings() {
       {/* Theme Mode */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-foreground">{t("settings.appearance.theme_mode")}</p>
-          <p className="text-sm text-muted mt-0.5">{t("settings.appearance.theme_mode_desc")}</p>
+          <p className="font-medium text-foreground">
+            {t("settings.appearance.theme_mode")}
+          </p>
+          <p className="text-sm text-muted mt-0.5">
+            {t("settings.appearance.theme_mode_desc")}
+          </p>
         </div>
         <div className="flex gap-1 p-1 rounded-xl bg-default-100/60 ring-1 ring-default-200/50">
           {modeOptions.map((opt) => (
@@ -645,8 +857,12 @@ export function AppearanceSettings() {
       {/* Theme Color */}
       <div>
         <div className="mb-4">
-          <p className="font-medium text-foreground">{t("settings.appearance.theme_color")}</p>
-          <p className="text-sm text-muted mt-0.5">{t("settings.appearance.theme_color_desc")}</p>
+          <p className="font-medium text-foreground">
+            {t("settings.appearance.theme_color")}
+          </p>
+          <p className="text-sm text-muted mt-0.5">
+            {t("settings.appearance.theme_color_desc")}
+          </p>
         </div>
         <div className="space-y-4">
           {/* Preset row */}
@@ -660,16 +876,25 @@ export function AppearanceSettings() {
                   key={color.name}
                   onClick={() => handleColorChange(color.name)}
                   className={`relative w-10 h-10 rounded-full transition-all duration-200 cursor-pointer ${
-                    themeColor === color.name ? "ring-2 ring-offset-2 ring-offset-background scale-110" : "hover:scale-105"
+                    themeColor === color.name
+                      ? "ring-2 ring-offset-2 ring-offset-background scale-110"
+                      : "hover:scale-105"
                   }`}
                   style={{
                     backgroundColor: color.colors[500],
-                    ["--tw-ring-color" as string]: themeColor === color.name ? color.colors[500] : undefined,
+                    ["--tw-ring-color" as string]:
+                      themeColor === color.name ? color.colors[500] : undefined,
                   }}
                   title={color.label}
                 >
                   {themeColor === color.name && (
-                    <MorphIcon icon={Check} size={20} className="absolute inset-0 m-auto drop-shadow-md" color="white" strokeWidth={2.5} />
+                    <MorphIcon
+                      icon={Check}
+                      size={20}
+                      className="absolute inset-0 m-auto drop-shadow-md"
+                      color="white"
+                      strokeWidth={2.5}
+                    />
                   )}
                 </button>
               ))}
@@ -691,16 +916,25 @@ export function AppearanceSettings() {
                     setCtxMenu({ color, x: e.clientX, y: e.clientY });
                   }}
                   className={`relative w-10 h-10 rounded-full transition-all duration-200 cursor-pointer ${
-                    themeColor === color.name ? "ring-2 ring-offset-2 ring-offset-background scale-110" : "hover:scale-105"
+                    themeColor === color.name
+                      ? "ring-2 ring-offset-2 ring-offset-background scale-110"
+                      : "hover:scale-105"
                   }`}
                   style={{
                     backgroundColor: color.colors[500],
-                    ["--tw-ring-color" as string]: themeColor === color.name ? color.colors[500] : undefined,
+                    ["--tw-ring-color" as string]:
+                      themeColor === color.name ? color.colors[500] : undefined,
                   }}
                   title={color.label}
                 >
                   {themeColor === color.name && (
-                    <MorphIcon icon={Check} size={20} className="absolute inset-0 m-auto drop-shadow-md" color="white" strokeWidth={2.5} />
+                    <MorphIcon
+                      icon={Check}
+                      size={20}
+                      className="absolute inset-0 m-auto drop-shadow-md"
+                      color="white"
+                      strokeWidth={2.5}
+                    />
                   )}
                 </button>
               ))}
@@ -715,210 +949,256 @@ export function AppearanceSettings() {
                   <MorphIcon icon={Plus} size={20} strokeWidth={2} />
                 </button>
 
-                {showPicker && createPortal(
-                  <>
-                    <div className="fixed inset-0 z-[9998]" onClick={closePicker} />
-                    <div
-                      ref={pickerRef}
-                      className="fixed p-4 rounded-2xl glass-surface-strong shadow-2xl animate-scale-in z-[9999] w-64"
-                      style={{
-                        top: pickerPos?.top ?? -9999,
-                        left: pickerPos?.left ?? -9999,
-                      }}
-                    >
-                      <p className="text-sm font-medium text-foreground mb-3">
-                        {editingColor ? "Edit Color" : "Custom Color"}
-                      </p>
+                {showPicker &&
+                  createPortal(
+                    <>
+                      <div
+                        className="fixed inset-0 z-[9998]"
+                        onClick={closePicker}
+                      />
+                      <div
+                        ref={pickerRef}
+                        className="fixed p-4 rounded-2xl glass-surface-strong shadow-2xl animate-scale-in z-[9999] w-64"
+                        style={{
+                          top: pickerPos?.top ?? -9999,
+                          left: pickerPos?.left ?? -9999,
+                        }}
+                      >
+                        <p className="text-sm font-medium text-foreground mb-3">
+                          {editingColor ? "Edit Color" : "Custom Color"}
+                        </p>
 
-                      {/* 取色面板：饱和度/亮度 */}
-                      <div className="relative w-full" style={{ height: 160, borderRadius: 12, overflow: "hidden" }}>
+                        {/* 取色面板：饱和度/亮度 */}
                         <div
-                          className="absolute inset-0"
+                          className="relative w-full"
                           style={{
-                            backgroundColor: `hsl(${hsv.h} 100% 50%)`,
-                            backgroundImage:
-                              "linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent)",
+                            height: 160,
+                            borderRadius: 12,
+                            overflow: "hidden",
                           }}
-                        />
-                        <div
-                          ref={satDrag.ref}
-                          onPointerDown={satDrag.onPointerDown}
-                          onPointerMove={satDrag.onPointerMove}
-                          onPointerUp={satDrag.onPointerUp}
-                          onPointerCancel={satDrag.onPointerCancel}
-                          className="absolute inset-0"
-                          style={{ touchAction: "none", cursor: "crosshair" }}
-                          role="slider"
-                          aria-label="Color"
-                          aria-valuetext={`Saturation ${Math.round(hsv.s)}%, Brightness ${Math.round(hsv.v)}%`}
-                        />
-                        <div
-                          className="absolute rounded-full"
-                          style={{
-                            width: 24,
-                            height: 24,
-                            left: `${hsv.s}%`,
-                            top: `${100 - hsv.v}%`,
-                            transform: "translate(-50%, -50%)",
-                            pointerEvents: "none",
-                            backgroundColor: "#ffffff",
-                            border: "2px solid #ffffff",
-                            boxShadow: "0 1px 3px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.15)",
-                          }}
-                        />
-                      </div>
-
-                      {/* 取色面板：色相 */}
-                      <div className="relative w-full mt-3" style={{ height: 20, borderRadius: 999, overflow: "hidden" }}>
-                        <div
-                          className="absolute inset-0"
-                          style={{
-                            background:
-                              "linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)",
-                          }}
-                        />
-                        <div
-                          ref={hueDrag.ref}
-                          onPointerDown={hueDrag.onPointerDown}
-                          onPointerMove={hueDrag.onPointerMove}
-                          onPointerUp={hueDrag.onPointerUp}
-                          onPointerCancel={hueDrag.onPointerCancel}
-                          className="absolute inset-0"
-                          style={{ touchAction: "none", cursor: "pointer" }}
-                          role="slider"
-                          aria-label="Hue"
-                          aria-valuenow={Math.round(hsv.h)}
-                          aria-valuemin={0}
-                          aria-valuemax={360}
-                        />
-                        <div
-                          className="absolute rounded-full"
-                          style={{
-                            width: 22,
-                            height: 22,
-                            left: `${(hsv.h / 360) * 100}%`,
-                            top: "50%",
-                            transform: "translate(-50%, -50%)",
-                            pointerEvents: "none",
-                            backgroundColor: "#ffffff",
-                            border: "2px solid #ffffff",
-                            boxShadow: "0 1px 3px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.15)",
-                          }}
-                        />
-                      </div>
-
-                      {/* 颜色预览 + Hex 输入 */}
-                      <div className="flex items-center gap-3 mt-3 mb-3">
-                        <div
-                          className="w-10 h-10 shrink-0 rounded-xl ring-1 ring-separator shadow-inner"
-                          style={{ backgroundColor: pickerHex }}
-                        />
-                        <div className="flex items-center gap-1 glass-field flex-1 min-w-0 h-9 px-3 rounded-xl">
-                          <span className="text-muted/70 font-mono text-sm shrink-0">#</span>
-                          <input
-                            type="text"
-                            value={hexDraft}
-                            onChange={(e) => {
-                              const v = e.target.value.replace(/[^0-9a-fA-F]/g, "").slice(0, 6);
-                              setHexDraft(v);
-                              if (/^[0-9a-fA-F]{6}$/.test(v)) setPickerHex(`#${v}`);
+                        >
+                          <div
+                            className="absolute inset-0"
+                            style={{
+                              backgroundColor: `hsl(${hsv.h} 100% 50%)`,
+                              backgroundImage:
+                                "linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent)",
                             }}
-                            onPaste={(e) => {
-                              e.preventDefault();
-                              const pasted = e.clipboardData.getData("text").trim();
-                              const clean = pasted
-                                .replace(/^#/, "")
-                                .replace(/^0x/, "")
-                                .replace(/[^0-9a-fA-F]/g, "")
-                                .slice(0, 6);
-                              setHexDraft(clean);
-                              if (/^[0-9a-fA-F]{6}$/.test(clean)) setPickerHex(`#${clean}`);
+                          />
+                          <div
+                            ref={satDrag.ref}
+                            onPointerDown={satDrag.onPointerDown}
+                            onPointerMove={satDrag.onPointerMove}
+                            onPointerUp={satDrag.onPointerUp}
+                            onPointerCancel={satDrag.onPointerCancel}
+                            className="absolute inset-0"
+                            style={{ touchAction: "none", cursor: "crosshair" }}
+                            role="slider"
+                            aria-label="Color"
+                            aria-valuetext={`Saturation ${Math.round(hsv.s)}%, Brightness ${Math.round(hsv.v)}%`}
+                          />
+                          <div
+                            className="absolute rounded-full"
+                            style={{
+                              width: 24,
+                              height: 24,
+                              left: `${hsv.s}%`,
+                              top: `${100 - hsv.v}%`,
+                              transform: "translate(-50%, -50%)",
+                              pointerEvents: "none",
+                              backgroundColor: "#ffffff",
+                              border: "2px solid #ffffff",
+                              boxShadow:
+                                "0 1px 3px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.15)",
                             }}
-                            onBlur={() => {
-                              if (/^[0-9a-fA-F]{6}$/.test(hexDraft)) {
-                                setPickerHex(`#${hexDraft}`);
-                              } else {
-                                setHexDraft(pickerHex.startsWith("#") ? pickerHex.slice(1) : pickerHex);
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && /^[0-9a-fA-F]{6}$/.test(hexDraft)) {
-                                setPickerHex(`#${hexDraft}`);
-                                handleSaveCustom();
-                              }
-                            }}
-                            className="flex-1 min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted/70 font-mono focus:outline-none"
-                            placeholder="000000"
-                            maxLength={6}
                           />
                         </div>
-                        {(supportsEyeDropper || isTauri()) && (
-                          <button
-                            type="button"
-                            onClick={handlePickFromScreen}
-                            title="Pick color from screen"
-                            className="w-10 h-10 shrink-0 flex items-center justify-center glass-field rounded-xl text-muted hover:text-foreground transition-colors cursor-pointer"
-                          >
-                            <MorphIcon icon={Pipette} size={16} strokeWidth={1.8} />
-                          </button>
-                        )}
-                      </div>
 
-                      {/* RGB 输入 */}
-                      <div className="flex items-center gap-2 mb-3">
-                        {(
-                          [
-                            ["r", "R"],
-                            ["g", "G"],
-                            ["b", "B"],
-                          ] as const
-                        ).map(([ch, label]) => (
-                          <div key={ch} className="flex items-center gap-1 glass-field flex-1 min-w-0 h-9 px-3 rounded-xl">
-                            <span className="text-muted/60 font-mono text-sm shrink-0">{label}</span>
+                        {/* 取色面板：色相 */}
+                        <div
+                          className="relative w-full mt-3"
+                          style={{
+                            height: 20,
+                            borderRadius: 999,
+                            overflow: "hidden",
+                          }}
+                        >
+                          <div
+                            className="absolute inset-0"
+                            style={{
+                              background:
+                                "linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)",
+                            }}
+                          />
+                          <div
+                            ref={hueDrag.ref}
+                            onPointerDown={hueDrag.onPointerDown}
+                            onPointerMove={hueDrag.onPointerMove}
+                            onPointerUp={hueDrag.onPointerUp}
+                            onPointerCancel={hueDrag.onPointerCancel}
+                            className="absolute inset-0"
+                            style={{ touchAction: "none", cursor: "pointer" }}
+                            role="slider"
+                            aria-label="Hue"
+                            aria-valuenow={Math.round(hsv.h)}
+                            aria-valuemin={0}
+                            aria-valuemax={360}
+                          />
+                          <div
+                            className="absolute rounded-full"
+                            style={{
+                              width: 22,
+                              height: 22,
+                              left: `${(hsv.h / 360) * 100}%`,
+                              top: "50%",
+                              transform: "translate(-50%, -50%)",
+                              pointerEvents: "none",
+                              backgroundColor: "#ffffff",
+                              border: "2px solid #ffffff",
+                              boxShadow:
+                                "0 1px 3px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.15)",
+                            }}
+                          />
+                        </div>
+
+                        {/* 颜色预览 + Hex 输入 */}
+                        <div className="flex items-center gap-3 mt-3 mb-3">
+                          <div
+                            className="w-10 h-10 shrink-0 rounded-xl ring-1 ring-separator shadow-inner"
+                            style={{ backgroundColor: pickerHex }}
+                          />
+                          <div className="flex items-center gap-1 glass-field flex-1 min-w-0 h-9 px-3 rounded-xl">
+                            <span className="text-muted/70 font-mono text-sm shrink-0">
+                              #
+                            </span>
                             <input
                               type="text"
-                              inputMode="numeric"
-                              value={rgbDraft[ch]}
-                              onChange={(e) => handleRgbChange(ch, e.target.value)}
+                              value={hexDraft}
+                              onChange={(e) => {
+                                const v = e.target.value
+                                  .replace(/[^0-9a-fA-F]/g, "")
+                                  .slice(0, 6);
+                                setHexDraft(v);
+                                if (/^[0-9a-fA-F]{6}$/.test(v))
+                                  setPickerHex(`#${v}`);
+                              }}
+                              onPaste={(e) => {
+                                e.preventDefault();
+                                const pasted = e.clipboardData
+                                  .getData("text")
+                                  .trim();
+                                const clean = pasted
+                                  .replace(/^#/, "")
+                                  .replace(/^0x/, "")
+                                  .replace(/[^0-9a-fA-F]/g, "")
+                                  .slice(0, 6);
+                                setHexDraft(clean);
+                                if (/^[0-9a-fA-F]{6}$/.test(clean))
+                                  setPickerHex(`#${clean}`);
+                              }}
                               onBlur={() => {
-                                if (rgbDraft[ch] === "") {
-                                  setRgbDraft({ ...rgbDraft, [ch]: "0" });
-                                  handleRgbChange(ch, "0");
+                                if (/^[0-9a-fA-F]{6}$/.test(hexDraft)) {
+                                  setPickerHex(`#${hexDraft}`);
+                                } else {
+                                  setHexDraft(
+                                    pickerHex.startsWith("#")
+                                      ? pickerHex.slice(1)
+                                      : pickerHex,
+                                  );
                                 }
                               }}
-                              className="flex-1 min-w-0 bg-transparent text-sm text-foreground font-mono focus:outline-none"
-                              maxLength={3}
+                              onKeyDown={(e) => {
+                                if (
+                                  e.key === "Enter" &&
+                                  /^[0-9a-fA-F]{6}$/.test(hexDraft)
+                                ) {
+                                  setPickerHex(`#${hexDraft}`);
+                                  handleSaveCustom();
+                                }
+                              }}
+                              className="flex-1 min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted/70 font-mono focus:outline-none"
+                              placeholder="000000"
+                              maxLength={6}
                             />
                           </div>
-                        ))}
-                      </div>
+                          {(supportsEyeDropper || isTauri()) && (
+                            <button
+                              type="button"
+                              onClick={handlePickFromScreen}
+                              title="Pick color from screen"
+                              className="w-10 h-10 shrink-0 flex items-center justify-center glass-field rounded-xl text-muted hover:text-foreground transition-colors cursor-pointer"
+                            >
+                              <MorphIcon
+                                icon={Pipette}
+                                size={16}
+                                strokeWidth={1.8}
+                              />
+                            </button>
+                          )}
+                        </div>
 
-                      <input
-                        type="text"
-                        value={pickerLabel}
-                        onChange={(e) => setPickerLabel(e.target.value)}
-                        className="glass-field w-full min-w-0 h-9 px-3 rounded-xl text-sm text-foreground placeholder:text-muted/70 mb-3 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                        placeholder="Color name (optional)"
-                      />
+                        {/* RGB 输入 */}
+                        <div className="flex items-center gap-2 mb-3">
+                          {(
+                            [
+                              ["r", "R"],
+                              ["g", "G"],
+                              ["b", "B"],
+                            ] as const
+                          ).map(([ch, label]) => (
+                            <div
+                              key={ch}
+                              className="flex items-center gap-1 glass-field flex-1 min-w-0 h-9 px-3 rounded-xl"
+                            >
+                              <span className="text-muted/60 font-mono text-sm shrink-0">
+                                {label}
+                              </span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={rgbDraft[ch]}
+                                onChange={(e) =>
+                                  handleRgbChange(ch, e.target.value)
+                                }
+                                onBlur={() => {
+                                  if (rgbDraft[ch] === "") {
+                                    setRgbDraft({ ...rgbDraft, [ch]: "0" });
+                                    handleRgbChange(ch, "0");
+                                  }
+                                }}
+                                className="flex-1 min-w-0 bg-transparent text-sm text-foreground font-mono focus:outline-none"
+                                maxLength={3}
+                              />
+                            </div>
+                          ))}
+                        </div>
 
-                      <div className="flex gap-2">
-                        <button
-                          onClick={closePicker}
-                          className="flex-1 h-9 px-3 rounded-xl glass-field text-sm text-muted hover:text-foreground transition-colors cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={handleSaveCustom}
-                          className="flex-1 h-9 px-3 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer"
-                        >
-                          {editingColor ? "Save" : "Add"}
-                        </button>
+                        <input
+                          type="text"
+                          value={pickerLabel}
+                          onChange={(e) => setPickerLabel(e.target.value)}
+                          className="glass-field w-full min-w-0 h-9 px-3 rounded-xl text-sm text-foreground placeholder:text-muted/70 mb-3 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          placeholder="Color name (optional)"
+                        />
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={closePicker}
+                            className="flex-1 h-9 px-3 rounded-xl glass-field text-sm text-muted hover:text-foreground transition-colors cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleSaveCustom}
+                            className="flex-1 h-9 px-3 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer"
+                          >
+                            {editingColor ? "Save" : "Add"}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  </>,
-                  document.body,
-                )}
+                    </>,
+                    document.body,
+                  )}
               </div>
             </div>
           </div>
@@ -950,7 +1230,12 @@ export function AppearanceSettings() {
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-default-100 transition-colors cursor-pointer"
                 >
-                  <MorphIcon icon={Pencil} size={16} className="text-muted" strokeWidth={1.8} />
+                  <MorphIcon
+                    icon={Pencil}
+                    size={16}
+                    className="text-muted"
+                    strokeWidth={1.8}
+                  />
                   {t("common.edit")}
                 </button>
                 <button
@@ -977,42 +1262,15 @@ export function AppearanceSettings() {
 
       <SettingsDivider />
 
-      {/* Background Opacity */}
-      <div>
-        <div className="mb-4">
-          <p className="font-medium text-foreground">{t("settings.appearance.bg_opacity")}</p>
-          <p className="text-sm text-muted mt-0.5">{t("settings.appearance.bg_opacity_desc")}</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={bgOpacity}
-            onChange={(e) => handleBgOpacityChange(parseFloat(e.target.value))}
-            className="flex-1 h-2 rounded-full appearance-none cursor-pointer bg-default-200 accent-primary"
-          />
-          <span className="w-14 text-center text-sm font-mono text-foreground tabular-nums">
-            {Math.round(bgOpacity * 100)}%
-          </span>
-          <button
-            onClick={handleBgOpacityReset}
-            disabled={bgOpacity === DEFAULT_BG_OPACITY}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-separator text-muted hover:text-foreground hover:border-foreground/50 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
-          >
-            {t("common.reset")}
-          </button>
-        </div>
-      </div>
-
-      <SettingsDivider />
-
       {/* Background Image */}
       <div>
         <div className="mb-4">
-          <p className="font-medium text-foreground">{t("settings.appearance.bg_image")}</p>
-          <p className="text-sm text-muted mt-0.5">{t("settings.appearance.bg_image_desc")}</p>
+          <p className="font-medium text-foreground">
+            {t("settings.appearance.bg_image")}
+          </p>
+          <p className="text-sm text-muted mt-0.5">
+            {t("settings.appearance.bg_image_desc")}
+          </p>
         </div>
 
         {/* Hidden file input */}
@@ -1051,7 +1309,9 @@ export function AppearanceSettings() {
 
             {/* Image opacity */}
             <div>
-              <p className="text-sm text-muted mb-2">{t("settings.appearance.bg_image_opacity")}</p>
+              <p className="text-sm text-muted mb-2">
+                {t("settings.appearance.bg_image_opacity")}
+              </p>
               <div className="flex items-center gap-4">
                 <input
                   type="range"
@@ -1059,7 +1319,9 @@ export function AppearanceSettings() {
                   max="1"
                   step="0.01"
                   value={bgImageOpacity}
-                  onChange={(e) => handleBgImageOpacityChange(parseFloat(e.target.value))}
+                  onChange={(e) =>
+                    handleBgImageOpacityChange(parseFloat(e.target.value))
+                  }
                   className="flex-1 h-2 rounded-full appearance-none cursor-pointer bg-default-200 accent-primary"
                 />
                 <span className="w-14 text-center text-sm font-mono text-foreground tabular-nums">
@@ -1074,6 +1336,36 @@ export function AppearanceSettings() {
                 </button>
               </div>
             </div>
+
+            {/* Background blur */}
+            <div>
+              <p className="text-sm text-muted mb-2">
+                {t("settings.appearance.bg_blur")}
+              </p>
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min="0"
+                  max="40"
+                  step="1"
+                  value={bgBlur}
+                  onChange={(e) =>
+                    handleBgBlurChange(parseInt(e.target.value, 10))
+                  }
+                  className="flex-1 h-2 rounded-full appearance-none cursor-pointer bg-default-200 accent-primary"
+                />
+                <span className="w-14 text-center text-sm font-mono text-foreground tabular-nums">
+                  {bgBlur}px
+                </span>
+                <button
+                  onClick={handleBgBlurReset}
+                  disabled={bgBlur === DEFAULT_BG_BLUR}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-separator text-muted hover:text-foreground hover:border-foreground/50 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  {t("common.reset")}
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
           /* No image - show select button */
@@ -1082,7 +1374,9 @@ export function AppearanceSettings() {
             className="w-full flex items-center justify-center gap-3 p-6 rounded-xl border-2 border-dashed border-default-300 hover:border-primary/50 text-muted hover:text-foreground transition-all duration-200 cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
           >
             <MorphIcon icon={ImagePlus} size={24} strokeWidth={1.5} />
-            <span className="text-sm">{t("settings.appearance.bg_image_select")}</span>
+            <span className="text-sm">
+              {t("settings.appearance.bg_image_select")}
+            </span>
           </button>
         )}
       </div>
@@ -1095,7 +1389,6 @@ function applyThemeModeLocal(mode: ThemeMode) {
   const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   const isDark = mode === "dark" || (mode === "system" && systemDark);
   root.classList.toggle("dark", isDark);
-  root.setAttribute("data-aura-mode", isDark ? "dark" : "light");
 }
 
 function dispatchThemeChange() {

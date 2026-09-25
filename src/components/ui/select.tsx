@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { cn } from "@/lib/cn";
+import { cn } from "@/lib/utils";
 import { ChevronDownIcon } from "@/components/ui/app-icon";
 
 export interface GlassSelectOption {
@@ -13,22 +13,19 @@ export interface GlassSelectProps {
   options: GlassSelectOption[];
   onChange: (value: string) => void;
   className?: string;
-  /** 未选中时的占位文案（value 为 null 时显示） */
   placeholder?: string;
-  /** 面板最大高度 */
   maxMenuHeight?: number;
-  /** 选中项文字加粗/高亮（默认 false：仅高亮背景） */
   highlightSelected?: boolean;
 }
 
-/** Aura Glass 风格下拉：玻璃触发按钮 + portal 面板（不受父级 overflow 裁剪），点击外部自动关闭 */
-export function GlassSelect({
+function GlassSelect({
   value,
   options,
   onChange,
   className,
   placeholder,
   maxMenuHeight = 288,
+  highlightSelected = false,
 }: GlassSelectProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -69,8 +66,7 @@ export function GlassSelect({
         type="button"
         onClick={handleToggle}
         className={cn(
-          "flex items-center gap-2 h-9 pl-3 pr-2.5 rounded-lg text-sm cursor-pointer transition-all duration-200",
-          "glass-surface border border-separator/90",
+          "flex items-center gap-2 h-9 pl-3 pr-2.5 rounded-xl border border-separator bg-surface text-sm cursor-pointer transition-all duration-200",
           "hover:scale-105 hover:border-primary/50",
           "active:scale-95",
           open && "border-primary/50",
@@ -88,7 +84,9 @@ export function GlassSelect({
         createPortal(
           <div
             ref={menuRef}
-            className="fixed z-[9999] min-w-[150px] rounded-xl border border-separator/70 glass-surface-strong shadow-xl py-1 overflow-y-auto animate-scale-in"
+            className={cn(
+              "fixed z-[9999] min-w-[150px] rounded-xl border border-separator/70 glass-surface-strong shadow-xl py-1 overflow-y-auto overflow-x-hidden animate-scale-in",
+            )}
             style={{
               top: pos.top,
               left: pos.left,
@@ -110,8 +108,10 @@ export function GlassSelect({
                   className={cn(
                     "w-full text-left px-3 py-2 text-sm truncate transition-colors cursor-pointer",
                     active
-                      ? "bg-primary/15 text-primary font-semibold"
-                      : "text-foreground hover:bg-default-100",
+                      ? highlightSelected
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "bg-primary/10 text-primary"
+                      : "text-foreground hover:bg-foreground/5",
                   )}
                 >
                   {opt.label}
@@ -124,3 +124,38 @@ export function GlassSelect({
     </div>
   );
 }
+
+interface SelectProps {
+  value: string | null;
+  options: GlassSelectOption[];
+  onValueChange?: (value: string) => void;
+  onChange?: (value: string) => void;
+  className?: string;
+  placeholder?: string;
+  maxMenuHeight?: number;
+}
+
+function Select({
+  value,
+  options,
+  onValueChange,
+  onChange,
+  className,
+  placeholder,
+  maxMenuHeight = 288,
+}: SelectProps) {
+  const handleChange = onValueChange ?? onChange;
+  if (!handleChange) return null;
+  return (
+    <GlassSelect
+      value={value}
+      options={options}
+      onChange={handleChange}
+      className={className}
+      placeholder={placeholder}
+      maxMenuHeight={maxMenuHeight}
+    />
+  );
+}
+
+export { Select, GlassSelect };

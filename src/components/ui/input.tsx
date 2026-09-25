@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { cn } from "@/lib/cn";
+import { cn } from "@/lib/utils";
 
 export interface GlassInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
@@ -13,13 +13,14 @@ export interface GlassInputProps
   onValueChange?: (value: string) => void;
 }
 
-export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
+const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
   function GlassInput(
     {
       variant,
       size = "md",
       isDisabled = false,
       isInvalid = false,
+      isClearable = false,
       startContent,
       endContent,
       className,
@@ -30,7 +31,9 @@ export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
     },
     ref,
   ) {
-    const sizeClass = size === "sm" ? "h-8 text-sm" : size === "lg" ? "h-11 text-sm" : "h-9 text-sm";
+    const sizeClass =
+      size === "sm" ? "h-8 text-sm" : size === "lg" ? "h-11 text-sm" : "h-9 text-sm";
+
     const inner = (
       <input
         ref={ref}
@@ -40,11 +43,11 @@ export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
           onValueChange?.(e.target.value);
         }}
         className={cn(
-          "glass-field w-full min-w-0 rounded-xl px-3 text-foreground placeholder:text-muted/70",
+          "w-full min-w-0 rounded-xl border border-separator bg-field px-3 text-foreground placeholder:text-muted/70",
           "transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/40",
           "hover:border-primary/50 hover:shadow-sm",
           "disabled:opacity-50 disabled:pointer-events-none",
-          isInvalid && "border border-danger",
+          isInvalid && "border-danger",
           sizeClass,
           startContent && "pl-9",
           endContent && "pr-9",
@@ -71,3 +74,29 @@ export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
 );
 
 GlassInput.displayName = "GlassInput";
+
+interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {}
+
+const Input = forwardRef<HTMLInputElement, InputProps>(
+  function Input({ className, type = "text", ...rest }, ref) {
+    return (
+      <input
+        ref={ref}
+        type={type}
+        className={cn(
+          "flex h-9 w-full rounded-xl border border-separator bg-field px-3 py-1 text-sm text-foreground",
+          "placeholder:text-muted/70",
+          "transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/40",
+          "disabled:cursor-not-allowed disabled:opacity-50",
+          className,
+        )}
+        {...rest}
+      />
+    );
+  },
+);
+
+Input.displayName = "Input";
+
+export { Input, GlassInput };

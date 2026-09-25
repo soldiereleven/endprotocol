@@ -18,7 +18,6 @@ function applyThemeMode(mode: ThemeMode) {
   const root = document.documentElement;
   const isDark = mode === "dark" || (mode === "system" && getSystemDark());
   root.classList.toggle("dark", isDark);
-  root.setAttribute("data-aura-mode", isDark ? "dark" : "light");
 }
 
 // 有效模式：跟随系统时解析为当前实际生效的浅色/深色

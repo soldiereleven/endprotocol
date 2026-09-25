@@ -1,12 +1,46 @@
-import { cn } from "@/lib/cn";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
 
 export type GlassChipTone = "default" | "primary" | "success" | "warning" | "danger" | "accent";
 
-export interface GlassChipProps extends React.HTMLAttributes<HTMLSpanElement> {
+export interface GlassChipProps
+  extends React.HTMLAttributes<HTMLSpanElement>,
+    VariantProps<typeof badgeVariants> {
   variant?: "soft" | "solid" | "outline";
   size?: "sm" | "md" | "lg";
   color?: GlassChipTone;
 }
+
+const badgeVariants = cva(
+  "inline-flex items-center gap-1 whitespace-nowrap font-medium rounded-full transition-all duration-200",
+  {
+    variants: {
+      variant: {
+        soft: "",
+        solid: "",
+        outline: "",
+      },
+      size: {
+        sm: "h-5 px-2 text-[11px]",
+        md: "h-6 px-2.5 text-xs",
+        lg: "h-8 px-3.5 text-sm",
+      },
+      color: {
+        default: "",
+        primary: "",
+        success: "",
+        warning: "",
+        danger: "",
+        accent: "",
+      },
+    },
+    defaultVariants: {
+      variant: "soft",
+      size: "md",
+      color: "default",
+    },
+  }
+);
 
 const softTone: Record<GlassChipTone, string> = {
   default: "bg-default-100 text-default-700",
@@ -35,7 +69,7 @@ const outlineTone: Record<GlassChipTone, string> = {
   accent: "border border-accent/50 text-accent",
 };
 
-export function GlassChip({
+function Badge({
   variant = "soft",
   size = "md",
   color = "default",
@@ -43,21 +77,23 @@ export function GlassChip({
   children,
   ...rest
 }: GlassChipProps) {
-  const tone = variant === "solid" ? solidTone[color] : variant === "outline" ? outlineTone[color] : softTone[color];
+  const tone =
+    variant === "solid"
+      ? solidTone[color!]
+      : variant === "outline"
+        ? outlineTone[color!]
+        : softTone[color!];
+
   return (
     <span
-      className={cn(
-        "inline-flex items-center gap-1 whitespace-nowrap font-medium",
-        "transition-all duration-200 cursor-pointer",
-        "hover:scale-105 active:scale-95",
-        size === "sm" ? "h-5 px-2 text-[11px]" : size === "lg" ? "h-8 px-3.5 text-sm" : "h-6 px-2.5 text-xs",
-        "rounded-full",
-        tone,
-        className,
-      )}
+      className={cn(badgeVariants({ variant, size }), tone, className)}
       {...rest}
     >
       {children}
     </span>
   );
 }
+
+const GlassChip = Badge;
+
+export { Badge, GlassChip };

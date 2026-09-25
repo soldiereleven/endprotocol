@@ -219,7 +219,12 @@ function FreeDragCard({
           );
         },
       });
-    } else if (card.type === "account_info" || card.type === "account_progress" || card.type === "domain_info" || card.type === "spaceship") {
+    } else if (
+      card.type === "account_info" ||
+      card.type === "account_progress" ||
+      card.type === "domain_info" ||
+      card.type === "spaceship"
+    ) {
       items.push({
         key: "change-role",
         label: t("card:change_role"),
@@ -302,7 +307,7 @@ function FreeDragCard({
       ref={setNodeRef}
       style={style}
       data-card-id={card.id}
-      className={`group ${isEditMode ? "active:cursor-grabbing" : ""} ${
+      className={`dashboard-card-shell group ${isEditMode ? "active:cursor-grabbing" : ""} ${
         card.id === highlightCardId ? "card-flash-highlight" : ""
       }`}
       {...(isEditMode ? { ...attributes, ...listeners } : {})}
@@ -792,15 +797,26 @@ export function CardContainer({
     return (
       <div className="flex flex-col items-center justify-center h-80 text-center px-6">
         <div className="w-16 h-16 rounded-2xl bg-default-100 flex items-center justify-center mb-4">
-          <svg className="w-8 h-8 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+          <svg
+            className="w-8 h-8 text-muted"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M12 4v16m8-8H4"
+            />
           </svg>
         </div>
         <p className="text-lg font-medium text-foreground mb-2">
           {t("dashboard.no_cards")}
         </p>
         <p className="text-sm text-muted max-w-sm">
-          {t("dashboard.no_cards_guide") || "Click the + button at the bottom right to add cards and customize your dashboard"}
+          {t("dashboard.no_cards_guide") ||
+            "Click the + button at the bottom right to add cards and customize your dashboard"}
         </p>
       </div>
     );
@@ -842,9 +858,8 @@ export function CardContainer({
                 hasCollision ? "text-danger" : "text-primary"
               }`}
             >
-              <MorphIcon icon={MapPin} size={14} />
-              ({highlightGrid.x}, {highlightGrid.y}) {highlightGrid.w}x
-              {highlightGrid.h}
+              <MorphIcon icon={MapPin} size={14} />({highlightGrid.x},{" "}
+              {highlightGrid.y}) {highlightGrid.w}x{highlightGrid.h}
               {hasCollision && <MorphIcon icon={TriangleAlert} size={14} />}
             </div>
           </div>

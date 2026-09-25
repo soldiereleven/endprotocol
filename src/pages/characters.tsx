@@ -1,7 +1,11 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { GlassButton, GlassCard, GlassProgressCircle } from "@/components/ui/glass";
+import {
+  GlassButton,
+  GlassCard,
+  GlassProgressCircle,
+} from "@/components/ui/glass";
 import { Img } from "@/utils/imageLoader";
 import { useImageRequest } from "@/utils/imageCacheManager";
 import { getSelectedAccount } from "@/utils/accountService";
@@ -15,14 +19,19 @@ const ICON_BASE = "/assets/icons";
 const PROFESSION_ICON = (key: string) => `${ICON_BASE}/profession/${key}.png`;
 const PROPERTY_ICON = (key: string) => `${ICON_BASE}/property/${key}.png`;
 
-type FilterKey = "profession" | "rarity" | "property" | "weapon" | "mainAttr" | "subAttr";
+type FilterKey =
+  "profession" | "rarity" | "property" | "weapon" | "mainAttr" | "subAttr";
 
 function rarityLineColor(value: string): string {
   switch (value) {
-    case "6": return "#ff7100";
-    case "5": return "#ffcc00";
-    case "4": return "#b380ff";
-    default: return "transparent";
+    case "6":
+      return "#ff7100";
+    case "5":
+      return "#ffcc00";
+    case "4":
+      return "#b380ff";
+    default:
+      return "transparent";
   }
 }
 
@@ -72,7 +81,8 @@ function FloatSelect({
     };
     const onScroll = (e: Event) => {
       // Don't close when scrolling inside the dropdown itself.
-      if (e.target instanceof Node && dropdownRef.current?.contains(e.target)) return;
+      if (e.target instanceof Node && dropdownRef.current?.contains(e.target))
+        return;
       setOpen(false);
     };
     document.addEventListener("mousedown", onDocClick);
@@ -89,7 +99,11 @@ function FloatSelect({
     const next = !open;
     if (next && btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
-      setDropdownPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+      setDropdownPos({
+        top: rect.bottom + 6,
+        left: rect.left,
+        width: rect.width,
+      });
     }
     setOpen(next);
   };
@@ -124,37 +138,44 @@ function FloatSelect({
         </svg>
       </button>
 
-      {open && createPortal(
-        <div
-          ref={dropdownRef}
-          className="fixed z-[999] min-w-[120px] max-h-64 overflow-y-auto rounded-xl border border-separator/60 bg-background glass-surface-strong shadow-xl animate-scale-in"
-          style={{ top: dropdownPos.top, left: dropdownPos.left, width: Math.max(120, dropdownPos.width || 0) }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {options.map((opt) => {
-            const active = opt.value === value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => {
-                  onChange(opt.value);
-                  setOpen(false);
-                }}
-                className={`w-full text-left px-3 py-2 text-xs whitespace-nowrap transition-colors cursor-pointer first:rounded-t-xl last:rounded-b-xl
+      {open &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            className="fixed z-[999] min-w-[120px] max-h-64 overflow-y-auto rounded-xl border border-separator/60 bg-background glass-surface-strong shadow-xl animate-scale-in"
+            style={{
+              top: dropdownPos.top,
+              left: dropdownPos.left,
+              width: Math.max(120, dropdownPos.width || 0),
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {options.map((opt) => {
+              const active = opt.value === value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 text-xs whitespace-nowrap transition-colors cursor-pointer first:rounded-t-xl last:rounded-b-xl
                   ${active ? "bg-primary/10 text-primary font-semibold" : "text-foreground hover:bg-default-50"}`}
-              >
-                {opt.tone ? (
-                  <span className={rarityToneClass[opt.tone]}>{opt.label}</span>
-                ) : (
-                  opt.label
-                )}
-              </button>
-            );
-          })}
-        </div>,
-        document.body,
-      )}
+                >
+                  {opt.tone ? (
+                    <span className={rarityToneClass[opt.tone]}>
+                      {opt.label}
+                    </span>
+                  ) : (
+                    opt.label
+                  )}
+                </button>
+              );
+            })}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -168,7 +189,13 @@ function getSubProperty(char: CharacterItem): string | null {
   return null;
 }
 
-function OperatorCard({ char, onClick }: { char: CharacterItem; onClick: () => void }) {
+function OperatorCard({
+  char,
+  onClick,
+}: {
+  char: CharacterItem;
+  onClick: () => void;
+}) {
   const data = char.charData;
   const coverUrl = data.illustrationUrl || data.avatarRtUrl || data.avatarSqUrl;
   const lineColor = rarityLineColor(data.rarity.value);
@@ -255,7 +282,7 @@ export default function CharactersPage() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [accountId, setAccountId] = useState<string | null>(null);
   const getPageScroller = useCallback(
-    () => document.querySelector(".page-transition-enter")?.closest("main") as HTMLElement | null,
+    () => document.querySelector("main") as HTMLElement | null,
     [],
   );
 
@@ -306,7 +333,8 @@ export default function CharactersPage() {
   useEffect(() => {
     const handleAccountChange = () => loadData();
     window.addEventListener("accountChanged", handleAccountChange);
-    return () => window.removeEventListener("accountChanged", handleAccountChange);
+    return () =>
+      window.removeEventListener("accountChanged", handleAccountChange);
   }, [loadData]);
 
   const sortedCharacters = useMemo(() => {
@@ -325,7 +353,9 @@ export default function CharactersPage() {
   const uniqueProfessions = useMemo(
     () =>
       Array.from(
-        new Set(charDetail?.chars.map((c) => c.charData.profession.value) ?? []),
+        new Set(
+          charDetail?.chars.map((c) => c.charData.profession.value) ?? [],
+        ),
       ).sort(),
     [charDetail],
   );
@@ -349,7 +379,9 @@ export default function CharactersPage() {
   const uniqueWeapons = useMemo(
     () =>
       Array.from(
-        new Set(charDetail?.chars.map((c) => c.charData.weaponType.value) ?? []),
+        new Set(
+          charDetail?.chars.map((c) => c.charData.weaponType.value) ?? [],
+        ),
       ).sort(),
     [charDetail],
   );
@@ -370,11 +402,25 @@ export default function CharactersPage() {
     if (!sortedCharacters.length) return [];
     return sortedCharacters.filter((char) => {
       const data = char.charData;
-      if (filters.profession !== "all" && data.profession.value !== filters.profession) return false;
-      if (filters.rarity !== "all" && data.rarity.value !== filters.rarity) return false;
-      if (filters.property !== "all" && data.property.value !== filters.property) return false;
-      if (filters.weapon !== "all" && data.weaponType.value !== filters.weapon) return false;
-      if (filters.mainAttr !== "all" && data.property.value !== filters.mainAttr) return false;
+      if (
+        filters.profession !== "all" &&
+        data.profession.value !== filters.profession
+      )
+        return false;
+      if (filters.rarity !== "all" && data.rarity.value !== filters.rarity)
+        return false;
+      if (
+        filters.property !== "all" &&
+        data.property.value !== filters.property
+      )
+        return false;
+      if (filters.weapon !== "all" && data.weaponType.value !== filters.weapon)
+        return false;
+      if (
+        filters.mainAttr !== "all" &&
+        data.property.value !== filters.mainAttr
+      )
+        return false;
       if (filters.subAttr !== "all") {
         const sub = getSubProperty(char);
         if (sub !== filters.subAttr) return false;
@@ -415,14 +461,20 @@ export default function CharactersPage() {
         </h1>
         {charDetail && (
           <p className="text-foreground/70 mt-1.5 text-sm">
-            {filteredCharacters.length} / {charDetail.chars.length} {t("common.characters")}
+            {filteredCharacters.length} / {charDetail.chars.length}{" "}
+            {t("common.characters")}
           </p>
         )}
       </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-24">
-          <GlassProgressCircle isIndeterminate size="lg" aria-label="Loading" className="text-primary">
+          <GlassProgressCircle
+            isIndeterminate
+            size="lg"
+            aria-label="Loading"
+            className="text-primary"
+          >
             <GlassProgressCircle.Track>
               <GlassProgressCircle.TrackCircle />
               <GlassProgressCircle.FillCircle />
@@ -538,10 +590,22 @@ export default function CharactersPage() {
 
           {filteredCharacters.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <svg className="w-12 h-12 mb-3 text-muted/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-12 h-12 mb-3 text-muted/30"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
-              <p className="text-sm text-muted/60">{t("common.no_results_found")}</p>
+              <p className="text-sm text-muted/60">
+                {t("common.no_results_found")}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3">

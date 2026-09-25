@@ -1,4 +1,4 @@
-import { cn } from "@/lib/cn";
+import { cn } from "@/lib/utils";
 
 export interface GlassKbdProps extends React.HTMLAttributes<HTMLElement> {}
 
@@ -16,7 +16,7 @@ const KEY_SYMBOLS: Record<string, string> = {
   right: "→",
 };
 
-function GlassKbd({ className, children, ...rest }: GlassKbdProps) {
+function Kbd({ className, children, ...rest }: GlassKbdProps) {
   return (
     <kbd
       className={cn(
@@ -46,7 +46,9 @@ function Content({ children, className }: { children?: React.ReactNode; classNam
   return <span className={className}>{children}</span>;
 }
 
-GlassKbd.Abbr = Abbr;
-GlassKbd.Content = Content;
+Kbd.Abbr = Abbr;
+Kbd.Content = Content;
 
-export { GlassKbd };
+const GlassKbd = Kbd;
+
+export { Kbd, GlassKbd };

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { MorphIcon } from "morphicons/react";
 import { ArrowUp } from "lucide";
@@ -50,7 +51,7 @@ export function BackToTopFab({
 
   if (!visible) return null;
 
-  return (
+  return createPortal(
     <button
       type="button"
       className={cn(
@@ -67,6 +68,7 @@ export function BackToTopFab({
       ) : (
         <span className="text-xs font-bold">{percent}%</span>
       )}
-    </button>
+    </button>,
+    document.body,
   );
 }

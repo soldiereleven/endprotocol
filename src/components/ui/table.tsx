@@ -1,11 +1,11 @@
-import { cn } from "@/lib/cn";
+import { cn } from "@/lib/utils";
 
 export interface GlassTableProps {
   className?: string;
   children?: React.ReactNode;
 }
 
-function GlassTable({ className, children }: GlassTableProps) {
+function Table({ className, children }: GlassTableProps) {
   return <div className={cn("w-full overflow-x-auto", className)}>{children}</div>;
 }
 
@@ -13,7 +13,7 @@ function ScrollContainer({ className, children }: GlassTableProps) {
   return <div className={cn("overflow-x-auto", className)}>{children}</div>;
 }
 
-function TableContent({
+function Content({
   "aria-label": ariaLabel,
   className,
   children,
@@ -29,7 +29,7 @@ function TableContent({
   );
 }
 
-function TableHeader({ className, children }: GlassTableProps) {
+function Header({ className, children }: GlassTableProps) {
   return (
     <thead className={cn("bg-default-50/70 text-left", className)}>
       <tr>{children}</tr>
@@ -37,7 +37,7 @@ function TableHeader({ className, children }: GlassTableProps) {
   );
 }
 
-function TableColumn({ isRowHeader, className, children }: { isRowHeader?: boolean; className?: string; children?: React.ReactNode }) {
+function Column({ isRowHeader, className, children }: { isRowHeader?: boolean; className?: string; children?: React.ReactNode }) {
   return (
     <th
       scope={isRowHeader ? "row" : "col"}
@@ -48,24 +48,26 @@ function TableColumn({ isRowHeader, className, children }: { isRowHeader?: boole
   );
 }
 
-function TableBody({ className, children }: GlassTableProps) {
+function Body({ className, children }: GlassTableProps) {
   return <tbody className={cn("divide-y divide-separator/60", className)}>{children}</tbody>;
 }
 
-function TableRow({ className, children }: GlassTableProps) {
+function Row({ className, children }: GlassTableProps) {
   return <tr className={cn("transition-all duration-150 hover:bg-default-50/50 hover:scale-[1.005]", className)}>{children}</tr>;
 }
 
-function TableCell({ className, children }: GlassTableProps) {
+function Cell({ className, children }: GlassTableProps) {
   return <td className={cn("px-4 py-2.5 text-foreground/90", className)}>{children}</td>;
 }
 
-GlassTable.ScrollContainer = ScrollContainer;
-GlassTable.Content = TableContent;
-GlassTable.Header = TableHeader;
-GlassTable.Column = TableColumn;
-GlassTable.Body = TableBody;
-GlassTable.Row = TableRow;
-GlassTable.Cell = TableCell;
+Table.ScrollContainer = ScrollContainer;
+Table.Content = Content;
+Table.Header = Header;
+Table.Column = Column;
+Table.Body = Body;
+Table.Row = Row;
+Table.Cell = Cell;
 
-export { GlassTable };
+const GlassTable = Table;
+
+export { Table, GlassTable };

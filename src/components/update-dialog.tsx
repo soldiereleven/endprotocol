@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { GlassButton } from "@/components/ui/glass";
-import { GlassModalCompound as GlassModal } from "@/components/ui/glass/modal";
-import { GlassSkeleton } from "@/components/ui/glass/skeleton";
+import { GlassButton } from "@/components/ui/button";
+import { GlassModalCompound as GlassModal } from "@/components/ui/modal";
+import { GlassSkeleton } from "@/components/ui/skeleton";
 import {
   checkForUpdate,
   downloadUpdate,

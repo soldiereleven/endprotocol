@@ -10,7 +10,11 @@ import {
   subscribeLauncherBgMedia,
   type LauncherBgMedia,
 } from "@/stores/launcherMode";
-import { openInAppBrowser, suspendInAppBrowser, resumeInAppBrowser } from "@/stores/inAppBrowser";
+import {
+  openInAppBrowser,
+  suspendInAppBrowser,
+  resumeInAppBrowser,
+} from "@/stores/inAppBrowser";
 import { InAppBrowser } from "@/components/in-app-browser";
 import { GameActionPanel } from "@/components/game-action-panel";
 import {
@@ -31,9 +35,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [viewMode, setViewMode] = useState(getLauncherMode);
-  const [bgMedia, setBgMedia] = useState<LauncherBgMedia | null>(getLauncherBgMedia);
+  const [bgMedia, setBgMedia] = useState<LauncherBgMedia | null>(
+    getLauncherBgMedia,
+  );
   const [channel] = useState<GameChannel>(() => {
-    return (localStorage.getItem(STORAGE_KEY_CHANNEL) as GameChannel) || "official";
+    return (
+      (localStorage.getItem(STORAGE_KEY_CHANNEL) as GameChannel) || "official"
+    );
   });
   const [banners, setBanners] = useState<BannerItem[]>([]);
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
@@ -76,7 +84,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     getNoticeContent(channel)
       .then((content) => {
-        console.log("[Dashboard] Notices loaded:", content.banners.length, "banners,", content.announcements.length, "announcements");
+        console.log(
+          "[Dashboard] Notices loaded:",
+          content.banners.length,
+          "banners,",
+          content.announcements.length,
+          "announcements",
+        );
         setBanners(content.banners);
         setAnnouncements(content.announcements);
       })
@@ -104,9 +118,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }, []);
 
   const isGameMode = viewMode === "game";
-  const announcementCategories = [...new Set(announcements.map((a) => a.category))];
-  const activeAnnouncementCategory = announcementCategories[announcementTab] || announcementCategories[0];
-  const filteredAnnouncements = announcements.filter((a) => a.category === activeAnnouncementCategory);
+  const announcementCategories = [
+    ...new Set(announcements.map((a) => a.category)),
+  ];
+  const activeAnnouncementCategory =
+    announcementCategories[announcementTab] || announcementCategories[0];
+  const filteredAnnouncements = announcements.filter(
+    (a) => a.category === activeAnnouncementCategory,
+  );
 
   // ========== GAME MODE ==========
   if (isGameMode) {
@@ -180,7 +199,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setBannerIndex((i) => (i - 1 + banners.length) % banners.length);
+                          setBannerIndex(
+                            (i) => (i - 1 + banners.length) % banners.length,
+                          );
                         }}
                         className="absolute left-0.5 top-1/2 -translate-y-1/2 w-5 h-14 flex items-center justify-center rounded-full bg-black/50 text-white/80 hover:bg-black/70 hover:text-white transition-colors cursor-pointer z-10"
                       >
@@ -277,10 +298,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // ========== DATA MODE ==========
   return (
-    <div className="flex flex-col h-screen glass-window">
-      <CustomTitlebar />
+    <div className="relative flex flex-col h-screen glass-window">
+      <div className="dashboard-background" aria-hidden="true" />
 
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="relative z-10">
+        <CustomTitlebar />
+      </div>
+
+      <div className="relative z-10 flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}
         <div className="hidden lg:flex w-72 shrink-0">
           <Sidebar />
@@ -303,7 +328,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <main className="flex-1 overflow-y-auto p-4 lg:p-8 pt-6">
-            <div key={location.pathname} className="page-transition-enter h-full min-h-full">
+            <div key={location.pathname} className="h-full min-h-full">
               {children}
             </div>
           </main>
@@ -317,8 +342,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         className="lg:hidden fixed bottom-6 right-6 z-30 p-3.5 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200"
         aria-label="Open menu"
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+        <svg
+          className="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M4 6h16M4 12h16M4 18h16"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+          />
         </svg>
       </button>
     </div>

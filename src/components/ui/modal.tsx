@@ -1,10 +1,10 @@
 import { createContext, forwardRef, useContext, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { cn } from "@/lib/cn";
+import { cn } from "@/lib/utils";
 
 /* ======================================================
- * GlassModal — 液态玻璃弹窗（替代 HeroUI Modal）
- * 用法（对齐 HeroUI compound）：
+ * GlassModal — Solid-background modal (replaces glass)
+ * Usage (compound API, same as before):
  * <GlassModal isOpen onOpenChange>
  *   <GlassModal.Backdrop isDismissable className="z-[100]">
  *     <GlassModal.Container size="md" placement="center" scroll="inside">
@@ -43,7 +43,7 @@ const ModalCtx = createContext<{ close: () => void }>({ close: () => {} });
 
 const CONTAINER_SIZES: Record<NonNullable<ModalContainerProps["size"]>, string> = {
   xs: "max-w-[360px]",
-  sm: "max-w-[420px]",
+  sm: "max-w-[400px]",
   md: "max-w-[560px]",
   lg: "max-w-[720px]",
   xl: "max-w-[1100px]",
@@ -79,7 +79,7 @@ function Backdrop({ isDismissable = true, className, children }: ModalBackdropPr
   return (
     <div
       className={cn(
-        "glass-backdrop fixed inset-0 z-[100] flex items-center justify-center animate-fade-in",
+        "fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in",
         className,
       )}
       onMouseDown={(e) => {
@@ -118,7 +118,7 @@ function Dialog({ className, children }: { className?: string; children?: React.
       role="dialog"
       aria-modal="true"
       className={cn(
-        "glass-surface-strong animate-scale-in rounded-2xl border border-separator/90 shadow-2xl",
+        "animate-scale-in rounded-2xl bg-surface border border-separator shadow-xl",
         className,
       )}
     >
@@ -158,7 +158,7 @@ function CloseTrigger({ className }: { className?: string }) {
       aria-label="Close"
       onClick={close}
       className={cn(
-        "glass-surface flex h-8 w-8 items-center justify-center rounded-xl border border-separator/70 text-muted",
+        "flex h-8 w-8 items-center justify-center rounded-xl border border-separator/70 bg-surface text-muted",
         "transition-all duration-200 hover:border-primary/50 hover:text-foreground",
         "hover:scale-110 active:scale-90",
         className,
@@ -195,7 +195,7 @@ export { GlassModal, GlassModalWithSub as GlassModalCompound };
 export type { ModalProps as GlassModalProps };
 
 /* ======================================================
- * GlassAlertDialog — 确认/警示弹窗（替代 HeroUI AlertDialog）
+ * GlassAlertDialog — Alert/confirm dialog (solid bg)
  * ====================================================== */
 
 interface AlertDialogProps {
@@ -213,7 +213,12 @@ function GlassAlertDialog({ isOpen, onOpenChange, children }: AlertDialogProps) 
       if (e.key === "Escape") onOpenChange(false);
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
   }, [isOpen, onOpenChange]);
 
   if (!isOpen) return null;
@@ -230,7 +235,7 @@ function AlertDialogBackdrop({ className, children }: { className?: string; chil
   return (
     <div
       className={cn(
-        "glass-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in",
+        "fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in",
         className,
       )}
     >
@@ -249,7 +254,7 @@ function AlertDialogDialog({ className, children }: { className?: string; childr
       role="alertdialog"
       aria-modal="true"
       className={cn(
-        "glass-surface-strong animate-scale-in rounded-2xl border border-separator/90 p-5 shadow-2xl",
+        "animate-scale-in rounded-2xl bg-surface border border-separator p-5 shadow-xl",
         className,
       )}
     >
@@ -301,7 +306,7 @@ function AlertDialogCloseTrigger({ className }: { className?: string }) {
       aria-label="Close"
       onClick={close}
       className={cn(
-        "glass-surface absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-xl border border-separator/70 text-muted",
+        "absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-xl border border-separator/70 bg-surface text-muted",
         "transition-all duration-200 hover:border-primary/50 hover:text-foreground",
         "hover:scale-110 active:scale-90",
         className,

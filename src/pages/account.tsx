@@ -15,7 +15,11 @@ import {
 import { SimplePagination } from "@/components/simple-pagination";
 import { CONTAINER_HEIGHT } from "@/components/cards/card-container";
 import { StatusDot, type StatusDotTone } from "@/components/ui/status-dot";
-import { StatusBadge, SYNC_STATUS_META, type StatusConfig } from "@/components/ui/status-badge";
+import {
+  StatusBadge,
+  SYNC_STATUS_META,
+  type StatusConfig,
+} from "@/components/ui/status-badge";
 import { useState, useEffect, useRef } from "react";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import {
@@ -179,7 +183,14 @@ export default function AccountPage() {
       handleStartQrLogin();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAddModalOpen, loginMethod, scanUrl, isGeneratingQr, isLoggingIn, qrGenFailed]);
+  }, [
+    isAddModalOpen,
+    loginMethod,
+    scanUrl,
+    isGeneratingQr,
+    isLoggingIn,
+    qrGenFailed,
+  ]);
 
   // 角色选择状态
   const [availableRoles, setAvailableRoles] = useState<RoleDisplayInfo[]>([]);
@@ -239,13 +250,18 @@ export default function AccountPage() {
     // 监听后端自动刷新事件，替代前端定时轮询
     let unlisten: UnlistenFn | undefined;
     (async () => {
-      unlisten = await listen("accounts-refreshed", (event: { payload: { success: boolean; accounts?: any[]; refreshTime: string } }) => {
-        logDebug("[Account] Data refreshed via backend event");
-        if (event.payload.success && event.payload.accounts) {
-          setAccounts(event.payload.accounts);
-          setLastRefreshTime(new Date(event.payload.refreshTime));
-        }
-      });
+      unlisten = await listen(
+        "accounts-refreshed",
+        (event: {
+          payload: { success: boolean; accounts?: any[]; refreshTime: string };
+        }) => {
+          logDebug("[Account] Data refreshed via backend event");
+          if (event.payload.success && event.payload.accounts) {
+            setAccounts(event.payload.accounts);
+            setLastRefreshTime(new Date(event.payload.refreshTime));
+          }
+        },
+      );
     })();
 
     return () => {
@@ -268,7 +284,13 @@ export default function AccountPage() {
           const windowHeight = window.innerHeight;
           const availableHeight = windowHeight - topOffset;
 
-          logger.info("Window height: " + windowHeight + " Available height: " + availableHeight, "Account");
+          logger.info(
+            "Window height: " +
+              windowHeight +
+              " Available height: " +
+              availableHeight,
+            "Account",
+          );
 
           if (availableHeight <= 0) {
             setItemsPerPage(1);
@@ -319,13 +341,19 @@ export default function AccountPage() {
           getConfig<boolean>("refresh_on_account_switch"),
           getSelectedAccount(),
         ]);
-        logger.info("Should refresh on switch (from sidebar): " + shouldRefresh, "Account");
+        logger.info(
+          "Should refresh on switch (from sidebar): " + shouldRefresh,
+          "Account",
+        );
         logDebug("[Account] New selected account ID:", selectedId);
 
         let accountsData;
         if (shouldRefresh) {
           // 如果需要刷新，调用API获取最新数据
-          logger.info("Refreshing account data from API (sidebar)...", "Account");
+          logger.info(
+            "Refreshing account data from API (sidebar)...",
+            "Account",
+          );
           const result = await refreshAccountData();
           if (result.success && result.accounts) {
             accountsData = result.accounts;
@@ -462,14 +490,22 @@ export default function AccountPage() {
           type: "success",
           message: i18n.language === "zh" ? "登出成功" : "Logout successful",
         });
-        addMessage({ type: "info", title: i18n.language === "zh" ? "登出成功" : "Logout Successful", tag: "account" });
+        addMessage({
+          type: "info",
+          title: i18n.language === "zh" ? "登出成功" : "Logout Successful",
+          tag: "account",
+        });
         setTimeout(() => setGlobalAlert(null), 3000);
       } else {
         setGlobalAlert({
           type: "danger",
           message: i18n.language === "zh" ? "登出失败" : "Logout failed",
         });
-        addMessage({ type: "urgent", title: i18n.language === "zh" ? "登出失败" : "Logout Failed", tag: "account" });
+        addMessage({
+          type: "urgent",
+          title: i18n.language === "zh" ? "登出失败" : "Logout Failed",
+          tag: "account",
+        });
         setTimeout(() => setGlobalAlert(null), 3000);
       }
     } catch (error) {
@@ -481,7 +517,12 @@ export default function AccountPage() {
             ? `登出错误: ${error}`
             : `Logout error: ${error}`,
       });
-      addMessage({ type: "urgent", title: i18n.language === "zh" ? "登出错误" : "Logout Error", body: String(error), tag: "account" });
+      addMessage({
+        type: "urgent",
+        title: i18n.language === "zh" ? "登出错误" : "Logout Error",
+        body: String(error),
+        tag: "account",
+      });
       setTimeout(() => setGlobalAlert(null), 3000);
     } finally {
       setIsLoggingOut(false);
@@ -749,7 +790,10 @@ export default function AccountPage() {
       addMessage({
         type: "info",
         title: i18n.language === "zh" ? "登录成功" : "Login Successful",
-        body: i18n.language === "zh" ? `欢迎，${result.account.nickname}` : `Welcome, ${result.account.nickname}`,
+        body:
+          i18n.language === "zh"
+            ? `欢迎，${result.account.nickname}`
+            : `Welcome, ${result.account.nickname}`,
         tag: "account",
       });
 
@@ -900,12 +944,7 @@ export default function AccountPage() {
       selectedRoles.includes(role.roleId),
     );
 
-    await saveRoles(
-      selectedRoleDetails,
-      loginCred,
-      loginToken,
-      loginUserId,
-    );
+    await saveRoles(selectedRoleDetails, loginCred, loginToken, loginUserId);
   };
 
   // 保存角色绑定并刷新账户列表
@@ -1061,7 +1100,13 @@ export default function AccountPage() {
       const windowHeight = window.innerHeight;
       const availableHeight = windowHeight - topOffset;
 
-      logger.info("Window height: " + windowHeight + " Available height: " + availableHeight, "Account");
+      logger.info(
+        "Window height: " +
+          windowHeight +
+          " Available height: " +
+          availableHeight,
+        "Account",
+      );
 
       if (availableHeight <= 0) {
         logger.info("Available height is 0 or negative", "Account");
@@ -1072,10 +1117,16 @@ export default function AccountPage() {
       const paginationHeight = 60;
       const contentAvailableHeight = availableHeight - paginationHeight;
 
-      logger.info("Content available height: " + contentAvailableHeight, "Account");
+      logger.info(
+        "Content available height: " + contentAvailableHeight,
+        "Account",
+      );
 
       if (contentAvailableHeight <= 0) {
-        logger.info("Content available height is 0 or negative, setting to 1", "Account");
+        logger.info(
+          "Content available height is 0 or negative, setting to 1",
+          "Account",
+        );
         setItemsPerPage(1);
         return;
       }
@@ -1087,7 +1138,15 @@ export default function AccountPage() {
       while (count < 100) {
         const cardHeight = CARD_HEIGHT + (count > 0 ? GAP_SIZE : 0);
         if (usedHeight + cardHeight > contentAvailableHeight) {
-          logger.info("Break at count: " + count + " usedHeight: " + usedHeight + " cardHeight: " + cardHeight, "Account");
+          logger.info(
+            "Break at count: " +
+              count +
+              " usedHeight: " +
+              usedHeight +
+              " cardHeight: " +
+              cardHeight,
+            "Account",
+          );
           break;
         }
         usedHeight += cardHeight;
@@ -1096,7 +1155,10 @@ export default function AccountPage() {
 
       // 至少显示1个
       const newCount = Math.max(1, count);
-      logger.info("Calculated items per page: " + newCount + " current: " + itemsPerPage, "Account");
+      logger.info(
+        "Calculated items per page: " + newCount + " current: " + itemsPerPage,
+        "Account",
+      );
 
       if (newCount !== itemsPerPage) {
         setItemsPerPage(newCount);
@@ -1129,12 +1191,25 @@ export default function AccountPage() {
 
   // 获取当前页的账户
   const getCurrentPageAccounts = (): Account[] => {
-    logger.info("getCurrentPageAccounts - total: " + accounts.length + " sorted: " + sortedAccounts.length + " currentPage: " + currentPage + " itemsPerPage: " + itemsPerPage, "Account");
+    logger.info(
+      "getCurrentPageAccounts - total: " +
+        accounts.length +
+        " sorted: " +
+        sortedAccounts.length +
+        " currentPage: " +
+        currentPage +
+        " itemsPerPage: " +
+        itemsPerPage,
+      "Account",
+    );
     if (accounts.length === 0) return [];
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const result = sortedAccounts.slice(startIndex, endIndex);
-    logger.info("getCurrentPageAccounts - returning: " + result.length + " accounts", "Account");
+    logger.info(
+      "getCurrentPageAccounts - returning: " + result.length + " accounts",
+      "Account",
+    );
     return result;
   };
 
@@ -1192,7 +1267,9 @@ export default function AccountPage() {
           >
             <GlassAlert.Indicator />
             <GlassAlert.Content>
-              <GlassAlert.Description>{globalAlert.message}</GlassAlert.Description>
+              <GlassAlert.Description>
+                {globalAlert.message}
+              </GlassAlert.Description>
             </GlassAlert.Content>
           </GlassAlert>
         </div>
@@ -1204,7 +1281,9 @@ export default function AccountPage() {
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight">
             {t("settings.account.title")}
           </h1>
-          <p className="text-foreground/70 mt-1.5">{t("settings.account.subtitle")}</p>
+          <p className="text-foreground/70 mt-1.5">
+            {t("settings.account.subtitle")}
+          </p>
         </div>
 
         <div className="flex gap-2">
@@ -1281,7 +1360,9 @@ export default function AccountPage() {
                   />
                   {/* keep pagination for screen reader compatibility (visually hidden) */}
                   <div className="sr-only" aria-hidden="true">
-                    <span>{totalPages} {i18n.language === "zh" ? "页" : "pages"}</span>
+                    <span>
+                      {totalPages} {i18n.language === "zh" ? "页" : "pages"}
+                    </span>
                   </div>
                 </div>
 
@@ -1409,7 +1490,7 @@ export default function AccountPage() {
                   <GlassCard
                     key={account.id}
                     data-account-card="true"
-                    className={`cursor-pointer transition-all duration-300 ease-in-out bg-content1 ${borderColorClass} ${shadowClass} border-2 box-border ${animationClass}`}
+                    className={`cursor-pointer transition-all duration-300 ease-in-out ${borderColorClass} ${shadowClass} border-2 box-border ${animationClass}`}
                     style={{
                       height: `${CARD_HEIGHT}px`,
                       position: isAnimating ? "relative" : "static",
@@ -1423,17 +1504,14 @@ export default function AccountPage() {
                         <div className="flex items-center gap-3 flex-1">
                           {/* LED 指示灯 - 根据状态显示不同颜色 */}
                           {statusDotTone && (
-                            <StatusDot
-                              tone={statusDotTone}
-                              ping={isSelected}
-                            />
+                            <StatusDot tone={statusDotTone} ping={isSelected} />
                           )}
 
                           {/* Avatar */}
                           <div className="w-10 h-10 rounded-lg flex items-center justify-center text-base font-bold text-primary flex-shrink-0 overflow-hidden">
-                                {account.avatar ? (
-                                <Img
-                                  src={account.avatar}
+                            {account.avatar ? (
+                              <Img
+                                src={account.avatar}
                                 alt={account.nickname}
                                 className="w-full h-full avatar-feather"
                                 onError={(e) => {
@@ -1537,7 +1615,9 @@ export default function AccountPage() {
                   />
                   {/* keep pagination for screen reader compatibility (visually hidden) */}
                   <div className="sr-only" aria-hidden="true">
-                    <span>{totalPages} {i18n.language === "zh" ? "页" : "pages"}</span>
+                    <span>
+                      {totalPages} {i18n.language === "zh" ? "页" : "pages"}
+                    </span>
                   </div>
                 </div>
 
@@ -1649,9 +1729,9 @@ export default function AccountPage() {
                 <>
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-lg flex items-center justify-center text-2xl font-bold text-primary overflow-hidden">
-                        {selectedAccount.avatar ? (
-                          <Img
-                            src={selectedAccount.avatar}
+                      {selectedAccount.avatar ? (
+                        <Img
+                          src={selectedAccount.avatar}
                           alt={selectedAccount.nickname}
                           className="w-full h-full avatar-feather"
                           onError={(e) => {
@@ -1829,8 +1909,8 @@ export default function AccountPage() {
                             isSelected={selectedRoles.includes(role.roleId)}
                             onChange={() => handleRoleToggle(role.roleId)}
                           />
-                           <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                              {avatarSrc ? (
+                          <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                            {avatarSrc ? (
                               <Img
                                 src={avatarSrc}
                                 alt={role.nickname}
@@ -1886,7 +1966,7 @@ export default function AccountPage() {
                 {/* 密码登录 */}
                 <button
                   onClick={() => setLoginMethod("phone")}
-                  className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-separator hover:border-primary hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all cursor-pointer group"
+                  className="glass-surface flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-separator hover:border-primary hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all cursor-pointer group"
                 >
                   <div className="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <svg
@@ -1911,7 +1991,7 @@ export default function AccountPage() {
                 {/* 验证码登录 */}
                 <button
                   onClick={() => setLoginMethod("sms")}
-                  className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-separator hover:border-primary hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all cursor-pointer group"
+                  className="glass-surface flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-separator hover:border-primary hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all cursor-pointer group"
                 >
                   <div className="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <svg
@@ -1936,7 +2016,7 @@ export default function AccountPage() {
                 {/* 扫码登录 */}
                 <button
                   onClick={() => setLoginMethod("qrcode")}
-                  className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-separator hover:border-primary hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all cursor-pointer group"
+                  className="glass-surface flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-separator hover:border-primary hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all cursor-pointer group"
                 >
                   <div className="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <svg
@@ -1994,7 +2074,9 @@ export default function AccountPage() {
                 <GlassAlert status="danger">
                   <GlassAlert.Indicator />
                   <GlassAlert.Content>
-                    <GlassAlert.Description>{loginError}</GlassAlert.Description>
+                    <GlassAlert.Description>
+                      {loginError}
+                    </GlassAlert.Description>
                   </GlassAlert.Content>
                 </GlassAlert>
               )}
@@ -2075,54 +2157,54 @@ export default function AccountPage() {
                   </GlassButton>
                 </div>
               ) : (
-              <>
-              {/* 手机号和密码输入 */}
-              <div className="grid grid-cols-[auto_1fr] items-center gap-y-4 gap-x-3">
-                {/* 手机号输入行 */}
-                <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
-                  {t("settings.account.phone_number")}
-                </label>
-                <div className="flex flex-col gap-1">
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => {
-                      setPhone(e.target.value);
-                      setCodeSentSuccess(false);
-                      if (phoneError) setPhoneError(""); // 输入时清除错误
-                    }}
-                    placeholder={t("settings.account.enter_phone")}
-                    maxLength={11}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !isLoggingIn) {
-                        handleLogin();
-                      }
-                    }}
-                    className="w-full px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                  />
-                  {phoneError && (
-                    <p className="text-xs text-danger">{phoneError}</p>
-                  )}
-                </div>
+                <>
+                  {/* 手机号和密码输入 */}
+                  <div className="grid grid-cols-[auto_1fr] items-center gap-y-4 gap-x-3">
+                    {/* 手机号输入行 */}
+                    <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
+                      {t("settings.account.phone_number")}
+                    </label>
+                    <div className="flex flex-col gap-1">
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => {
+                          setPhone(e.target.value);
+                          setCodeSentSuccess(false);
+                          if (phoneError) setPhoneError(""); // 输入时清除错误
+                        }}
+                        placeholder={t("settings.account.enter_phone")}
+                        maxLength={11}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !isLoggingIn) {
+                            handleLogin();
+                          }
+                        }}
+                        className="w-full px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                      />
+                      {phoneError && (
+                        <p className="text-xs text-danger">{phoneError}</p>
+                      )}
+                    </div>
 
-                {/* 密码输入行 */}
-                <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
-                  {t("settings.account.password")}
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t("settings.account.enter_password")}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !isLoggingIn) {
-                      handleLogin();
-                    }
-                  }}
-                  className="w-full px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                />
-              </div>
-              </>
+                    {/* 密码输入行 */}
+                    <label className="text-sm font-medium text-foreground whitespace-nowrap justify-self-end">
+                      {t("settings.account.password")}
+                    </label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={t("settings.account.enter_password")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !isLoggingIn) {
+                          handleLogin();
+                        }
+                      }}
+                      className="w-full px-4 py-2.5 bg-default-100 border border-separator rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                    />
+                  </div>
+                </>
               )}
             </div>
           ) : loginMethod === "sms" ? (
@@ -2157,7 +2239,9 @@ export default function AccountPage() {
                 <GlassAlert status="danger">
                   <GlassAlert.Indicator />
                   <GlassAlert.Content>
-                    <GlassAlert.Description>{loginError}</GlassAlert.Description>
+                    <GlassAlert.Description>
+                      {loginError}
+                    </GlassAlert.Description>
                   </GlassAlert.Content>
                 </GlassAlert>
               )}
@@ -2357,7 +2441,9 @@ export default function AccountPage() {
                 <GlassAlert status="danger">
                   <GlassAlert.Indicator />
                   <GlassAlert.Content>
-                    <GlassAlert.Description>{loginError}</GlassAlert.Description>
+                    <GlassAlert.Description>
+                      {loginError}
+                    </GlassAlert.Description>
                   </GlassAlert.Content>
                 </GlassAlert>
               )}

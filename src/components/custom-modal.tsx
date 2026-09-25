@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { GlassModal } from "@/components/ui/glass";
+import { GlassModal } from "@/components/ui/modal";
 import { CloseIcon } from "@/components/ui/app-icon";
 
 type ModalSize = "xs" | "sm" | "md" | "lg" | "full" | "cover";

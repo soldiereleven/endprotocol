@@ -1,8 +1,8 @@
-import { cn } from "@/lib/cn";
+import { cn } from "@/lib/utils";
 
 export interface GlassLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {}
 
-export function GlassLink({ className, children, ...rest }: GlassLinkProps) {
+function Link({ className, children, ...rest }: GlassLinkProps) {
   return (
     <a
       className={cn(
@@ -17,3 +17,7 @@ export function GlassLink({ className, children, ...rest }: GlassLinkProps) {
     </a>
   );
 }
+
+const GlassLink = Link;
+
+export { Link, GlassLink };

@@ -1,4 +1,4 @@
-import { cn } from "@/lib/cn";
+import { cn } from "@/lib/utils";
 
 export interface GlassSpinnerProps {
   size?: "sm" | "md" | "lg" | number;
@@ -12,7 +12,7 @@ const colorMap = {
   primary: "text-primary",
 };
 
-export function GlassSpinner({
+function Spinner({
   size = "sm",
   color = "current",
   className,
@@ -43,3 +43,7 @@ export function GlassSpinner({
     </svg>
   );
 }
+
+const GlassSpinner = Spinner;
+
+export { Spinner, GlassSpinner };

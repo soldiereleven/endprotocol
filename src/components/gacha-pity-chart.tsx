@@ -356,7 +356,7 @@ export default function GachaPityChart({
     const defaultColor = cssVar("--default-400", "#94a3b8");
     const danger = cssVar("--danger", "#ef4444");
     // 深色模式下卡池名用更亮的浅灰
-    const isDark = document.documentElement.getAttribute("data-aura-mode") === "dark";
+    const isDark = document.documentElement.classList.contains("dark");
     const headerColor = isDark ? cssVar("--default-600", "#cbd5e1") : muted;
 
     const categories = meta.map((_, i) => `r${i}`);

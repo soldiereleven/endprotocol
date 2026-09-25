@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { cn } from "@/lib/cn";
+import { cn } from "@/lib/utils";
 
 export type GlassAlertStatus = "default" | "success" | "warning" | "danger";
 
@@ -23,12 +23,13 @@ const dotTone: Record<GlassAlertStatus, string> = {
   danger: "bg-danger shadow-glow-danger",
 };
 
-function GlassAlert({ status = "default", className, children, ...rest }: GlassAlertProps) {
+function Alert({ status = "default", className, children, ...rest }: GlassAlertProps) {
   return (
     <div
       role="alert"
       className={cn(
-        "glass-surface flex items-start gap-2.5 rounded-xl border p-3.5",
+        "flex items-start gap-2.5 rounded-xl border p-3.5",
+        "bg-background/80 backdrop-blur-sm",
         borderTone[status],
         className,
       )}
@@ -52,8 +53,10 @@ function Description({ children, className }: { children?: React.ReactNode; clas
   return <p className={cn("text-sm", className)}>{children}</p>;
 }
 
-GlassAlert.Indicator = Indicator;
-GlassAlert.Content = Content;
-GlassAlert.Description = Description;
+Alert.Indicator = Indicator;
+Alert.Content = Content;
+Alert.Description = Description;
 
-export { GlassAlert };
+const GlassAlert = Alert;
+
+export { Alert, GlassAlert };

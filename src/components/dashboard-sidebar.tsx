@@ -31,7 +31,15 @@ import {
 } from "@/utils/accountService";
 import { usePinImages } from "@/utils/imageCacheManager";
 import { getConfig, setConfig } from "@/utils/configService";
-import { getAllTabs, addTab, removeTab, updateTab, getActiveTabId, setActiveTabId, saveTabs } from "@/utils/tabService";
+import {
+  getAllTabs,
+  addTab,
+  removeTab,
+  updateTab,
+  getActiveTabId,
+  setActiveTabId,
+  saveTabs,
+} from "@/utils/tabService";
 import { getTabIcon } from "@/utils/tabIcons";
 import { CardContextMenu } from "@/components/cards/card-context-menu";
 import { TabEditorModal } from "@/components/tab-editor-modal";
@@ -65,7 +73,13 @@ interface SidebarProps {
 
 type NavKey = "dashboard" | "characters" | "medals" | "attendance" | "gacha";
 
-const NAV_KEYS: NavKey[] = ["dashboard", "characters", "medals", "attendance", "gacha"];
+const NAV_KEYS: NavKey[] = [
+  "dashboard",
+  "characters",
+  "medals",
+  "attendance",
+  "gacha",
+];
 
 function GripHandle({
   onPointerDown,
@@ -89,7 +103,7 @@ function GripHandle({
         e.preventDefault();
         e.stopPropagation();
       }}
-      className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-all duration-150 cursor-grab text-muted hover:text-foreground hover:bg-default-100 active:cursor-grabbing ${
+      className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-all duration-150 cursor-grab text-muted hover:text-foreground active:cursor-grabbing ${
         isDragging ? "opacity-100 cursor-grabbing" : ""
       }`}
       aria-label="Drag to reorder"
@@ -116,7 +130,11 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
   const { t, i18n } = useTranslation();
   const searchRef = useRef<HTMLDivElement>(null);
   const searchMenuRef = useRef<HTMLDivElement>(null);
-  const [searchMenuPos, setSearchMenuPos] = useState({ top: 0, left: 0, width: 0 });
+  const [searchMenuPos, setSearchMenuPos] = useState({
+    top: 0,
+    left: 0,
+    width: 0,
+  });
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -124,23 +142,28 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   usePinImages(
     useMemo(
-      () =>
-        selectedAccount?.avatar ? [selectedAccount.avatar] : [],
+      () => (selectedAccount?.avatar ? [selectedAccount.avatar] : []),
       [selectedAccount?.avatar],
     ),
   );
   const [isLoadingAccount, setIsLoadingAccount] = useState(true);
   const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false); // 手动刷新状态
-  const [expectedAccountCount, setExpectedAccountCount] =
-    useState<number>(3); // 预期的账户数量（保留以兼容 manualRefresh 事件）
+  const [expectedAccountCount, setExpectedAccountCount] = useState<number>(3); // 预期的账户数量（保留以兼容 manualRefresh 事件）
   const [developerMode, setDeveloperMode] = useState(false);
   const [sidebarTabs, setSidebarTabs] = useState<DashboardTab[]>([]);
   const [sidebarActiveTab, setSidebarActiveTab] = useState<string | null>(null);
   const [isDashboardCollapsed, setIsDashboardCollapsed] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tabId: string; tabName: string } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    tabId: string;
+    tabName: string;
+  } | null>(null);
   const [isTabEditorOpen, setIsTabEditorOpen] = useState(false);
-  const [editingTabForSidebar, setEditingTabForSidebar] = useState<DashboardTab | undefined>();
+  const [editingTabForSidebar, setEditingTabForSidebar] = useState<
+    DashboardTab | undefined
+  >();
   const [navOrder, setNavOrder] = useState<NavKey[]>(NAV_KEYS);
   const [draggingNav, setDraggingNav] = useState<NavKey | null>(null);
   const [draggingTab, setDraggingTab] = useState<string | null>(null);
@@ -287,7 +310,8 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
       setDeveloperMode(detail.enabled);
     };
     window.addEventListener("developerModeChange", handleDevModeChange);
-    return () => window.removeEventListener("developerModeChange", handleDevModeChange);
+    return () =>
+      window.removeEventListener("developerModeChange", handleDevModeChange);
   }, []);
 
   // 加载选中的账户
@@ -925,10 +949,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
 
   return (
     <>
-      <aside
-        key={themeChangeKey}
-        className="w-full h-full flex flex-col"
-      >
+      <aside key={themeChangeKey} className="w-full h-full flex flex-col">
         {/* Selected Account Display */}
         <div className="px-3 py-2">
           {isLoadingAccount || isManualRefreshing ? (
@@ -960,7 +981,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
 
               <button
                 onClick={() => setIsSwitchModalOpen(true)}
-                className="p-1.5 hover:bg-default-100 rounded-lg transition-all duration-200 flex-shrink-0 text-muted hover:text-foreground hover:scale-105 active:scale-95 opacity-0 group-hover:opacity-100"
+                className="p-1.5 rounded-lg transition-all duration-200 flex-shrink-0 text-muted hover:text-foreground hover:scale-105 active:scale-95 opacity-0 group-hover:opacity-100"
                 title={i18n.language === "zh" ? "切换账户" : "Switch Account"}
                 aria-label="Switch account"
               >
@@ -1006,7 +1027,11 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                       requestAnimationFrame(() => {
                         if (searchRef.current) {
                           const r = searchRef.current.getBoundingClientRect();
-                          setSearchMenuPos({ top: r.bottom, left: r.left, width: r.width });
+                          setSearchMenuPos({
+                            top: r.bottom,
+                            left: r.left,
+                            width: r.width,
+                          });
                         }
                       });
                     }
@@ -1017,7 +1042,11 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                       setShowResults(true);
                       if (searchRef.current) {
                         const r = searchRef.current.getBoundingClientRect();
-                        setSearchMenuPos({ top: r.bottom, left: r.left, width: r.width });
+                        setSearchMenuPos({
+                          top: r.bottom,
+                          left: r.left,
+                          width: r.width,
+                        });
                       }
                     }
                   }}
@@ -1058,139 +1087,145 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
               </div>
 
               {/* Search Results Dropdown */}
-              {showResults && searchQuery.trim() && createPortal(
-                <div
-                  ref={searchMenuRef}
-                  className="fixed z-[9999] bg-background glass-surface-strong border-2 border-separator/80 rounded-lg shadow-2xl max-h-[400px] overflow-y-auto animate-scale-in"
-                  style={{ top: searchMenuPos.top + 8, left: searchMenuPos.left, width: searchMenuPos.width || 320 }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {searchResults.length === 0 ? (
-                    <div className="py-6 text-center">
-                      <SearchIcon className="w-8 h-8 text-muted mx-auto mb-2 opacity-50" />
-                      <p className="text-sm text-muted">
-                        {i18n.language === "zh"
-                          ? "未找到结果"
-                          : "No results found"}
-                      </p>
-                    </div>
-                  ) : (
-                    <div ref={resultsRef}>
-                      {/* Group results by category */}
-                      {Object.entries(
-                        searchResults.reduce(
-                          (groups, result) => {
-                            const category = result.category;
-                            if (!groups[category]) {
-                              groups[category] = [];
-                            }
-                            groups[category].push(result);
-                            return groups;
-                          },
-                          {} as Record<string, SearchResult[]>,
-                        ),
-                      ).map(([category, items]) => (
-                        <div key={category}>
-                          <div className="px-3 py-2 text-xs font-semibold text-muted uppercase tracking-wider bg-default-100 border-b border-separator">
-                            {category}
-                          </div>
-                          {items.map((result) => {
-                            const globalIndex = searchResults.findIndex(
-                              (r) => r.id === result.id,
-                            );
-                            const isSelected = globalIndex === selectedIndex;
+              {showResults &&
+                searchQuery.trim() &&
+                createPortal(
+                  <div
+                    ref={searchMenuRef}
+                    className="fixed z-[9999] bg-background glass-surface-strong border-2 border-separator/80 rounded-lg shadow-2xl max-h-[400px] overflow-y-auto animate-scale-in"
+                    style={{
+                      top: searchMenuPos.top + 8,
+                      left: searchMenuPos.left,
+                      width: searchMenuPos.width || 320,
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {searchResults.length === 0 ? (
+                      <div className="py-6 text-center">
+                        <SearchIcon className="w-8 h-8 text-muted mx-auto mb-2 opacity-50" />
+                        <p className="text-sm text-muted">
+                          {i18n.language === "zh"
+                            ? "未找到结果"
+                            : "No results found"}
+                        </p>
+                      </div>
+                    ) : (
+                      <div ref={resultsRef}>
+                        {/* Group results by category */}
+                        {Object.entries(
+                          searchResults.reduce(
+                            (groups, result) => {
+                              const category = result.category;
+                              if (!groups[category]) {
+                                groups[category] = [];
+                              }
+                              groups[category].push(result);
+                              return groups;
+                            },
+                            {} as Record<string, SearchResult[]>,
+                          ),
+                        ).map(([category, items]) => (
+                          <div key={category}>
+                            <div className="px-3 py-2 text-xs font-semibold text-muted uppercase tracking-wider bg-default-100 border-b border-separator">
+                              {category}
+                            </div>
+                            {items.map((result) => {
+                              const globalIndex = searchResults.findIndex(
+                                (r) => r.id === result.id,
+                              );
+                              const isSelected = globalIndex === selectedIndex;
 
-                            return (
-                              <button
-                                key={result.id}
-                                className={`w-full px-3 py-2.5 flex items-start gap-3 transition-colors text-left border-b border-separator last:border-b-0 ${
-                                  isSelected
-                                    ? "bg-primary/20"
-                                    : "hover:bg-default-50"
-                                }`}
-                                onClick={() => handleSelectResult(result)}
-                                onMouseEnter={() =>
-                                  setSelectedIndex(globalIndex)
-                                }
-                              >
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium text-foreground text-sm truncate">
-                                      {highlightMatch(
-                                        result.title,
-                                        searchQuery,
-                                      )}
-                                    </span>
-                                    {/* Show language badge if matched in other language */}
-                                    {result.matchedLang &&
-                                      result.matchedLang !== "current" && (
-                                        <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-warning/20 text-warning border border-warning/30 flex-shrink-0">
-                                          {result.matchedLang === "en"
-                                            ? "EN"
-                                            : "中文"}
-                                        </span>
-                                      )}
-                                  </div>
-                                  {result.description && (
-                                    <p className="text-xs text-muted mt-0.5 line-clamp-1">
-                                      {highlightMatch(
-                                        result.description,
-                                        searchQuery,
-                                      )}
-                                    </p>
-                                  )}
-                                  {/* Show matched text from other language */}
-                                  {result.matchedLang &&
-                                    result.matchedLang !== "current" &&
-                                    result.matchedText && (
-                                      <p className="text-xs mt-1 px-2 py-1 bg-warning/10 border border-warning/20 rounded">
-                                        <span className="text-warning font-medium mr-1">
-                                          {i18n.language === "zh"
-                                            ? "匹配:"
-                                            : "Match:"}
-                                        </span>
-                                        <mark className="bg-warning/30 text-warning-dark px-0.5 rounded">
-                                          {highlightMatch(
-                                            result.matchedText,
-                                            searchQuery,
-                                          )}
-                                        </mark>
+                              return (
+                                <button
+                                  key={result.id}
+                                  className={`w-full px-3 py-2.5 flex items-start gap-3 transition-colors text-left border-b border-separator last:border-b-0 ${
+                                    isSelected
+                                      ? "bg-primary/20"
+                                      : "hover:bg-default-50"
+                                  }`}
+                                  onClick={() => handleSelectResult(result)}
+                                  onMouseEnter={() =>
+                                    setSelectedIndex(globalIndex)
+                                  }
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium text-foreground text-sm truncate">
+                                        {highlightMatch(
+                                          result.title,
+                                          searchQuery,
+                                        )}
+                                      </span>
+                                      {/* Show language badge if matched in other language */}
+                                      {result.matchedLang &&
+                                        result.matchedLang !== "current" && (
+                                          <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-warning/20 text-warning border border-warning/30 flex-shrink-0">
+                                            {result.matchedLang === "en"
+                                              ? "EN"
+                                              : "中文"}
+                                          </span>
+                                        )}
+                                    </div>
+                                    {result.description && (
+                                      <p className="text-xs text-muted mt-0.5 line-clamp-1">
+                                        {highlightMatch(
+                                          result.description,
+                                          searchQuery,
+                                        )}
                                       </p>
                                     )}
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                                    {/* Show matched text from other language */}
+                                    {result.matchedLang &&
+                                      result.matchedLang !== "current" &&
+                                      result.matchedText && (
+                                        <p className="text-xs mt-1 px-2 py-1 bg-warning/10 border border-warning/20 rounded">
+                                          <span className="text-warning font-medium mr-1">
+                                            {i18n.language === "zh"
+                                              ? "匹配:"
+                                              : "Match:"}
+                                          </span>
+                                          <mark className="bg-warning/30 text-warning-dark px-0.5 rounded">
+                                            {highlightMatch(
+                                              result.matchedText,
+                                              searchQuery,
+                                            )}
+                                          </mark>
+                                        </p>
+                                      )}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
-                  {/* Footer with keyboard shortcuts */}
-                  <div className="border-t-2 border-separator px-3 py-2 flex items-center justify-between text-xs text-muted bg-default-50">
-                    <div className="flex items-center gap-2">
-                      <span className="flex items-center gap-1">
-                        <GlassKbd className="text-xs">↑</GlassKbd>
-                        <GlassKbd className="text-xs">↓</GlassKbd>
-                        <span>
-                          {i18n.language === "zh" ? "导航" : "Navigate"}
+                    {/* Footer with keyboard shortcuts */}
+                    <div className="border-t-2 border-separator px-3 py-2 flex items-center justify-between text-xs text-muted bg-default-50">
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1">
+                          <GlassKbd className="text-xs">↑</GlassKbd>
+                          <GlassKbd className="text-xs">↓</GlassKbd>
+                          <span>
+                            {i18n.language === "zh" ? "导航" : "Navigate"}
+                          </span>
                         </span>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <GlassKbd className="text-xs">↵</GlassKbd>
-                        <span>
-                          {i18n.language === "zh" ? "选择" : "Select"}
+                        <span className="flex items-center gap-1">
+                          <GlassKbd className="text-xs">↵</GlassKbd>
+                          <span>
+                            {i18n.language === "zh" ? "选择" : "Select"}
+                          </span>
                         </span>
+                      </div>
+                      <span>
+                        {searchResults.length}{" "}
+                        {i18n.language === "zh" ? "个结果" : "results"}
                       </span>
                     </div>
-                    <span>
-                      {searchResults.length}{" "}
-                      {i18n.language === "zh" ? "个结果" : "results"}
-                    </span>
-                  </div>
-                </div>,
-                document.body,
-              )}
+                  </div>,
+                  document.body,
+                )}
             </div>
           </div>
         )}
@@ -1205,7 +1240,9 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                     <div
                       key="dashboard"
                       onMouseEnter={() =>
-                        draggingNav && draggingNav !== "dashboard" && swapNav(draggingNav, "dashboard")
+                        draggingNav &&
+                        draggingNav !== "dashboard" &&
+                        swapNav(draggingNav, "dashboard")
                       }
                     >
                       {/* Dashboard link with collapse toggle */}
@@ -1214,8 +1251,8 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                           "relative flex items-center gap-1 pl-3 pr-8 py-2.5 rounded-xl transition-all duration-200 group",
                           draggingNav === "dashboard" ? "opacity-60" : "",
                           location.pathname === "/"
-                            ? "glass-surface text-foreground"
-                            : "text-foreground hover:bg-default-100",
+                            ? "glass-surface-strong text-foreground"
+                            : "text-foreground hover:text-foreground",
                         )}
                       >
                         <Link
@@ -1226,10 +1263,14 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                           <HomeIcon
                             className={clsx(
                               "w-5 h-5 transition-all duration-200",
-                              location.pathname === "" ? "" : "group-hover:scale-110 group-hover:rotate-12",
+                              location.pathname === ""
+                                ? ""
+                                : "group-hover:scale-110 group-hover:rotate-12",
                             )}
                           />
-                          <span className="text-sm font-semibold">{t("sidebar.dashboard")}</span>
+                          <span className="text-sm font-semibold">
+                            {t("sidebar.dashboard")}
+                          </span>
                         </Link>
                         <button
                           type="button"
@@ -1240,9 +1281,13 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                           }}
                           className={clsx(
                             "p-1 rounded-lg transition-colors",
-                            "text-muted hover:text-foreground hover:bg-default-200",
+                            "text-muted hover:text-foreground",
                           )}
-                          aria-label={isDashboardCollapsed ? "Expand tabs" : "Collapse tabs"}
+                          aria-label={
+                            isDashboardCollapsed
+                              ? "Expand tabs"
+                              : "Collapse tabs"
+                          }
                         >
                           <ChevronDownIcon
                             size={16}
@@ -1263,7 +1308,9 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                       <div
                         className="grid transition-all duration-300 ease-in-out"
                         style={{
-                          gridTemplateRows: isDashboardCollapsed ? "0fr" : "1fr",
+                          gridTemplateRows: isDashboardCollapsed
+                            ? "0fr"
+                            : "1fr",
                           opacity: isDashboardCollapsed ? 0 : 1,
                         }}
                       >
@@ -1279,7 +1326,7 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                                   setEditingTabForSidebar(undefined);
                                   setIsTabEditorOpen(true);
                                 }}
-                                className="p-1 rounded-lg hover:bg-default-100 text-muted hover:text-foreground transition-all duration-200 hover:scale-105 active:scale-95"
+                                className="p-1 rounded-lg text-muted hover:text-foreground transition-all duration-200 hover:scale-105 active:scale-95"
                                 aria-label="Add tab"
                               >
                                 <PlusIcon size={15} />
@@ -1289,7 +1336,9 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                               <div className="space-y-0.5 pb-2">
                                 {sidebarTabs.map((tab) => {
                                   const Icon = getTabIcon(tab.icon);
-                                  const isTabActive = location.pathname === "/" && sidebarActiveTab === tab.id;
+                                  const isTabActive =
+                                    location.pathname === "/" &&
+                                    sidebarActiveTab === tab.id;
                                   return (
                                     <div
                                       key={tab.id}
@@ -1297,10 +1346,17 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                                       onContextMenu={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
-                                        setContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id, tabName: tab.name });
+                                        setContextMenu({
+                                          x: e.clientX,
+                                          y: e.clientY,
+                                          tabId: tab.id,
+                                          tabName: tab.name,
+                                        });
                                       }}
                                       onMouseEnter={() =>
-                                        draggingTab && draggingTab !== tab.id && swapTab(draggingTab, tab.id)
+                                        draggingTab &&
+                                        draggingTab !== tab.id &&
+                                        swapTab(draggingTab, tab.id)
                                       }
                                     >
                                       <Link
@@ -1308,25 +1364,33 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                                         onClick={async () => {
                                           await setActiveTabId(tab.id);
                                           setSidebarActiveTab(tab.id);
-                                          window.dispatchEvent(new CustomEvent("accountChanged"));
+                                          window.dispatchEvent(
+                                            new CustomEvent("accountChanged"),
+                                          );
                                           onNavigate?.();
                                         }}
                                         className={clsx(
                                           "flex items-center gap-3 px-3 pr-8 py-2 rounded-lg transition-all duration-200",
-                                          draggingTab === tab.id ? "opacity-60" : "",
+                                          draggingTab === tab.id
+                                            ? "opacity-60"
+                                            : "",
                                           isTabActive
-                                            ? "bg-default-100 text-foreground font-medium"
-                                            : "text-muted hover:text-foreground hover:bg-default-50",
+                                            ? "glass-surface-strong text-foreground font-medium"
+                                            : "text-muted hover:text-foreground",
                                         )}
                                       >
                                         {isTabActive && (
                                           <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-foreground rounded-full" />
                                         )}
                                         <Icon className="w-4 h-4 flex-shrink-0" />
-                                        <span className="text-sm truncate">{tab.name}</span>
+                                        <span className="text-sm truncate">
+                                          {tab.name}
+                                        </span>
                                       </Link>
                                       <GripHandle
-                                        onPointerDown={(e) => startTabDrag(tab.id, e)}
+                                        onPointerDown={(e) =>
+                                          startTabDrag(tab.id, e)
+                                        }
                                         onDragEnd={endTabDrag}
                                         isDragging={draggingTab === tab.id}
                                       />
@@ -1337,7 +1401,11 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                             )}
                             {sidebarTabs.length === 0 && (
                               <div className="px-3 py-4 text-center">
-                                <p className="text-xs text-muted/60">{i18n.language === "zh" ? "暂无标签页" : "No tabs yet"}</p>
+                                <p className="text-xs text-muted/60">
+                                  {i18n.language === "zh"
+                                    ? "暂无标签页"
+                                    : "No tabs yet"}
+                                </p>
                               </div>
                             )}
                           </div>
@@ -1352,7 +1420,9 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                       key="characters"
                       className="relative group"
                       onMouseEnter={() =>
-                        draggingNav && draggingNav !== "characters" && swapNav(draggingNav, "characters")
+                        draggingNav &&
+                        draggingNav !== "characters" &&
+                        swapNav(draggingNav, "characters")
                       }
                     >
                       <Link
@@ -1362,17 +1432,21 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                           "flex items-center gap-3 pl-3 pr-8 py-2.5 rounded-xl transition-all duration-200",
                           draggingNav === "characters" ? "opacity-60" : "",
                           location.pathname === "/characters"
-                            ? "glass-surface text-foreground"
-                            : "text-foreground hover:bg-default-100",
+                            ? "glass-surface-strong text-foreground"
+                            : "text-foreground hover:text-foreground",
                         )}
                       >
                         <UsersIcon
                           className={clsx(
                             "w-5 h-5 transition-all duration-200",
-                            location.pathname === "/characters" ? "" : "group-hover:scale-110 group-hover:rotate-12",
+                            location.pathname === "/characters"
+                              ? ""
+                              : "group-hover:scale-110 group-hover:rotate-12",
                           )}
                         />
-                        <span className="text-sm font-semibold">{t("sidebar.characters") || "Characters"}</span>
+                        <span className="text-sm font-semibold">
+                          {t("sidebar.characters") || "Characters"}
+                        </span>
                       </Link>
                       <GripHandle
                         onPointerDown={(e) => startNavDrag("characters", e)}
@@ -1388,7 +1462,9 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                       key="medals"
                       className="relative group"
                       onMouseEnter={() =>
-                        draggingNav && draggingNav !== "medals" && swapNav(draggingNav, "medals")
+                        draggingNav &&
+                        draggingNav !== "medals" &&
+                        swapNav(draggingNav, "medals")
                       }
                     >
                       <Link
@@ -1398,17 +1474,21 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                           "flex items-center gap-3 pl-3 pr-8 py-2.5 rounded-xl transition-all duration-200",
                           draggingNav === "medals" ? "opacity-60" : "",
                           location.pathname === "/medals"
-                            ? "glass-surface text-foreground"
-                            : "text-foreground hover:bg-default-100",
+                            ? "glass-surface-strong text-foreground"
+                            : "text-foreground hover:text-foreground",
                         )}
                       >
                         <MedalIcon
                           className={clsx(
                             "w-5 h-5 transition-all duration-200",
-                            location.pathname === "/medals" ? "" : "group-hover:scale-110 group-hover:rotate-12",
+                            location.pathname === "/medals"
+                              ? ""
+                              : "group-hover:scale-110 group-hover:rotate-12",
                           )}
                         />
-                        <span className="text-sm font-semibold">{t("sidebar.medals") || "Medals"}</span>
+                        <span className="text-sm font-semibold">
+                          {t("sidebar.medals") || "Medals"}
+                        </span>
                       </Link>
                       <GripHandle
                         onPointerDown={(e) => startNavDrag("medals", e)}
@@ -1424,7 +1504,9 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                       key="attendance"
                       className="relative group"
                       onMouseEnter={() =>
-                        draggingNav && draggingNav !== "attendance" && swapNav(draggingNav, "attendance")
+                        draggingNav &&
+                        draggingNav !== "attendance" &&
+                        swapNav(draggingNav, "attendance")
                       }
                     >
                       <Link
@@ -1434,17 +1516,21 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                           "flex items-center gap-3 pl-3 pr-8 py-2.5 rounded-xl transition-all duration-200",
                           draggingNav === "attendance" ? "opacity-60" : "",
                           location.pathname === "/attendance"
-                            ? "glass-surface text-foreground"
-                            : "text-foreground hover:bg-default-100",
+                            ? "glass-surface-strong text-foreground"
+                            : "text-foreground hover:text-foreground",
                         )}
                       >
                         <CalendarIcon
                           className={clsx(
                             "w-5 h-5 transition-all duration-200",
-                            location.pathname === "/attendance" ? "" : "group-hover:scale-110 group-hover:rotate-12",
+                            location.pathname === "/attendance"
+                              ? ""
+                              : "group-hover:scale-110 group-hover:rotate-12",
                           )}
                         />
-                        <span className="text-sm font-semibold">{t("sidebar.attendance") || "Attendance"}</span>
+                        <span className="text-sm font-semibold">
+                          {t("sidebar.attendance") || "Attendance"}
+                        </span>
                       </Link>
                       <GripHandle
                         onPointerDown={(e) => startNavDrag("attendance", e)}
@@ -1460,7 +1546,9 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                       key="gacha"
                       className="relative group"
                       onMouseEnter={() =>
-                        draggingNav && draggingNav !== "gacha" && swapNav(draggingNav, "gacha")
+                        draggingNav &&
+                        draggingNav !== "gacha" &&
+                        swapNav(draggingNav, "gacha")
                       }
                     >
                       <Link
@@ -1470,17 +1558,21 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                           "flex items-center gap-3 pl-3 pr-8 py-2.5 rounded-xl transition-all duration-200",
                           draggingNav === "gacha" ? "opacity-60" : "",
                           location.pathname === "/gacha"
-                            ? "glass-surface text-foreground"
-                            : "text-foreground hover:bg-default-100",
+                            ? "glass-surface-strong text-foreground"
+                            : "text-foreground hover:text-foreground",
                         )}
                       >
                         <GachaIcon
                           className={clsx(
                             "w-5 h-5 transition-all duration-200",
-                            location.pathname === "/gacha" ? "" : "group-hover:scale-110 group-hover:rotate-12",
+                            location.pathname === "/gacha"
+                              ? ""
+                              : "group-hover:scale-110 group-hover:rotate-12",
                           )}
                         />
-                        <span className="text-sm font-semibold">{t("sidebar.gacha") || "Gacha"}</span>
+                        <span className="text-sm font-semibold">
+                          {t("sidebar.gacha") || "Gacha"}
+                        </span>
                       </Link>
                       <GripHandle
                         onPointerDown={(e) => startNavDrag("gacha", e)}
@@ -1519,9 +1611,10 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                 onPress: async () => {
                   const confirmed = await confirmDialog({
                     title: i18n.language === "zh" ? "删除标签页" : "Delete Tab",
-                    body: i18n.language === "zh"
-                      ? `确定要删除「${contextMenu.tabName}」吗？`
-                      : `Are you sure you want to delete "${contextMenu.tabName}"?`,
+                    body:
+                      i18n.language === "zh"
+                        ? `确定要删除「${contextMenu.tabName}」吗？`
+                        : `Are you sure you want to delete "${contextMenu.tabName}"?`,
                     confirmText: i18n.language === "zh" ? "删除" : "Delete",
                     cancelText: i18n.language === "zh" ? "取消" : "Cancel",
                     tone: "danger",
@@ -1576,14 +1669,16 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                   className={clsx(
                     "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
                     isActive
-                      ? "glass-surface text-foreground"
-                      : "text-foreground hover:bg-default-100",
+                      ? "glass-surface-strong text-foreground"
+                      : "text-foreground hover:text-foreground",
                   )}
                 >
                   <Icon
                     className={clsx(
                       "w-5 h-5 transition-all duration-200",
-                      isActive ? "" : "group-hover:scale-110 group-hover:rotate-12",
+                      isActive
+                        ? ""
+                        : "group-hover:scale-110 group-hover:rotate-12",
                     )}
                   />
                   <span className="text-sm font-semibold">{item.label}</span>
@@ -1593,20 +1688,20 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
           </div>
 
           <div className="flex items-center justify-between px-1 pt-1">
-          <div className="flex items-center gap-1">
-            <a
-              aria-label="Github"
-              href={siteConfig.links.github}
-              rel="noopener noreferrer"
-              target="_blank"
-              className="glass-surface p-2 rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
-            >
-              <GithubIcon className="text-muted w-4 h-4 hover:text-foreground transition-colors" />
-            </a>
-            <ThemeSwitch />
-            <LanguageSwitch />
+            <div className="flex items-center gap-1">
+              <a
+                aria-label="Github"
+                href={siteConfig.links.github}
+                rel="noopener noreferrer"
+                target="_blank"
+                className="glass-surface p-2 rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
+              >
+                <GithubIcon className="text-muted w-4 h-4 hover:text-foreground transition-colors" />
+              </a>
+              <ThemeSwitch />
+              <LanguageSwitch />
+            </div>
           </div>
-        </div>
         </div>
       </aside>
 

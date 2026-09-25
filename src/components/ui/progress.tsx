@@ -1,15 +1,14 @@
 import { createContext, useContext } from "react";
-import { cn } from "@/lib/cn";
+import { cn } from "@/lib/utils";
 
 /* ======================================================
- * GlassProgressCircle — 环形加载
- * 用法（对齐 HeroUI compound）：
- * <GlassProgressCircle isIndeterminate size="lg" aria-label="Loading">
- *   <GlassProgressCircle.Track>
- *     <GlassProgressCircle.TrackCircle />
- *     <GlassProgressCircle.FillCircle />
- *   </GlassProgressCircle.Track>
- * </GlassProgressCircle>
+ * ProgressCircle — 环形加载
+ * <ProgressCircle isIndeterminate size="lg" aria-label="Loading">
+ *   <ProgressCircle.Track>
+ *     <ProgressCircle.TrackCircle />
+ *     <ProgressCircle.FillCircle />
+ *   </ProgressCircle.Track>
+ * </ProgressCircle>
  * ====================================================== */
 
 interface ProgressCtxValue {
@@ -26,7 +25,7 @@ const ProgressCtx = createContext<ProgressCtxValue>({
   isIndeterminate: false,
 });
 
-function GlassProgressCircle({
+function ProgressCircle({
   isIndeterminate = false,
   size = "md",
   value = 0,
@@ -70,7 +69,13 @@ function GlassProgressCircle({
   );
 }
 
-function Track({ children, className }: { children?: React.ReactNode; className?: string }) {
+function Track({
+  children,
+  className,
+}: {
+  children?: React.ReactNode;
+  className?: string;
+}) {
   return <g className={className}>{children}</g>;
 }
 
@@ -120,24 +125,23 @@ function FillCircle({ className }: { className?: string }) {
   );
 }
 
-GlassProgressCircle.Track = Track;
-GlassProgressCircle.TrackCircle = TrackCircle;
-GlassProgressCircle.FillCircle = FillCircle;
+ProgressCircle.Track = Track;
+ProgressCircle.TrackCircle = TrackCircle;
+ProgressCircle.FillCircle = FillCircle;
 
-export { GlassProgressCircle };
+const GlassProgressCircle = ProgressCircle;
 
 /* ======================================================
- * GlassMeter — 进度条
- * 用法：
- * <GlassMeter aria-label value className>
- *   <GlassMeter.Output />
- *   <GlassMeter.Track><GlassMeter.Fill /></GlassMeter.Track>
- * </GlassMeter>
+ * Meter — 进度条
+ * <Meter aria-label value className>
+ *   <Meter.Output />
+ *   <Meter.Track><Meter.Fill /></Meter.Track>
+ * </Meter>
  * ====================================================== */
 
 const MeterCtx = createContext<{ value: number }>({ value: 0 });
 
-function GlassMeter({
+function Meter({
   value = 0,
   "aria-label": ariaLabel,
   className,
@@ -150,7 +154,14 @@ function GlassMeter({
 }) {
   const clamped = Math.max(0, Math.min(100, value));
   return (
-    <div role="meter" aria-label={ariaLabel} aria-valuemin={0} aria-valuemax={100} aria-valuenow={clamped} className={className}>
+    <div
+      role="meter"
+      aria-label={ariaLabel}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={clamped}
+      className={className}
+    >
       <MeterCtx.Provider value={{ value: clamped }}>{children}</MeterCtx.Provider>
     </div>
   );
@@ -158,10 +169,18 @@ function GlassMeter({
 
 function MeterOutput({ className }: { className?: string }) {
   const { value } = useContext(MeterCtx);
-  return <span className={cn("sr-only", className)}>{Math.round(value)}%</span>;
+  return (
+    <span className={cn("sr-only", className)}>{Math.round(value)}%</span>
+  );
 }
 
-function MeterTrack({ children, className }: { children?: React.ReactNode; className?: string }) {
+function MeterTrack({
+  children,
+  className,
+}: {
+  children?: React.ReactNode;
+  className?: string;
+}) {
   return (
     <div className={cn("h-2 w-full overflow-hidden rounded-full", className)}>
       {children}
@@ -179,8 +198,10 @@ function MeterFill({ className }: { className?: string }) {
   );
 }
 
-GlassMeter.Output = MeterOutput;
-GlassMeter.Track = MeterTrack;
-GlassMeter.Fill = MeterFill;
+Meter.Output = MeterOutput;
+Meter.Track = MeterTrack;
+Meter.Fill = MeterFill;
 
-export { GlassMeter };
+const GlassMeter = Meter;
+
+export { ProgressCircle, Meter, GlassProgressCircle, GlassMeter };

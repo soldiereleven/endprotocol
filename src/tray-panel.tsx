@@ -2,7 +2,6 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { TrayPanel } from "./components/tray-panel";
 import "./styles/globals.css";
-import "aura-glass/tokens/css";
 import { getConfig } from "./utils/configService";
 import { listen } from "@tauri-apps/api/event";
 
@@ -13,7 +12,6 @@ function applyTheme(mode: ThemeMode) {
   const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   const isDark = mode === "dark" || (mode === "system" && systemDark);
   root.classList.toggle("dark", isDark);
-  root.setAttribute("data-aura-mode", isDark ? "dark" : "light");
 }
 
 async function initTheme() {

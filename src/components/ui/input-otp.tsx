@@ -1,5 +1,5 @@
 import { createContext, useContext, useRef } from "react";
-import { cn } from "@/lib/cn";
+import { cn } from "@/lib/utils";
 
 export interface GlassInputOTPProps {
   value?: string;
@@ -12,9 +12,12 @@ export interface GlassInputOTPProps {
   children?: React.ReactNode;
 }
 
-const OTPCtx = createContext<{ value: string; isInvalid: boolean }>({ value: "", isInvalid: false });
+const OTPCtx = createContext<{ value: string; isInvalid: boolean }>({
+  value: "",
+  isInvalid: false,
+});
 
-function GlassInputOTP({
+function InputOTP({
   value = "",
   onChange,
   onComplete,
@@ -50,19 +53,31 @@ function GlassInputOTP({
   );
 }
 
-function Group({ className, children }: { className?: string; children?: React.ReactNode }) {
+function OTPGroup({
+  className,
+  children,
+}: {
+  className?: string;
+  children?: React.ReactNode;
+}) {
   return <div className={cn("flex gap-2", className)}>{children}</div>;
 }
 
-function Slot({ index, className }: { index: number; className?: string }) {
+function OTPSlot({
+  index,
+  className,
+}: {
+  index: number;
+  className?: string;
+}) {
   const { value, isInvalid } = useContext(OTPCtx);
   const ch = value[index] ?? "";
   return (
     <span
       className={cn(
-        "glass-field flex h-11 w-9 items-center justify-center rounded-lg",
+        "flex h-11 w-9 items-center justify-center rounded-lg border border-separator bg-field",
         "text-base font-semibold text-foreground",
-        isInvalid && "border border-danger",
+        isInvalid && "border-danger",
         className,
       )}
     >
@@ -71,12 +86,19 @@ function Slot({ index, className }: { index: number; className?: string }) {
   );
 }
 
-function Separator({ className }: { className?: string }) {
-  return <span className={cn("text-muted/70", className)}>—</span>;
+function OTPSeparator({ className }: { className?: string }) {
+  return (
+    <span className={cn("text-muted/70", className)}>—</span>
+  );
 }
 
-GlassInputOTP.Group = Group;
-GlassInputOTP.Slot = Slot;
-GlassInputOTP.Separator = Separator;
+InputOTP.Group = OTPGroup;
+InputOTP.Slot = OTPSlot;
+InputOTP.Separator = OTPSeparator;
 
-export { GlassInputOTP };
+const GlassInputOTP = InputOTP;
+GlassInputOTP.Group = OTPGroup;
+GlassInputOTP.Slot = OTPSlot;
+GlassInputOTP.Separator = OTPSeparator;
+
+export { InputOTP, GlassInputOTP };
