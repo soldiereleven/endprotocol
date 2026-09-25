@@ -38,6 +38,8 @@
     --content3: #e9eaee;
     --success: #22c55e;
     --success-foreground: #052e16;
+    --info: #3b82f6;
+    --info-foreground: #eff6ff;
     --warning: #f59e0b;
     --warning-foreground: #451a03;
     --warning-dark: #b45309;
@@ -81,6 +83,8 @@
     --content3: oklch(0.33 0.006 286);
     --background: #0b0b0d;
     --foreground: #f8fafc;
+    --info: #60a5fa;
+    --info-foreground: #172554;
     --muted: oklch(0.7 0.015 286);
     --separator: oklch(0.25 0.006 286);
     --border: oklch(0.28 0.006 286);
@@ -131,6 +135,8 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-warning-dark: var(--warning-dark);

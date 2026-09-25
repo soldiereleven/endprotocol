@@ -1,5 +1,6 @@
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import i18n from "@/i18n";
 import { addMessage, updateMessage, removeMessage, removeMessagesByTag, type AppMessage } from "./messageStore";
 import { pushGlobalAlert } from "@/components/ui/global-alert";
@@ -755,6 +756,14 @@ export async function downloadUpdate(): Promise<void> {
   isDownloading = true;
   downloadProgress = 0;
   downloadTotal = 0;
+  addProgressMessage(
+    i18n.t("messages.downloading"),
+    i18n.t("messages.preparing"),
+    false,
+    undefined,
+    "update-progress",
+    0,
+  );
   const controller = new AbortController();
   downloadAbortController = controller;
   emitChange();
@@ -770,10 +779,27 @@ export async function downloadUpdate(): Promise<void> {
       const tempDir = await invoke<string>("get_temp_dir");
       const installerPath = `${tempDir}\\endprotocol-update.exe`;
 
-      await invoke("download_file", {
-        url,
-        path: installerPath,
-      });
+      const unlisten = await listen<{ downloaded: number; total: number }>(
+        "download-progress",
+        (event) => {
+          downloadProgress = event.payload.downloaded;
+          downloadTotal = event.payload.total;
+          updateProgressMessage(
+            i18n.t("messages.downloading"),
+            downloadTotal > 0 ? `${downloadProgress} / ${downloadTotal} bytes` : undefined,
+            downloadTotal > 0 ? (downloadProgress / downloadTotal) * 100 : undefined,
+          );
+          emitChange();
+        },
+      );
+      try {
+        await invoke("download_file", {
+          url,
+          path: installerPath,
+        });
+      } finally {
+        unlisten();
+      }
 
       logger.info("Download complete, installing...", "Updater");
 
@@ -783,7 +809,27 @@ export async function downloadUpdate(): Promise<void> {
     } else {
       // Standard Tauri updater plugin download + install
       logger.info("Starting update download via Tauri updater...", "Updater");
-      await currentUpdate.download();
+      await currentUpdate.download((event) => {
+        if (event.event === "Started") {
+          downloadTotal = event.data.contentLength ?? 0;
+          updateProgressMessage(
+            i18n.t("messages.downloading"),
+            downloadTotal > 0 ? `${downloadTotal} bytes` : undefined,
+            0,
+          );
+        } else if (event.event === "Progress") {
+          downloadProgress += event.data.chunkLength;
+          const percent = downloadTotal > 0
+            ? (downloadProgress / downloadTotal) * 100
+            : undefined;
+          updateProgressMessage(
+            i18n.t("messages.downloading"),
+            undefined,
+            percent,
+          );
+        }
+        emitChange();
+      });
       logger.info("Download complete, installing...", "Updater");
       await currentUpdate.install();
       logger.info("Install complete, restarting...", "Updater");

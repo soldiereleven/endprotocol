@@ -395,7 +395,11 @@
     "days_ago": "{{count}}d ago",
     "working": "Working...",
     "loading": "Loading...",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "preparing": "Preparing...",
+    "downloading": "Downloading..."
   },
   "launcher": {
     "install_path": "Install Path",

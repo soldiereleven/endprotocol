@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/app-icon";
 import { AppInfoDrawer } from "@/components/app-info-drawer";
 import { CloseConfirmDialog } from "@/components/close-confirm-dialog";
-import { getUnreadCount, hasUrgentUnread, subscribeMessages } from "@/utils/messageStore";
+import { getMessages, getUnreadCount, hasUrgentUnread, subscribeMessages, type AppMessage } from "@/utils/messageStore";
+import { MessageCard } from "@/components/message-card";
 import { getConfig } from "@/utils/configService";
 import {
   getLauncherMode,
@@ -31,12 +32,30 @@ export const CustomTitlebar = () => {
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [closeAction, setCloseAction] = useState<string>("ask");
   const [viewMode, setViewMode] = useState<LauncherViewMode>(getLauncherMode);
+  const [newMessage, setNewMessage] = useState<AppMessage | null>(null);
+  const [flyoutOpen, setFlyoutOpen] = useState(true);
+  const latestMessageId = useRef(getMessages()[0]?.id ?? null);
+  const flyoutTimer = useRef<number | null>(null);
 
   useEffect(() => {
     return subscribeMessages(() => {
+      const latest = getMessages()[0];
+      if (latest && latest.id !== latestMessageId.current) {
+        latestMessageId.current = latest.id;
+        setNewMessage(latest);
+        setFlyoutOpen(true);
+        if (flyoutTimer.current) window.clearTimeout(flyoutTimer.current);
+        if (latest.progress === undefined || latest.progress < 0) {
+          flyoutTimer.current = window.setTimeout(() => setNewMessage(null), 5000);
+        }
+      }
       setUnreadCount(getUnreadCount());
       setHasUrgent(hasUrgentUnread());
     });
+  }, []);
+
+  useEffect(() => () => {
+    if (flyoutTimer.current) window.clearTimeout(flyoutTimer.current);
   }, []);
 
   useEffect(() => {
@@ -194,6 +213,22 @@ export const CustomTitlebar = () => {
             </span>
           )}
         </button>
+
+        {newMessage && flyoutOpen && (
+          <div
+            className="absolute right-12 top-10 z-[220] w-[340px] max-w-[calc(100vw-2rem)] rounded-xl glass-surface-strong p-1 shadow-xl animate-fade-in"
+            style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+          >
+            <MessageCard
+              msg={newMessage}
+              compact
+              onOpen={() => {
+                setFlyoutOpen(false);
+                setInfoOpen(true);
+              }}
+            />
+          </div>
+        )}
 
         <div
           className="flex items-center glass-surface border border-separator/60 rounded-xl overflow-hidden"

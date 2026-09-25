@@ -8,9 +8,9 @@ type VisualType = "info" | "warn" | "urgent";
 
 const TYPE_STYLES: Record<VisualType, { icon: string; card: string; cardRead: string }> = {
   info: {
-    icon: "bg-primary/15 text-primary",
-    card: "border-primary/15 bg-primary/5",
-    cardRead: "border-primary/10 bg-primary/[0.02]",
+    icon: "bg-info/15 text-info",
+    card: "border-info/15 bg-info/5",
+    cardRead: "border-info/10 bg-info/[0.02]",
   },
   warn: {
     icon: "bg-warning/15 text-warning",
@@ -72,20 +72,34 @@ function timeAgo(ts: number, t: (key: string, options?: Record<string, unknown>)
   return t("messages.days_ago", { count: d });
 }
 
-export function MessageCard({ msg }: { msg: AppMessage }) {
+export function MessageCard({
+  msg,
+  compact = false,
+  onOpen,
+}: {
+  msg: AppMessage;
+  compact?: boolean;
+  onOpen?: () => void;
+}) {
   const { t } = useTranslation();
   const v = resolveType(msg.type);
   const s = TYPE_STYLES[v];
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [bodyExpanded, setBodyExpanded] = useState(!compact);
 
   return (
     <div
       className={cn(
-        "group flex gap-3 p-3 rounded-xl border transition-all duration-200",
+        "group flex gap-3 p-3 rounded-xl transition-all duration-200",
         msg.actions ? "cursor-default" : "cursor-pointer",
-        msg.read ? s.cardRead : cn("ring-1", s.card),
+        compact
+          ? "border-0 bg-transparent"
+          : cn("border", msg.read ? s.cardRead : cn("ring-1", s.card)),
       )}
-      onClick={() => !msg.read && !msg.actions && markRead(msg.id)}
+      onClick={() => {
+        if (onOpen) onOpen();
+        else if (!msg.read && !msg.actions) markRead(msg.id);
+      }}
     >
       <TypeIcon type={msg.type} />
 
@@ -93,8 +107,22 @@ export function MessageCard({ msg }: { msg: AppMessage }) {
         <p className={cn("text-xs leading-snug", msg.read ? "text-foreground/70" : "text-foreground font-medium")}>
           {msg.title}
         </p>
-        {msg.body && (
+        {msg.body && bodyExpanded && (
           <p className="text-[11px] text-muted mt-0.5 leading-relaxed whitespace-pre-line">{msg.body}</p>
+        )}
+        {compact && msg.body && (
+          <button
+            type="button"
+            className="mt-1 text-[10px] text-info hover:text-info/80"
+            onClick={(e) => {
+              e.stopPropagation();
+              setBodyExpanded((expanded) => !expanded);
+            }}
+          >
+            {bodyExpanded
+              ? t("messages.collapse")
+              : t("messages.expand")}
+          </button>
         )}
         {typeof msg.progress === "number" && msg.progress === -1 && (
           <div className="mt-1.5 flex items-center gap-2">
