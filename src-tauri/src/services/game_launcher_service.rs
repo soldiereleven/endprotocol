@@ -8,7 +8,7 @@ use std::time::Duration;
 use futures_util::StreamExt;
 use reqwest::Client;
 use tauri::Emitter;
-use tokio::sync::{Semaphore, Mutex};
+use tokio::sync::{Mutex, Semaphore};
 use walkdir::WalkDir;
 
 use crate::models::game::*;
@@ -50,9 +50,10 @@ pub fn cleanup_staging_files(install_path: &str) {
                 let name = entry.file_name();
                 let name_str = name.to_string_lossy();
                 if let Some(stem) = install_dir.file_name().and_then(|s| s.to_str()) {
-                    if name_str.starts_with(&format!("{}.staging.", stem)) ||
-                       name_str.starts_with(&format!("{}.switch.", stem)) ||
-                       name_str.starts_with(&format!("{}.backup.", stem)) {
+                    if name_str.starts_with(&format!("{}.staging.", stem))
+                        || name_str.starts_with(&format!("{}.switch.", stem))
+                        || name_str.starts_with(&format!("{}.backup.", stem))
+                    {
                         let path = entry.path();
                         tracing::info!("[cleanup] Removing old dir: {}", path.display());
                         let _ = fs::remove_dir_all(&path);
@@ -171,7 +172,10 @@ impl GameLauncherService {
             }]
         });
 
-        tracing::debug!("[api] Request body: {}", serde_json::to_string_pretty(&req_body).unwrap_or_default());
+        tracing::debug!(
+            "[api] Request body: {}",
+            serde_json::to_string_pretty(&req_body).unwrap_or_default()
+        );
 
         let resp = self
             .http_client
@@ -182,11 +186,19 @@ impl GameLauncherService {
             .map_err(|e| format!("API request failed: {}", e))?;
 
         let status = resp.status();
-        let text = resp.text().await.map_err(|e| format!("Failed to read response: {}", e))?;
+        let text = resp
+            .text()
+            .await
+            .map_err(|e| format!("Failed to read response: {}", e))?;
         tracing::debug!("[api] Response status={}, body_len={}", status, text.len());
 
-        let body: BatchProxyResponse = serde_json::from_str(&text)
-            .map_err(|e| format!("Failed to parse API response: {} — body preview: {}", e, &text[..text.len().min(500)]))?;
+        let body: BatchProxyResponse = serde_json::from_str(&text).map_err(|e| {
+            format!(
+                "Failed to parse API response: {} — body preview: {}",
+                e,
+                &text[..text.len().min(500)]
+            )
+        })?;
 
         let game_rsp = body
             .proxy_rsps
@@ -241,7 +253,11 @@ impl GameLauncherService {
         channel: &GameChannel,
         install_path: &str,
     ) -> Result<GameStatus, String> {
-        tracing::info!("[check_status] channel={}, path={}", channel.as_str(), install_path);
+        tracing::info!(
+            "[check_status] channel={}, path={}",
+            channel.as_str(),
+            install_path
+        );
         let path = Path::new(install_path);
         let exe_exists = path.join(channel.executable_name()).exists();
         let config_exists = path.join("config.ini").exists();
@@ -258,13 +274,12 @@ impl GameLauncherService {
         tracing::info!("[check_status] got remote: version={}", remote.version);
         let remote_version = Some(remote.version.clone());
 
-        let has_update = if let (Some(ref local), Some(ref remote)) =
-            (&local_version, &remote_version)
-        {
-            !Self::versions_equal(local, remote)
-        } else {
-            false
-        };
+        let has_update =
+            if let (Some(ref local), Some(ref remote)) = (&local_version, &remote_version) {
+                !Self::versions_equal(local, remote)
+            } else {
+                false
+            };
 
         // Preload detection: preload available when installed, no update pending, and API reports preload
         let has_preload = is_installed && !has_update && remote.has_preload;
@@ -360,10 +375,7 @@ impl GameLauncherService {
             }
 
             // 大小匹配，检查 MD5
-            match hg_crypto::verify_md5(
-                local_path.to_str().unwrap_or(""),
-                &entry.md5,
-            ) {
+            match hg_crypto::verify_md5(local_path.to_str().unwrap_or(""), &entry.md5) {
                 Ok(true) => {
                     valid_files += 1;
                     existing_bytes += entry_size;
@@ -400,9 +412,8 @@ impl GameLauncherService {
     /// 读取本地 config.ini 中的版本号
     fn read_local_version(&self, install_path: &str) -> Result<String, String> {
         let config_path = Path::new(install_path).join("config.ini");
-        let content = hg_crypto::decrypt_file_to_string(
-            config_path.to_str().ok_or("Invalid config path")?,
-        )?;
+        let content =
+            hg_crypto::decrypt_file_to_string(config_path.to_str().ok_or("Invalid config path")?)?;
 
         // 解析版本号，格式类似 "game_version = x.y.z"
         for line in content.lines() {
@@ -429,9 +440,7 @@ impl GameLauncherService {
             } else {
                 core
             };
-            core.split('.')
-                .filter_map(|s| s.parse().ok())
-                .collect()
+            core.split('.').filter_map(|s| s.parse().ok()).collect()
         };
 
         let a_parts = parse(a);
@@ -492,8 +501,8 @@ impl GameLauncherService {
                 continue;
             }
 
-            let entry: ManifestFile =
-                serde_json::from_str(line).map_err(|e| format!("Line {}: JSON parse error: {}", line_num + 1, e))?;
+            let entry: ManifestFile = serde_json::from_str(line)
+                .map_err(|e| format!("Line {}: JSON parse error: {}", line_num + 1, e))?;
 
             // 验证路径安全性
             Self::validate_path(&entry.path)?;
@@ -548,8 +557,7 @@ impl GameLauncherService {
 
         let reserved = [
             "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
-            "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8",
-            "LPT9",
+            "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
         ];
 
         for component in path.split(&['/', '\\']) {
@@ -571,11 +579,7 @@ impl GameLauncherService {
     // ========== 文件比较与计划 ==========
 
     /// 比较本地文件与清单，生成下载计划
-    pub fn plan_updates(
-        &self,
-        manifest: &[ManifestFile],
-        install_path: &str,
-    ) -> Vec<FilePlan> {
+    pub fn plan_updates(&self, manifest: &[ManifestFile], install_path: &str) -> Vec<FilePlan> {
         let install_dir = Path::new(install_path);
         let mut plans = Vec::new();
 
@@ -585,10 +589,9 @@ impl GameLauncherService {
                 // 检查本地文件是否匹配（大小 + MD5）
                 if let Ok(meta) = fs::metadata(&local_path) {
                     if meta.len() as i64 == entry.size {
-                        if let Ok(true) = hg_crypto::verify_md5(
-                            local_path.to_str().unwrap_or(""),
-                            &entry.md5,
-                        ) {
+                        if let Ok(true) =
+                            hg_crypto::verify_md5(local_path.to_str().unwrap_or(""), &entry.md5)
+                        {
                             Some(local_path.to_string_lossy().to_string())
                         } else {
                             None
@@ -626,8 +629,7 @@ impl GameLauncherService {
 
         // 确保目标目录存在
         if let Some(parent) = Path::new(dest_path).parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| format!("Failed to create directory: {}", e))?;
+            fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {}", e))?;
         }
 
         let mut start_byte: u64 = 0;
@@ -721,7 +723,10 @@ impl GameLauncherService {
                     drop(file);
 
                     // MD5 校验
-                    if !hg_crypto::verify_md5(&download_path, &hg_crypto::md5_hex(&fs::read(&download_path).unwrap_or_default()))? {
+                    if !hg_crypto::verify_md5(
+                        &download_path,
+                        &hg_crypto::md5_hex(&fs::read(&download_path).unwrap_or_default()),
+                    )? {
                         // 从清单 URL 中无法获取预期 MD5，跳过此处校验
                         // 清单校验在批量完成后统一进行
                     }
@@ -785,7 +790,11 @@ impl GameLauncherService {
             return Err("Another operation is in progress".to_string());
         }
         // 1. 检查阶段
-        tracing::info!("[install] Starting install_or_update: channel={}, path={}", channel.as_str(), install_path);
+        tracing::info!(
+            "[install] Starting install_or_update: channel={}, path={}",
+            channel.as_str(),
+            install_path
+        );
         progress_callback(DownloadProgress {
             downloaded: 0,
             total: 0,
@@ -805,8 +814,7 @@ impl GameLauncherService {
 
         // 2. 下载并解密清单
         tracing::info!("[install] Fetching manifest...");
-        let (manifest, manifest_sha256) =
-            self.fetch_manifest(&remote.resource_base_url).await?;
+        let (manifest, manifest_sha256) = self.fetch_manifest(&remote.resource_base_url).await?;
         tracing::info!("[install] Manifest loaded: {} files", manifest.len());
 
         // 3. 比较阶段
@@ -822,15 +830,11 @@ impl GameLauncherService {
         });
 
         let plans = self.plan_updates(&manifest, install_path);
-        let mut files_to_download: Vec<&FilePlan> = plans
-            .iter()
-            .filter(|p| p.source_path.is_none())
-            .collect();
+        let mut files_to_download: Vec<&FilePlan> =
+            plans.iter().filter(|p| p.source_path.is_none()).collect();
 
-        let files_to_copy: Vec<&FilePlan> = plans
-            .iter()
-            .filter(|p| p.source_path.is_some())
-            .collect();
+        let files_to_copy: Vec<&FilePlan> =
+            plans.iter().filter(|p| p.source_path.is_some()).collect();
 
         tracing::info!(
             "[install] Plan: {} files to download, {} files to copy (out of {} total)",
@@ -847,11 +851,7 @@ impl GameLauncherService {
         }
 
         // 4. 创建暂存目录
-        let staging_dir = format!(
-            "{}.staging.{}",
-            install_path,
-            uuid::Uuid::new_v4()
-        );
+        let staging_dir = format!("{}.staging.{}", install_path, uuid::Uuid::new_v4());
         tracing::info!("[install] Staging dir: {}", staging_dir);
         fs::create_dir_all(&staging_dir)
             .map_err(|e| format!("Failed to create staging dir: {}", e))?;
@@ -861,18 +861,24 @@ impl GameLauncherService {
 
         let result = async {
             // 5. 复制已有文件
-            tracing::info!("[install] Copying {} existing files to staging...", files_to_copy.len());
+            tracing::info!(
+                "[install] Copying {} existing files to staging...",
+                files_to_copy.len()
+            );
             for (idx, plan) in files_to_copy.iter().enumerate() {
                 if let Some(ref src) = plan.source_path {
                     let dest = staging_path.join(&plan.manifest.path);
                     if let Some(parent) = dest.parent() {
-                        fs::create_dir_all(parent)
-                            .map_err(|e| format!("Create dir: {}", e))?;
+                        fs::create_dir_all(parent).map_err(|e| format!("Create dir: {}", e))?;
                     }
                     fs::copy(src, &dest)
                         .map_err(|e| format!("Copy file {}: {}", plan.manifest.path, e))?;
                     if (idx + 1) % 500 == 0 || idx + 1 == files_to_copy.len() {
-                        tracing::debug!("[install] Copied {}/{} files", idx + 1, files_to_copy.len());
+                        tracing::debug!(
+                            "[install] Copied {}/{} files",
+                            idx + 1,
+                            files_to_copy.len()
+                        );
                     }
                 }
             }
@@ -899,7 +905,9 @@ impl GameLauncherService {
                                 if hg_crypto::verify_md5(
                                     preload_file.to_str().unwrap_or(""),
                                     &plan.manifest.md5,
-                                ).unwrap_or(false) {
+                                )
+                                .unwrap_or(false)
+                                {
                                     if let Some(parent) = dest.parent() {
                                         let _ = fs::create_dir_all(parent);
                                     }
@@ -915,7 +923,9 @@ impl GameLauncherService {
                 if reused_count > 0 {
                     tracing::info!(
                         "[install] Reused {}/{} files from preload ({} bytes)",
-                        reused_count, files_to_download.len(), reused_bytes
+                        reused_count,
+                        files_to_download.len(),
+                        reused_bytes
                     );
                     // Remove reused files from download list
                     files_to_download.retain(|plan| {
@@ -930,7 +940,8 @@ impl GameLauncherService {
             let file_count = files_to_download.len();
             tracing::info!(
                 "[install] Downloading {} files, total {} bytes",
-                file_count, total_bytes
+                file_count,
+                total_bytes
             );
 
             let downloaded_bytes = Arc::new(AtomicU64::new(0));
@@ -966,8 +977,7 @@ impl GameLauncherService {
             for (idx, plan) in files_to_download.iter().enumerate() {
                 let dest = staging_path.join(&plan.manifest.path);
                 if let Some(parent) = dest.parent() {
-                    fs::create_dir_all(parent)
-                        .map_err(|e| format!("Create dir: {}", e))?;
+                    fs::create_dir_all(parent).map_err(|e| format!("Create dir: {}", e))?;
                 }
 
                 let dest_str = dest.to_string_lossy().to_string();
@@ -981,7 +991,10 @@ impl GameLauncherService {
 
                 tracing::debug!(
                     "[install] Spawn download {}/{}: {} ({} bytes)",
-                    idx + 1, file_count, file_name, file_size
+                    idx + 1,
+                    file_count,
+                    file_name,
+                    file_size
                 );
 
                 join_set.spawn(async move {
@@ -990,8 +1003,13 @@ impl GameLauncherService {
                         Err(e) => return (Err(format!("Semaphore: {}", e)), file_name, file_size),
                     };
                     let result = download_single_file(
-                        &download_url, &dest_str, &expected_md5, dl_bytes.clone(), file_size,
-                    ).await;
+                        &download_url,
+                        &dest_str,
+                        &expected_md5,
+                        dl_bytes.clone(),
+                        file_size,
+                    )
+                    .await;
                     drop(permit);
                     if let Err(ref e) = result {
                         tracing::error!("[install] Download FAILED: {} — {}", file_name, e);
@@ -1004,20 +1022,25 @@ impl GameLauncherService {
             let mut completed = 0u32;
             let mut failed_files = Vec::new();
             while let Some(res) = join_set.join_next().await {
-                let (result, file_name, file_size) = res
-                    .map_err(|e| format!("Task join error: {}", e))?;
+                let (result, file_name, file_size) =
+                    res.map_err(|e| format!("Task join error: {}", e))?;
                 completed += 1;
                 match result {
                     Ok(()) => {
                         tracing::debug!(
                             "[install] Completed {}/{}: {}",
-                            completed, file_count, file_name
+                            completed,
+                            file_count,
+                            file_name
                         );
                     }
                     Err(e) => {
                         tracing::error!(
                             "[install] Failed {}/{}: {} — {}",
-                            completed, file_count, file_name, e
+                            completed,
+                            file_count,
+                            file_name,
+                            e
                         );
                         failed_files.push((file_name, e));
                     }
@@ -1040,7 +1063,10 @@ impl GameLauncherService {
                 ));
             }
 
-            tracing::info!("[install] All {} downloads complete, verifying...", file_count);
+            tracing::info!(
+                "[install] All {} downloads complete, verifying...",
+                file_count
+            );
 
             // 7. 验证阶段：对暂存目录中所有文件做完整 MD5 校验
             let mut verified_bytes: u64 = 0;
@@ -1060,21 +1086,15 @@ impl GameLauncherService {
                     tracing::error!("[install] Missing file after download: {}", entry.path);
                     return Err(format!("Missing file after download: {}", entry.path));
                 }
-                let verified = hg_crypto::verify_md5(
-                    file_path.to_str().unwrap_or(""),
-                    &entry.md5,
-                )
-                .map_err(|e| format!("Verify error for {}: {}", entry.path, e))?;
+                let verified = hg_crypto::verify_md5(file_path.to_str().unwrap_or(""), &entry.md5)
+                    .map_err(|e| format!("Verify error for {}: {}", entry.path, e))?;
                 if !verified {
                     tracing::error!("[install] MD5 verification failed: {}", entry.path);
                     return Err(format!("MD5 verification failed: {}", entry.path));
                 }
                 verified_bytes += entry.size as u64;
                 if (idx + 1) % 500 == 0 || idx + 1 == manifest.len() {
-                    tracing::debug!(
-                        "[install] Verified {}/{} files",
-                        idx + 1, manifest.len()
-                    );
+                    tracing::debug!("[install] Verified {}/{} files", idx + 1, manifest.len());
                     progress_callback(DownloadProgress {
                         downloaded: total_bytes,
                         total: total_bytes,
@@ -1158,8 +1178,7 @@ impl GameLauncherService {
                 let dest = target.join(relative);
 
                 if let Some(parent) = dest.parent() {
-                    fs::create_dir_all(parent)
-                        .map_err(|e| format!("Create dir error: {}", e))?;
+                    fs::create_dir_all(parent).map_err(|e| format!("Create dir error: {}", e))?;
                 }
 
                 fs::copy(entry.path(), &dest)
@@ -1180,6 +1199,7 @@ impl GameLauncherService {
         max_concurrent: usize,
         quick: bool,
     ) -> Result<String, String> {
+        let max_concurrent = max_concurrent.max(1).min(32);
         if self.has_active_operation().await {
             return Err("Another operation is in progress".to_string());
         }
@@ -1193,10 +1213,14 @@ impl GameLauncherService {
         let remote = self.get_latest_package(channel).await?;
         tracing::info!(
             "[verify] Remote package: version={}, resource_base_url={}",
-            remote.version, remote.resource_base_url
+            remote.version,
+            remote.resource_base_url
         );
 
-        tracing::info!("[verify] Step 2: Fetching manifest from {}/game_files ...", remote.resource_base_url);
+        tracing::info!(
+            "[verify] Step 2: Fetching manifest from {}/game_files ...",
+            remote.resource_base_url
+        );
         let (manifest, _) = self.fetch_manifest(&remote.resource_base_url).await?;
         tracing::info!("[verify] Manifest parsed: {} files", manifest.len());
         if manifest.is_empty() {
@@ -1209,7 +1233,9 @@ impl GameLauncherService {
 
         tracing::info!(
             "[verify] Total expected: {} files, {} bytes ({:.2} MB)",
-            file_count, total_verify_bytes, total_verify_bytes as f64 / 1048576.0
+            file_count,
+            total_verify_bytes,
+            total_verify_bytes as f64 / 1048576.0
         );
 
         // 检查安装目录
@@ -1218,12 +1244,18 @@ impl GameLauncherService {
                 "[verify] ERROR: Install directory does not exist: {}",
                 install_path
             );
-            return Err(format!("Install directory does not exist: {}", install_path));
+            return Err(format!(
+                "Install directory does not exist: {}",
+                install_path
+            ));
         }
         tracing::info!("[verify] Install directory exists: {}", install_path);
 
         // ==================== Phase 1: 检查所有文件 ====================
-        tracing::info!("[verify] ======== Phase 1: Check files (quick={}) ========", quick);
+        tracing::info!(
+            "[verify] ======== Phase 1: Check files (quick={}) ========",
+            quick
+        );
         progress_callback(DownloadProgress {
             downloaded: 0,
             total: total_verify_bytes,
@@ -1274,7 +1306,8 @@ impl GameLauncherService {
 
         tracing::info!(
             "[verify] Spawning {} check tasks (max_concurrent={})...",
-            file_count, max_concurrent
+            file_count,
+            max_concurrent
         );
 
         for (idx, entry) in manifest.iter().enumerate() {
@@ -1315,23 +1348,32 @@ impl GameLauncherService {
                 } else if quick {
                     true // 快速模式跳过 MD5
                 } else {
-                    match hg_crypto::verify_md5(
-                        local_path.to_str().unwrap_or(""),
-                        &entry_md5,
-                    ) {
-                        Ok(true) => true,
-                        Ok(false) => {
+                    let hash_path = local_path.clone();
+                    let hash_expected = entry_md5.clone();
+                    match tokio::task::spawn_blocking(move || {
+                        hg_crypto::verify_md5_with_cancel(
+                            hash_path.to_str().unwrap_or(""),
+                            &hash_expected,
+                            Some(&DOWNLOAD_CANCELLED),
+                        )
+                    })
+                    .await
+                    {
+                        Ok(Ok(true)) => true,
+                        Ok(Ok(false)) => {
                             tracing::debug!(
                                 "[verify]   MD5 mismatch: {} (expected={}, actual=?)",
-                                entry_path, entry_md5
+                                entry_path,
+                                entry_md5
                             );
                             false
                         }
+                        Ok(Err(e)) => {
+                            tracing::warn!("[verify]   MD5 check error for {}: {}", entry_path, e);
+                            false
+                        }
                         Err(e) => {
-                            tracing::warn!(
-                                "[verify]   MD5 check error for {}: {}",
-                                entry_path, e
-                            );
+                            tracing::warn!("[verify]   MD5 worker error for {}: {}", entry_path, e);
                             false
                         }
                     }
@@ -1343,19 +1385,26 @@ impl GameLauncherService {
                     let reason = if !exists {
                         "MISSING"
                     } else if !size_ok {
-                        &format!("SIZE_MISMATCH(expected={},actual={})", entry_size, actual_size)
+                        &format!(
+                            "SIZE_MISMATCH(expected={},actual={})",
+                            entry_size, actual_size
+                        )
                     } else {
                         "MD5_MISMATCH"
                     };
                     tracing::info!(
                         "[verify]   [{}] NEEDS_REPAIR: {} ({})",
-                        idx, entry_path, reason
+                        idx,
+                        entry_path,
+                        reason
                     );
                     rl.lock().await.push((entryClone, entry_path));
                 } else if idx % 500 == 0 || idx < 5 {
                     tracing::debug!(
                         "[verify]   [{}] OK: {} ({} bytes)",
-                        idx, entry_path, entry_size
+                        idx,
+                        entry_path,
+                        entry_size
                     );
                 }
 
@@ -1376,16 +1425,25 @@ impl GameLauncherService {
         let total_checked = checked_count.load(Ordering::Relaxed);
         let pending_repair = repair_list.lock().await;
 
+        if DOWNLOAD_CANCELLED.load(Ordering::Acquire) {
+            tracing::info!("[verify] Cancelled after phase 1; skipping repair phase");
+            return Err("Verification cancelled".to_string());
+        }
+
         tracing::info!(
             "[verify] ======== Phase 1 DONE: {}/{} files checked, {} need repair ========",
-            total_checked, file_count, pending_repair.len()
+            total_checked,
+            file_count,
+            pending_repair.len()
         );
 
         if !pending_repair.is_empty() {
             for (entry, path) in pending_repair.iter().take(10) {
                 tracing::info!(
                     "[verify]   damaged: {} (size={}, md5={})",
-                    path, entry.size, entry.md5
+                    path,
+                    entry.size,
+                    entry.md5
                 );
             }
             if pending_repair.len() > 10 {
@@ -1419,7 +1477,10 @@ impl GameLauncherService {
             "[verify] ======== Phase 2: Repair {} files ========",
             pending_repair.len()
         );
-        let repair_total: u64 = pending_repair.iter().map(|(e, _)| e.size.max(0) as u64).sum();
+        let repair_total: u64 = pending_repair
+            .iter()
+            .map(|(e, _)| e.size.max(0) as u64)
+            .sum();
         let repair_count = pending_repair.len();
 
         progress_callback(DownloadProgress {
@@ -1487,16 +1548,30 @@ impl GameLauncherService {
                     return;
                 }
 
-                let dest = local_path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
+                let dest = local_path
+                    .parent()
+                    .map(|p| p.to_path_buf())
+                    .unwrap_or_default();
                 let _ = fs::create_dir_all(&dest);
                 let dest_file = dest.join(local_path.file_name().unwrap_or_default());
                 let dest_str = dest_file.to_string_lossy().to_string();
                 let download_url = format!("{}/{}", resource_url, entry_path);
                 tracing::info!(
                     "[verify] Repairing: {} -> {} ({} bytes, md5={})",
-                    download_url, dest_str, entry_size, entry_md5
+                    download_url,
+                    dest_str,
+                    entry_size,
+                    entry_md5
                 );
-                match download_single_file(&download_url, &dest_str, &entry_md5, Arc::new(AtomicU64::new(0)), entry_size).await {
+                match download_single_file(
+                    &download_url,
+                    &dest_str,
+                    &entry_md5,
+                    Arc::new(AtomicU64::new(0)),
+                    entry_size,
+                )
+                .await
+                {
                     Ok(()) => {
                         tracing::info!("[verify] Repair OK: {}", entry_path);
                         rc.fetch_add(1, Ordering::Relaxed);
@@ -1521,11 +1596,17 @@ impl GameLauncherService {
         }
         let _ = repair_progress_handle.await;
 
+        if DOWNLOAD_CANCELLED.load(Ordering::Acquire) {
+            tracing::info!("[verify] Cancelled after repair tasks stopped");
+            return Err("Verification cancelled".to_string());
+        }
+
         let total_repaired = repaired_count.load(Ordering::Relaxed);
 
         tracing::info!(
             "[verify] ======== Phase 2 DONE: repaired {}/{} files ========",
-            total_repaired, repair_count
+            total_repaired,
+            repair_count
         );
 
         // 最终进度
@@ -1539,7 +1620,10 @@ impl GameLauncherService {
             verified_bytes: total_verify_bytes,
         });
 
-        tracing::info!("[verify] ======== verify_and_repair END ======== Repaired {} files", total_repaired);
+        tracing::info!(
+            "[verify] ======== verify_and_repair END ======== Repaired {} files",
+            total_repaired
+        );
 
         // 构建结果：返回 JSON 结构数据，由前端做本地化
         let result = if damaged_count > 0 {
@@ -1550,14 +1634,16 @@ impl GameLauncherService {
                 "failed": damaged_count,
                 "repaired": total_repaired,
                 "files": files,
-            }).to_string()
+            })
+            .to_string()
         } else {
             serde_json::json!({
                 "ok": total_checked,
                 "failed": 0,
                 "repaired": 0,
                 "files": Vec::<String>::new(),
-            }).to_string()
+            })
+            .to_string()
         };
         Ok(result)
     }
@@ -1575,9 +1661,13 @@ impl GameLauncherService {
         // 1. 获取远程信息
         let remote = self.get_latest_package(channel).await?;
 
-        let preload_url = remote.preload_resource_url.as_ref()
+        let preload_url = remote
+            .preload_resource_url
+            .as_ref()
             .ok_or_else(|| "No preload package available".to_string())?;
-        let preload_version = remote.preload_version.as_ref()
+        let preload_version = remote
+            .preload_version
+            .as_ref()
             .ok_or_else(|| "No preload version".to_string())?;
 
         // 2. 获取 preload 清单
@@ -1588,15 +1678,16 @@ impl GameLauncherService {
 
         tracing::info!(
             "[preload] Starting preload: version={}, {} files, {} bytes",
-            preload_version, file_count, total_bytes
+            preload_version,
+            file_count,
+            total_bytes
         );
 
         // 3. 创建 preload staging 目录
         let preload_staging = format!("{}.staging.preload.{}", install_path, uuid::Uuid::new_v4());
         let staging_path = PathBuf::from(&preload_staging);
 
-        fs::create_dir_all(&staging_path)
-            .map_err(|e| format!("Create staging dir: {}", e))?;
+        fs::create_dir_all(&staging_path).map_err(|e| format!("Create staging dir: {}", e))?;
 
         // 4. 初始进度
         progress_callback(DownloadProgress {
@@ -1664,12 +1755,23 @@ impl GameLauncherService {
                     return;
                 }
 
-                let dest = local_path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
+                let dest = local_path
+                    .parent()
+                    .map(|p| p.to_path_buf())
+                    .unwrap_or_default();
                 let _ = fs::create_dir_all(&dest);
                 let dest_str = local_path.to_string_lossy().to_string();
                 let download_url = format!("{}/{}", resource_url, entry_path);
 
-                match download_single_file(&download_url, &dest_str, &entry_md5, Arc::new(AtomicU64::new(0)), entry_size).await {
+                match download_single_file(
+                    &download_url,
+                    &dest_str,
+                    &entry_md5,
+                    Arc::new(AtomicU64::new(0)),
+                    entry_size,
+                )
+                .await
+                {
                     Ok(()) => {}
                     Err(e) => {
                         tracing::error!("[preload] Failed to download {}: {}", entry_path, e);
@@ -1750,8 +1852,11 @@ impl GameLauncherService {
                 let _permit = sem.acquire().await.unwrap();
 
                 let ok = local_path.exists()
-                    && fs::metadata(&local_path).map(|m| m.len() as u64 == entry_size).unwrap_or(false)
-                    && hg_crypto::verify_md5(local_path.to_str().unwrap_or(""), &entry_md5).unwrap_or(false);
+                    && fs::metadata(&local_path)
+                        .map(|m| m.len() as u64 == entry_size)
+                        .unwrap_or(false)
+                    && hg_crypto::verify_md5(local_path.to_str().unwrap_or(""), &entry_md5)
+                        .unwrap_or(false);
 
                 if !ok {
                     tracing::error!("[preload] Verification failed for {}", entry_path);
@@ -1816,8 +1921,7 @@ impl GameLauncherService {
             .map_err(|e| format!("App data dir: {}", e))?
             .join("game_state");
 
-        fs::create_dir_all(&state_dir)
-            .map_err(|e| format!("Create state dir: {}", e))?;
+        fs::create_dir_all(&state_dir).map_err(|e| format!("Create state dir: {}", e))?;
 
         // Preserve existing preload state if present
         let existing = self.load_payload_state(channel);
@@ -1834,8 +1938,8 @@ impl GameLauncherService {
         };
 
         let state_file = state_dir.join(format!("{}.json", channel.as_str()));
-        let json = serde_json::to_string_pretty(&state)
-            .map_err(|e| format!("JSON serialize: {}", e))?;
+        let json =
+            serde_json::to_string_pretty(&state).map_err(|e| format!("JSON serialize: {}", e))?;
 
         // 原子写入：先写临时文件，再重命名
         let tmp_file = state_file.with_extension("json.tmp");
@@ -1869,19 +1973,20 @@ impl GameLauncherService {
             .map_err(|e| format!("App data dir: {}", e))?
             .join("game_state");
 
-        fs::create_dir_all(&state_dir)
-            .map_err(|e| format!("Create state dir: {}", e))?;
+        fs::create_dir_all(&state_dir).map_err(|e| format!("Create state dir: {}", e))?;
 
-        let mut existing = self.load_payload_state(channel).unwrap_or_else(|| PayloadState {
-            channel: channel.as_str().to_string(),
-            version: String::new(),
-            manifest_sha256: String::new(),
-            file_count: 0,
-            total_bytes: 0,
-            updated_at: String::new(),
-            preload_version: None,
-            preload_completed: false,
-        });
+        let mut existing = self
+            .load_payload_state(channel)
+            .unwrap_or_else(|| PayloadState {
+                channel: channel.as_str().to_string(),
+                version: String::new(),
+                manifest_sha256: String::new(),
+                file_count: 0,
+                total_bytes: 0,
+                updated_at: String::new(),
+                preload_version: None,
+                preload_completed: false,
+            });
 
         existing.preload_version = Some(preload_version.to_string());
         existing.preload_completed = completed;
@@ -1918,7 +2023,10 @@ impl GameLauncherService {
             .await
             .map_err(|e| format!("Web API request failed: {}", e))?;
 
-        let text = resp.text().await.map_err(|e| format!("Failed to read response body: {}", e))?;
+        let text = resp
+            .text()
+            .await
+            .map_err(|e| format!("Failed to read response body: {}", e))?;
 
         // Log the raw response for debugging announcement parsing
         if let Ok(raw) = serde_json::from_str::<serde_json::Value>(&text) {
@@ -1927,15 +2035,28 @@ impl GameLauncherService {
                     let kind = rsp.get("kind").and_then(|v| v.as_str()).unwrap_or("?");
                     eprintln!("[Launcher] proxy_rsps[{}] kind={}", i, kind);
                     if let Some(ann_rsp) = rsp.get("get_announcement_rsp") {
-                        eprintln!("[Launcher]   get_announcement_rsp keys: {:?}", ann_rsp.as_object().map(|m| m.keys().collect::<Vec<_>>()));
+                        eprintln!(
+                            "[Launcher]   get_announcement_rsp keys: {:?}",
+                            ann_rsp.as_object().map(|m| m.keys().collect::<Vec<_>>())
+                        );
                         if let Some(tabs) = ann_rsp.get("tabs") {
                             let tab_arr = tabs.as_array();
-                            eprintln!("[Launcher]   tabs count: {}", tab_arr.map_or(0, |a| a.len()));
+                            eprintln!(
+                                "[Launcher]   tabs count: {}",
+                                tab_arr.map_or(0, |a| a.len())
+                            );
                             if let Some(tabs) = tab_arr {
                                 for (ti, tab) in tabs.iter().enumerate() {
-                                    let tab_name = tab.get("tabName").and_then(|v| v.as_str()).unwrap_or("?");
-                                    let ann_count = tab.get("announcements").and_then(|v| v.as_array()).map_or(0, |a| a.len());
-                                    eprintln!("[Launcher]     tab[{}] name={}, announcements={}", ti, tab_name, ann_count);
+                                    let tab_name =
+                                        tab.get("tabName").and_then(|v| v.as_str()).unwrap_or("?");
+                                    let ann_count = tab
+                                        .get("announcements")
+                                        .and_then(|v| v.as_array())
+                                        .map_or(0, |a| a.len());
+                                    eprintln!(
+                                        "[Launcher]     tab[{}] name={}, announcements={}",
+                                        ti, tab_name, ann_count
+                                    );
                                 }
                             }
                         } else {
@@ -1943,7 +2064,10 @@ impl GameLauncherService {
                         }
                     }
                     if let Some(banner_rsp) = rsp.get("get_banner_rsp") {
-                        let count = banner_rsp.get("banners").and_then(|v| v.as_array()).map_or(0, |a| a.len());
+                        let count = banner_rsp
+                            .get("banners")
+                            .and_then(|v| v.as_array())
+                            .map_or(0, |a| a.len());
                         eprintln!("[Launcher]   get_banner_rsp: {} banners", count);
                     }
                 }
@@ -2018,8 +2142,8 @@ impl GameLauncherService {
                             .as_ref()
                             .and_then(|ts| ts.parse::<i64>().ok())
                             .map(|ts| {
-                                let dt = chrono::DateTime::from_timestamp(ts, 0)
-                                    .unwrap_or_default();
+                                let dt =
+                                    chrono::DateTime::from_timestamp(ts, 0).unwrap_or_default();
                                 dt.format("%m/%d").to_string()
                             })
                             .unwrap_or_default();
@@ -2057,7 +2181,10 @@ impl GameLauncherService {
             .await
             .map_err(|e| format!("Web API request failed: {}", e))?;
 
-        let text = resp.text().await.map_err(|e| format!("Failed to read response body: {}", e))?;
+        let text = resp
+            .text()
+            .await
+            .map_err(|e| format!("Failed to read response body: {}", e))?;
 
         let raw: serde_json::Value = serde_json::from_str(&text)
             .map_err(|e| format!("Failed to parse web API response: {}", e))?;
@@ -2070,7 +2197,11 @@ impl GameLauncherService {
         channel: &GameChannel,
     ) -> Result<LauncherNoticeContent, String> {
         // B服公告API与官服相同，直接用官服参数
-        let api_channel = if *channel == GameChannel::Bilibili { &GameChannel::Official } else { channel };
+        let api_channel = if *channel == GameChannel::Bilibili {
+            &GameChannel::Official
+        } else {
+            channel
+        };
 
         let proxy_reqs = serde_json::json!([
             {
@@ -2110,10 +2241,21 @@ impl GameLauncherService {
                     if let Some(banner_rsp) = rsp.get("get_banner_rsp") {
                         if let Some(items) = banner_rsp.get("banners").and_then(|v| v.as_array()) {
                             for b in items {
-                                let image_url = b.get("url").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                                let jump_url = b.get("jump_url").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                                let image_url = b
+                                    .get("url")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("")
+                                    .to_string();
+                                let jump_url = b
+                                    .get("jump_url")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("")
+                                    .to_string();
                                 if !image_url.is_empty() {
-                                    banners.push(BannerItem { image_url, jump_url });
+                                    banners.push(BannerItem {
+                                        image_url,
+                                        jump_url,
+                                    });
                                 }
                             }
                         }
@@ -2124,27 +2266,36 @@ impl GameLauncherService {
                     if let Some(ann_rsp) = rsp.get("get_announcement_rsp") {
                         if let Some(tabs) = ann_rsp.get("tabs").and_then(|v| v.as_array()) {
                             for tab in tabs {
-                                let tab_name = tab.get("tabName")
+                                let tab_name = tab
+                                    .get("tabName")
                                     .or_else(|| tab.get("tab_name"))
                                     .and_then(|v| v.as_str())
                                     .unwrap_or("")
                                     .to_string();
-                                if let Some(items) = tab.get("announcements").and_then(|v| v.as_array()) {
+                                if let Some(items) =
+                                    tab.get("announcements").and_then(|v| v.as_array())
+                                {
                                     for a in items {
-                                        let title = a.get("title")
+                                        let title = a
+                                            .get("title")
                                             .and_then(|v| v.as_str())
                                             .unwrap_or("")
                                             .trim()
                                             .to_string();
-                                        let content = a.get("content")
+                                        let content = a
+                                            .get("content")
                                             .and_then(|v| v.as_str())
                                             .unwrap_or("")
                                             .trim()
                                             .to_string();
-                                        let display_title = if !title.is_empty() { title } else { content };
-                                        if display_title.is_empty() { continue; }
+                                        let display_title =
+                                            if !title.is_empty() { title } else { content };
+                                        if display_title.is_empty() {
+                                            continue;
+                                        }
 
-                                        let date = a.get("start_ts")
+                                        let date = a
+                                            .get("start_ts")
                                             .or_else(|| a.get("startTs"))
                                             .and_then(|v| {
                                                 // 尝试从字符串或数字解析时间戳
@@ -2156,13 +2307,19 @@ impl GameLauncherService {
                                             })
                                             .map(|ts| {
                                                 // 如果时间戳大于1e12，认为是毫秒，转换为秒
-                                                let secs = if ts > 1_000_000_000_000 { ts / 1000 } else { ts };
-                                                let dt = chrono::DateTime::from_timestamp(secs, 0).unwrap_or_default();
+                                                let secs = if ts > 1_000_000_000_000 {
+                                                    ts / 1000
+                                                } else {
+                                                    ts
+                                                };
+                                                let dt = chrono::DateTime::from_timestamp(secs, 0)
+                                                    .unwrap_or_default();
                                                 dt.format("%m/%d").to_string()
                                             })
                                             .unwrap_or_default();
 
-                                        let jump_url = a.get("jump_url")
+                                        let jump_url = a
+                                            .get("jump_url")
                                             .or_else(|| a.get("jumpUrl"))
                                             .and_then(|v| v.as_str())
                                             .unwrap_or("")
@@ -2183,7 +2340,11 @@ impl GameLauncherService {
             }
         }
 
-        eprintln!("[Launcher] get_notice_content result: {} banners, {} announcements", banners.len(), announcements.len());
+        eprintln!(
+            "[Launcher] get_notice_content result: {} banners, {} announcements",
+            banners.len(),
+            announcements.len()
+        );
 
         Ok(LauncherNoticeContent {
             banners,
@@ -2210,7 +2371,10 @@ impl GameLauncherService {
 
         let body = self.batch_proxy_web(channel, proxy_reqs).await?;
 
-        eprintln!("[Launcher] Background API proxy_rsps count: {}", body.proxy_rsps.len());
+        eprintln!(
+            "[Launcher] Background API proxy_rsps count: {}",
+            body.proxy_rsps.len()
+        );
 
         for (i, rsp) in body.proxy_rsps.iter().enumerate() {
             eprintln!("[Launcher] proxy_rsp[{}] kind={:?}", i, rsp.kind);
@@ -2219,7 +2383,10 @@ impl GameLauncherService {
                 if let Some(ref bg_data) = bg_rsp.main_bg_image {
                     let url = bg_data.url.clone();
                     let media_type = self.classify_media_type(&url);
-                    eprintln!("[Launcher] Background media found: url={}, type={}", url, media_type);
+                    eprintln!(
+                        "[Launcher] Background media found: url={}, type={}",
+                        url, media_type
+                    );
                     return Ok(Some(BackgroundMedia { url, media_type }));
                 }
             }
@@ -2267,7 +2434,12 @@ impl GameLauncherService {
         let staging_dir = game_dir.join(".switch.download");
         let backup_root = game_dir.join(".switch");
 
-        let emit = |phase: &str, downloaded: u64, total: u64, file: Option<String>, idx: usize, count: usize| {
+        let emit = |phase: &str,
+                    downloaded: u64,
+                    total: u64,
+                    file: Option<String>,
+                    idx: usize,
+                    count: usize| {
             let progress = SwitchProgress {
                 phase: phase.to_string(),
                 downloaded,
@@ -2285,11 +2457,15 @@ impl GameLauncherService {
         // ===== Phase 1: Fetch manifests + diff =====
         self.set_active_operation(Some(ActiveOperation::Switching(SwitchProgress {
             phase: "checking".to_string(),
-            downloaded: 0, total: 0,
-            current_file: None, file_index: 0, file_count: 0,
+            downloaded: 0,
+            total: 0,
+            current_file: None,
+            file_index: 0,
+            file_count: 0,
             from_channel: from_channel.as_str().to_string(),
             to_channel: to_channel.as_str().to_string(),
-        }))).await;
+        })))
+        .await;
 
         if SWITCH_CANCELLED.load(Ordering::SeqCst) {
             self.set_active_operation(None).await;
@@ -2317,8 +2493,10 @@ impl GameLauncherService {
         }
         let (to_manifest, _) = self.fetch_manifest(&to_remote.resource_base_url).await?;
 
-        let from_map: std::collections::HashMap<&str, &ManifestFile> = from_manifest.iter().map(|f| (f.path.as_str(), f)).collect();
-        let to_map: std::collections::HashMap<&str, &ManifestFile> = to_manifest.iter().map(|f| (f.path.as_str(), f)).collect();
+        let from_map: std::collections::HashMap<&str, &ManifestFile> =
+            from_manifest.iter().map(|f| (f.path.as_str(), f)).collect();
+        let to_map: std::collections::HashMap<&str, &ManifestFile> =
+            to_manifest.iter().map(|f| (f.path.as_str(), f)).collect();
 
         let mut files_to_download: Vec<ManifestFile> = Vec::new();
         let mut files_to_remove: Vec<ManifestFile> = Vec::new();
@@ -2356,13 +2534,16 @@ impl GameLauncherService {
         fs::create_dir_all(&staging_dir).map_err(|e| format!("Create staging dir: {}", e))?;
         let mut downloaded_files: Vec<PathBuf> = Vec::new();
 
-        let total_download_bytes: u64 = files_to_download.iter().map(|f| f.size.max(0) as u64).sum();
+        let total_download_bytes: u64 =
+            files_to_download.iter().map(|f| f.size.max(0) as u64).sum();
         let mut accumulated_bytes: u64 = 0;
 
         for (idx, file) in files_to_download.iter().enumerate() {
             if SWITCH_CANCELLED.load(Ordering::SeqCst) {
                 tracing::info!("[switch] Cancelled during download, cleaning staging");
-                for f in &downloaded_files { let _ = fs::remove_file(f); }
+                for f in &downloaded_files {
+                    let _ = fs::remove_file(f);
+                }
                 let _ = fs::remove_dir_all(&staging_dir);
                 self.set_active_operation(None).await;
                 reset_switch_cancel();
@@ -2370,7 +2551,9 @@ impl GameLauncherService {
             }
 
             let dest = staging_dir.join(&file.path);
-            if let Some(parent) = dest.parent() { fs::create_dir_all(parent).ok(); }
+            if let Some(parent) = dest.parent() {
+                fs::create_dir_all(parent).ok();
+            }
 
             let backup_path = backup_root.join(to_channel.as_str()).join(&file.path);
             let file_size = file.size.max(0) as u64;
@@ -2378,12 +2561,22 @@ impl GameLauncherService {
             if backup_path.exists() {
                 if let Ok(meta) = fs::metadata(&backup_path) {
                     if meta.len() as i64 == file.size {
-                        if hg_crypto::verify_md5(backup_path.to_str().unwrap_or(""), &file.md5).unwrap_or(false) {
+                        if hg_crypto::verify_md5(backup_path.to_str().unwrap_or(""), &file.md5)
+                            .unwrap_or(false)
+                        {
                             tracing::info!("[switch] Reusing backup for {}", file.path);
-                            fs::copy(&backup_path, &dest).map_err(|e| format!("Copy backup: {}", e))?;
+                            fs::copy(&backup_path, &dest)
+                                .map_err(|e| format!("Copy backup: {}", e))?;
                             accumulated_bytes += file_size;
                             downloaded_files.push(dest);
-                            emit("downloading", accumulated_bytes, total_download_bytes, Some(file.path.clone()), idx, files_to_download.len());
+                            emit(
+                                "downloading",
+                                accumulated_bytes,
+                                total_download_bytes,
+                                Some(file.path.clone()),
+                                idx,
+                                files_to_download.len(),
+                            );
                             continue;
                         }
                     }
@@ -2391,7 +2584,14 @@ impl GameLauncherService {
             }
 
             let download_url = format!("{}/{}", to_remote.resource_base_url, file.path);
-            emit("downloading", accumulated_bytes, total_download_bytes, Some(file.path.clone()), idx, files_to_download.len());
+            emit(
+                "downloading",
+                accumulated_bytes,
+                total_download_bytes,
+                Some(file.path.clone()),
+                idx,
+                files_to_download.len(),
+            );
 
             let dl_counter = Arc::new(AtomicU64::new(0));
             let dl_counter_clone = dl_counter.clone();
@@ -2399,7 +2599,14 @@ impl GameLauncherService {
             let md5_clone = file.md5.clone();
             let url_clone = download_url.clone();
 
-            let result = download_single_file(&url_clone, &dest_clone, &md5_clone, dl_counter_clone, file_size).await;
+            let result = download_single_file(
+                &url_clone,
+                &dest_clone,
+                &md5_clone,
+                dl_counter_clone,
+                file_size,
+            )
+            .await;
             match result {
                 Ok(()) => {
                     accumulated_bytes += file_size;
@@ -2407,7 +2614,9 @@ impl GameLauncherService {
                 }
                 Err(e) => {
                     tracing::error!("[switch] Download failed for {}: {}", file.path, e);
-                    for f in &downloaded_files { let _ = fs::remove_file(f); }
+                    for f in &downloaded_files {
+                        let _ = fs::remove_file(f);
+                    }
                     let _ = fs::remove_dir_all(&staging_dir);
                     self.set_active_operation(None).await;
                     return Err(format!("Download failed for {}: {}", file.path, e));
@@ -2415,7 +2624,10 @@ impl GameLauncherService {
             }
         }
 
-        tracing::info!("[switch] Phase 2 complete: {} files in staging", downloaded_files.len());
+        tracing::info!(
+            "[switch] Phase 2 complete: {} files in staging",
+            downloaded_files.len()
+        );
 
         // ===== Phase 3: Backup old files + delete =====
         let backup_dir = backup_root.join(from_channel.as_str());
@@ -2426,7 +2638,9 @@ impl GameLauncherService {
                 tracing::info!("[switch] Cancelled during backup, restoring");
                 for (original, backup) in &backed_up_files {
                     if !original.exists() && backup.exists() {
-                        if let Some(parent) = original.parent() { fs::create_dir_all(parent).ok(); }
+                        if let Some(parent) = original.parent() {
+                            fs::create_dir_all(parent).ok();
+                        }
                         fs::copy(backup, original).ok();
                     }
                 }
@@ -2437,10 +2651,18 @@ impl GameLauncherService {
 
             let original = game_dir.join(&file.path);
             let backup = backup_dir.join(&file.path);
-            if let Some(parent) = backup.parent() { fs::create_dir_all(parent).ok(); }
+            if let Some(parent) = backup.parent() {
+                fs::create_dir_all(parent).ok();
+            }
 
-            emit("backing_up", idx as u64, files_to_remove.len() as u64,
-                Some(file.path.clone()), idx, files_to_remove.len());
+            emit(
+                "backing_up",
+                idx as u64,
+                files_to_remove.len() as u64,
+                Some(file.path.clone()),
+                idx,
+                files_to_remove.len(),
+            );
 
             if original.exists() {
                 fs::copy(&original, &backup).map_err(|e| format!("Backup copy: {}", e))?;
@@ -2449,7 +2671,10 @@ impl GameLauncherService {
             }
         }
 
-        tracing::info!("[switch] Phase 3 complete: {} files backed up", backed_up_files.len());
+        tracing::info!(
+            "[switch] Phase 3 complete: {} files backed up",
+            backed_up_files.len()
+        );
 
         // ===== Phase 4: Copy staging to game dir =====
         let mut moved_files: Vec<PathBuf> = Vec::new();
@@ -2462,7 +2687,9 @@ impl GameLauncherService {
                     let relative = dst.strip_prefix(game_dir).unwrap_or(dst);
                     let backup = backup_dir.join(relative);
                     if backup.exists() {
-                        if let Some(parent) = dst.parent() { fs::create_dir_all(parent).ok(); }
+                        if let Some(parent) = dst.parent() {
+                            fs::create_dir_all(parent).ok();
+                        }
                         fs::copy(backup, dst).ok();
                     }
                 }
@@ -2473,16 +2700,27 @@ impl GameLauncherService {
 
             let src = staging_dir.join(&file.path);
             let dst = game_dir.join(&file.path);
-            if let Some(parent) = dst.parent() { fs::create_dir_all(parent).ok(); }
+            if let Some(parent) = dst.parent() {
+                fs::create_dir_all(parent).ok();
+            }
 
-            emit("moving", idx as u64, files_to_download.len() as u64,
-                Some(file.path.clone()), idx, files_to_download.len());
+            emit(
+                "moving",
+                idx as u64,
+                files_to_download.len() as u64,
+                Some(file.path.clone()),
+                idx,
+                files_to_download.len(),
+            );
 
             fs::copy(&src, &dst).map_err(|e| format!("Move to game dir: {}", e))?;
             moved_files.push(dst);
         }
 
-        tracing::info!("[switch] Phase 4 complete: {} files moved to game dir", moved_files.len());
+        tracing::info!(
+            "[switch] Phase 4 complete: {} files moved to game dir",
+            moved_files.len()
+        );
 
         // ===== Phase 5: Cleanup =====
         let _ = fs::remove_dir_all(&staging_dir);
@@ -2491,10 +2729,13 @@ impl GameLauncherService {
         tokio::time::sleep(Duration::from_secs(1)).await;
         self.set_active_operation(None).await;
 
-        tracing::info!("[switch] Channel switch complete: {} -> {}", from_channel.as_str(), to_channel.as_str());
+        tracing::info!(
+            "[switch] Channel switch complete: {} -> {}",
+            from_channel.as_str(),
+            to_channel.as_str()
+        );
         Ok(to_remote.version)
     }
-
 }
 
 /// 单文件下载+验证（供并发下载使用）
@@ -2523,7 +2764,9 @@ async fn download_single_file(
             if start_byte > 0 {
                 tracing::debug!(
                     "[download] Resuming {} from byte {}/{}",
-                    dest_path, start_byte, file_size
+                    dest_path,
+                    start_byte,
+                    file_size
                 );
             }
         }
@@ -2543,7 +2786,11 @@ async fn download_single_file(
             let delay = Duration::from_secs(attempt as u64 * 2);
             tracing::warn!(
                 "[download] Retry {}/{} for {} after {}s: {}",
-                attempt + 1, max_retries, dest_path, delay.as_secs(), last_error
+                attempt + 1,
+                max_retries,
+                dest_path,
+                delay.as_secs(),
+                last_error
             );
             tokio::time::sleep(delay).await;
             start_byte = 0;
@@ -2564,7 +2811,10 @@ async fn download_single_file(
                     last_error = format!("HTTP {}", status);
                     tracing::warn!(
                         "[download] HTTP {} for {} (attempt {}/{})",
-                        status, dest_path, attempt + 1, max_retries
+                        status,
+                        dest_path,
+                        attempt + 1,
+                        max_retries
                     );
                     continue;
                 }
@@ -2581,7 +2831,10 @@ async fn download_single_file(
                 let total = content_length + start_byte;
                 tracing::debug!(
                     "[download] Starting {}: total={}, start_byte={}, status={}",
-                    dest_path, total, start_byte, status
+                    dest_path,
+                    total,
+                    start_byte,
+                    status
                 );
 
                 let mut file = if start_byte > 0 && is_partial {
@@ -2591,8 +2844,7 @@ async fn download_single_file(
                         .open(&download_path)
                         .map_err(|e| format!("Open append: {}", e))?
                 } else {
-                    fs::File::create(&download_path)
-                        .map_err(|e| format!("Create file: {}", e))?
+                    fs::File::create(&download_path).map_err(|e| format!("Create file: {}", e))?
                 };
 
                 let mut stream = resp.bytes_stream();
@@ -2608,7 +2860,8 @@ async fn download_single_file(
                         return Err("Download cancelled".to_string());
                     }
                     let chunk = chunk.map_err(|e| format!("Stream: {}", e))?;
-                    file.write_all(&chunk).map_err(|e| format!("Write: {}", e))?;
+                    file.write_all(&chunk)
+                        .map_err(|e| format!("Write: {}", e))?;
                     let chunk_len = chunk.len() as u64;
                     downloaded += chunk_len;
                     dl_bytes.fetch_add(chunk_len, Ordering::Relaxed);
@@ -2620,7 +2873,11 @@ async fn download_single_file(
                             dest_path,
                             downloaded,
                             total,
-                            if total > 0 { downloaded as f64 / total as f64 * 100.0 } else { 0.0 }
+                            if total > 0 {
+                                downloaded as f64 / total as f64 * 100.0
+                            } else {
+                                0.0
+                            }
                         );
                         last_log = downloaded;
                     }
@@ -2628,21 +2885,23 @@ async fn download_single_file(
                 file.flush().map_err(|e| format!("Flush: {}", e))?;
                 drop(file);
 
-                tracing::debug!("[download] Stream complete for {}, verifying MD5", dest_path);
+                tracing::debug!(
+                    "[download] Stream complete for {}, verifying MD5",
+                    dest_path
+                );
 
                 // Single-pass MD5: read file once, compute hash
-                let data = fs::read(&download_path)
-                    .map_err(|e| format!("Read for MD5: {}", e))?;
+                let data = fs::read(&download_path).map_err(|e| format!("Read for MD5: {}", e))?;
                 let actual_md5 = hg_crypto::md5_hex(&data);
                 drop(data); // free memory immediately
 
-                if !expected_md5.is_empty()
-                    && !actual_md5.eq_ignore_ascii_case(expected_md5)
-                {
+                if !expected_md5.is_empty() && !actual_md5.eq_ignore_ascii_case(expected_md5) {
                     let _ = fs::remove_file(&download_path);
                     tracing::error!(
                         "[download] MD5 mismatch for {}: expected={}, got={}",
-                        dest_path, expected_md5, actual_md5
+                        dest_path,
+                        expected_md5,
+                        actual_md5
                     );
                     return Err(format!(
                         "MD5 mismatch: expected {}, got {}",
@@ -2650,12 +2909,8 @@ async fn download_single_file(
                     ));
                 }
 
-                tracing::debug!(
-                    "[download] Renaming {} -> {}",
-                    download_path, dest_path
-                );
-                fs::rename(&download_path, dest_path)
-                    .map_err(|e| format!("Rename: {}", e))?;
+                tracing::debug!("[download] Renaming {} -> {}", download_path, dest_path);
+                fs::rename(&download_path, dest_path).map_err(|e| format!("Rename: {}", e))?;
 
                 tracing::info!("[download] OK: {} ({} bytes)", dest_path, downloaded);
                 return Ok(());
@@ -2664,7 +2919,10 @@ async fn download_single_file(
                 last_error = e.to_string();
                 tracing::warn!(
                     "[download] Request error for {} (attempt {}/{}): {}",
-                    dest_path, attempt + 1, max_retries, last_error
+                    dest_path,
+                    attempt + 1,
+                    max_retries,
+                    last_error
                 );
                 continue;
             }
@@ -2673,7 +2931,12 @@ async fn download_single_file(
 
     tracing::error!(
         "[download] FAILED after {} attempts: {} — {}",
-        max_retries, dest_path, last_error
+        max_retries,
+        dest_path,
+        last_error
     );
-    Err(format!("Download failed after {} attempts: {}", max_retries, last_error))
+    Err(format!(
+        "Download failed after {} attempts: {}",
+        max_retries, last_error
+    ))
 }

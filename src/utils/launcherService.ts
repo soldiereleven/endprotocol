@@ -139,6 +139,10 @@ export async function verifyAndRepair(
   return result;
 }
 
+export function getProcessReadBytes(): Promise<number> {
+  return invoke<number>("launcher_get_process_read_bytes");
+}
+
 export async function getRemoteVersion(
   channel: GameChannel,
 ): Promise<RemotePackage> {

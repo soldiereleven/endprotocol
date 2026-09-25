@@ -65,13 +65,47 @@ pub fn sha256_hex(data: &[u8]) -> String {
 
 /// 验证文件的 MD5 哈希是否匹配
 pub fn verify_md5(file_path: &str, expected_md5: &str) -> Result<bool, String> {
+    verify_md5_with_cancel(file_path, expected_md5, None)
+}
+
+/// Verify an MD5 hash while allowing an active operation to stop between read chunks.
+pub fn verify_md5_with_cancel(
+    file_path: &str,
+    expected_md5: &str,
+    cancelled: Option<&std::sync::atomic::AtomicBool>,
+) -> Result<bool, String> {
     use digest::Digest;
+    use std::io::Read;
+    use std::sync::atomic::Ordering;
 
-    let bytes = std::fs::read(file_path)
-        .map_err(|e| format!("Failed to read file '{}': {}", file_path, e))?;
-
+    const HASH_BUFFER_SIZE: usize = 4 * 1024 * 1024;
+    if cancelled.is_some_and(|flag| flag.load(Ordering::Relaxed)) {
+        return Err("Hash verification cancelled".to_string());
+    }
+    let mut options = std::fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(target_os = "windows")]
+    std::os::windows::fs::OpenOptionsExt::custom_flags(&mut options, 0x08000000);
+    let mut file = options
+        .open(file_path)
+        .map_err(|e| format!("Failed to open file '{}': {}", file_path, e))?;
     let mut hasher = md5::Md5::new();
-    hasher.update(&bytes);
+    let mut buffer = vec![0u8; HASH_BUFFER_SIZE];
+    loop {
+        if cancelled.is_some_and(|flag| flag.load(Ordering::Relaxed)) {
+            return Err("Hash verification cancelled".to_string());
+        }
+        let bytes_read = file
+            .read(&mut buffer)
+            .map_err(|e| format!("Failed to read file '{}': {}", file_path, e))?;
+        if bytes_read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..bytes_read]);
+    }
+    if cancelled.is_some_and(|flag| flag.load(Ordering::Relaxed)) {
+        return Err("Hash verification cancelled".to_string());
+    }
     let result = hasher.finalize();
 
     let computed = hex::encode(result);

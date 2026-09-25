@@ -10,8 +10,8 @@ import { useTranslation } from "react-i18next";
 import {
   GlassAlertDialogCompound as GlassAlertDialog,
   GlassModalCompound as GlassModal,
-} from "@/components/ui/glass/modal";
-import { GlassButton } from "@/components/ui/glass/button";
+} from "@/components/ui/modal";
+import { GlassButton } from "@/components/ui/button";
 import {
   type GameChannel,
   type GameStatus,
@@ -33,6 +33,7 @@ import {
   detectChannel,
   scanInstallDir,
   getDiskSpace,
+  getProcessReadBytes,
   switchChannel,
   cancelSwitch,
   onLauncherProgress,
@@ -61,7 +62,11 @@ export function GameActionPanel() {
     return localStorage.getItem(STORAGE_KEY_INSTALL_PATH) || "";
   });
   const [detectedChannel, setDetectedChannel] = useState<GameChannel | null>(
-    null,
+    () => {
+      const savedPath = localStorage.getItem(STORAGE_KEY_INSTALL_PATH);
+      const savedChannel = localStorage.getItem(STORAGE_KEY_CHANNEL) as GameChannel | null;
+      return savedPath ? savedChannel : null;
+    },
   );
   const [detecting, setDetecting] = useState(false);
   const [statusReady, setStatusReady] = useState(false);
@@ -97,7 +102,11 @@ export function GameActionPanel() {
     y: number;
   } | null>(null);
   const speedRef = useRef({ lastBytes: 0, lastTime: Date.now() });
-  const verifySpeedRef = useRef({ lastVerifiedBytes: 0, lastTime: Date.now() });
+  const verifySpeedRef = useRef({
+    lastReadBytes: 0,
+    lastTime: Date.now(),
+    initialized: false,
+  });
   const cancellingRef = useRef(false);
   const menuFlyoutRef = useRef<HTMLDivElement>(null);
 
@@ -161,6 +170,17 @@ export function GameActionPanel() {
       return;
     }
     let cancelled = false;
+    const cachedPath = localStorage.getItem(STORAGE_KEY_INSTALL_PATH);
+    const cachedChannel = localStorage.getItem(STORAGE_KEY_CHANNEL) as GameChannel | null;
+    const hasCachedDetection = cachedPath === installPath && cachedChannel !== null;
+    if (hasCachedDetection) {
+      setDetectedChannel(cachedChannel);
+      setDetecting(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+    setDetectedChannel(null);
     setDetecting(true);
     detectChannel(installPath)
       .then((detected) => {
@@ -244,19 +264,29 @@ export function GameActionPanel() {
           ref.lastTime = now;
         }
       } else if (p.stage === "verifying") {
-        const now = Date.now();
-        const ref = verifySpeedRef.current;
-        const dt = (now - ref.lastTime) / 1000;
-        if (dt > 0.3 && p.verified_bytes >= ref.lastVerifiedBytes) {
-          setVerifySpeed((p.verified_bytes - ref.lastVerifiedBytes) / dt);
-          ref.lastVerifiedBytes = p.verified_bytes;
-          ref.lastTime = now;
-        }
+        void getProcessReadBytes().then((readBytes) => {
+          const now = Date.now();
+          const ref = verifySpeedRef.current;
+          const dt = (now - ref.lastTime) / 1000;
+          if (!ref.initialized) {
+            ref.lastReadBytes = readBytes;
+            ref.lastTime = now;
+            ref.initialized = true;
+          } else if (dt > 0.3 && readBytes >= ref.lastReadBytes) {
+            setVerifySpeed((readBytes - ref.lastReadBytes) / dt);
+            ref.lastReadBytes = readBytes;
+            ref.lastTime = now;
+          }
+        }).catch(() => setVerifySpeed(0));
       } else {
         setDownloadSpeed(0);
         setVerifySpeed(0);
         speedRef.current = { lastBytes: 0, lastTime: Date.now() };
-        verifySpeedRef.current = { lastVerifiedBytes: 0, lastTime: Date.now() };
+        verifySpeedRef.current = {
+          lastReadBytes: 0,
+          lastTime: Date.now(),
+          initialized: false,
+        };
       }
       if (p.stage === "completed" || p.stage === "error") {
         cancellingRef.current = false;
@@ -583,7 +613,7 @@ export function GameActionPanel() {
     cancellingRef.current = false;
     await resetDownloadCancel();
     const threads = parseInt(
-      localStorage.getItem("launcher_verify_threads") || "4",
+      localStorage.getItem("launcher_verify_threads") || "12",
       10,
     );
     try {
@@ -608,7 +638,7 @@ export function GameActionPanel() {
     cancellingRef.current = false;
     await resetDownloadCancel();
     const threads = parseInt(
-      localStorage.getItem("launcher_verify_threads") || "4",
+      localStorage.getItem("launcher_verify_threads") || "12",
       10,
     );
     try {
@@ -1006,7 +1036,7 @@ export function GameActionPanel() {
             type="button"
             onClick={() => setSwitchOpen(true)}
             disabled={switching}
-            className="h-11 px-4 rounded-full glass-surface border border-white/15 flex items-center gap-1.5 text-sm text-white/80 shrink-0 cursor-pointer hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-11 px-4 rounded-full backdrop-blur-md border border-transparent bg-black/10 dark:bg-white/10 shadow-lg flex items-center gap-1.5 text-sm text-foreground/80 shrink-0 cursor-pointer hover:bg-black/15 dark:hover:bg-white/15 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className={`w-1.5 h-1.5 rounded-full ${switching ? "bg-yellow-400/60 animate-pulse" : "bg-emerald-400/80"}`} />
             <span>{switching ? t("launcher.switching") : CHANNEL_LABELS[detectedChannel][lang]}</span>
@@ -1015,7 +1045,7 @@ export function GameActionPanel() {
 
         {/* Detecting channel indicator */}
         {installPath && detecting && !detectedChannel && (
-          <div className="h-11 px-4 rounded-full glass-surface border border-white/15 flex items-center gap-1.5 text-sm text-white/50 shrink-0">
+          <div className="h-11 px-4 rounded-full backdrop-blur-md border border-white/10 flex items-center gap-1.5 text-sm text-white/50 shrink-0">
             <div className="w-1.5 h-1.5 rounded-full bg-yellow-400/60 animate-pulse" />
             <span>{t("launcher.detecting_channel")}</span>
           </div>
@@ -1029,9 +1059,9 @@ export function GameActionPanel() {
             onMouseEnter={() => setPreloadHovered(true)}
             onMouseLeave={() => setPreloadHovered(false)}
             disabled={isActionRunning}
-            className="h-11 px-4 rounded-full text-xs font-medium text-white/80
-              glass-surface border border-white/15
-              hover:bg-white/15 hover:text-white
+            className="h-11 px-4 rounded-full text-xs font-medium text-foreground/80
+              backdrop-blur-md border border-transparent bg-black/10 dark:bg-white/10 shadow-lg
+              hover:bg-black/15 dark:hover:bg-white/15 hover:text-foreground
               disabled:opacity-50 disabled:cursor-not-allowed
               transition-all duration-200 cursor-pointer
               flex items-center gap-2"
@@ -1101,14 +1131,14 @@ export function GameActionPanel() {
           }}
           disabled={!statusReady}
           className={`relative h-11 min-w-[120px] px-5 rounded-full text-sm font-semibold text-white overflow-hidden
-            glass-surface border border-white/15
+            backdrop-blur-md border border-transparent
             shadow-lg active:scale-95
             disabled:opacity-50 disabled:cursor-not-allowed
             transition-all duration-300 cursor-pointer
             inline-flex items-center justify-center gap-2.5 ${
               gameRunning || switching
-                ? "bg-gradient-to-r from-red-500/40 to-red-500/30"
-                : "bg-gradient-to-r from-primary/80 to-primary/60 hover:from-primary hover:to-primary/80 shadow-primary/20"
+                ? "bg-red-500/15"
+                : "bg-black/10 dark:bg-white/10 hover:bg-black/15 dark:hover:bg-white/15"
             }`}
         >
           {/* Red warning overlay */}
@@ -1444,8 +1474,8 @@ export function GameActionPanel() {
             }
           }}
           className="w-11 h-11 rounded-full flex items-center justify-center
-            glass-surface border border-white/15
-            text-white/70 hover:text-white hover:bg-white/20
+            backdrop-blur-md border border-transparent bg-white/10 shadow-lg
+            text-foreground/70 hover:bg-black/15 dark:hover:bg-white/15 hover:text-foreground
             transition-all duration-200 cursor-pointer"
         >
           <svg

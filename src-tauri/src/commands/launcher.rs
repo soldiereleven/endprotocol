@@ -5,6 +5,23 @@ use tokio::sync::Mutex;
 use crate::models::game::*;
 use crate::services::game_launcher_service::GameLauncherService;
 
+/// Return the process-level bytes read counter used by Task Manager's disk rate.
+#[tauri::command]
+pub fn launcher_get_process_read_bytes() -> Result<u64, String> {
+    #[cfg(target_os = "windows")]
+    unsafe {
+        let mut counters = std::mem::zeroed::<windows_sys::Win32::System::Threading::IO_COUNTERS>();
+        let process = windows_sys::Win32::System::Threading::GetCurrentProcess();
+        if windows_sys::Win32::System::Threading::GetProcessIoCounters(process, &mut counters) == 0 {
+            return Err("Failed to read process I/O counters".to_string());
+        }
+        return Ok(counters.ReadTransferCount);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    Ok(0)
+}
+
 /// 获取游戏安装状态
 #[tauri::command]
 pub async fn launcher_check_status(
@@ -94,7 +111,7 @@ pub async fn launcher_verify_and_repair(
     });
 
     match svc
-        .verify_and_repair(&ch, &install_path, progress_cb, max_concurrent.unwrap_or(4), quick.unwrap_or(false))
+        .verify_and_repair(&ch, &install_path, progress_cb, max_concurrent.unwrap_or(12), quick.unwrap_or(false))
         .await
     {
         Ok(msg) => Ok(LauncherResult {

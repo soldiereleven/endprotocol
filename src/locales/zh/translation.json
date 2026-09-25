@@ -127,6 +127,7 @@
       "bg_image_select": "选择图片",
       "bg_image_remove": "移除",
       "bg_image_opacity": "图片透明度",
+      "bg_blur": "背景磨砂强度",
       "bg_image_none": "未设置背景图片"
     },
     "developer": {

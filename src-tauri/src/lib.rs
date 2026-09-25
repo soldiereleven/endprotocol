@@ -113,6 +113,7 @@ pub fn run() {
             commands::tray::app_quit,
             // Launcher commands
             commands::launcher::launcher_check_status,
+            commands::launcher::launcher_get_process_read_bytes,
             commands::launcher::launcher_install_or_update,
             commands::launcher::launcher_verify_and_repair,
             commands::launcher::launcher_preload_download,
