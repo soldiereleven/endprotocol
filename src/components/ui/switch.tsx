@@ -1,17 +1,15 @@
-import { createContext, useContext } from "react";
+import * as React from "react";
+import * as SwitchPrimitive from "@radix-ui/react-switch";
 import { cn } from "@/lib/utils";
 
-export interface GlassSwitchProps
-  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onChange"> {
+export interface GlassSwitchProps extends Omit<
+  React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Root>,
+  "onCheckedChange"
+> {
   isSelected?: boolean;
   onValueChange?: (selected: boolean) => void;
   isDisabled?: boolean;
 }
-
-const SwitchCtx = createContext<{ isSelected: boolean; disabled: boolean }>({
-  isSelected: false,
-  disabled: false,
-});
 
 function GlassSwitch({
   isSelected = false,
@@ -24,25 +22,20 @@ function GlassSwitch({
 }: GlassSwitchProps) {
   const off = disabled || isDisabled;
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={isSelected}
+    <SwitchPrimitive.Root
+      checked={isSelected}
+      onCheckedChange={onValueChange}
       disabled={off}
-      onClick={() => !off && onValueChange?.(!isSelected)}
       className={cn(
         "group inline-flex items-center gap-2 select-none cursor-pointer",
-        "transition-all duration-200",
-        "hover:scale-105 active:scale-95",
+        "transition-transform duration-200 hover:scale-105 active:scale-95",
         "disabled:opacity-50 disabled:pointer-events-none",
         className,
       )}
       {...rest}
     >
-      <SwitchCtx.Provider value={{ isSelected, disabled: off }}>
-        {children}
-      </SwitchCtx.Provider>
-    </button>
+      {children ?? <SwitchPrimitive.Thumb />}
+    </SwitchPrimitive.Root>
   );
 }
 
@@ -53,13 +46,12 @@ function Control({
   className?: string;
   children?: React.ReactNode;
 }) {
-  const { isSelected, disabled } = useContext(SwitchCtx);
   return (
     <span
       className={cn(
-        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200",
-        isSelected ? "bg-primary" : "bg-default-300",
-        disabled && "opacity-50",
+        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full",
+        "border border-white/20 bg-default-200/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.22)]",
+        "transition-colors duration-200 group-data-[state=checked]:border-primary/50 group-data-[state=checked]:bg-primary",
         className,
       )}
     >
@@ -69,12 +61,10 @@ function Control({
 }
 
 function Thumb({ className }: { className?: string }) {
-  const { isSelected } = useContext(SwitchCtx);
   return (
     <span
       className={cn(
-        "block h-5 w-5 rounded-full bg-white transition-transform duration-200",
-        isSelected ? "translate-x-[22px]" : "translate-x-0.5",
+        "pointer-events-none block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.75)] transition-transform duration-200 group-data-[state=checked]:translate-x-[22px]",
         className,
       )}
     />
@@ -84,84 +74,38 @@ function Thumb({ className }: { className?: string }) {
 GlassSwitch.Control = Control;
 GlassSwitch.Thumb = Thumb;
 
-interface SwitchProps
-  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onChange"> {
-  checked?: boolean;
-  onCheckedChange?: (checked: boolean) => void;
-}
+const SwitchThumb = React.forwardRef<
+  React.ElementRef<typeof SwitchPrimitive.Thumb>,
+  React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Thumb>
+>(({ className, ...props }, ref) => (
+  <SwitchPrimitive.Thumb
+    ref={ref}
+    className={cn(
+      "pointer-events-none block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.75)] transition-transform data-[state=checked]:translate-x-[22px]",
+      className,
+    )}
+    {...props}
+  />
+));
 
-const SwitchCtx2 = createContext<{ isSelected: boolean; disabled: boolean }>({
-  isSelected: false,
-  disabled: false,
-});
+SwitchThumb.displayName = SwitchPrimitive.Thumb.displayName;
 
-function Switch({
-  checked = false,
-  onCheckedChange,
-  disabled = false,
-  className,
-  children,
-  ...rest
-}: SwitchProps) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      disabled={disabled}
-      onClick={() => !disabled && onCheckedChange?.(!checked)}
-      className={cn(
-        "group inline-flex items-center gap-2 select-none cursor-pointer",
-        "transition-all duration-200",
-        "hover:scale-105 active:scale-95",
-        "disabled:opacity-50 disabled:pointer-events-none",
-        className,
-      )}
-      {...rest}
-    >
-      <SwitchCtx2.Provider value={{ isSelected: checked, disabled }}>
-        {children}
-      </SwitchCtx2.Provider>
-    </button>
-  );
-}
+const Switch = React.forwardRef<
+  React.ElementRef<typeof SwitchPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Root>
+>(({ className, children, ...props }, ref) => (
+  <SwitchPrimitive.Root
+    ref={ref}
+    className={cn(
+      "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border border-white/20 bg-default-200/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.22)] transition-colors data-[state=checked]:border-primary/50 data-[state=checked]:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50",
+      className,
+    )}
+    {...props}
+  >
+    {children ?? <SwitchThumb />}
+  </SwitchPrimitive.Root>
+));
 
-function SwitchControl({
-  className,
-  children,
-}: {
-  className?: string;
-  children?: React.ReactNode;
-}) {
-  const { isSelected, disabled } = useContext(SwitchCtx2);
-  return (
-    <span
-      className={cn(
-        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200",
-        isSelected ? "bg-primary" : "bg-default-300",
-        disabled && "opacity-50",
-        className,
-      )}
-    >
-      {children}
-    </span>
-  );
-}
+Switch.displayName = SwitchPrimitive.Root.displayName;
 
-function SwitchThumb({ className }: { className?: string }) {
-  const { isSelected } = useContext(SwitchCtx2);
-  return (
-    <span
-      className={cn(
-        "block h-5 w-5 rounded-full bg-white transition-transform duration-200",
-        isSelected ? "translate-x-[22px]" : "translate-x-0.5",
-        className,
-      )}
-    />
-  );
-}
-
-Switch.Control = SwitchControl;
-Switch.Thumb = SwitchThumb;
-
-export { Switch, GlassSwitch };
+export { Switch, SwitchThumb, GlassSwitch };

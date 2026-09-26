@@ -57,14 +57,18 @@ export function GameActionPanel() {
     );
   });
   const [gameStatus, setGameStatus] = useState<GameStatus | null>(null);
-  const [localActiveOp, setLocalActiveOp] = useState<ActiveOperation | null>(null);
+  const [localActiveOp, setLocalActiveOp] = useState<ActiveOperation | null>(
+    null,
+  );
   const [installPath, setInstallPath] = useState(() => {
     return localStorage.getItem(STORAGE_KEY_INSTALL_PATH) || "";
   });
   const [detectedChannel, setDetectedChannel] = useState<GameChannel | null>(
     () => {
       const savedPath = localStorage.getItem(STORAGE_KEY_INSTALL_PATH);
-      const savedChannel = localStorage.getItem(STORAGE_KEY_CHANNEL) as GameChannel | null;
+      const savedChannel = localStorage.getItem(
+        STORAGE_KEY_CHANNEL,
+      ) as GameChannel | null;
       return savedPath ? savedChannel : null;
     },
   );
@@ -88,7 +92,8 @@ export function GameActionPanel() {
   const [scanning, setScanning] = useState(false);
   const [diskSpace, setDiskSpace] = useState<DiskSpace | null>(null);
   const [switchOpen, setSwitchOpen] = useState(false);
-  const [switchConfirmTarget, setSwitchConfirmTarget] = useState<GameChannel | null>(null);
+  const [switchConfirmTarget, setSwitchConfirmTarget] =
+    useState<GameChannel | null>(null);
   const [verifySpeed, setVerifySpeed] = useState(0);
   const flyoutRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -123,20 +128,40 @@ export function GameActionPanel() {
 
   // Derived state: prefer localActiveOp (real-time from events) over gameStatus.active_operation (polled)
   const activeOp = localActiveOp ?? gameStatus?.active_operation ?? null;
-  const progress = (activeOp && (activeOp.type === "installing" || activeOp.type === "verifying" || activeOp.type === "repairing"))
-    ? { downloaded: activeOp.downloaded ?? 0, total: activeOp.total ?? 0, stage: activeOp.stage ?? "",
-        current_file: activeOp.current_file ?? null, file_index: activeOp.file_index ?? 0,
-        file_count: activeOp.file_count ?? 0, verified_bytes: activeOp.verified_bytes ?? 0 }
-    : null;
-  const preparing = activeOp?.type === "installing" && ["checking", "comparing"].includes(activeOp.stage ?? "");
+  const progress =
+    activeOp &&
+    (activeOp.type === "installing" ||
+      activeOp.type === "verifying" ||
+      activeOp.type === "repairing")
+      ? {
+          downloaded: activeOp.downloaded ?? 0,
+          total: activeOp.total ?? 0,
+          stage: activeOp.stage ?? "",
+          current_file: activeOp.current_file ?? null,
+          file_index: activeOp.file_index ?? 0,
+          file_count: activeOp.file_count ?? 0,
+          verified_bytes: activeOp.verified_bytes ?? 0,
+        }
+      : null;
+  const preparing =
+    activeOp?.type === "installing" &&
+    ["checking", "comparing"].includes(activeOp.stage ?? "");
   const switching = activeOp?.type === "switching";
-  const switchProgress = (activeOp && activeOp.type === "switching")
-    ? { phase: activeOp.phase ?? "", downloaded: activeOp.downloaded ?? 0, total: activeOp.total ?? 0,
-        current_file: activeOp.current_file ?? null, file_index: activeOp.file_index ?? 0,
-        file_count: activeOp.file_count ?? 0, from_channel: activeOp.from_channel ?? "",
-        to_channel: activeOp.to_channel ?? "" }
-    : null;
-  const switchTarget = switchProgress?.to_channel as GameChannel | null ?? null;
+  const switchProgress =
+    activeOp && activeOp.type === "switching"
+      ? {
+          phase: activeOp.phase ?? "",
+          downloaded: activeOp.downloaded ?? 0,
+          total: activeOp.total ?? 0,
+          current_file: activeOp.current_file ?? null,
+          file_index: activeOp.file_index ?? 0,
+          file_count: activeOp.file_count ?? 0,
+          from_channel: activeOp.from_channel ?? "",
+          to_channel: activeOp.to_channel ?? "",
+        }
+      : null;
+  const switchTarget =
+    (switchProgress?.to_channel as GameChannel | null) ?? null;
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_CHANNEL, channel);
@@ -149,7 +174,12 @@ export function GameActionPanel() {
       setStatusReady(true);
       return;
     }
-    console.log("[checkStatus] Starting for channel:", channel, "path:", installPath);
+    console.log(
+      "[checkStatus] Starting for channel:",
+      channel,
+      "path:",
+      installPath,
+    );
     try {
       const status = await checkGameStatus(channel, installPath);
       console.log("[checkStatus] Got status:", status);
@@ -171,8 +201,11 @@ export function GameActionPanel() {
     }
     let cancelled = false;
     const cachedPath = localStorage.getItem(STORAGE_KEY_INSTALL_PATH);
-    const cachedChannel = localStorage.getItem(STORAGE_KEY_CHANNEL) as GameChannel | null;
-    const hasCachedDetection = cachedPath === installPath && cachedChannel !== null;
+    const cachedChannel = localStorage.getItem(
+      STORAGE_KEY_CHANNEL,
+    ) as GameChannel | null;
+    const hasCachedDetection =
+      cachedPath === installPath && cachedChannel !== null;
     if (hasCachedDetection) {
       setDetectedChannel(cachedChannel);
       setDetecting(false);
@@ -264,20 +297,22 @@ export function GameActionPanel() {
           ref.lastTime = now;
         }
       } else if (p.stage === "verifying") {
-        void getProcessReadBytes().then((readBytes) => {
-          const now = Date.now();
-          const ref = verifySpeedRef.current;
-          const dt = (now - ref.lastTime) / 1000;
-          if (!ref.initialized) {
-            ref.lastReadBytes = readBytes;
-            ref.lastTime = now;
-            ref.initialized = true;
-          } else if (dt > 0.3 && readBytes >= ref.lastReadBytes) {
-            setVerifySpeed((readBytes - ref.lastReadBytes) / dt);
-            ref.lastReadBytes = readBytes;
-            ref.lastTime = now;
-          }
-        }).catch(() => setVerifySpeed(0));
+        void getProcessReadBytes()
+          .then((readBytes) => {
+            const now = Date.now();
+            const ref = verifySpeedRef.current;
+            const dt = (now - ref.lastTime) / 1000;
+            if (!ref.initialized) {
+              ref.lastReadBytes = readBytes;
+              ref.lastTime = now;
+              ref.initialized = true;
+            } else if (dt > 0.3 && readBytes >= ref.lastReadBytes) {
+              setVerifySpeed((readBytes - ref.lastReadBytes) / dt);
+              ref.lastReadBytes = readBytes;
+              ref.lastTime = now;
+            }
+          })
+          .catch(() => setVerifySpeed(0));
       } else {
         setDownloadSpeed(0);
         setVerifySpeed(0);
@@ -293,7 +328,9 @@ export function GameActionPanel() {
         setLocalActiveOp(null);
         setDownloadSpeed(0);
         setVerifySpeed(0);
-        setTimeout(() => { refreshStatus(); }, 500);
+        setTimeout(() => {
+          refreshStatus();
+        }, 500);
       }
     });
 
@@ -327,7 +364,9 @@ export function GameActionPanel() {
         cancellingRef.current = false;
         setLocalActiveOp(null);
         setDownloadSpeed(0);
-        setTimeout(() => { refreshStatus(); }, 500);
+        setTimeout(() => {
+          refreshStatus();
+        }, 500);
       }
     });
 
@@ -492,11 +531,15 @@ export function GameActionPanel() {
     [pendingInstallPath, installPath, startInstall],
   );
 
-  const handleSwitchChannel = useCallback(async (targetChannel: GameChannel) => {
-    if (!installPath || !detectedChannel || targetChannel === detectedChannel) return;
-    setSwitchOpen(false);
-    setSwitchConfirmTarget(targetChannel);
-  }, [installPath, detectedChannel]);
+  const handleSwitchChannel = useCallback(
+    async (targetChannel: GameChannel) => {
+      if (!installPath || !detectedChannel || targetChannel === detectedChannel)
+        return;
+      setSwitchOpen(false);
+      setSwitchConfirmTarget(targetChannel);
+    },
+    [installPath, detectedChannel],
+  );
 
   const handleConfirmSwitch = useCallback(async () => {
     if (!installPath || !detectedChannel || !switchConfirmTarget) return;
@@ -509,11 +552,17 @@ export function GameActionPanel() {
       let x = r.left + r.width / 2;
       let y = r.top - 8;
       if (x - fw / 2 < 8) x = fw / 2 + 8;
-      if (x + fw / 2 > window.innerWidth - 8) x = window.innerWidth - fw / 2 - 8;
+      if (x + fw / 2 > window.innerWidth - 8)
+        x = window.innerWidth - fw / 2 - 8;
       if (y - fh < 8) y = r.bottom + 8;
       setProgressFlyoutPos({ x, y });
     }
-    console.log("[switch] Starting switch:", detectedChannel, "->", targetChannel);
+    console.log(
+      "[switch] Starting switch:",
+      detectedChannel,
+      "->",
+      targetChannel,
+    );
     try {
       await switchChannel(detectedChannel, targetChannel, installPath);
       console.log("[switch] switchChannel completed OK");
@@ -521,14 +570,21 @@ export function GameActionPanel() {
       setDetectedChannel(targetChannel);
       localStorage.setItem(STORAGE_KEY_CHANNEL, targetChannel);
       console.log("[switch] States reset, calling checkStatus...");
-      checkStatus().then(() => {
-        console.log("[switch] checkStatus completed");
-      }).catch((e) => {
-        console.log("[switch] checkStatus failed:", e);
-      });
+      checkStatus()
+        .then(() => {
+          console.log("[switch] checkStatus completed");
+        })
+        .catch((e) => {
+          console.log("[switch] checkStatus failed:", e);
+        });
     } catch (err) {
       console.log("[switch] switchChannel FAILED:", err);
-      addMessage({ type: "urgent", title: t("launcher.switch_failed"), body: String(err), tag: "switch-error" });
+      addMessage({
+        type: "urgent",
+        title: t("launcher.switch_failed"),
+        body: String(err),
+        tag: "switch-error",
+      });
     }
   }, [installPath, detectedChannel, switchConfirmTarget, checkStatus, t]);
 
@@ -1038,8 +1094,14 @@ export function GameActionPanel() {
             disabled={switching}
             className="h-11 px-4 rounded-full backdrop-blur-md border border-transparent bg-black/10 dark:bg-white/10 shadow-lg flex items-center gap-1.5 text-sm text-foreground/80 shrink-0 cursor-pointer hover:bg-black/15 dark:hover:bg-white/15 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <div className={`w-1.5 h-1.5 rounded-full ${switching ? "bg-yellow-400/60 animate-pulse" : "bg-emerald-400/80"}`} />
-            <span>{switching ? t("launcher.switching") : CHANNEL_LABELS[detectedChannel][lang]}</span>
+            <div
+              className={`w-1.5 h-1.5 rounded-full ${switching ? "bg-yellow-400/60 animate-pulse" : "bg-emerald-400/80"}`}
+            />
+            <span>
+              {switching
+                ? t("launcher.switching")
+                : CHANNEL_LABELS[detectedChannel][lang]}
+            </span>
           </button>
         )}
 
@@ -1373,8 +1435,19 @@ export function GameActionPanel() {
                       fill="none"
                       viewBox="0 0 24 24"
                     >
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                      />
                     </svg>
                     <span>
                       {switchProgress?.phase === "downloading"
@@ -1388,58 +1461,64 @@ export function GameActionPanel() {
                               : switchProgress?.phase === "fetching_manifest"
                                 ? t("launcher.fetching_manifest")
                                 : t("launcher.switching")}
-                      {switchTarget && ` → ${CHANNEL_LABELS[switchTarget]?.[lang]}`}
+                      {switchTarget &&
+                        ` → ${CHANNEL_LABELS[switchTarget]?.[lang]}`}
                     </span>
                   </div>
-                  {switchProgress && switchProgress.phase === "downloading" && switchProgress.total > 0 && (
-                    <>
-                      <div className="flex items-center justify-between text-xs text-white/50 mb-1.5">
-                        <span>{formatBytes(switchProgress.downloaded)}</span>
-                        <span>{formatBytes(switchProgress.total)}</span>
-                      </div>
-                      <div className="w-full h-1.5 rounded-full bg-white/10 mb-2 overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all duration-300"
-                          style={{
-                            width: `${(switchProgress.downloaded / switchProgress.total) * 100}%`,
-                          }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] text-white/40">
-                        <span>
-                          {downloadSpeed > 0
-                            ? `${formatBytes(Math.round(downloadSpeed))}/s`
-                            : "—"}
-                        </span>
-                        <span>
-                          {switchProgress.total > switchProgress.downloaded
-                            ? downloadSpeed > 0
-                              ? (() => {
-                                  const remaining = Math.round(
-                                    (switchProgress.total - switchProgress.downloaded) /
-                                      downloadSpeed,
-                                  );
-                                  const h = Math.floor(remaining / 3600);
-                                  const m = Math.floor((remaining % 3600) / 60);
-                                  const s = remaining % 60;
-                                  return h > 0
-                                    ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
-                                    : `${m}:${String(s).padStart(2, "0")}`;
-                                })()
-                              : t("launcher.calculating")
-                            : ""}
-                        </span>
-                      </div>
-                      {switchProgress.current_file && (
-                        <div
-                          className="mt-1 text-[10px] text-white/30 truncate"
-                          title={switchProgress.current_file}
-                        >
-                          {switchProgress.current_file.split("/").pop()}
+                  {switchProgress &&
+                    switchProgress.phase === "downloading" &&
+                    switchProgress.total > 0 && (
+                      <>
+                        <div className="flex items-center justify-between text-xs text-white/50 mb-1.5">
+                          <span>{formatBytes(switchProgress.downloaded)}</span>
+                          <span>{formatBytes(switchProgress.total)}</span>
                         </div>
-                      )}
-                    </>
-                  )}
+                        <div className="w-full h-1.5 rounded-full bg-white/10 mb-2 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all duration-300"
+                            style={{
+                              width: `${(switchProgress.downloaded / switchProgress.total) * 100}%`,
+                            }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-white/40">
+                          <span>
+                            {downloadSpeed > 0
+                              ? `${formatBytes(Math.round(downloadSpeed))}/s`
+                              : "—"}
+                          </span>
+                          <span>
+                            {switchProgress.total > switchProgress.downloaded
+                              ? downloadSpeed > 0
+                                ? (() => {
+                                    const remaining = Math.round(
+                                      (switchProgress.total -
+                                        switchProgress.downloaded) /
+                                        downloadSpeed,
+                                    );
+                                    const h = Math.floor(remaining / 3600);
+                                    const m = Math.floor(
+                                      (remaining % 3600) / 60,
+                                    );
+                                    const s = remaining % 60;
+                                    return h > 0
+                                      ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+                                      : `${m}:${String(s).padStart(2, "0")}`;
+                                  })()
+                                : t("launcher.calculating")
+                              : ""}
+                          </span>
+                        </div>
+                        {switchProgress.current_file && (
+                          <div
+                            className="mt-1 text-[10px] text-white/30 truncate"
+                            title={switchProgress.current_file}
+                          >
+                            {switchProgress.current_file.split("/").pop()}
+                          </div>
+                        )}
+                      </>
+                    )}
                   {!switchProgress && (
                     <div className="text-[10px] text-white/40 text-center py-1">
                       {t("launcher.checking")}
@@ -2066,17 +2145,26 @@ export function GameActionPanel() {
 
       {/* Channel Switch Dialog - Channel Picker */}
       {switchOpen && detectedChannel && (
-        <GlassAlertDialog isOpen onOpenChange={(o) => { if (!o) setSwitchOpen(false); }}>
+        <GlassAlertDialog
+          isOpen
+          onOpenChange={(o) => {
+            if (!o) setSwitchOpen(false);
+          }}
+        >
           <GlassAlertDialog.Backdrop className="z-[300]">
             <GlassAlertDialog.Container>
               <GlassAlertDialog.Dialog className="sm:max-w-[400px]">
                 <GlassAlertDialog.CloseTrigger />
                 <GlassAlertDialog.Header>
                   <GlassAlertDialog.Icon status="info" />
-                  <GlassAlertDialog.Heading>{t("launcher.switch_channel_title")}</GlassAlertDialog.Heading>
+                  <GlassAlertDialog.Heading>
+                    {t("launcher.switch_channel_title")}
+                  </GlassAlertDialog.Heading>
                 </GlassAlertDialog.Header>
                 <GlassAlertDialog.Body>
-                  <p className="text-sm text-muted mb-4">{t("launcher.switch_channel_desc")}</p>
+                  <p className="text-sm text-muted mb-4">
+                    {t("launcher.switch_channel_desc")}
+                  </p>
                   <div className="flex flex-col gap-2">
                     {ALL_CHANNELS.map((ch) => (
                       <button
@@ -2090,11 +2178,21 @@ export function GameActionPanel() {
                             : "glass-surface border-separator/50 hover:border-primary/50 hover:bg-primary/10"
                         }`}
                       >
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                          ch === detectedChannel ? "bg-primary/30" : "bg-primary/20"
-                        }`}>
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                            ch === detectedChannel
+                              ? "bg-primary/30"
+                              : "bg-primary/20"
+                          }`}
+                        >
                           <span className="text-sm font-bold text-primary">
-                            {ch === "official" ? "官" : ch === "bilibili" ? "B" : ch === "global" ? "G" : "GP"}
+                            {ch === "official"
+                              ? "官"
+                              : ch === "bilibili"
+                                ? "B"
+                                : ch === "global"
+                                  ? "G"
+                                  : "GP"}
                           </span>
                         </div>
                         <div className="flex flex-col items-start">
@@ -2102,7 +2200,9 @@ export function GameActionPanel() {
                             {CHANNEL_LABELS[ch]?.[lang] || ch}
                           </span>
                           {ch === detectedChannel && (
-                            <span className="text-[11px] text-primary/70">{t("launcher.current_channel")}</span>
+                            <span className="text-[11px] text-primary/70">
+                              {t("launcher.current_channel")}
+                            </span>
                           )}
                         </div>
                       </button>
@@ -2110,7 +2210,10 @@ export function GameActionPanel() {
                   </div>
                 </GlassAlertDialog.Body>
                 <GlassAlertDialog.Footer>
-                  <GlassButton variant="tertiary" onPress={() => setSwitchOpen(false)}>
+                  <GlassButton
+                    variant="tertiary"
+                    onPress={() => setSwitchOpen(false)}
+                  >
                     {t("launcher.cancel")}
                   </GlassButton>
                 </GlassAlertDialog.Footer>
@@ -2122,14 +2225,21 @@ export function GameActionPanel() {
 
       {/* Channel Switch Confirmation Dialog */}
       {switchConfirmTarget && detectedChannel && (
-        <GlassAlertDialog isOpen onOpenChange={(o) => { if (!o) setSwitchConfirmTarget(null); }}>
+        <GlassAlertDialog
+          isOpen
+          onOpenChange={(o) => {
+            if (!o) setSwitchConfirmTarget(null);
+          }}
+        >
           <GlassAlertDialog.Backdrop className="z-[300]">
             <GlassAlertDialog.Container>
               <GlassAlertDialog.Dialog className="sm:max-w-[400px]">
                 <GlassAlertDialog.CloseTrigger />
                 <GlassAlertDialog.Header>
                   <GlassAlertDialog.Icon status="warning" />
-                  <GlassAlertDialog.Heading>{t("launcher.switch_confirm_title")}</GlassAlertDialog.Heading>
+                  <GlassAlertDialog.Heading>
+                    {t("launcher.switch_confirm_title")}
+                  </GlassAlertDialog.Heading>
                 </GlassAlertDialog.Header>
                 <GlassAlertDialog.Body>
                   <p className="text-sm text-muted">
@@ -2140,7 +2250,10 @@ export function GameActionPanel() {
                   </p>
                 </GlassAlertDialog.Body>
                 <GlassAlertDialog.Footer>
-                  <GlassButton variant="tertiary" onPress={() => setSwitchConfirmTarget(null)}>
+                  <GlassButton
+                    variant="tertiary"
+                    onPress={() => setSwitchConfirmTarget(null)}
+                  >
                     {t("launcher.cancel")}
                   </GlassButton>
                   <GlassButton variant="primary" onPress={handleConfirmSwitch}>

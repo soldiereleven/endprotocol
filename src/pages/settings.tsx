@@ -7,6 +7,7 @@ import {
   GlassSkeleton,
   GlassSwitch,
 } from "@/components/ui/glass";
+import { Slider } from "@/components/ui/slider";
 import { AppearanceSettings } from "@/components/appearance-settings";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
@@ -808,16 +809,14 @@ export default function SettingsPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3 sm:w-56">
-                  <input
-                    type="range"
-                    min="1"
-                    max="32"
-                    step="1"
-                    value={verifyThreads}
+                  <Slider
+                    min={1}
+                    max={32}
+                    step={1}
+                    value={[verifyThreads]}
                     aria-label={t("settings.game_launch.verify_threads")}
-                    className="w-full accent-foreground cursor-pointer"
-                    onChange={(event) => {
-                      const value = Number(event.target.value);
+                    className="w-full"
+                    onValueChange={([value]) => {
                       setVerifyThreads(value);
                       localStorage.setItem(
                         "launcher_verify_threads",

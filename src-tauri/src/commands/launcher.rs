@@ -12,7 +12,8 @@ pub fn launcher_get_process_read_bytes() -> Result<u64, String> {
     unsafe {
         let mut counters = std::mem::zeroed::<windows_sys::Win32::System::Threading::IO_COUNTERS>();
         let process = windows_sys::Win32::System::Threading::GetCurrentProcess();
-        if windows_sys::Win32::System::Threading::GetProcessIoCounters(process, &mut counters) == 0 {
+        if windows_sys::Win32::System::Threading::GetProcessIoCounters(process, &mut counters) == 0
+        {
             return Err("Failed to read process I/O counters".to_string());
         }
         return Ok(counters.ReadTransferCount);
@@ -29,7 +30,11 @@ pub async fn launcher_check_status(
     channel: String,
     install_path: String,
 ) -> Result<GameStatus, String> {
-    tracing::info!("[cmd] launcher_check_status: channel={}, path={}", channel, install_path);
+    tracing::info!(
+        "[cmd] launcher_check_status: channel={}, path={}",
+        channel,
+        install_path
+    );
     let ch = parse_channel(&channel)?;
     tracing::info!("[cmd] check_status acquiring lock...");
     let svc = service.lock().await;
@@ -49,7 +54,8 @@ pub async fn launcher_install_or_update(
 ) -> Result<LauncherResult, String> {
     tracing::info!(
         "[cmd] launcher_install_or_update: channel={}, install_path={}",
-        channel, install_path
+        channel,
+        install_path
     );
     let ch = parse_channel(&channel)?;
     let svc = service.lock().await;
@@ -58,16 +64,17 @@ pub async fn launcher_install_or_update(
     let progress_cb = Arc::new(move |progress: DownloadProgress| {
         tracing::debug!(
             "[progress] stage={}, downloaded={}, total={}, file={:?}, {}/{}",
-            progress.stage, progress.downloaded, progress.total,
-            progress.current_file, progress.file_index, progress.file_count
+            progress.stage,
+            progress.downloaded,
+            progress.total,
+            progress.current_file,
+            progress.file_index,
+            progress.file_count
         );
         let _ = app_handle.emit("launcher-progress", &progress);
     });
 
-    match svc
-        .install_or_update(&ch, &install_path, progress_cb)
-        .await
-    {
+    match svc.install_or_update(&ch, &install_path, progress_cb).await {
         Ok(version) => {
             tracing::info!("[cmd] Install OK: version={}", version);
             Ok(LauncherResult {
@@ -111,7 +118,13 @@ pub async fn launcher_verify_and_repair(
     });
 
     match svc
-        .verify_and_repair(&ch, &install_path, progress_cb, max_concurrent.unwrap_or(12), quick.unwrap_or(false))
+        .verify_and_repair(
+            &ch,
+            &install_path,
+            progress_cb,
+            max_concurrent.unwrap_or(12),
+            quick.unwrap_or(false),
+        )
         .await
     {
         Ok(msg) => Ok(LauncherResult {
@@ -199,7 +212,9 @@ pub async fn launcher_cancel_download(install_path: Option<String>) -> Result<()
 /// 检查是否存在下载缓存（暂存目录或 .download 文件）
 #[tauri::command]
 pub async fn launcher_has_download_cache(install_path: String) -> Result<bool, String> {
-    Ok(crate::services::game_launcher_service::has_download_cache(&install_path))
+    Ok(crate::services::game_launcher_service::has_download_cache(
+        &install_path,
+    ))
 }
 
 /// 重置下载取消标志
@@ -273,7 +288,10 @@ pub async fn launcher_get_background_image(
 
 /// 启动游戏（UseShellExecute）
 #[tauri::command]
-pub async fn launcher_start_game(install_path: String, channel: String) -> Result<LauncherResult, String> {
+pub async fn launcher_start_game(
+    install_path: String,
+    channel: String,
+) -> Result<LauncherResult, String> {
     let ch = parse_channel(&channel)?;
     let exe_name = ch.executable_name();
     let exe_path = std::path::Path::new(&install_path).join(exe_name);
@@ -299,8 +317,15 @@ pub async fn launcher_start_game(install_path: String, channel: String) -> Resul
         use std::ffi::OsStr;
         use std::os::windows::ffi::OsStrExt;
 
-        let exe_wide: Vec<u16> = exe_path.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
-        let dir_wide: Vec<u16> = OsStr::new(&install_path).encode_wide().chain(std::iter::once(0)).collect();
+        let exe_wide: Vec<u16> = exe_path
+            .as_os_str()
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+        let dir_wide: Vec<u16> = OsStr::new(&install_path)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
 
         unsafe {
             let result = windows_sys::Win32::UI::Shell::ShellExecuteW(
@@ -350,10 +375,11 @@ pub async fn launcher_start_game(install_path: String, channel: String) -> Resul
 /// 浏览文件夹
 #[tauri::command]
 pub fn launcher_browse_folder() -> Result<Option<String>, String> {
-    let dialog = rfd::FileDialog::new()
-        .set_title("Select Game Directory");
+    let dialog = rfd::FileDialog::new().set_title("Select Game Directory");
 
-    Ok(dialog.pick_folder().map(|p| p.to_string_lossy().to_string()))
+    Ok(dialog
+        .pick_folder()
+        .map(|p| p.to_string_lossy().to_string()))
 }
 
 /// 磁盘空间信息
@@ -393,9 +419,16 @@ pub async fn launcher_get_disk_space(path: String) -> Result<DiskSpace, String> 
             let s = String::from_utf8_lossy(&output.stdout).trim().to_string();
             let parts: Vec<&str> = s.split('|').collect();
             if parts.len() == 2 {
-                let used = parts[0].parse::<u64>().map_err(|_| format!("Invalid used value: {}", parts[0]))?;
-                let free = parts[1].parse::<u64>().map_err(|_| format!("Invalid free value: {}", parts[1]))?;
-                Ok(DiskSpace { total: used + free, free })
+                let used = parts[0]
+                    .parse::<u64>()
+                    .map_err(|_| format!("Invalid used value: {}", parts[0]))?;
+                let free = parts[1]
+                    .parse::<u64>()
+                    .map_err(|_| format!("Invalid free value: {}", parts[1]))?;
+                Ok(DiskSpace {
+                    total: used + free,
+                    free,
+                })
             } else {
                 Err(format!("Unexpected output format: {}", s))
             }
@@ -406,7 +439,10 @@ pub async fn launcher_get_disk_space(path: String) -> Result<DiskSpace, String> 
 
     #[cfg(not(target_os = "windows"))]
     {
-        Ok(DiskSpace { total: u64::MAX, free: u64::MAX })
+        Ok(DiskSpace {
+            total: u64::MAX,
+            free: u64::MAX,
+        })
     }
 }
 
@@ -518,7 +554,13 @@ pub async fn launcher_kill_game(channel: String) -> Result<bool, String> {
         if !output2.status.success() {
             // 最后尝试 wmic 按标题模糊杀
             let _ = tokio::process::Command::new("wmic")
-                .args(["process", "where", &format!("name like '%Endfield%'"), "call", "terminate"])
+                .args([
+                    "process",
+                    "where",
+                    &format!("name like '%Endfield%'"),
+                    "call",
+                    "terminate",
+                ])
                 .output()
                 .await;
         }
@@ -536,7 +578,12 @@ pub async fn launcher_switch_channel(
     install_path: String,
     app: tauri::AppHandle,
 ) -> Result<String, String> {
-    tracing::info!("[cmd] launcher_switch_channel: {} -> {}, path={}", from_channel, to_channel, install_path);
+    tracing::info!(
+        "[cmd] launcher_switch_channel: {} -> {}, path={}",
+        from_channel,
+        to_channel,
+        install_path
+    );
     let from = parse_channel(&from_channel)?;
     let to = parse_channel(&to_channel)?;
     let svc = service.lock().await;
@@ -549,6 +596,9 @@ fn parse_channel(s: &str) -> Result<GameChannel, String> {
         "bilibili" | "b服" | "bili" => Ok(GameChannel::Bilibili),
         "global" | "国际服" => Ok(GameChannel::Global),
         "google_play" | "play" | "gp" => Ok(GameChannel::GooglePlay),
-        _ => Err(format!("Unknown channel: '{}'. Use: official, bilibili, global, google_play", s)),
+        _ => Err(format!(
+            "Unknown channel: '{}'. Use: official, bilibili, global, google_play",
+            s
+        )),
     }
 }

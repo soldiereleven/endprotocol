@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { isTauri, invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 import { SettingsDivider } from "@/components/ui/settings-row";
+import { Slider } from "@/components/ui/slider";
 import ScreenColorPicker from "@/components/screen-color-picker";
 import { getConfig, setConfig } from "@/utils/configService";
 import { MorphIcon } from "morphicons/react";
@@ -28,6 +29,20 @@ import {
 } from "lucide";
 
 type ThemeMode = "light" | "dark" | "system";
+
+function applyGlassClarity(clarity: number) {
+  const value = Math.max(0, Math.min(100, clarity));
+  const blur = 48 - (20 / 55) * value;
+  const surfaceOpacity = 63 + (15 / 55) * value;
+  const root = document.documentElement;
+  root.style.setProperty("--glass-blur", `${blur}px`);
+  root.style.setProperty("--glass-surface-opacity", `${surfaceOpacity}%`);
+  root.style.setProperty(
+    "--glass-strong-opacity",
+    `${Math.min(98, surfaceOpacity + 7)}%`,
+  );
+  root.style.setProperty("--glass-field-opacity", `${surfaceOpacity + 2}%`);
+}
 
 interface ThemeColor {
   name: string;
@@ -368,6 +383,8 @@ export function AppearanceSettings() {
   const DEFAULT_BG_IMAGE_OPACITY = 0.5;
   const [bgBlur, setBgBlur] = useState(16);
   const DEFAULT_BG_BLUR = 16;
+  const [glassClarity, setGlassClarity] = useState(55);
+  const DEFAULT_GLASS_CLARITY = 55;
   const bgFileInputRef = useRef<HTMLInputElement>(null);
   const [bgImagePreview, setBgImagePreview] = useState<string | null>(null);
 
@@ -467,6 +484,7 @@ export function AppearanceSettings() {
         savedBgPath,
         savedBgOpacity,
         savedBgBlur,
+        savedGlassClarity,
       ] = await Promise.all([
         getConfig<ThemeMode>("theme_mode"),
         getConfig<string>("theme_color"),
@@ -474,6 +492,7 @@ export function AppearanceSettings() {
         getConfig<string>("bg_image_path"),
         getConfig<number>("bg_image_opacity"),
         getConfig<number>("bg_blur"),
+        getConfig<number>("glass_clarity"),
       ]);
       setThemeMode(savedMode ?? "system");
       setThemeColor(savedColor ?? "indigo");
@@ -489,6 +508,9 @@ export function AppearanceSettings() {
       const bgBlurVal = savedBgBlur ?? DEFAULT_BG_BLUR;
       setBgBlur(bgBlurVal);
       document.documentElement.style.setProperty("--bg-blur", `${bgBlurVal}px`);
+      const glassClarityVal = savedGlassClarity ?? DEFAULT_GLASS_CLARITY;
+      setGlassClarity(glassClarityVal);
+      applyGlassClarity(glassClarityVal);
       if (bgPath) {
         try {
           const bytes = await invoke<number[]>("read_image_file", {
@@ -688,6 +710,19 @@ export function AppearanceSettings() {
       `${DEFAULT_BG_BLUR}px`,
     );
     await setConfig("bg_blur", DEFAULT_BG_BLUR);
+  }, []);
+
+  const handleGlassClarityChange = useCallback(async (value: number) => {
+    const clamped = Math.max(0, Math.min(100, value));
+    setGlassClarity(clamped);
+    applyGlassClarity(clamped);
+    await setConfig("glass_clarity", clamped);
+  }, []);
+
+  const handleGlassClarityReset = useCallback(async () => {
+    setGlassClarity(DEFAULT_GLASS_CLARITY);
+    applyGlassClarity(DEFAULT_GLASS_CLARITY);
+    await setConfig("glass_clarity", DEFAULT_GLASS_CLARITY);
   }, []);
 
   const handleSaveCustom = async () => {
@@ -1313,16 +1348,14 @@ export function AppearanceSettings() {
                 {t("settings.appearance.bg_image_opacity")}
               </p>
               <div className="flex items-center gap-4">
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={bgImageOpacity}
-                  onChange={(e) =>
-                    handleBgImageOpacityChange(parseFloat(e.target.value))
-                  }
-                  className="flex-1 h-2 rounded-full appearance-none cursor-pointer bg-default-200 accent-primary"
+                <Slider
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={[bgImageOpacity]}
+                  onValueChange={([value]) => handleBgImageOpacityChange(value)}
+                  aria-label={t("settings.appearance.bg_image_opacity")}
+                  className="flex-1"
                 />
                 <span className="w-14 text-center text-sm font-mono text-foreground tabular-nums">
                   {Math.round(bgImageOpacity * 100)}%
@@ -1343,16 +1376,14 @@ export function AppearanceSettings() {
                 {t("settings.appearance.bg_blur")}
               </p>
               <div className="flex items-center gap-4">
-                <input
-                  type="range"
-                  min="0"
-                  max="40"
-                  step="1"
-                  value={bgBlur}
-                  onChange={(e) =>
-                    handleBgBlurChange(parseInt(e.target.value, 10))
-                  }
-                  className="flex-1 h-2 rounded-full appearance-none cursor-pointer bg-default-200 accent-primary"
+                <Slider
+                  min={0}
+                  max={40}
+                  step={1}
+                  value={[bgBlur]}
+                  onValueChange={([value]) => handleBgBlurChange(value)}
+                  aria-label={t("settings.appearance.bg_blur")}
+                  className="flex-1"
                 />
                 <span className="w-14 text-center text-sm font-mono text-foreground tabular-nums">
                   {bgBlur}px
@@ -1379,6 +1410,40 @@ export function AppearanceSettings() {
             </span>
           </button>
         )}
+      </div>
+
+      <SettingsDivider />
+
+      <div>
+        <div className="mb-3">
+          <p className="font-medium text-foreground">
+            {t("settings.appearance.glass_clarity")}
+          </p>
+          <p className="text-sm text-muted mt-0.5">
+            {t("settings.appearance.glass_clarity_desc")}
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <Slider
+            min={0}
+            max={100}
+            step={1}
+            value={[glassClarity]}
+            onValueChange={([value]) => handleGlassClarityChange(value)}
+            aria-label={t("settings.appearance.glass_clarity")}
+            className="flex-1"
+          />
+          <span className="w-12 text-right text-sm font-mono text-foreground tabular-nums">
+            {glassClarity}%
+          </span>
+          <button
+            onClick={handleGlassClarityReset}
+            disabled={glassClarity === DEFAULT_GLASS_CLARITY}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-separator text-muted hover:text-foreground hover:border-foreground/50 transition-all duration-200 cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+          >
+            {t("common.reset")}
+          </button>
+        </div>
       </div>
     </div>
   );

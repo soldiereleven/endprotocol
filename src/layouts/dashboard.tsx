@@ -301,9 +301,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     <div className="relative flex flex-col h-screen glass-window">
       <div className="dashboard-background" aria-hidden="true" />
 
-      <div className="relative z-10">
-        <CustomTitlebar />
-      </div>
+      <CustomTitlebar />
 
       <div className="relative z-10 flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}

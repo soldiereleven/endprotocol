@@ -2,6 +2,7 @@ export { GlassButton, type GlassButtonProps, type GlassButtonVariant, type Glass
 export { GlassCard, type GlassCardProps } from "../card";
 export { GlassInput, type GlassInputProps } from "../input";
 export { GlassSwitch, type GlassSwitchProps } from "../switch";
+export { Slider } from "../slider";
 export { GlassCheckbox, type GlassCheckboxProps } from "../checkbox";
 export { GlassChip, type GlassChipProps, type GlassChipTone } from "../badge";
 export { GlassSkeleton, type GlassSkeletonProps } from "../skeleton";
