@@ -40,7 +40,11 @@ export function DashboardFAB({
             onClick={onToggleEdit}
             className="glass-surface-strong flex min-w-[160px] items-center justify-center gap-2 rounded-2xl border border-separator/70 px-4 h-11 text-sm font-medium text-foreground shadow-lg transition-all duration-200 cursor-pointer hover:border-primary/50 hover:text-primary hover:scale-105 active:scale-95"
           >
-            <MorphIcon icon={isEditMode ? Check : Pencil} size={20} spring="snappy" />
+            <MorphIcon
+              icon={isEditMode ? Check : Pencil}
+              size={20}
+              spring="snappy"
+            />
             {isEditMode
               ? t("dashboard.exit_edit") || "Exit Edit"
               : t("dashboard.edit_mode") || "Edit Mode"}

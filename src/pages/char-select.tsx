@@ -7,7 +7,13 @@ import {
   useCallback,
 } from "react";
 import { createPortal } from "react-dom";
-import { GlassAlert, GlassButton, GlassChip, GlassMeter, GlassProgressCircle } from "@/components/ui/glass";
+import {
+  GlassAlert,
+  GlassButton,
+  GlassChip,
+  GlassMeter,
+  GlassProgressCircle,
+} from "@/components/ui/glass";
 import {
   CustomModal,
   CustomModalHeader,
@@ -43,12 +49,7 @@ const propertyIconUrl = (key: string) => `${ICON_BASE}/property/${key}.png`;
 const RARITY_ICON_URL = "/assets/rarity.svg";
 
 export type FilterKey =
-  | "profession"
-  | "rarity"
-  | "property"
-  | "weapon"
-  | "mainAttr"
-  | "subAttr";
+  "profession" | "rarity" | "property" | "weapon" | "mainAttr" | "subAttr";
 
 interface CharSelectModalProps {
   isOpen: boolean;
@@ -155,37 +156,44 @@ export function FloatSelect({
           />
         </svg>
       </button>
-      {open && createPortal(
-        <div
-          ref={menuRef}
-          className="fixed z-[9999] min-w-[120px] max-h-64 overflow-y-auto rounded-md border border-separator bg-background glass-surface-strong shadow-lg animate-scale-in"
-          style={{ top: menuPos.top, left: menuPos.left, width: Math.max(120, menuPos.width || 0) }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {options.map((opt) => {
-            const active = opt.value === value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => {
-                  onChange(opt.value);
-                  setOpen(false);
-                }}
-                className={`w-full text-left px-3 py-1.5 text-xs whitespace-nowrap transition-colors cursor-pointer
+      {open &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="fixed z-[9999] min-w-[120px] max-h-64 overflow-y-auto rounded-md border border-separator bg-background glass-surface-strong shadow-lg animate-scale-in"
+            style={{
+              top: menuPos.top,
+              left: menuPos.left,
+              width: Math.max(120, menuPos.width || 0),
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {options.map((opt) => {
+              const active = opt.value === value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs whitespace-nowrap transition-colors cursor-pointer
                   ${active ? "bg-blue-500/15 text-blue-500 font-semibold" : "text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-800"}`}
-              >
-                {opt.tone ? (
-                  <span className={rarityToneClass[opt.tone]}>{opt.label}</span>
-                ) : (
-                  opt.label
-                )}
-              </button>
-            );
-          })}
-        </div>,
-        document.body,
-      )}
+                >
+                  {opt.tone ? (
+                    <span className={rarityToneClass[opt.tone]}>
+                      {opt.label}
+                    </span>
+                  ) : (
+                    opt.label
+                  )}
+                </button>
+              );
+            })}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -349,9 +357,7 @@ export function CharSelectModal({
   const { t } = useTranslation();
   const [tempSelectedIds, setTempSelectedIds] =
     useState<string[]>(selectedCharIds);
-  const [viewMode, setViewMode] = useState<"list" | "detail">(
-    "list",
-  );
+  const [viewMode, setViewMode] = useState<"list" | "detail">("list");
   const [detailCharId, setDetailCharId] = useState<string | null>(null);
   const [selectedDetailItem, setSelectedDetailItem] = useState<{
     type:
@@ -473,8 +479,10 @@ export function CharSelectModal({
         if (!slot) return;
         const rect = slot.getBoundingClientRect();
         if (
-          moveE.clientX >= rect.left && moveE.clientX <= rect.right &&
-          moveE.clientY >= rect.top && moveE.clientY <= rect.bottom &&
+          moveE.clientX >= rect.left &&
+          moveE.clientX <= rect.right &&
+          moveE.clientY >= rect.top &&
+          moveE.clientY <= rect.bottom &&
           ids[i] !== id
         ) {
           found = i;
@@ -496,8 +504,10 @@ export function CharSelectModal({
             if (!slot) return;
             const rect = slot.getBoundingClientRect();
             if (
-              upE.clientX >= rect.left && upE.clientX <= rect.right &&
-              upE.clientY >= rect.top && upE.clientY <= rect.bottom &&
+              upE.clientX >= rect.left &&
+              upE.clientX <= rect.right &&
+              upE.clientY >= rect.top &&
+              upE.clientY <= rect.bottom &&
               ids[i] !== id
             ) {
               target = i;
@@ -647,8 +657,6 @@ export function CharSelectModal({
       if (detailTimerRef.current) clearTimeout(detailTimerRef.current);
     };
   }, []);
-
-  
 
   function renderRarityIcons(value: string, size: number = 14) {
     const count = parseInt(value, 10) || 0;
@@ -897,1589 +905,1657 @@ export function CharSelectModal({
       )}
 
       <CustomModal isOpen={isOpen} onClose={onClose} size="xl" height="fixed">
+        {viewMode === "detail" ? (
+          detailCharId &&
+          (() => {
+            const char = getCharById(detailCharId);
+            const charItem = getCharItemById(detailCharId);
+            if (!char) return null;
 
-      {viewMode === "detail" ? (
-        detailCharId &&
-        (() => {
-          const char = getCharById(detailCharId);
-          const charItem = getCharItemById(detailCharId);
-          if (!char) return null;
+            const sel = selectedDetailItem;
+            const activeCombatNodes =
+              charItem?.talent?.latestPassiveSkillNodes || [];
+            const activeAbilityNodes = charItem?.talent?.attrNodes || [];
+            const activeCultivationNodes =
+              charItem?.talent?.latestSpaceshipSkillNodes || [];
+            const hasSelection = detailActive;
 
-          const sel = selectedDetailItem;
-          const activeCombatNodes =
-            charItem?.talent?.latestPassiveSkillNodes || [];
-          const activeAbilityNodes = charItem?.talent?.attrNodes || [];
-          const activeCultivationNodes =
-            charItem?.talent?.latestSpaceshipSkillNodes || [];
-          const hasSelection = detailActive;
-
-          const groupChains = (talents: typeof char.combatTalents) => {
-            const groups = new Map<string, typeof char.combatTalents>();
-            talents.forEach((t) => {
-              const baseId = t.id.replace(/_\d+$/, "");
-              if (!groups.has(baseId)) groups.set(baseId, []);
-              groups.get(baseId)!.push(t);
-            });
-            groups.forEach((g) =>
-              g.sort((a, b) => {
-                const aL = parseInt(a.id.match(/_(\d+)$/)?.[1] || "0");
-                const bL = parseInt(b.id.match(/_(\d+)$/)?.[1] || "0");
-                return aL - bL;
-              }),
-            );
-            return Array.from(groups.values());
-          };
-
-          const findItem = () => {
-            if (!sel) return null;
-            if (sel.type === "skill") {
-              const s = char.skills.find((x) => x.id === sel.id);
-              return s ? { ...s, _type: "skill" as const } : null;
-            }
-            if (sel.type === "potential") {
-              const p = potentialData?.find(
-                (x: any) => x.level === parseInt(sel.id),
+            const groupChains = (talents: typeof char.combatTalents) => {
+              const groups = new Map<string, typeof char.combatTalents>();
+              talents.forEach((t) => {
+                const baseId = t.id.replace(/_\d+$/, "");
+                if (!groups.has(baseId)) groups.set(baseId, []);
+                groups.get(baseId)!.push(t);
+              });
+              groups.forEach((g) =>
+                g.sort((a, b) => {
+                  const aL = parseInt(a.id.match(/_(\d+)$/)?.[1] || "0");
+                  const bL = parseInt(b.id.match(/_(\d+)$/)?.[1] || "0");
+                  return aL - bL;
+                }),
               );
-              return p
-                ? {
-                    _type: "potential" as const,
-                    level: p.level,
-                    iconUrl: p.iconUrl,
-                    contentDoc: p.contentDoc,
-                    name: `潜能 ${p.level}`,
-                  }
-                : null;
-            }
-            const pool =
-              sel.type === "combatTalent"
-                ? char.combatTalents
-                : sel.type === "abilityTalent"
-                  ? char.abilityTalents
-                  : char.cultivationTalents || [];
-            const t = pool.find((x) => x.id === sel.id);
-            return t ? { ...t, _type: sel.type } : null;
-          };
-          const selectedItem = findItem();
+              return Array.from(groups.values());
+            };
 
-          const isNodeUnlocked = (
-            chain: typeof char.combatTalents,
-            index: number,
-            type: string,
-          ) => {
-            const activeNodes =
-              type === "combatTalent"
-                ? activeCombatNodes
-                : type === "abilityTalent"
-                  ? activeAbilityNodes
-                  : activeCultivationNodes;
-            if (type === "skill") return true;
-            if (type === "abilityTalent")
-              return activeNodes.includes(chain[index].id);
-            for (let i = index; i < chain.length; i++) {
-              if (activeNodes.includes(chain[i].id)) return true;
-            }
-            return false;
-          };
+            const findItem = () => {
+              if (!sel) return null;
+              if (sel.type === "skill") {
+                const s = char.skills.find((x) => x.id === sel.id);
+                return s ? { ...s, _type: "skill" as const } : null;
+              }
+              if (sel.type === "potential") {
+                const p = potentialData?.find(
+                  (x: any) => x.level === parseInt(sel.id),
+                );
+                return p
+                  ? {
+                      _type: "potential" as const,
+                      level: p.level,
+                      iconUrl: p.iconUrl,
+                      contentDoc: p.contentDoc,
+                      name: `潜能 ${p.level}`,
+                    }
+                  : null;
+              }
+              const pool =
+                sel.type === "combatTalent"
+                  ? char.combatTalents
+                  : sel.type === "abilityTalent"
+                    ? char.abilityTalents
+                    : char.cultivationTalents || [];
+              const t = pool.find((x) => x.id === sel.id);
+              return t ? { ...t, _type: sel.type } : null;
+            };
+            const selectedItem = findItem();
 
-          const talentIcon = (
-            iconUrl: string,
-            name: string,
-            unlocked: boolean,
-          ) => {
-            return unlocked ? (
-              <Img
-                src={iconUrl}
-                alt={name}
-                className="w-full h-full object-contain"
-              />
-            ) : (
-              <div className="relative w-full h-full">
+            const isNodeUnlocked = (
+              chain: typeof char.combatTalents,
+              index: number,
+              type: string,
+            ) => {
+              const activeNodes =
+                type === "combatTalent"
+                  ? activeCombatNodes
+                  : type === "abilityTalent"
+                    ? activeAbilityNodes
+                    : activeCultivationNodes;
+              if (type === "skill") return true;
+              if (type === "abilityTalent")
+                return activeNodes.includes(chain[index].id);
+              for (let i = index; i < chain.length; i++) {
+                if (activeNodes.includes(chain[i].id)) return true;
+              }
+              return false;
+            };
+
+            const talentIcon = (
+              iconUrl: string,
+              name: string,
+              unlocked: boolean,
+            ) => {
+              return unlocked ? (
                 <Img
                   src={iconUrl}
                   alt={name}
-                  className="w-full h-full object-contain opacity-30"
+                  className="w-full h-full object-contain"
                 />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <svg
-                    className="w-4 h-4 text-white drop-shadow"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm8 14H7c-.55 0-1-.45-1-1v-8c0-.55.45-1 1-1h10c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1z" />
-                  </svg>
+              ) : (
+                <div className="relative w-full h-full">
+                  <Img
+                    src={iconUrl}
+                    alt={name}
+                    className="w-full h-full object-contain opacity-30"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <svg
+                      className="w-4 h-4 text-white drop-shadow"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm8 14H7c-.55 0-1-.45-1-1v-8c0-.55.45-1 1-1h10c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1z" />
+                    </svg>
+                  </div>
                 </div>
-              </div>
-            );
-          };
+              );
+            };
 
-          const btnBase = (
-            isFirstThree: boolean,
-            active: boolean,
-            unlocked: boolean,
-          ) =>
-            `w-12 h-12 border-2 p-1 transition-all cursor-pointer flex-shrink-0
+            const btnBase = (
+              isFirstThree: boolean,
+              active: boolean,
+              unlocked: boolean,
+            ) =>
+              `w-12 h-12 border-2 p-1 transition-all cursor-pointer flex-shrink-0
             ${isFirstThree ? "rounded-full" : "rounded-lg"}
             ${unlocked ? "border-yellow-300" : "border-neutral-500"}
             ${active ? "ring-2 ring-blue-500/40 scale-110" : "hover:scale-105"}
             ${unlocked ? "shadow-[0_0_14px_rgba(0,0,0,0.35)]" : ""}`;
 
-          const pasCombatChains = groupChains(char.combatTalents);
-          const cultChains = groupChains(char.cultivationTalents || []);
+            const pasCombatChains = groupChains(char.combatTalents);
+            const cultChains = groupChains(char.cultivationTalents || []);
 
-          const showLoading = wikiLoading;
+            const showLoading = wikiLoading;
 
-          const equipData = [
-            {
-              key: "weapon",
-              label: "武器",
-              data: charItem?.weapon
-                ? {
-                    iconUrl: charItem.weapon.weaponData?.iconUrl,
-                    name: (charItem.weapon.weaponData?.name || "").trim(),
-                    rarity: charItem.weapon.weaponData?.rarity?.value || "3",
-                    level: `Lv.${charItem.weapon.level}`,
-                  }
-                : null,
-            },
-            {
-              key: "body",
-              label: "护甲",
-              data: charItem?.bodyEquip?.equipData
-                ? {
-                    iconUrl: charItem.bodyEquip.equipData.iconUrl,
-                    name: (charItem.bodyEquip.equipData.name || "").trim(),
-                    rarity:
-                      (charItem.bodyEquip.equipData.rarity?.key || "").replace(
-                        "equip_rarity_",
-                        "",
-                      ) || "3",
-                    level: charItem.bodyEquip.equipData.level?.value
-                      ? `Lv.${charItem.bodyEquip.equipData.level.value}`
-                      : undefined,
-                  }
-                : null,
-            },
-            {
-              key: "arm",
-              label: "护手",
-              data: charItem?.armEquip?.equipData
-                ? {
-                    iconUrl: charItem.armEquip.equipData.iconUrl,
-                    name: (charItem.armEquip.equipData.name || "").trim(),
-                    rarity:
-                      (charItem.armEquip.equipData.rarity?.key || "").replace(
-                        "equip_rarity_",
-                        "",
-                      ) || "3",
-                    level: charItem.armEquip.equipData.level?.value
-                      ? `Lv.${charItem.armEquip.equipData.level.value}`
-                      : undefined,
-                  }
-                : null,
-            },
-            {
-              key: "acc1",
-              label: "配件",
-              data: charItem?.firstAccessory?.equipData
-                ? {
-                    iconUrl: charItem.firstAccessory.equipData.iconUrl,
-                    name: (charItem.firstAccessory.equipData.name || "").trim(),
-                    rarity:
-                      (
-                        charItem.firstAccessory.equipData.rarity?.key || ""
-                      ).replace("equip_rarity_", "") || "3",
-                    level: charItem.firstAccessory.equipData.level?.value
-                      ? `Lv.${charItem.firstAccessory.equipData.level.value}`
-                      : undefined,
-                  }
-                : null,
-            },
-            {
-              key: "acc2",
-              label: "配件",
-              data: charItem?.secondAccessory?.equipData
-                ? {
-                    iconUrl: charItem.secondAccessory.equipData.iconUrl,
-                    name: (
-                      charItem.secondAccessory.equipData.name || ""
-                    ).trim(),
-                    rarity:
-                      (
-                        charItem.secondAccessory.equipData.rarity?.key || ""
-                      ).replace("equip_rarity_", "") || "3",
-                    level: charItem.secondAccessory.equipData.level?.value
-                      ? `Lv.${charItem.secondAccessory.equipData.level.value}`
-                      : undefined,
-                  }
-                : null,
-            },
-            {
-              key: "tactical",
-              label: "战术物品",
-              data: charItem?.tacticalItem?.tacticalItemData
-                ? {
-                    iconUrl: charItem.tacticalItem.tacticalItemData.iconUrl,
-                    name: charItem.tacticalItem.tacticalItemData.name || "",
-                    rarity:
-                      (
-                        charItem.tacticalItem.tacticalItemData.rarity?.key || ""
-                      ).replace("equip_rarity_", "") || "3",
-                  }
-                : null,
-            },
-          ];
-          return (
-            <div
-              className="h-full w-full relative overflow-hidden rounded-2xl"
-              style={{ border: "none" }}
-            >
-              {/* Close button at top-right corner */}
-              <button
-                onClick={() => {
-                  if (enteredDetailFromCard) {
-                    onClose();
-                  } else {
-                    setViewMode("list");
-                    setDetailCharId(null);
-                  }
-                }}
-                className="absolute top-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full text-black/50 hover:text-black transition-colors cursor-pointer"
+            const equipData = [
+              {
+                key: "weapon",
+                label: "武器",
+                data: charItem?.weapon
+                  ? {
+                      iconUrl: charItem.weapon.weaponData?.iconUrl,
+                      name: (charItem.weapon.weaponData?.name || "").trim(),
+                      rarity: charItem.weapon.weaponData?.rarity?.value || "3",
+                      level: `Lv.${charItem.weapon.level}`,
+                    }
+                  : null,
+              },
+              {
+                key: "body",
+                label: "护甲",
+                data: charItem?.bodyEquip?.equipData
+                  ? {
+                      iconUrl: charItem.bodyEquip.equipData.iconUrl,
+                      name: (charItem.bodyEquip.equipData.name || "").trim(),
+                      rarity:
+                        (
+                          charItem.bodyEquip.equipData.rarity?.key || ""
+                        ).replace("equip_rarity_", "") || "3",
+                      level: charItem.bodyEquip.equipData.level?.value
+                        ? `Lv.${charItem.bodyEquip.equipData.level.value}`
+                        : undefined,
+                    }
+                  : null,
+              },
+              {
+                key: "arm",
+                label: "护手",
+                data: charItem?.armEquip?.equipData
+                  ? {
+                      iconUrl: charItem.armEquip.equipData.iconUrl,
+                      name: (charItem.armEquip.equipData.name || "").trim(),
+                      rarity:
+                        (charItem.armEquip.equipData.rarity?.key || "").replace(
+                          "equip_rarity_",
+                          "",
+                        ) || "3",
+                      level: charItem.armEquip.equipData.level?.value
+                        ? `Lv.${charItem.armEquip.equipData.level.value}`
+                        : undefined,
+                    }
+                  : null,
+              },
+              {
+                key: "acc1",
+                label: "配件",
+                data: charItem?.firstAccessory?.equipData
+                  ? {
+                      iconUrl: charItem.firstAccessory.equipData.iconUrl,
+                      name: (
+                        charItem.firstAccessory.equipData.name || ""
+                      ).trim(),
+                      rarity:
+                        (
+                          charItem.firstAccessory.equipData.rarity?.key || ""
+                        ).replace("equip_rarity_", "") || "3",
+                      level: charItem.firstAccessory.equipData.level?.value
+                        ? `Lv.${charItem.firstAccessory.equipData.level.value}`
+                        : undefined,
+                    }
+                  : null,
+              },
+              {
+                key: "acc2",
+                label: "配件",
+                data: charItem?.secondAccessory?.equipData
+                  ? {
+                      iconUrl: charItem.secondAccessory.equipData.iconUrl,
+                      name: (
+                        charItem.secondAccessory.equipData.name || ""
+                      ).trim(),
+                      rarity:
+                        (
+                          charItem.secondAccessory.equipData.rarity?.key || ""
+                        ).replace("equip_rarity_", "") || "3",
+                      level: charItem.secondAccessory.equipData.level?.value
+                        ? `Lv.${charItem.secondAccessory.equipData.level.value}`
+                        : undefined,
+                    }
+                  : null,
+              },
+              {
+                key: "tactical",
+                label: "战术物品",
+                data: charItem?.tacticalItem?.tacticalItemData
+                  ? {
+                      iconUrl: charItem.tacticalItem.tacticalItemData.iconUrl,
+                      name: charItem.tacticalItem.tacticalItemData.name || "",
+                      rarity:
+                        (
+                          charItem.tacticalItem.tacticalItemData.rarity?.key ||
+                          ""
+                        ).replace("equip_rarity_", "") || "3",
+                    }
+                  : null,
+              },
+            ];
+            return (
+              <div
+                className="h-full w-full relative overflow-hidden rounded-2xl"
+                style={{ border: "none" }}
               >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-
-              {showLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <GlassProgressCircle
-                    isIndeterminate
-                    size="lg"
-                    aria-label="Loading wiki"
-                    className="text-primary"
-                  >
-                    <GlassProgressCircle.Track>
-                      <GlassProgressCircle.TrackCircle />
-                      <GlassProgressCircle.FillCircle />
-                    </GlassProgressCircle.Track>
-                  </GlassProgressCircle>
-                </div>
-              ) : (
-                <div
-                  style={{
-                    display: "flex",
-                    height: "100%",
-                    overflow: "hidden",
-                    position: "relative",
+                {/* Close button at top-right corner */}
+                <button
+                  onClick={() => {
+                    if (enteredDetailFromCard) {
+                      onClose();
+                    } else {
+                      setViewMode("list");
+                      setDetailCharId(null);
+                    }
                   }}
+                  className="absolute top-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full text-black/50 hover:text-black transition-colors cursor-pointer"
                 >
-                  {/* Left column - fixed */}
-                  <div
-                    style={{
-                      width: "35%",
-                      minWidth: 0,
-                      flexShrink: 0,
-                      overflow: "hidden",
-                      backgroundImage: "url(/assets/illustration_background.png)",
-                      backgroundSize: "cover",
-                      backgroundPosition: "center",
-                      backgroundRepeat: "no-repeat",
-                    }}
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    viewBox="0 0 24 24"
                   >
-                    <div className="h-full p-3 flex flex-col items-center justify-center">
-                      <Img
-                        src={char.illustrationUrl}
-                        alt={char.name}
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+
+                {showLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <GlassProgressCircle
+                      isIndeterminate
+                      size="lg"
+                      aria-label="Loading wiki"
+                      className="text-primary"
+                    >
+                      <GlassProgressCircle.Track>
+                        <GlassProgressCircle.TrackCircle />
+                        <GlassProgressCircle.FillCircle />
+                      </GlassProgressCircle.Track>
+                    </GlassProgressCircle>
                   </div>
-
-                  {/* Middle column - fixed */}
+                ) : (
                   <div
                     style={{
-                      width: "65%",
-                      minWidth: 0,
-                      flexShrink: 0,
+                      display: "flex",
+                      height: "100%",
                       overflow: "hidden",
-                      backgroundColor: "#dddddd",
+                      position: "relative",
                     }}
                   >
-                    <div className="h-full p-4 overflow-y-hidden space-y-6">
-                      {/* Character Info Header */}
-                      <div className="flex items-start justify-between pb-3 border-b border-black/10">
-                        <div className="flex items-start gap-3 min-w-0">
-                          <div className="flex flex-col items-center gap-0.5">
-                            <Img
-                              src={char.avatarSqUrl}
-                              alt={char.name}
-                              className="w-12 h-12 rounded-lg shadow-sm shrink-0 avatar-feather"
-                            />
-                            {charItem?.level != null && (
-                              <span className="text-[13px] font-semibold text-gray-500 leading-none">
-                                Lv.{charItem.level}
-                              </span>
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="text-base font-bold text-black truncate">
-                                {char.name}
-                              </h3>
-                            </div>
-                            <div className="flex items-center gap-1 mt-0.5">
-                              {renderRarityIcons(char.rarity.value, 14)}
-                            </div>
-                            <div className="flex items-center gap-1.5 text-xs text-black/70 mt-0.5 flex-wrap">
-                              <span>{char.profession.value}</span>
-                              <span className="text-black/40">·</span>
-                              <span>{char.property.value}</span>
-                              <span className="text-black/40">·</span>
-                              <span>{char.weaponType.value}</span>
-                            </div>
-                          </div>
-                        </div>
-                        {charItem?.evolvePhase != null && (
-                          <img
-                            src={`/assets/icons/evolve/phase-${charItem.evolvePhase}.png`}
-                            alt={`Phase ${charItem.evolvePhase}`}
-                            className="h-12 w-auto object-contain shrink-0 mr-8"
-                          />
-                        )}
+                    {/* Left column - fixed */}
+                    <div
+                      style={{
+                        width: "35%",
+                        minWidth: 0,
+                        flexShrink: 0,
+                        overflow: "hidden",
+                        backgroundImage:
+                          "url(/assets/illustration_background.png)",
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                        backgroundRepeat: "no-repeat",
+                      }}
+                    >
+                      <div className="h-full p-3 flex flex-col items-center justify-center">
+                        <Img
+                          src={char.illustrationUrl}
+                          alt={char.name}
+                          className="w-full h-full object-contain"
+                        />
                       </div>
+                    </div>
 
-                      {/* Talent Array + Equipment side by side */}
-                      <div className="flex gap-6">
-                        <div className="flex-1 space-y-6 min-w-0">
-                          {/* Skills */}
-                          <div>
-                            <div className="flex flex-wrap gap-5">
-                              {char.skills.map((skill) => {
-                                const isSel =
-                                  sel?.type === "skill" && sel.id === skill.id;
-                                return (
-                                  <div
-                                    key={skill.id}
-                                    className="flex flex-col items-center"
-                                  >
+                    {/* Middle column - fixed */}
+                    <div
+                      style={{
+                        width: "65%",
+                        minWidth: 0,
+                        flexShrink: 0,
+                        overflow: "hidden",
+                        backgroundColor: "#dddddd",
+                      }}
+                    >
+                      <div className="h-full p-4 overflow-y-hidden space-y-6">
+                        {/* Character Info Header */}
+                        <div className="flex items-start justify-between pb-3 border-b border-black/10">
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div className="flex flex-col items-center gap-0.5">
+                              <Img
+                                src={char.avatarSqUrl}
+                                alt={char.name}
+                                className="w-12 h-12 rounded-lg shadow-sm shrink-0 avatar-feather"
+                              />
+                              {charItem?.level != null && (
+                                <span className="text-[13px] font-semibold text-gray-500 leading-none">
+                                  Lv.{charItem.level}
+                                </span>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="text-base font-bold text-black truncate">
+                                  {char.name}
+                                </h3>
+                              </div>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                {renderRarityIcons(char.rarity.value, 14)}
+                              </div>
+                              <div className="flex items-center gap-1.5 text-xs text-black/70 mt-0.5 flex-wrap">
+                                <span>{char.profession.value}</span>
+                                <span className="text-black/40">·</span>
+                                <span>{char.property.value}</span>
+                                <span className="text-black/40">·</span>
+                                <span>{char.weaponType.value}</span>
+                              </div>
+                            </div>
+                          </div>
+                          {charItem?.evolvePhase != null && (
+                            <img
+                              src={`/assets/icons/evolve/phase-${charItem.evolvePhase}.png`}
+                              alt={`Phase ${charItem.evolvePhase}`}
+                              className="h-12 w-auto object-contain shrink-0 mr-8"
+                            />
+                          )}
+                        </div>
+
+                        {/* Talent Array + Equipment side by side */}
+                        <div className="flex gap-6">
+                          <div className="flex-1 space-y-6 min-w-0">
+                            {/* Skills */}
+                            <div>
+                              <div className="flex flex-wrap gap-5">
+                                {char.skills.map((skill) => {
+                                  const isSel =
+                                    sel?.type === "skill" &&
+                                    sel.id === skill.id;
+                                  return (
                                     <div
-                                      className="relative"
-                                      style={{ width: 56, height: 56 }}
+                                      key={skill.id}
+                                      className="flex flex-col items-center"
                                     >
                                       <div
-                                        className="absolute inset-0 rounded-full"
-                                        style={{
-                                          background: `conic-gradient(from 145deg, transparent 0deg 70deg, ${SKILL_BG_CIRCLE} 70deg 360deg)`,
-                                          WebkitMask: "radial-gradient(circle at 50% 50%, transparent 26px, black 26px)",
-                                          mask: "radial-gradient(circle at 50% 50%, transparent 26px, black 26px)",
-                                        }}
-                                      />
+                                        className="relative"
+                                        style={{ width: 56, height: 56 }}
+                                      >
+                                        <div
+                                          className="absolute inset-0 rounded-full"
+                                          style={{
+                                            background: `conic-gradient(from 145deg, transparent 0deg 70deg, ${SKILL_BG_CIRCLE} 70deg 360deg)`,
+                                            WebkitMask:
+                                              "radial-gradient(circle at 50% 50%, transparent 26px, black 26px)",
+                                            mask: "radial-gradient(circle at 50% 50%, transparent 26px, black 26px)",
+                                          }}
+                                        />
+                                        <button
+                                          onClick={() =>
+                                            openDetailPanel({
+                                              type: "skill",
+                                              id: skill.id,
+                                            })
+                                          }
+                                          className={`${btnBase(true, isSel, true)} overflow-hidden`}
+                                          style={{
+                                            position: "absolute",
+                                            top: 4,
+                                            left: 4,
+                                            backgroundColor: SKILL_BG_CIRCLE,
+                                            borderColor: SKILL_BG_CIRCLE,
+                                          }}
+                                          title={skill.name}
+                                        >
+                                          <div
+                                            className="absolute rounded-full"
+                                            style={
+                                              skill.type.key ===
+                                              "skill_type_ultimate_skill"
+                                                ? {
+                                                    top: 1,
+                                                    right: 1,
+                                                    bottom: 1,
+                                                    left: 1,
+                                                    backgroundColor:
+                                                      SKILL_BG_COLORS[
+                                                        skill.property.key
+                                                      ] || "#5e5e5e",
+                                                  }
+                                                : {
+                                                    top: 1,
+                                                    right: 1,
+                                                    bottom: 1,
+                                                    left: 1,
+                                                    background: `conic-gradient(from 112.5deg, ${SKILL_BG_COLORS[skill.property.key] || "#5e5e5e"} 0deg, ${SKILL_BG_COLORS[skill.property.key] || "#5e5e5e"} 135deg, transparent 135deg)`,
+                                                  }
+                                            }
+                                          />
+                                          <Img
+                                            src={skill.iconUrl}
+                                            alt={skill.name}
+                                            className="relative z-10 w-full h-full object-contain"
+                                          />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Ability Talents */}
+                            <div>
+                              <div className="flex flex-wrap gap-5">
+                                {[...char.abilityTalents]
+                                  .sort((a, b) => {
+                                    const numA = parseInt(
+                                      a.id.match(/_(\d+)$/)?.[1] || "0",
+                                    );
+                                    const numB = parseInt(
+                                      b.id.match(/_(\d+)$/)?.[1] || "0",
+                                    );
+                                    return numA - numB;
+                                  })
+                                  .map((talent) => {
+                                    const isSel =
+                                      sel?.type === "abilityTalent" &&
+                                      sel.id === talent.id;
+                                    const unlocked =
+                                      activeAbilityNodes.includes(talent.id);
+                                    return (
                                       <button
+                                        key={talent.id}
                                         onClick={() =>
                                           openDetailPanel({
-                                            type: "skill",
-                                            id: skill.id,
+                                            type: "abilityTalent",
+                                            id: talent.id,
                                           })
                                         }
-                                        className={`${btnBase(true, isSel, true)} overflow-hidden`}
+                                        className={`${btnBase(true, isSel, unlocked)} relative`}
                                         style={{
-                                          position: "absolute",
-                                          top: 4,
-                                          left: 4,
-                                          backgroundColor: SKILL_BG_CIRCLE,
-                                          borderColor: SKILL_BG_CIRCLE,
+                                          backgroundColor: unlocked
+                                            ? "#ffd806"
+                                            : "#404040",
+                                          border: "none",
+                                          boxShadow: "inset 0 0 0 2px #a4a4a4",
                                         }}
-                                        title={skill.name}
+                                        title={talent.name}
+                                      >
+                                        {talentIcon(
+                                          talent.iconUrl,
+                                          talent.name,
+                                          unlocked,
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                              </div>
+                            </div>
+
+                            {/* Passive Skills */}
+                            {pasCombatChains.length > 0 && (
+                              <div>
+                                <div className="flex flex-col gap-4">
+                                  {pasCombatChains.map((chain, ci) => (
+                                    <div
+                                      key={ci}
+                                      className="flex items-center gap-1"
+                                    >
+                                      {chain.map((talent, ti) => {
+                                        const isSel =
+                                          sel?.type === "combatTalent" &&
+                                          sel.id === talent.id;
+                                        const unlocked = isNodeUnlocked(
+                                          chain,
+                                          ti,
+                                          "combatTalent",
+                                        );
+                                        return (
+                                          <div
+                                            key={talent.id}
+                                            className="flex items-center gap-1"
+                                          >
+                                            {ti > 0 && (
+                                              <div
+                                                className={`w-10 border-t-2 rounded-none ${unlocked ? "border-white" : "border-dashed border-neutral-400"}`}
+                                              />
+                                            )}
+                                            <button
+                                              onClick={() =>
+                                                openDetailPanel({
+                                                  type: "combatTalent",
+                                                  id: talent.id,
+                                                })
+                                              }
+                                              className={`${btnBase(true, isSel, unlocked)} relative`}
+                                              style={{
+                                                backgroundColor: unlocked
+                                                  ? "#ffd806"
+                                                  : "#404040",
+                                                border: "none",
+                                                boxShadow:
+                                                  "inset 0 0 0 2px #a4a4a4",
+                                              }}
+                                              title={talent.name}
+                                            >
+                                              {talentIcon(
+                                                talent.iconUrl,
+                                                talent.name,
+                                                unlocked,
+                                              )}
+                                            </button>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Cultivation Talents */}
+                            {cultChains.length > 0 && (
+                              <div>
+                                <div className="flex flex-col gap-4">
+                                  {cultChains.map((chain, ci) => (
+                                    <div
+                                      key={ci}
+                                      className="flex items-center gap-1"
+                                    >
+                                      {chain.map((talent, ti) => {
+                                        const isSel =
+                                          sel?.type === "cultivationTalent" &&
+                                          sel.id === talent.id;
+                                        const unlocked = isNodeUnlocked(
+                                          chain,
+                                          ti,
+                                          "cultivationTalent",
+                                        );
+                                        return (
+                                          <div
+                                            key={talent.id}
+                                            className="flex items-center gap-1"
+                                          >
+                                            {ti > 0 && (
+                                              <div
+                                                className={`w-10 border-t-2 rounded-none ${unlocked ? "border-white" : "border-dashed border-neutral-400"}`}
+                                              />
+                                            )}
+                                            <button
+                                              onClick={() =>
+                                                openDetailPanel({
+                                                  type: "cultivationTalent",
+                                                  id: talent.id,
+                                                })
+                                              }
+                                              className={`${btnBase(false, isSel, unlocked)} relative`}
+                                              style={{
+                                                backgroundColor: unlocked
+                                                  ? "#a2a2a2"
+                                                  : "#404040",
+                                                border: "none",
+                                              }}
+                                              title={talent.name}
+                                            >
+                                              {talentIcon(
+                                                talent.iconUrl,
+                                                talent.name,
+                                                unlocked,
+                                              )}
+                                            </button>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Potential */}
+                            {potentialData && (
+                              <div>
+                                <div className="flex flex-wrap gap-3">
+                                  {potentialData.map((p: any, i: number) => {
+                                    const isSel =
+                                      sel?.type === "potential" &&
+                                      sel.id === String(p.level);
+                                    const unlocked =
+                                      i < (charItem?.potentialLevel ?? 0);
+                                    return (
+                                      <button
+                                        key={p.level}
+                                        onClick={() =>
+                                          openDetailPanel({
+                                            type: "potential",
+                                            id: String(p.level),
+                                          })
+                                        }
+                                        className={btnBase(
+                                          true,
+                                          isSel,
+                                          unlocked,
+                                        )}
+                                        style={{
+                                          backgroundColor: unlocked
+                                            ? "#e9d72c"
+                                            : "#404040",
+                                        }}
+                                        title={`潜能 ${p.level}`}
+                                      >
+                                        <div className="relative w-full h-full">
+                                          {unlocked ? (
+                                            <div className="absolute -inset-1">
+                                              <img
+                                                src={p.iconUrl}
+                                                alt={`潜${p.level}`}
+                                                className="w-full h-full object-cover"
+                                              />
+                                            </div>
+                                          ) : (
+                                            <>
+                                              <div className="absolute -inset-1">
+                                                <img
+                                                  src={p.iconUrl}
+                                                  alt={`潜${p.level}`}
+                                                  className="w-full h-full object-cover opacity-30"
+                                                />
+                                              </div>
+                                              <div className="absolute inset-0 flex items-center justify-center z-10">
+                                                <svg
+                                                  className="w-4 h-4 text-white drop-shadow"
+                                                  fill="currentColor"
+                                                  viewBox="0 0 24 24"
+                                                >
+                                                  <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm8 14H7c-.55 0-1-.45-1-1v-8c0-.55.45-1 1-1h10c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1z" />
+                                                </svg>
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Equipment column */}
+                          <div className="flex flex-col gap-2 w-40 shrink-0 justify-center">
+                            {equipData.map((eq) => {
+                              const d = eq.data;
+                              const rc: Record<string, string> = {
+                                "3": "#3b82f6",
+                                "4": "#a855f7",
+                                "5": "#ea580c",
+                                "6": "#dc2626",
+                              };
+                              const lineColor = d
+                                ? rc[d.rarity] || "transparent"
+                                : "transparent";
+                              return (
+                                <div
+                                  key={eq.key}
+                                  className="flex items-center gap-2"
+                                >
+                                  <div className="flex flex-col items-center">
+                                    <div className="w-16 h-16 shrink-0 flex items-center justify-center overflow-hidden text-black/30 font-bold text-3xl">
+                                      {d ? (
+                                        <Img
+                                          src={d.iconUrl}
+                                          alt={d.name}
+                                          className="w-full h-full object-contain"
+                                        />
+                                      ) : (
+                                        <span>✕</span>
+                                      )}
+                                    </div>
+                                    <div
+                                      className="h-[3px] w-full rounded-full"
+                                      style={{ backgroundColor: lineColor }}
+                                    />
+                                  </div>
+                                  <div className="min-w-0">
+                                    {d ? (
+                                      <>
+                                        <div className="text-[11px] text-black/50 leading-tight">
+                                          {eq.label}
+                                        </div>
+                                        <div className="leading-tight text-sm text-black/80">
+                                          {d.name}
+                                        </div>
+                                        {d.level && (
+                                          <div className="text-[13px] text-black/50">
+                                            {d.level}
+                                          </div>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <div className="text-[11px] text-black/50 leading-tight">
+                                          {eq.label}
+                                        </div>
+                                        <div className="text-sm text-black/40 leading-tight">
+                                          未装配
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Backdrop */}
+                    {hasSelection && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          backgroundColor: "rgba(0,0,0,0.25)",
+                          backdropFilter: "blur(4px)",
+                          zIndex: 10,
+                        }}
+                        onClick={closeDetailPanel}
+                      />
+                    )}
+
+                    {/* Right drawer */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        bottom: 0,
+                        right: hasSelection ? 0 : "-52%",
+                        width: "52%",
+                        transition: "right 300ms ease",
+                        backgroundColor: "#dddddd",
+                        zIndex: 20,
+                      }}
+                    >
+                      <div className="h-full relative">
+                        <button
+                          onClick={closeDetailPanel}
+                          className="absolute right-2 top-2 z-20 w-8 h-8 flex items-center justify-center text-black/40 hover:text-black transition-colors cursor-pointer rounded-full hover:bg-black/10"
+                          title="Collapse detail"
+                        >
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                        <div className="h-full overflow-y-auto">
+                          {selectedItem &&
+                            (() => {
+                              const skillLevel: number =
+                                selectedItem._type === "skill" &&
+                                sel?.id &&
+                                charItem?.userSkills?.[sel.id]
+                                  ? charItem.userSkills[sel.id].level
+                                  : 1;
+                              const isSkill = selectedItem._type === "skill";
+                              const maxSkillLevel = 12;
+                              const isMaxed =
+                                isSkill && skillLevel >= maxSkillLevel;
+                              const getBaseName = (n: string) =>
+                                n.replace(
+                                  /·(?:[αβγδε]|[一二三四五六七八九十]+|\d+)$/,
+                                  "",
+                                );
+                              const talentRank = (() => {
+                                if (!sel || selectedItem._type === "skill")
+                                  return -1;
+                                const pool =
+                                  selectedItem._type === "abilityTalent"
+                                    ? char.abilityTalents
+                                    : selectedItem._type === "combatTalent"
+                                      ? char.combatTalents
+                                      : char.cultivationTalents || [];
+                                const baseName = getBaseName(
+                                  (selectedItem as any).name,
+                                );
+                                const sameBaseName = [...pool]
+                                  .filter(
+                                    (t: any) =>
+                                      getBaseName(t.name) === baseName,
+                                  )
+                                  .sort((a: any, b: any) => {
+                                    const numA = parseInt(
+                                      a.id.match(/_(\d+)$/)?.[1] || "0",
+                                    );
+                                    const numB = parseInt(
+                                      b.id.match(/_(\d+)$/)?.[1] || "0",
+                                    );
+                                    return numA - numB;
+                                  });
+                                const idx = sameBaseName.findIndex(
+                                  (t: any) => t.id === sel.id,
+                                );
+                                return idx >= 0 ? idx + 1 : -1;
+                              })();
+                              const isPotential =
+                                selectedItem._type === "potential";
+                              const wikiBlocks = !isPotential
+                                ? getWikiRenderedBlocks(
+                                    wikiDetail,
+                                    (selectedItem as any).name || "",
+                                    skillLevel,
+                                    selectedItem._type || "",
+                                    talentRank,
+                                  )
+                                : [];
+
+                              // 从 contentDoc 提取潜能描述文本块
+                              const getPotentialSegments = (doc: any) => {
+                                if (!doc?.blockMap || !doc?.blockIds) return [];
+                                const result: {
+                                  kind: string;
+                                  segments: any[];
+                                }[] = [];
+                                for (const blockId of doc.blockIds) {
+                                  const block = doc.blockMap[blockId];
+                                  if (
+                                    !block ||
+                                    block.kind === "table" ||
+                                    block.kind === "horizontalLine"
+                                  )
+                                    continue;
+                                  const segs: any[] = [];
+                                  if (block.text?.inlineElements) {
+                                    for (const el of block.text
+                                      .inlineElements) {
+                                      if (
+                                        el.kind === "text" ||
+                                        el.kind === "link"
+                                      ) {
+                                        const rawColor = (el as any).color;
+                                        const mappedColor = rawColor
+                                          ? WIKI_COLOR_MAP[rawColor] || rawColor
+                                          : undefined;
+                                        segs.push({
+                                          text: el.text?.text || "",
+                                          bold: (el as any).bold || false,
+                                          underline:
+                                            (el as any).underline || false,
+                                          color:
+                                            rawColor === "light_text_primary"
+                                              ? undefined
+                                              : mappedColor,
+                                        });
+                                      }
+                                    }
+                                  }
+                                  if (segs.length > 0) {
+                                    result.push({
+                                      kind: block.text?.kind || "text",
+                                      segments: segs,
+                                    });
+                                  }
+                                }
+                                return result;
+                              };
+                              const contentDoc = isPotential
+                                ? (selectedItem as any).contentDoc
+                                : null;
+                              const potentialSegments = contentDoc
+                                ? getPotentialSegments(contentDoc)
+                                : [];
+
+                              return (
+                                <div className="pl-10 p-5 text-[#222222]">
+                                  <div className="flex items-center gap-4 mb-4">
+                                    {isPotential ? (
+                                      <img
+                                        src={selectedItem.iconUrl}
+                                        alt={selectedItem.name}
+                                        className="w-16 h-16 object-contain p-1.5 rounded-full"
+                                        style={{
+                                          boxShadow:
+                                            "0 0 14px rgba(0,0,0,0.35)",
+                                        }}
+                                      />
+                                    ) : selectedItem._type === "skill" ? (
+                                      <div
+                                        className="relative w-16 h-16 rounded-full"
+                                        style={{
+                                          backgroundColor: SKILL_BG_CIRCLE,
+                                        }}
                                       >
                                         <div
                                           className="absolute rounded-full"
                                           style={
-                                            skill.type.key === "skill_type_ultimate_skill"
+                                            selectedItem.type?.key ===
+                                            "skill_type_ultimate_skill"
                                               ? {
                                                   top: 1,
                                                   right: 1,
                                                   bottom: 1,
                                                   left: 1,
-                                                  backgroundColor: SKILL_BG_COLORS[skill.property.key] || "#5e5e5e",
+                                                  backgroundColor:
+                                                    SKILL_BG_COLORS[
+                                                      selectedItem.property?.key
+                                                    ] || "#5e5e5e",
                                                 }
                                               : {
                                                   top: 1,
                                                   right: 1,
                                                   bottom: 1,
                                                   left: 1,
-                                                  background: `conic-gradient(from 112.5deg, ${SKILL_BG_COLORS[skill.property.key] || "#5e5e5e"} 0deg, ${SKILL_BG_COLORS[skill.property.key] || "#5e5e5e"} 135deg, transparent 135deg)`,
+                                                  background: `conic-gradient(from 112.5deg, ${SKILL_BG_COLORS[selectedItem.property?.key] || "#5e5e5e"} 0deg, ${SKILL_BG_COLORS[selectedItem.property?.key] || "#5e5e5e"} 135deg, transparent 135deg)`,
                                                 }
                                           }
                                         />
                                         <Img
-                                          src={skill.iconUrl}
-                                          alt={skill.name}
-                                          className="relative z-10 w-full h-full object-contain"
+                                          src={selectedItem.iconUrl}
+                                          alt={selectedItem.name}
+                                          className="relative z-10 w-full h-full object-contain p-1.5 rounded-full"
+                                          style={{
+                                            boxShadow:
+                                              "0 0 14px rgba(0,0,0,0.35)",
+                                          }}
                                         />
-                                      </button>
-                                    </div>
-                                    </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          {/* Ability Talents */}
-                          <div>
-                            <div className="flex flex-wrap gap-5">
-                              {[...char.abilityTalents]
-                                .sort((a, b) => {
-                                  const numA = parseInt(
-                                    a.id.match(/_(\d+)$/)?.[1] || "0",
-                                  );
-                                  const numB = parseInt(
-                                    b.id.match(/_(\d+)$/)?.[1] || "0",
-                                  );
-                                  return numA - numB;
-                                })
-                                .map((talent) => {
-                                  const isSel =
-                                    sel?.type === "abilityTalent" &&
-                                    sel.id === talent.id;
-                                  const unlocked = activeAbilityNodes.includes(
-                                    talent.id,
-                                  );
-                                  return (
-                                    <button
-                                      key={talent.id}
-                                      onClick={() =>
-                                        openDetailPanel({
-                                          type: "abilityTalent",
-                                          id: talent.id,
-                                        })
-                                      }
-                                      className={`${btnBase(true, isSel, unlocked)} relative`}
-                                      style={{
-                                        backgroundColor: unlocked
-                                          ? "#ffd806"
-                                          : "#404040",
-                                        border: "none",
-                                        boxShadow: "inset 0 0 0 2px #a4a4a4",
-                                      }}
-                                      title={talent.name}
-                                    >
-                                      {talentIcon(
-                                        talent.iconUrl,
-                                        talent.name,
-                                        unlocked,
-                                      )}
-                                    </button>
-                                  );
-                                })}
-                            </div>
-                          </div>
-
-                          {/* Passive Skills */}
-                          {pasCombatChains.length > 0 && (
-                            <div>
-                              <div className="flex flex-col gap-4">
-                                {pasCombatChains.map((chain, ci) => (
-                                  <div
-                                    key={ci}
-                                    className="flex items-center gap-1"
-                                  >
-                                    {chain.map((talent, ti) => {
-                                      const isSel =
-                                        sel?.type === "combatTalent" &&
-                                        sel.id === talent.id;
-                                      const unlocked = isNodeUnlocked(
-                                        chain,
-                                        ti,
-                                        "combatTalent",
-                                      );
-                                      return (
-                                        <div
-                                          key={talent.id}
-                                          className="flex items-center gap-1"
-                                        >
-                                          {ti > 0 && (
-                                            <div
-                                              className={`w-10 border-t-2 rounded-none ${unlocked ? "border-white" : "border-dashed border-neutral-400"}`}
-                                            />
-                                          )}
-                                          <button
-                                            onClick={() =>
-                                              openDetailPanel({
-                                                type: "combatTalent",
-                                                id: talent.id,
-                                              })
-                                            }
-                                            className={`${btnBase(true, isSel, unlocked)} relative`}
-                                            style={{
-                                              backgroundColor: unlocked
-                                          ? "#ffd806"
-                                          : "#404040",
-                                              border: "none",
-                                              boxShadow: "inset 0 0 0 2px #a4a4a4",
-                                            }}
-                                            title={talent.name}
-                                          >
-                                            {talentIcon(
-                                              talent.iconUrl,
-                                              talent.name,
-                                              unlocked,
-                                            )}
-                                          </button>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Cultivation Talents */}
-                          {cultChains.length > 0 && (
-                            <div>
-                              <div className="flex flex-col gap-4">
-                                {cultChains.map((chain, ci) => (
-                                  <div
-                                    key={ci}
-                                    className="flex items-center gap-1"
-                                  >
-                                    {chain.map((talent, ti) => {
-                                      const isSel =
-                                        sel?.type === "cultivationTalent" &&
-                                        sel.id === talent.id;
-                                      const unlocked = isNodeUnlocked(
-                                        chain,
-                                        ti,
-                                        "cultivationTalent",
-                                      );
-                                      return (
-                                        <div
-                                          key={talent.id}
-                                          className="flex items-center gap-1"
-                                        >
-                                          {ti > 0 && (
-                                            <div
-                                              className={`w-10 border-t-2 rounded-none ${unlocked ? "border-white" : "border-dashed border-neutral-400"}`}
-                                            />
-                                          )}
-                                          <button
-                                            onClick={() =>
-                                              openDetailPanel({
-                                                type: "cultivationTalent",
-                                                id: talent.id,
-                                              })
-                                            }
-                                            className={`${btnBase(false, isSel, unlocked)} relative`}
-                                            style={{
-                                              backgroundColor: unlocked
-                                                ? "#a2a2a2"
-                                                : "#404040",
-                                              border: "none",
-                                            }}
-                                            title={talent.name}
-                                          >
-                                            {talentIcon(
-                                              talent.iconUrl,
-                                              talent.name,
-                                              unlocked,
-                                            )}
-                                          </button>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Potential */}
-                          {potentialData && (
-                            <div>
-                              <div className="flex flex-wrap gap-3">
-                                {potentialData.map((p: any, i: number) => {
-                                  const isSel =
-                                    sel?.type === "potential" &&
-                                    sel.id === String(p.level);
-                                  const unlocked =
-                                    i < (charItem?.potentialLevel ?? 0);
-                                  return (
-                                    <button
-                                      key={p.level}
-                                      onClick={() =>
-                                        openDetailPanel({
-                                          type: "potential",
-                                          id: String(p.level),
-                                        })
-                                      }
-                                      className={btnBase(true, isSel, unlocked)}
-                                      style={{
-                                        backgroundColor: unlocked
-                                          ? "#e9d72c"
-                                          : "#404040",
-                                      }}
-                                      title={`潜能 ${p.level}`}
-                                    >
-                                      <div className="relative w-full h-full">
-                                        {unlocked ? (
-                                          <div className="absolute -inset-1">
-                                            <img
-                                              src={p.iconUrl}
-                                              alt={`潜${p.level}`}
-                                              className="w-full h-full object-cover"
-                                            />
-                                          </div>
-                                        ) : (
-                                          <>
-                                            <div className="absolute -inset-1">
-                                              <img
-                                                src={p.iconUrl}
-                                                alt={`潜${p.level}`}
-                                                className="w-full h-full object-cover opacity-30"
-                                              />
-                                            </div>
-                                            <div className="absolute inset-0 flex items-center justify-center z-10">
-                                              <svg
-                                                className="w-4 h-4 text-white drop-shadow"
-                                                fill="currentColor"
-                                                viewBox="0 0 24 24"
-                                              >
-                                                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm8 14H7c-.55 0-1-.45-1-1v-8c0-.55.45-1 1-1h10c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1z" />
-                                              </svg>
-                                            </div>
-                                          </>
-                                        )}
                                       </div>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Equipment column */}
-                        <div className="flex flex-col gap-2 w-40 shrink-0 justify-center">
-                          {equipData.map((eq) => {
-                            const d = eq.data;
-                            const rc: Record<string, string> = {
-                              "3": "#3b82f6",
-                              "4": "#a855f7",
-                              "5": "#ea580c",
-                              "6": "#dc2626",
-                            };
-                            const lineColor = d
-                              ? rc[d.rarity] || "transparent"
-                              : "transparent";
-                            return (
-                              <div
-                                key={eq.key}
-                                className="flex items-center gap-2"
-                              >
-                                <div className="flex flex-col items-center">
-                                  <div className="w-16 h-16 shrink-0 flex items-center justify-center overflow-hidden text-black/30 font-bold text-3xl">
-                                    {d ? (
-                                      <Img
-                                        src={d.iconUrl}
-                                        alt={d.name}
-                                        className="w-full h-full object-contain"
-                                      />
                                     ) : (
-                                      <span>✕</span>
-                                    )}
-                                  </div>
-                                  <div
-                                    className="h-[3px] w-full rounded-full"
-                                    style={{ backgroundColor: lineColor }}
-                                  />
-                                </div>
-                                <div className="min-w-0">
-                                  {d ? (
-                                    <>
-                                      <div className="text-[11px] text-black/50 leading-tight">
-                                        {eq.label}
-                                      </div>
-                                      <div className="leading-tight text-sm text-black/80">
-                                        {d.name}
-                                      </div>
-                                      {d.level && (
-                                        <div className="text-[13px] text-black/50">
-                                          {d.level}
-                                        </div>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <>
-                                      <div className="text-[11px] text-black/50 leading-tight">
-                                        {eq.label}
-                                      </div>
-                                      <div className="text-sm text-black/40 leading-tight">
-                                        未装配
-                                      </div>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Backdrop */}
-                  {hasSelection && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        backgroundColor: "rgba(0,0,0,0.25)",
-                        backdropFilter: "blur(4px)",
-                        zIndex: 10,
-                      }}
-                      onClick={closeDetailPanel}
-                    />
-                  )}
-
-                  {/* Right drawer */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      bottom: 0,
-                      right: hasSelection ? 0 : "-52%",
-                      width: "52%",
-                      transition: "right 300ms ease",
-                      backgroundColor: "#dddddd",
-                      zIndex: 20,
-                    }}
-                  >
-                    <div className="h-full relative">
-                      <button
-                        onClick={closeDetailPanel}
-                        className="absolute right-2 top-2 z-20 w-8 h-8 flex items-center justify-center text-black/40 hover:text-black transition-colors cursor-pointer rounded-full hover:bg-black/10"
-                        title="Collapse detail"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
-                      <div className="h-full overflow-y-auto">
-                        {selectedItem &&
-                          (() => {
-                            const skillLevel: number =
-                              selectedItem._type === "skill" &&
-                              sel?.id &&
-                              charItem?.userSkills?.[sel.id]
-                                ? charItem.userSkills[sel.id].level
-                                : 1;
-                            const isSkill = selectedItem._type === "skill";
-                            const maxSkillLevel = 12;
-                            const isMaxed =
-                              isSkill && skillLevel >= maxSkillLevel;
-                            const getBaseName = (n: string) =>
-                              n.replace(
-                                /·(?:[αβγδε]|[一二三四五六七八九十]+|\d+)$/,
-                                "",
-                              );
-                            const talentRank = (() => {
-                              if (!sel || selectedItem._type === "skill")
-                                return -1;
-                              const pool =
-                                selectedItem._type === "abilityTalent"
-                                  ? char.abilityTalents
-                                  : selectedItem._type === "combatTalent"
-                                    ? char.combatTalents
-                                    : char.cultivationTalents || [];
-                              const baseName = getBaseName(
-                                (selectedItem as any).name,
-                              );
-                              const sameBaseName = [...pool]
-                                .filter(
-                                  (t: any) => getBaseName(t.name) === baseName,
-                                )
-                                .sort((a: any, b: any) => {
-                                  const numA = parseInt(
-                                    a.id.match(/_(\d+)$/)?.[1] || "0",
-                                  );
-                                  const numB = parseInt(
-                                    b.id.match(/_(\d+)$/)?.[1] || "0",
-                                  );
-                                  return numA - numB;
-                                });
-                              const idx = sameBaseName.findIndex(
-                                (t: any) => t.id === sel.id,
-                              );
-                              return idx >= 0 ? idx + 1 : -1;
-                            })();
-                            const isPotential =
-                              selectedItem._type === "potential";
-                            const wikiBlocks = !isPotential
-                              ? getWikiRenderedBlocks(
-                                  wikiDetail,
-                                  (selectedItem as any).name || "",
-                                  skillLevel,
-                                  selectedItem._type || "",
-                                  talentRank,
-                                )
-                              : [];
-
-                            // 从 contentDoc 提取潜能描述文本块
-                            const getPotentialSegments = (doc: any) => {
-                              if (!doc?.blockMap || !doc?.blockIds) return [];
-                              const result: {
-                                kind: string;
-                                segments: any[];
-                              }[] = [];
-                              for (const blockId of doc.blockIds) {
-                                const block = doc.blockMap[blockId];
-                                if (
-                                  !block ||
-                                  block.kind === "table" ||
-                                  block.kind === "horizontalLine"
-                                )
-                                  continue;
-                                const segs: any[] = [];
-                                if (block.text?.inlineElements) {
-                                  for (const el of block.text.inlineElements) {
-                                    if (
-                                      el.kind === "text" ||
-                                      el.kind === "link"
-                                    ) {
-                                      const rawColor = (el as any).color;
-                                      const mappedColor = rawColor
-                                        ? WIKI_COLOR_MAP[rawColor] || rawColor
-                                        : undefined;
-                                      segs.push({
-                                        text: el.text?.text || "",
-                                        bold: (el as any).bold || false,
-                                        underline:
-                                          (el as any).underline || false,
-                                        color:
-                                          rawColor === "light_text_primary"
-                                            ? undefined
-                                            : mappedColor,
-                                      });
-                                    }
-                                  }
-                                }
-                                if (segs.length > 0) {
-                                  result.push({
-                                    kind: block.text?.kind || "text",
-                                    segments: segs,
-                                  });
-                                }
-                              }
-                              return result;
-                            };
-                            const contentDoc = isPotential
-                              ? (selectedItem as any).contentDoc
-                              : null;
-                            const potentialSegments = contentDoc
-                              ? getPotentialSegments(contentDoc)
-                              : [];
-
-                            return (
-                              <div className="pl-10 p-5 text-[#222222]">
-                                <div className="flex items-center gap-4 mb-4">
-                                  {isPotential ? (
-                                    <img
-                                      src={selectedItem.iconUrl}
-                                      alt={selectedItem.name}
-                                      className="w-16 h-16 object-contain p-1.5 rounded-full"
-                                      style={{
-                                        boxShadow: "0 0 14px rgba(0,0,0,0.35)",
-                                      }}
-                                    />
-                                  ) : selectedItem._type === "skill" ? (
-                                    <div
-                                      className="relative w-16 h-16 rounded-full"
-                                      style={{ backgroundColor: SKILL_BG_CIRCLE }}
-                                    >
-                                      <div
-                                        className="absolute rounded-full"
-                                        style={
-                                          selectedItem.type?.key === "skill_type_ultimate_skill"
-                                            ? {
-                                                top: 1,
-                                                right: 1,
-                                                bottom: 1,
-                                                left: 1,
-                                                backgroundColor: SKILL_BG_COLORS[selectedItem.property?.key] || "#5e5e5e",
-                                              }
-                                            : {
-                                                top: 1,
-                                                right: 1,
-                                                bottom: 1,
-                                                left: 1,
-                                                background: `conic-gradient(from 112.5deg, ${SKILL_BG_COLORS[selectedItem.property?.key] || "#5e5e5e"} 0deg, ${SKILL_BG_COLORS[selectedItem.property?.key] || "#5e5e5e"} 135deg, transparent 135deg)`,
-                                              }
-                                        }
-                                      />
                                       <Img
                                         src={selectedItem.iconUrl}
                                         alt={selectedItem.name}
-                                        className="relative z-10 w-full h-full object-contain p-1.5 rounded-full"
+                                        className={`w-16 h-16 object-contain p-1.5 ${selectedItem._type === "cultivationTalent" ? "rounded-lg" : "rounded-full"}`}
                                         style={{
-                                          boxShadow: "0 0 14px rgba(0,0,0,0.35)",
+                                          backgroundColor: "#e9d72c",
+                                          boxShadow:
+                                            "0 0 14px rgba(0,0,0,0.35)",
                                         }}
                                       />
-                                    </div>
-                                  ) : (
-                                    <Img
-                                      src={selectedItem.iconUrl}
-                                      alt={selectedItem.name}
-                                      className={`w-16 h-16 object-contain p-1.5 ${selectedItem._type === "cultivationTalent" ? "rounded-lg" : "rounded-full"}`}
-                                      style={{
-                                        backgroundColor: "#e9d72c",
-                                        boxShadow: "0 0 14px rgba(0,0,0,0.35)",
-                                      }}
-                                    />
-                                  )}
-                                  <div>
-                                    <h4 className="font-semibold text-lg text-[#222222]">
-                                      {selectedItem.name}
-                                    </h4>
-                                    {"type" in selectedItem &&
-                                      selectedItem.type && (
-                                        <p className="text-[#222222] text-[15px]">
-                                          {selectedItem.type.value}
-                                          {"property" in selectedItem &&
-                                            selectedItem.property && (
-                                              <>
-                                                {" "}
-                                                • {selectedItem.property.value}
-                                              </>
-                                            )}
-                                          {selectedItem._type === "skill" &&
-                                            sel?.id &&
-                                            charItem?.userSkills?.[sel.id] && (
-                                              <>
-                                                {" "}
-                                                • Lv.
-                                                {
-                                                  charItem.userSkills[sel.id]
-                                                    .level
-                                                }
-                                              </>
-                                            )}
-                                        </p>
-                                      )}
-                                  </div>
-                                </div>
-
-                                {isSkill &&
-                                  (() => {
-                                    const progress = Math.min(
-                                      Math.round(
-                                        (skillLevel / maxSkillLevel) * 100,
-                                      ),
-                                      100,
-                                    );
-                                    return (
-                                      <div className="mb-5">
-                                        <div className="flex items-center justify-between mb-1.5">
-                                          <span className="text-[#222222] text-xs">
-                                            技能等级
-                                          </span>
-                                          <span className="flex items-center gap-2">
-                                            <span className="text-[#222222] text-sm font-medium">
-                                              Lv.{skillLevel} / {maxSkillLevel}
-                                            </span>
-                                            {isMaxed && (
-                                              <GlassChip
-                                                size="sm"
-                                                variant="soft"
-                                                color="success"
-                                                className="text-[10px]"
-                                              >
-                                                MAX
-                                              </GlassChip>
-                                            )}
-                                          </span>
-                                        </div>
-                                        <GlassMeter
-                                          aria-label="Skill level progress"
-                                          value={progress}
-                                          className="w-full"
-                                        >
-                                          <GlassMeter.Track className="h-2 rounded-full bg-[#555]">
-                                            <GlassMeter.Fill
-                                              className={`h-2 rounded-full transition-all duration-500 ${isMaxed ? "bg-gradient-to-r from-green-500 to-emerald-400" : "bg-gradient-to-r from-yellow-500 to-orange-400"}`}
-                                            />
-                                          </GlassMeter.Track>
-                                        </GlassMeter>
-                                        {!isMaxed && (
-                                          <p className="text-[#a09070] text-[11px] mt-1">
-                                            离满级还差{" "}
-                                            {maxSkillLevel - skillLevel} 级
+                                    )}
+                                    <div>
+                                      <h4 className="font-semibold text-lg text-[#222222]">
+                                        {selectedItem.name}
+                                      </h4>
+                                      {"type" in selectedItem &&
+                                        selectedItem.type && (
+                                          <p className="text-[#222222] text-[15px]">
+                                            {selectedItem.type.value}
+                                            {"property" in selectedItem &&
+                                              selectedItem.property && (
+                                                <>
+                                                  {" "}
+                                                  •{" "}
+                                                  {selectedItem.property.value}
+                                                </>
+                                              )}
+                                            {selectedItem._type === "skill" &&
+                                              sel?.id &&
+                                              charItem?.userSkills?.[
+                                                sel.id
+                                              ] && (
+                                                <>
+                                                  {" "}
+                                                  • Lv.
+                                                  {
+                                                    charItem.userSkills[sel.id]
+                                                      .level
+                                                  }
+                                                </>
+                                              )}
                                           </p>
                                         )}
-                                      </div>
-                                    );
-                                  })()}
+                                    </div>
+                                  </div>
 
-                                {isPotential ? (
-                                  potentialSegments.length > 0 ? (
-                                    potentialSegments.map((seg, i) =>
-                                      seg.kind === "heading3" ? (
-                                        <h5
-                                          key={i}
-                                          className="font-semibold text-[#222222] mt-4 mb-2 text-[15px]"
-                                        >
-                                          {seg.segments.map(
-                                            (s: any, si: number) => {
-                                              const isSpecial =
-                                                s.bold ||
-                                                s.underline ||
-                                                s.color;
-                                              return (
-                                                <span
-                                                  key={si}
-                                                  style={{
-                                                    fontWeight: isSpecial
-                                                      ? 700
-                                                      : undefined,
-                                                    textDecoration: s.underline
-                                                      ? "underline"
-                                                      : undefined,
-                                                    color: s.color || undefined,
-                                                  }}
+                                  {isSkill &&
+                                    (() => {
+                                      const progress = Math.min(
+                                        Math.round(
+                                          (skillLevel / maxSkillLevel) * 100,
+                                        ),
+                                        100,
+                                      );
+                                      return (
+                                        <div className="mb-5">
+                                          <div className="flex items-center justify-between mb-1.5">
+                                            <span className="text-[#222222] text-xs">
+                                              技能等级
+                                            </span>
+                                            <span className="flex items-center gap-2">
+                                              <span className="text-[#222222] text-sm font-medium">
+                                                Lv.{skillLevel} /{" "}
+                                                {maxSkillLevel}
+                                              </span>
+                                              {isMaxed && (
+                                                <GlassChip
+                                                  size="sm"
+                                                  variant="soft"
+                                                  color="success"
+                                                  className="text-[10px]"
                                                 >
-                                                  {s.text}
-                                                </span>
-                                              );
-                                            },
+                                                  MAX
+                                                </GlassChip>
+                                              )}
+                                            </span>
+                                          </div>
+                                          <GlassMeter
+                                            aria-label="Skill level progress"
+                                            value={progress}
+                                            className="w-full"
+                                          >
+                                            <GlassMeter.Track className="h-2 rounded-full bg-[#555]">
+                                              <GlassMeter.Fill
+                                                className={`h-2 rounded-full transition-all duration-500 ${isMaxed ? "bg-gradient-to-r from-green-500 to-emerald-400" : "bg-gradient-to-r from-yellow-500 to-orange-400"}`}
+                                              />
+                                            </GlassMeter.Track>
+                                          </GlassMeter>
+                                          {!isMaxed && (
+                                            <p className="text-[#a09070] text-[11px] mt-1">
+                                              离满级还差{" "}
+                                              {maxSkillLevel - skillLevel} 级
+                                            </p>
                                           )}
-                                        </h5>
-                                      ) : (
-                                        <p
-                                          key={i}
-                                          className="text-[#222222] leading-relaxed text-[15px]"
-                                        >
-                                          {seg.segments.map(
-                                            (s: any, si: number) => {
-                                              const isSpecial =
-                                                s.bold ||
-                                                s.underline ||
-                                                s.color;
-                                              return (
-                                                <span
-                                                  key={si}
-                                                  style={{
-                                                    fontWeight: isSpecial
-                                                      ? 700
-                                                      : undefined,
-                                                    textDecoration: s.underline
-                                                      ? "underline"
-                                                      : undefined,
-                                                    color: s.color || undefined,
-                                                  }}
-                                                >
-                                                  {s.text}
-                                                </span>
-                                              );
-                                            },
-                                          )}
-                                        </p>
-                                      ),
+                                        </div>
+                                      );
+                                    })()}
+
+                                  {isPotential ? (
+                                    potentialSegments.length > 0 ? (
+                                      potentialSegments.map((seg, i) =>
+                                        seg.kind === "heading3" ? (
+                                          <h5
+                                            key={i}
+                                            className="font-semibold text-[#222222] mt-4 mb-2 text-[15px]"
+                                          >
+                                            {seg.segments.map(
+                                              (s: any, si: number) => {
+                                                const isSpecial =
+                                                  s.bold ||
+                                                  s.underline ||
+                                                  s.color;
+                                                return (
+                                                  <span
+                                                    key={si}
+                                                    style={{
+                                                      fontWeight: isSpecial
+                                                        ? 700
+                                                        : undefined,
+                                                      textDecoration:
+                                                        s.underline
+                                                          ? "underline"
+                                                          : undefined,
+                                                      color:
+                                                        s.color || undefined,
+                                                    }}
+                                                  >
+                                                    {s.text}
+                                                  </span>
+                                                );
+                                              },
+                                            )}
+                                          </h5>
+                                        ) : (
+                                          <p
+                                            key={i}
+                                            className="text-[#222222] leading-relaxed text-[15px]"
+                                          >
+                                            {seg.segments.map(
+                                              (s: any, si: number) => {
+                                                const isSpecial =
+                                                  s.bold ||
+                                                  s.underline ||
+                                                  s.color;
+                                                return (
+                                                  <span
+                                                    key={si}
+                                                    style={{
+                                                      fontWeight: isSpecial
+                                                        ? 700
+                                                        : undefined,
+                                                      textDecoration:
+                                                        s.underline
+                                                          ? "underline"
+                                                          : undefined,
+                                                      color:
+                                                        s.color || undefined,
+                                                    }}
+                                                  >
+                                                    {s.text}
+                                                  </span>
+                                                );
+                                              },
+                                            )}
+                                          </p>
+                                        ),
+                                      )
+                                    ) : (
+                                      <p className="text-[#222222] italic mt-2 text-[15px]">
+                                        暂无 Wiki 数据
+                                      </p>
                                     )
                                   ) : (
+                                    wikiBlocks.map((block, i) =>
+                                      block.kind === "text" ? (
+                                        block.data.kind === "heading3" ? (
+                                          <h5
+                                            key={i}
+                                            className="font-semibold text-[#222222] mt-4 mb-2 text-[15px]"
+                                          >
+                                            {block.data.segments.map(
+                                              (seg, si) => {
+                                                const isSpecial =
+                                                  seg.bold ||
+                                                  seg.underline ||
+                                                  seg.color;
+                                                return (
+                                                  <span
+                                                    key={si}
+                                                    style={{
+                                                      fontWeight: isSpecial
+                                                        ? 700
+                                                        : undefined,
+                                                      textDecoration:
+                                                        seg.underline
+                                                          ? "underline"
+                                                          : undefined,
+                                                      color:
+                                                        seg.color || undefined,
+                                                    }}
+                                                  >
+                                                    {seg.text}
+                                                  </span>
+                                                );
+                                              },
+                                            )}
+                                          </h5>
+                                        ) : (
+                                          <p
+                                            key={i}
+                                            className="text-[#222222] leading-relaxed text-[15px]"
+                                          >
+                                            {block.data.segments.flatMap(
+                                              (seg, si) => {
+                                                const isSpecial =
+                                                  seg.bold ||
+                                                  seg.underline ||
+                                                  seg.color;
+                                                const parts =
+                                                  seg.text.split("\n");
+                                                return parts.flatMap(
+                                                  (part, pi) => {
+                                                    const nodes: React.ReactNode[] =
+                                                      [];
+                                                    if (pi > 0)
+                                                      nodes.push(
+                                                        <br
+                                                          key={`${si}-br-${pi}`}
+                                                        />,
+                                                      );
+                                                    nodes.push(
+                                                      <span
+                                                        key={`${si}-${pi}`}
+                                                        style={{
+                                                          fontWeight: isSpecial
+                                                            ? 700
+                                                            : undefined,
+                                                          textDecoration:
+                                                            seg.underline
+                                                              ? "underline"
+                                                              : undefined,
+                                                          color:
+                                                            seg.color ||
+                                                            undefined,
+                                                        }}
+                                                      >
+                                                        {part}
+                                                      </span>,
+                                                    );
+                                                    return nodes;
+                                                  },
+                                                );
+                                              },
+                                            )}
+                                          </p>
+                                        )
+                                      ) : block.kind === "materials" ? null : (
+                                        <div
+                                          key={i}
+                                          className="mt-3 bg-black/20 rounded-lg p-3"
+                                        >
+                                          {block.data.map((p, pi) => {
+                                            const hasNext =
+                                              p.nextValue &&
+                                              p.nextValue !== p.value;
+                                            const extractUnit = (
+                                              s: string,
+                                            ): string => {
+                                              const m =
+                                                s.match(/^[\d.,]+([\s\S]*)$/);
+                                              return m ? m[1] : "";
+                                            };
+                                            const unit = extractUnit(p.value);
+                                            const parseNum = (
+                                              s: string,
+                                            ): number | null => {
+                                              const m = s
+                                                .replace(/,/g, "")
+                                                .match(/^-?[\d.]+/);
+                                              return m
+                                                ? parseFloat(m[0])
+                                                : null;
+                                            };
+                                            const currNum = parseNum(p.value);
+                                            const nextNum = hasNext
+                                              ? parseNum(p.nextValue!)
+                                              : null;
+                                            const showDelta =
+                                              currNum !== null &&
+                                              nextNum !== null;
+                                            const delta = showDelta
+                                              ? nextNum! - currNum!
+                                              : null;
+                                            return (
+                                              <div
+                                                key={pi}
+                                                className="flex items-center justify-between py-1.5 text-[14px] border-b border-white/5 last:border-b-0"
+                                              >
+                                                <span className="text-[#222222] font-medium">
+                                                  {p.label}
+                                                </span>
+                                                <span className="text-[#222222] font-mono text-right">
+                                                  {p.value}
+                                                  {!hasNext && isMaxed && (
+                                                    <GlassChip
+                                                      size="sm"
+                                                      variant="soft"
+                                                      color="success"
+                                                      className="ml-1.5 text-[10px] min-w-0"
+                                                    >
+                                                      MAX
+                                                    </GlassChip>
+                                                  )}
+                                                  {hasNext && (
+                                                    <>
+                                                      <span className="text-[#888] mx-1.5">
+                                                        →
+                                                      </span>
+                                                      <span className="text-[#222222]">
+                                                        {p.nextValue}
+                                                      </span>
+                                                      {showDelta &&
+                                                        delta !== 0 && (
+                                                          <GlassChip
+                                                            size="sm"
+                                                            variant="soft"
+                                                            color={
+                                                              delta! > 0
+                                                                ? "success"
+                                                                : "accent"
+                                                            }
+                                                            className="ml-1.5 text-[10px] min-w-0"
+                                                          >
+                                                            {delta! > 0
+                                                              ? "+"
+                                                              : ""}
+                                                            {delta}
+                                                            {unit}
+                                                          </GlassChip>
+                                                        )}
+                                                    </>
+                                                  )}
+                                                </span>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      ),
+                                    )
+                                  )}
+                                  {!isPotential && wikiBlocks.length === 0 && (
                                     <p className="text-[#222222] italic mt-2 text-[15px]">
                                       暂无 Wiki 数据
                                     </p>
-                                  )
-                                ) : (
-                                  wikiBlocks.map((block, i) =>
-                                    block.kind === "text" ? (
-                                      block.data.kind === "heading3" ? (
-                                        <h5
-                                          key={i}
-                                          className="font-semibold text-[#222222] mt-4 mb-2 text-[15px]"
-                                        >
-                                          {block.data.segments.map(
-                                            (seg, si) => {
-                                              const isSpecial =
-                                                seg.bold ||
-                                                seg.underline ||
-                                                seg.color;
-                                              return (
-                                                <span
-                                                  key={si}
-                                                  style={{
-                                                    fontWeight: isSpecial
-                                                      ? 700
-                                                      : undefined,
-                                                    textDecoration:
-                                                      seg.underline
-                                                        ? "underline"
-                                                        : undefined,
-                                                    color:
-                                                      seg.color || undefined,
-                                                  }}
-                                                >
-                                                  {seg.text}
-                                                </span>
-                                              );
-                                            },
-                                          )}
-                                        </h5>
-                                      ) : (
-                                        <p
-                                          key={i}
-                                          className="text-[#222222] leading-relaxed text-[15px]"
-                                        >
-                                          {block.data.segments.flatMap(
-                                            (seg, si) => {
-                                              const isSpecial =
-                                                seg.bold ||
-                                                seg.underline ||
-                                                seg.color;
-                                              const parts =
-                                                seg.text.split("\n");
-                                              return parts.flatMap(
-                                                (part, pi) => {
-                                                  const nodes: React.ReactNode[] =
-                                                    [];
-                                                  if (pi > 0)
-                                                    nodes.push(
-                                                      <br
-                                                        key={`${si}-br-${pi}`}
-                                                      />,
-                                                    );
-                                                  nodes.push(
-                                                    <span
-                                                      key={`${si}-${pi}`}
-                                                      style={{
-                                                        fontWeight: isSpecial
-                                                          ? 700
-                                                          : undefined,
-                                                        textDecoration:
-                                                          seg.underline
-                                                            ? "underline"
-                                                            : undefined,
-                                                        color:
-                                                          seg.color ||
-                                                          undefined,
-                                                      }}
-                                                    >
-                                                      {part}
-                                                    </span>,
-                                                  );
-                                                  return nodes;
-                                                },
-                                              );
-                                            },
-                                          )}
-                                        </p>
-                                      )
-                                    ) : block.kind === "materials" ? null : (
-                                      <div
-                                        key={i}
-                                        className="mt-3 bg-black/20 rounded-lg p-3"
-                                      >
-                                        {block.data.map((p, pi) => {
-                                          const hasNext =
-                                            p.nextValue &&
-                                            p.nextValue !== p.value;
-                                          const extractUnit = (
-                                            s: string,
-                                          ): string => {
-                                            const m =
-                                              s.match(/^[\d.,]+([\s\S]*)$/);
-                                            return m ? m[1] : "";
-                                          };
-                                          const unit = extractUnit(p.value);
-                                          const parseNum = (
-                                            s: string,
-                                          ): number | null => {
-                                            const m = s
-                                              .replace(/,/g, "")
-                                              .match(/^-?[\d.]+/);
-                                            return m ? parseFloat(m[0]) : null;
-                                          };
-                                          const currNum = parseNum(p.value);
-                                          const nextNum = hasNext
-                                            ? parseNum(p.nextValue!)
-                                            : null;
-                                          const showDelta =
-                                            currNum !== null &&
-                                            nextNum !== null;
-                                          const delta = showDelta
-                                            ? nextNum! - currNum!
-                                            : null;
-                                          return (
-                                            <div
-                                              key={pi}
-                                              className="flex items-center justify-between py-1.5 text-[14px] border-b border-white/5 last:border-b-0"
-                                            >
-                                              <span className="text-[#222222] font-medium">
-                                                {p.label}
-                                              </span>
-                                              <span className="text-[#222222] font-mono text-right">
-                                                {p.value}
-                                                {!hasNext && isMaxed && (
-                                                  <GlassChip
-                                                    size="sm"
-                                                    variant="soft"
-                                                    color="success"
-                                                    className="ml-1.5 text-[10px] min-w-0"
-                                                  >
-                                                    MAX
-                                                  </GlassChip>
-                                                )}
-                                                {hasNext && (
-                                                  <>
-                                                    <span className="text-[#888] mx-1.5">
-                                                      →
-                                                    </span>
-                                                    <span className="text-[#222222]">
-                                                      {p.nextValue}
-                                                    </span>
-                                                    {showDelta &&
-                                                      delta !== 0 && (
-                                                        <GlassChip
-                                                          size="sm"
-                                                          variant="soft"
-                                                          color={
-                                                            delta! > 0
-                                                              ? "success"
-                                                              : "accent"
-                                                          }
-                                                          className="ml-1.5 text-[10px] min-w-0"
-                                                        >
-                                                          {delta! > 0
-                                                            ? "+"
-                                                            : ""}
-                                                          {delta}
-                                                          {unit}
-                                                        </GlassChip>
-                                                      )}
-                                                  </>
-                                                )}
-                                              </span>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    ),
-                                  )
-                                )}
-                                {!isPotential && wikiBlocks.length === 0 && (
-                                  <p className="text-[#222222] italic mt-2 text-[15px]">
-                                    暂无 Wiki 数据
-                                  </p>
-                                )}
-                              </div>
-                            );
-                          })()}
+                                  )}
+                                </div>
+                              );
+                            })()}
+                        </div>
                       </div>
                     </div>
                   </div>
+                )}
+              </div>
+            );
+          })()
+        ) : (
+          <>
+            <CustomModalHeader onClose={onClose}>
+              {viewMode === "list" ? (
+                <div className="flex items-center w-full">
+                  <h2>{t("card:title")}</h2>
                 </div>
-              )}
-            </div>
-          );
-        })()
-      ) : (
-        <>
-          <CustomModalHeader
-            onClose={onClose}
-          >
-            {viewMode === "list" ? (
-              <div className="flex items-center w-full">
-                <h2>{t("card:title")}</h2>
-              </div>
-            ) : null}
-          </CustomModalHeader>
+              ) : null}
+            </CustomModalHeader>
 
-          {/* Slot Bar — 独立区域，不随内容滚动 */}
-          {viewMode === "list" && (
-            <div className="px-6 py-3 border-b border-separator glass-surface">
-              <div className="flex items-center gap-3">
-                {Array.from({ length: maxSlots }).map((_, slotIndex) => {
-                  const currentCharId = tempSelectedIds[slotIndex];
-                  const currentChar = currentCharId
-                    ? getCharById(currentCharId)
-                    : null;
+            {/* Slot Bar — 独立区域，不随内容滚动 */}
+            {viewMode === "list" && (
+              <div className="px-6 py-3 border-b border-separator glass-surface">
+                <div className="flex items-center gap-3">
+                  {Array.from({ length: maxSlots }).map((_, slotIndex) => {
+                    const currentCharId = tempSelectedIds[slotIndex];
+                    const currentChar = currentCharId
+                      ? getCharById(currentCharId)
+                      : null;
 
-                  return (
-                    <div
-                      key={slotIndex}
-                      ref={(el) => { slotRefs.current[slotIndex] = el; }}
-                      className={`relative flex-1 min-w-0 rounded-lg border-2 transition-all ${
-                        dragOverSlot === slotIndex
-                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/40 scale-105 shadow-md"
-                          : currentChar
-                            ? "border-blue-400/60 glass-surface"
-                            : "border-dashed border-separator bg-default-50"
-                      }`}
-                    >
-                      {currentChar ? (
-                        <div className="flex items-center gap-2 p-1.5">
-                          <Img
-                            src={currentChar.avatarSqUrl}
-                            alt={currentChar.name}
-                            className="w-10 h-10 rounded shrink-0 avatar-feather"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="text-xs font-medium truncate">
-                              {currentChar.name}
-                            </div>
-                            <div className="text-[10px] text-muted">
-                              {t("common.slot", { number: slotIndex + 1 }) || `Slot ${slotIndex + 1}`}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveFromSlot(slotIndex);
-                            }}
-                            className="w-5 h-5 rounded-full bg-default-200 hover:bg-danger/20 hover:text-danger flex items-center justify-center shrink-0 transition-colors"
-                            title={t("common.remove") || "Remove"}
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center gap-1.5 p-2 text-muted">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-                          </svg>
-                          <span className="text-xs">
-                            {t("common.slot", { number: slotIndex + 1 }) || `Slot ${slotIndex + 1}`}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Body */}
-          <CustomModalBody
-            ref={modalBodyRef}
-            onScroll={handleScroll}
-            className="!p-0"
-          >
-            {viewMode === "list" ? (
-              <div className="space-y-4">
-                {/* Filter Section — 6 维 FloatSelect（WIKI 风格） */}
-                {showFilters && (
-                  <div className="px-6 pt-4 pb-3 border-b border-separator space-y-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <FloatSelect
-                        label={t("filters.profession")}
-                        value={filters.profession}
-                        options={[
-                          { value: "all", label: t("filters.all_professions") },
-                          ...uniqueProfessions.map((v) => ({
-                            value: v,
-                            label: v,
-                          })),
-                        ]}
-                        onChange={(v) => setFilter("profession", v)}
-                      />
-                      <FloatSelect
-                        label={t("filters.rarity")}
-                        value={filters.rarity}
-                        options={[
-                          { value: "all", label: t("filters.all_rarities") },
-                          ...uniqueRarities.map((v) => ({
-                            value: v,
-                            label: `${v}★`,
-                            tone: rarityTone(v),
-                          })),
-                        ]}
-                        onChange={(v) => setFilter("rarity", v)}
-                      />
-                      <FloatSelect
-                        label={t("filters.property")}
-                        value={filters.property}
-                        options={[
-                          { value: "all", label: t("filters.all_properties") },
-                          ...uniqueProperties.map((v) => ({
-                            value: v,
-                            label: v,
-                          })),
-                        ]}
-                        onChange={(v) => setFilter("property", v)}
-                      />
-                      <FloatSelect
-                        label={t("filters.weapon")}
-                        value={filters.weapon}
-                        options={[
-                          { value: "all", label: t("filters.all_weapons") },
-                          ...uniqueWeapons.map((v) => ({ value: v, label: v })),
-                        ]}
-                        onChange={(v) => setFilter("weapon", v)}
-                      />
-                      <FloatSelect
-                        label={t("filters.mainAttr")}
-                        value={filters.mainAttr}
-                        options={[
-                          { value: "all", label: t("filters.all_mainAttrs") },
-                          ...uniqueMainAttrs.map((v) => ({
-                            value: v,
-                            label: v,
-                          })),
-                        ]}
-                        onChange={(v) => setFilter("mainAttr", v)}
-                      />
-                      <FloatSelect
-                        label={t("filters.subAttr")}
-                        value={filters.subAttr}
-                        options={[
-                          { value: "all", label: t("filters.all_subAttrs") },
-                          ...uniqueSubAttrs.map((v) => ({
-                            value: v,
-                            label: v,
-                          })),
-                        ]}
-                        onChange={(v) => setFilter("subAttr", v)}
-                      />
-
-                      <GlassButton
-                        size="sm"
-                        variant="outline"
-                        isIconOnly
-                        className="rounded-full!"
-                        aria-label={t("common.clear")}
-                        onPress={resetFilters}
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                          />
-                        </svg>
-                      </GlassButton>
-                    </div>
-                  </div>
-                )}
-
-                {/* Character Grid — WIKI OperatorCard 风格 */}
-                {filteredCharacters.length === 0 ? (
-                  <div className="text-center py-8 text-muted">
-                    <p>
-                      {t("common.no_results_found") || "No characters found"}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2.5 px-6 pb-6">
-                    {filteredCharacters.map((char) => (
-                      <OperatorCard
-                        key={char.charData.id}
-                        char={char}
-                        isPinned={tempSelectedIds.includes(char.charData.id)}
-                        onOpenDetail={() => {
-                          setDetailCharId(char.charData.id);
-                          setViewMode("detail");
-                          setEnteredDetailFromCard(false);
+                    return (
+                      <div
+                        key={slotIndex}
+                        ref={(el) => {
+                          slotRefs.current[slotIndex] = el;
                         }}
-                        onDragMouseDown={(charId, e) => handleDragStart(charId, e)}
-                      />
-                    ))}
-                  </div>
-                )}
+                        className={`relative flex-1 min-w-0 rounded-lg border-2 transition-all ${
+                          dragOverSlot === slotIndex
+                            ? "border-blue-500 bg-blue-50 dark:bg-blue-900/40 scale-105 shadow-md"
+                            : currentChar
+                              ? "border-blue-400/60 glass-surface"
+                              : "border-dashed border-separator bg-default-50"
+                        }`}
+                      >
+                        {currentChar ? (
+                          <div className="flex items-center gap-2 p-1.5">
+                            <Img
+                              src={currentChar.avatarSqUrl}
+                              alt={currentChar.name}
+                              className="w-10 h-10 rounded shrink-0 avatar-feather"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-medium truncate">
+                                {currentChar.name}
+                              </div>
+                              <div className="text-[10px] text-muted">
+                                {t("common.slot", { number: slotIndex + 1 }) ||
+                                  `Slot ${slotIndex + 1}`}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveFromSlot(slotIndex);
+                              }}
+                              className="w-5 h-5 rounded-full bg-default-200 hover:bg-danger/20 hover:text-danger flex items-center justify-center shrink-0 transition-colors"
+                              title={t("common.remove") || "Remove"}
+                            >
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5 p-2 text-muted">
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={1.5}
+                                d="M12 4v16m8-8H4"
+                              />
+                            </svg>
+                            <span className="text-xs">
+                              {t("common.slot", { number: slotIndex + 1 }) ||
+                                `Slot ${slotIndex + 1}`}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            ) : null}
-          </CustomModalBody>
-        </>
-      )}
+            )}
 
-      {/* Back to Top Button */}
-      {viewMode === "list" && showBackToTop && (
-        <button
-          className="fixed bottom-6 right-6 z-[10003] w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110"
-          onClick={() => {
-            if (modalBodyRef.current) {
-              modalBodyRef.current.scrollTo({ top: 0, behavior: "smooth" });
-            }
-          }}
-          onMouseEnter={() => setIsHoveringBackToTop(true)}
-          onMouseLeave={() => setIsHoveringBackToTop(false)}
-          aria-label="Back to top"
-        >
-          {isHoveringBackToTop ? (
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+            {/* Body */}
+            <CustomModalBody
+              ref={modalBodyRef}
+              onScroll={handleScroll}
+              className="!p-0"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 8h18M12 20V8m0 0l-6 6m6-6l6 6"
-              />
-            </svg>
-          ) : (
-            <span className="text-xs font-bold">{scrollPercent}%</span>
-          )}
-        </button>
-      )}
+              {viewMode === "list" ? (
+                <div className="space-y-4">
+                  {/* Filter Section — 6 维 FloatSelect（WIKI 风格） */}
+                  {showFilters && (
+                    <div className="px-6 pt-4 pb-3 border-b border-separator space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <FloatSelect
+                          label={t("filters.profession")}
+                          value={filters.profession}
+                          options={[
+                            {
+                              value: "all",
+                              label: t("filters.all_professions"),
+                            },
+                            ...uniqueProfessions.map((v) => ({
+                              value: v,
+                              label: v,
+                            })),
+                          ]}
+                          onChange={(v) => setFilter("profession", v)}
+                        />
+                        <FloatSelect
+                          label={t("filters.rarity")}
+                          value={filters.rarity}
+                          options={[
+                            { value: "all", label: t("filters.all_rarities") },
+                            ...uniqueRarities.map((v) => ({
+                              value: v,
+                              label: `${v}★`,
+                              tone: rarityTone(v),
+                            })),
+                          ]}
+                          onChange={(v) => setFilter("rarity", v)}
+                        />
+                        <FloatSelect
+                          label={t("filters.property")}
+                          value={filters.property}
+                          options={[
+                            {
+                              value: "all",
+                              label: t("filters.all_properties"),
+                            },
+                            ...uniqueProperties.map((v) => ({
+                              value: v,
+                              label: v,
+                            })),
+                          ]}
+                          onChange={(v) => setFilter("property", v)}
+                        />
+                        <FloatSelect
+                          label={t("filters.weapon")}
+                          value={filters.weapon}
+                          options={[
+                            { value: "all", label: t("filters.all_weapons") },
+                            ...uniqueWeapons.map((v) => ({
+                              value: v,
+                              label: v,
+                            })),
+                          ]}
+                          onChange={(v) => setFilter("weapon", v)}
+                        />
+                        <FloatSelect
+                          label={t("filters.mainAttr")}
+                          value={filters.mainAttr}
+                          options={[
+                            { value: "all", label: t("filters.all_mainAttrs") },
+                            ...uniqueMainAttrs.map((v) => ({
+                              value: v,
+                              label: v,
+                            })),
+                          ]}
+                          onChange={(v) => setFilter("mainAttr", v)}
+                        />
+                        <FloatSelect
+                          label={t("filters.subAttr")}
+                          value={filters.subAttr}
+                          options={[
+                            { value: "all", label: t("filters.all_subAttrs") },
+                            ...uniqueSubAttrs.map((v) => ({
+                              value: v,
+                              label: v,
+                            })),
+                          ]}
+                          onChange={(v) => setFilter("subAttr", v)}
+                        />
 
-      {/* Drag Ghost */}
-      {dragPos && dragCharIdRef.current && (() => {
-        const charData = getCharById(dragCharIdRef.current!);
-        if (!charData) return null;
-        return (
-          <div
-            ref={dragGhostRef}
-            className="fixed pointer-events-none z-[10004] flex flex-col items-center"
-            style={{
-              left: dragPos.x - 40,
-              top: dragPos.y - 60,
-              width: 80,
-              height: 100,
+                        <GlassButton
+                          size="sm"
+                          variant="outline"
+                          isIconOnly
+                          className="rounded-full!"
+                          aria-label={t("common.clear")}
+                          onPress={resetFilters}
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                            />
+                          </svg>
+                        </GlassButton>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Character Grid — WIKI OperatorCard 风格 */}
+                  {filteredCharacters.length === 0 ? (
+                    <div className="text-center py-8 text-muted">
+                      <p>
+                        {t("common.no_results_found") || "No characters found"}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2.5 px-6 pb-6">
+                      {filteredCharacters.map((char) => (
+                        <OperatorCard
+                          key={char.charData.id}
+                          char={char}
+                          isPinned={tempSelectedIds.includes(char.charData.id)}
+                          onOpenDetail={() => {
+                            setDetailCharId(char.charData.id);
+                            setViewMode("detail");
+                            setEnteredDetailFromCard(false);
+                          }}
+                          onDragMouseDown={(charId, e) =>
+                            handleDragStart(charId, e)
+                          }
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </CustomModalBody>
+          </>
+        )}
+
+        {/* Back to Top Button */}
+        {viewMode === "list" && showBackToTop && (
+          <button
+            className="fixed bottom-6 right-6 z-[10003] w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110"
+            onClick={() => {
+              if (modalBodyRef.current) {
+                modalBodyRef.current.scrollTo({ top: 0, behavior: "smooth" });
+              }
             }}
+            onMouseEnter={() => setIsHoveringBackToTop(true)}
+            onMouseLeave={() => setIsHoveringBackToTop(false)}
+            aria-label="Back to top"
           >
-            <Img
-              src={charData.avatarSqUrl}
-              alt={charData.name}
-              className="w-16 h-20 rounded-lg object-cover shadow-xl ring-2 ring-blue-500"
-            />
-            <div className="text-xs font-bold text-white bg-blue-500/90 px-2 py-0.5 rounded-full mt-1 whitespace-nowrap shadow">
-              {charData.name}
-            </div>
-          </div>
-        );
-      })()}
-    </CustomModal>
+            {isHoveringBackToTop ? (
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 8h18M12 20V8m0 0l-6 6m6-6l6 6"
+                />
+              </svg>
+            ) : (
+              <span className="text-xs font-bold">{scrollPercent}%</span>
+            )}
+          </button>
+        )}
+
+        {/* Drag Ghost */}
+        {dragPos &&
+          dragCharIdRef.current &&
+          (() => {
+            const charData = getCharById(dragCharIdRef.current!);
+            if (!charData) return null;
+            return (
+              <div
+                ref={dragGhostRef}
+                className="fixed pointer-events-none z-[10004] flex flex-col items-center"
+                style={{
+                  left: dragPos.x - 40,
+                  top: dragPos.y - 60,
+                  width: 80,
+                  height: 100,
+                }}
+              >
+                <Img
+                  src={charData.avatarSqUrl}
+                  alt={charData.name}
+                  className="w-16 h-20 rounded-lg object-cover shadow-xl ring-2 ring-blue-500"
+                />
+                <div className="text-xs font-bold text-white bg-blue-500/90 px-2 py-0.5 rounded-full mt-1 whitespace-nowrap shadow">
+                  {charData.name}
+                </div>
+              </div>
+            );
+          })()}
+      </CustomModal>
     </>
   );
 }
