@@ -1092,7 +1092,7 @@ export function GameActionPanel() {
             type="button"
             onClick={() => setSwitchOpen(true)}
             disabled={switching}
-            className="h-11 px-4 rounded-full backdrop-blur-md border border-transparent bg-black/10 dark:bg-white/10 shadow-lg flex items-center gap-1.5 text-sm text-foreground/80 shrink-0 cursor-pointer hover:bg-black/15 dark:hover:bg-white/15 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="glass-control-surface h-11 px-4 rounded-full border border-separator/70 shadow-lg flex items-center gap-1.5 text-sm text-foreground/80 shrink-0 cursor-pointer hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div
               className={`w-1.5 h-1.5 rounded-full ${switching ? "bg-yellow-400/60 animate-pulse" : "bg-emerald-400/80"}`}
@@ -1192,15 +1192,15 @@ export function GameActionPanel() {
             setProgressFlyoutPos(null);
           }}
           disabled={!statusReady}
-          className={`relative h-11 min-w-[120px] px-5 rounded-full text-sm font-semibold text-white overflow-hidden
-            backdrop-blur-md border border-transparent
+          className={`glass-control-surface relative h-11 min-w-[120px] px-5 rounded-full text-sm font-semibold text-foreground overflow-hidden
+            border border-separator/70
             shadow-lg active:scale-95
             disabled:opacity-50 disabled:cursor-not-allowed
-            transition-all duration-300 cursor-pointer
+            transition-all duration-300 cursor-pointer hover:brightness-105
             inline-flex items-center justify-center gap-2.5 ${
               gameRunning || switching
-                ? "bg-red-500/15"
-                : "bg-black/10 dark:bg-white/10 hover:bg-black/15 dark:hover:bg-white/15"
+                ? "border-danger/60 text-danger"
+                : ""
             }`}
         >
           {/* Red warning overlay */}
@@ -1552,9 +1552,9 @@ export function GameActionPanel() {
               setMenuFlyoutPos(null);
             }
           }}
-          className="w-11 h-11 rounded-full flex items-center justify-center
-            backdrop-blur-md border border-transparent bg-white/10 shadow-lg
-            text-foreground/70 hover:bg-black/15 dark:hover:bg-white/15 hover:text-foreground
+          className="glass-control-surface w-11 h-11 rounded-full flex items-center justify-center
+            border border-separator/70 shadow-lg
+            text-foreground/70 hover:brightness-105
             transition-all duration-200 cursor-pointer"
         >
           <svg
