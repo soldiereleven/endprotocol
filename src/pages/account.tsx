@@ -20,7 +20,12 @@ import {
   SYNC_STATUS_META,
   type StatusConfig,
 } from "@/components/ui/status-badge";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
+import {
+  ChevronDownIcon,
+  LinkIcon,
+  UnlinkIcon,
+} from "@/components/ui/app-icon";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import {
   CustomModal,
@@ -30,6 +35,9 @@ import {
 } from "@/components/custom-modal";
 import {
   getAccounts,
+  getSklandAccounts,
+  saveSklandAccount,
+  getSklandAccountRoles,
   getSelectedAccount,
   refreshAccountData,
   logoutAccount as apiLogoutAccount,
@@ -44,12 +52,124 @@ import {
   Account,
   LoginResult,
   RoleDisplayInfo,
+  SklandAccount,
 } from "@/utils/accountService";
 import { roleDetailService } from "@/utils/roleDetailService";
 import logger, { logDebug, logError } from "../utils/logger";
 import { getConfig } from "@/utils/configService";
 import { addMessage } from "@/utils/messageStore";
 import { resolveServerLabel } from "@/types";
+
+function RoleGroup({
+  title,
+  count,
+  emptyLabel,
+  children,
+}: {
+  title: string;
+  count: number;
+  emptyLabel: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="min-w-0 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-xs font-semibold uppercase text-muted">{title}</h3>
+        <span className="text-xs tabular-nums text-muted">{count}</span>
+      </div>
+      {count === 0 ? (
+        <p className="rounded-lg border border-dashed border-separator/70 px-3 py-5 text-center text-xs text-muted">
+          {emptyLabel}
+        </p>
+      ) : (
+        <div className="space-y-2">{children}</div>
+      )}
+    </section>
+  );
+}
+
+function GameRoleRow({
+  role,
+  isBound,
+  isActive,
+  actionLabel,
+  isBusy,
+  isDisabled,
+  onSetActive,
+  onAction,
+}: {
+  role: RoleDisplayInfo;
+  isBound: boolean;
+  isActive: boolean;
+  actionLabel: string;
+  isBusy: boolean;
+  isDisabled: boolean;
+  onSetActive?: () => void;
+  onAction: () => void;
+}) {
+  const { i18n } = useTranslation();
+
+  return (
+    <div className="account-glass-row flex min-w-0 items-center gap-3 rounded-lg border border-separator/60 p-2.5">
+      <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-separator/50 bg-content2/30">
+        {role.avatarUrl ? (
+          <Img
+            src={role.avatarUrl}
+            alt={role.nickname}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-sm font-semibold text-muted">
+            {role.nickname.charAt(0).toUpperCase()}
+          </div>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-foreground">
+          {role.nickname}
+        </p>
+        <p className="truncate text-xs text-muted">
+          Lv.{role.level} · {resolveServerLabel(role.serverId, i18n.language)}
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        {isBound &&
+          (isActive ? (
+            <span className="rounded-full bg-success/15 px-2 py-1 text-[10px] font-semibold text-success">
+              {i18n.language === "zh" ? "当前" : "ACTIVE"}
+            </span>
+          ) : (
+            <GlassButton
+              size="sm"
+              variant="ghost"
+              isDisabled={isDisabled}
+              onPress={onSetActive}
+              aria-label={
+                i18n.language === "zh"
+                  ? "设为当前游戏账户"
+                  : "Set as active game account"
+              }
+            >
+              {i18n.language === "zh" ? "设为当前" : "Set active"}
+            </GlassButton>
+          ))}
+        <GlassButton
+          size="sm"
+          variant={isBound ? "outline" : "primary"}
+          isDisabled={isDisabled}
+          isLoading={isBusy}
+          startContent={
+            isBound ? <UnlinkIcon size={14} /> : <LinkIcon size={14} />
+          }
+          onPress={onAction}
+          aria-label={actionLabel}
+        >
+          {actionLabel}
+        </GlassButton>
+      </div>
+    </div>
+  );
+}
 
 // 二维码图片组件（使用 qrcode 库生成 dataURL）
 function QRCodeImage({ value, size = 200 }: { value: string; size?: number }) {
@@ -112,6 +232,16 @@ export default function AccountPage() {
 
   // 状态管理
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [sklandAccounts, setSklandAccounts] = useState<SklandAccount[]>([]);
+  const [expandedSklandId, setExpandedSklandId] = useState<string | null>(null);
+  const [sklandRoleSets, setSklandRoleSets] = useState<
+    Record<string, { roles: RoleDisplayInfo[]; cred: string; token: string }>
+  >({});
+  const [loadingSklandId, setLoadingSklandId] = useState<string | null>(null);
+  const [roleLoadErrors, setRoleLoadErrors] = useState<Record<string, string>>(
+    {},
+  );
+  const [savingRoleKey, setSavingRoleKey] = useState<string | null>(null);
   const [currentAccountId, setCurrentAccountId] = useState<string | null>(null); // 当前选中的账户ID
   const [previousAccountId, setPreviousAccountId] = useState<string | null>(
     null,
@@ -119,6 +249,9 @@ export default function AccountPage() {
   const [isAnimating, setIsAnimating] = useState(false); // 是否正在播放动画
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [showSklandConfirmation, setShowSklandConfirmation] = useState(false);
+  const [isRoleSelectionOpen, setIsRoleSelectionOpen] = useState(false);
+  const [isManagingSklandRoles, setIsManagingSklandRoles] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
@@ -213,7 +346,11 @@ export default function AccountPage() {
       try {
         // 直接从后端获取账户数据（后端会处理缓存）
         logDebug("[Account] Fetching accounts from backend...");
-        const accounts = await getAccounts();
+        const [accounts, parents, selectedId] = await Promise.all([
+          getAccounts(),
+          getSklandAccounts(),
+          getSelectedAccount(),
+        ]);
 
         logDebug(
           "[Account] Fetched accounts from backend, count:",
@@ -226,16 +363,12 @@ export default function AccountPage() {
           accounts?.length || 0,
         );
         setAccounts(accounts || []);
+        setSklandAccounts(parents);
 
-        // 如果有账户且没有选中任何账户，默认选中第一个
-        if (accounts && accounts.length > 0 && !currentAccountId) {
-          setCurrentAccountId(accounts[0].id);
-        }
-
-        // 如果只有一个账户，自动设置为 ACTIVE
-        if (accounts && accounts.length === 1) {
-          setCurrentAccountId(accounts[0].id);
-        }
+        const activeId = accounts.some((account) => account.id === selectedId)
+          ? selectedId
+          : null;
+        setCurrentAccountId(activeId);
 
         setLastRefreshTime(new Date());
       } catch (error) {
@@ -438,6 +571,7 @@ export default function AccountPage() {
         setAccounts(result.accounts);
         setLastRefreshTime(new Date(result.refreshTime));
       }
+      setSklandAccounts(await getSklandAccounts());
     } catch (error) {
       logError("Failed to refresh data:", error);
     } finally {
@@ -553,6 +687,9 @@ export default function AccountPage() {
     setScanWaiting(true);
     setQrGenFailed(false);
     setIsNewDeviceVerify(false);
+    setShowSklandConfirmation(false);
+    setIsRoleSelectionOpen(false);
+    setIsManagingSklandRoles(false);
     setIsAddModalOpen(true);
   };
 
@@ -573,6 +710,9 @@ export default function AccountPage() {
     setScanWaiting(true);
     setQrGenFailed(false);
     setIsNewDeviceVerify(false);
+    setShowSklandConfirmation(false);
+    setIsRoleSelectionOpen(false);
+    setIsManagingSklandRoles(false);
     // 清除角色选择状态 - 放弃这次登录
     setAvailableRoles([]);
     setSelectedRoles([]);
@@ -801,6 +941,18 @@ export default function AccountPage() {
       setTimeout(() => {
         setGlobalAlert(null);
       }, 5000);
+    } else if (result.success && result.cred && result.token && result.userId) {
+      setLoginCred(result.cred);
+      setLoginToken(result.token);
+      setLoginUserId(result.userId);
+      setAvailableRoles(result.availableRoles || []);
+      setSelectedRoles(
+        accounts
+          .filter((account) => account.userId === result.userId)
+          .map((account) => account.id),
+      );
+      setIsManagingSklandRoles(false);
+      setShowSklandConfirmation(true);
     } else if (
       result.success &&
       result.availableRoles &&
@@ -930,7 +1082,15 @@ export default function AccountPage() {
 
   // 处理角色选择成功
   const handleConfirmRoles = async () => {
-    if (selectedRoles.length === 0) {
+    if (availableRoles.length === 0) {
+      handleCloseAddModal();
+      return;
+    }
+    if (
+      selectedRoles.length === 0 &&
+      availableRoles.length > 0 &&
+      !isManagingSklandRoles
+    ) {
       setLoginError(
         i18n.language === "zh"
           ? "请至少选择一个角色"
@@ -945,6 +1105,34 @@ export default function AccountPage() {
     );
 
     await saveRoles(selectedRoleDetails, loginCred, loginToken, loginUserId);
+  };
+
+  const handleConfirmSklandAccount = async () => {
+    setIsLoading(true);
+    setLoginError("");
+    try {
+      const saved = await saveSklandAccount(loginCred, loginToken, loginUserId);
+      if (!saved) throw new Error("Failed to save Skland account");
+      setSklandAccounts(await getSklandAccounts());
+      const result = await getSklandAccountRoles(loginUserId);
+      if (!result.success || !result.cred || !result.token) {
+        throw new Error(result.errorMessage || "Failed to load game roles");
+      }
+      setLoginCred(result.cred);
+      setLoginToken(result.token);
+      setAvailableRoles(result.availableRoles || []);
+      setSelectedRoles(
+        accounts
+          .filter((account) => account.userId === loginUserId)
+          .map((account) => account.id),
+      );
+      setShowSklandConfirmation(false);
+      setIsRoleSelectionOpen(true);
+    } catch (error) {
+      setLoginError(String(error));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // 保存角色绑定并刷新账户列表
@@ -962,11 +1150,19 @@ export default function AccountPage() {
       // 刷新账户列表
       const accounts = await getAccounts();
       setAccounts(accounts || []);
+      setSklandAccounts(await getSklandAccounts());
 
-      // 自动选中第一个绑定的账户
-      if (accounts && accounts.length > 0) {
-        await apiSetSelectedAccount(accounts[0].id);
-        setCurrentAccountId(accounts[0].id);
+      const preferredAccount = isManagingSklandRoles
+        ? accounts.find((account) => account.id === currentAccountId) ||
+          accounts[0]
+        : accounts.find((account) => account.userId === userId) || accounts[0];
+      if (preferredAccount) {
+        await apiSetSelectedAccount(preferredAccount.id);
+        setCurrentAccountId(preferredAccount.id);
+        window.dispatchEvent(new CustomEvent("accountChanged"));
+      } else if (currentAccountId) {
+        await apiSetSelectedAccount("");
+        setCurrentAccountId(null);
         window.dispatchEvent(new CustomEvent("accountChanged"));
       }
 
@@ -986,6 +1182,122 @@ export default function AccountPage() {
       );
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleManageSklandRoles = async (userId: string) => {
+    setIsLoading(true);
+    try {
+      const result = await getSklandAccountRoles(userId);
+      if (!result.success || !result.cred || !result.token) {
+        throw new Error(result.errorMessage || "Failed to load game roles");
+      }
+      setLoginCred(result.cred);
+      setLoginToken(result.token);
+      setLoginUserId(userId);
+      setAvailableRoles(result.availableRoles || []);
+      setSelectedRoles(
+        accounts
+          .filter((account) => account.userId === userId)
+          .map((account) => account.id),
+      );
+      setIsManagingSklandRoles(true);
+      setShowSklandConfirmation(false);
+      setIsRoleSelectionOpen(true);
+      setLoginError("");
+      setIsAddModalOpen(true);
+    } catch (error) {
+      setGlobalAlert({ type: "danger", message: String(error) });
+      setTimeout(() => setGlobalAlert(null), 5000);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleExpandSklandAccount = async (userId: string) => {
+    if (expandedSklandId === userId) {
+      setExpandedSklandId(null);
+      return;
+    }
+    setExpandedSklandId(userId);
+    if (sklandRoleSets[userId]) return;
+
+    setLoadingSklandId(userId);
+    setRoleLoadErrors((previous) => ({ ...previous, [userId]: "" }));
+    try {
+      const result = await getSklandAccountRoles(userId);
+      if (!result.success || !result.cred || !result.token) {
+        throw new Error(result.errorMessage || "Failed to load game roles");
+      }
+      setSklandRoleSets((previous) => ({
+        ...previous,
+        [userId]: {
+          roles: result.availableRoles || [],
+          cred: result.cred!,
+          token: result.token!,
+        },
+      }));
+    } catch (error) {
+      setRoleLoadErrors((previous) => ({
+        ...previous,
+        [userId]: String(error),
+      }));
+    } finally {
+      setLoadingSklandId(null);
+    }
+  };
+
+  const handleToggleGameRole = async (
+    userId: string,
+    role: RoleDisplayInfo,
+    currentlyBound: boolean,
+  ) => {
+    const roleSet = sklandRoleSets[userId];
+    if (!roleSet) return;
+
+    const key = `${userId}:${role.serverId}:${role.roleId}`;
+    setSavingRoleKey(key);
+    try {
+      const existingBoundRoles = accounts
+        .filter((account) => account.userId === userId)
+        .map((account) => account.id);
+      const selectedIds = new Set(existingBoundRoles);
+      if (currentlyBound) selectedIds.delete(role.roleId);
+      else selectedIds.add(role.roleId);
+
+      const selectedRoles = roleSet.roles.filter((candidate) =>
+        selectedIds.has(candidate.roleId),
+      );
+      await saveSelectedRoles(
+        roleSet.cred,
+        roleSet.token,
+        userId,
+        selectedRoles,
+      );
+
+      const updatedAccounts = await getAccounts();
+      setAccounts(updatedAccounts);
+      setSklandAccounts(await getSklandAccounts());
+
+      if (
+        currentAccountId &&
+        !updatedAccounts.some((account) => account.id === currentAccountId)
+      ) {
+        const nextAccount = updatedAccounts[0];
+        if (nextAccount) {
+          await apiSetSelectedAccount(nextAccount.id);
+          setCurrentAccountId(nextAccount.id);
+        } else {
+          await apiSetSelectedAccount("");
+          setCurrentAccountId(null);
+        }
+        window.dispatchEvent(new CustomEvent("accountChanged"));
+      }
+    } catch (error) {
+      setGlobalAlert({ type: "danger", message: String(error) });
+      setTimeout(() => setGlobalAlert(null), 5000);
+    } finally {
+      setSavingRoleKey(null);
     }
   };
 
@@ -1312,343 +1624,522 @@ export default function AccountPage() {
         </div>
       )}
 
-      {/* Accounts List */}
-      {isLoading || isRefreshing ? (
-        <div className="flex flex-col flex-1">
-          <GlassCard className="border border-separator/80 p-0 flex flex-col">
-            <div
-              ref={containerRef}
-              className="relative px-[15px] py-[15px] space-y-[5px]"
-            >
-              {renderSkeleton()}
-            </div>
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-foreground">
+            {t("settings.account.skland_accounts")}
+          </h2>
+          <span className="text-xs text-muted">{sklandAccounts.length}</span>
+        </div>
 
-            {/* Card footer: pagination (disabled during refresh) */}
-            <div className="border-t border-separator/60 px-3 py-3 w-full">
-              <div className="flex items-center justify-center w-full gap-3">
-                <GlassButton
-                  size="sm"
-                  variant="outline"
-                  isDisabled={true}
-                  className="flex items-center gap-2"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M15 19l-7-7 7-7"
-                    />
-                  </svg>
-                  {t("common.pagination.previous")}
-                </GlassButton>
-
-                <div className="flex items-center">
-                  <SimplePagination
-                    total={Math.max(
-                      1,
-                      Math.ceil(expectedAccountCount / itemsPerPage) || 1,
-                    )}
-                    page={1}
-                    onChange={() => {}}
-                    showControls={false}
-                  />
-                  {/* keep pagination for screen reader compatibility (visually hidden) */}
-                  <div className="sr-only" aria-hidden="true">
-                    <span>
-                      {totalPages} {i18n.language === "zh" ? "页" : "pages"}
-                    </span>
-                  </div>
-                </div>
-
-                <GlassButton
-                  size="sm"
-                  variant="outline"
-                  isDisabled={true}
-                  className="flex items-center gap-2"
-                >
-                  {t("common.pagination.next")}
-                  <svg
-                    className="w-4 h-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </GlassButton>
-              </div>
+        {isLoading ? (
+          <GlassCard className="account-glass-panel p-5">
+            <div className="flex items-center gap-3 text-sm text-muted">
+              <GlassSpinner color="primary" size="sm" />
+              {t("settings.account.loading")}
             </div>
           </GlassCard>
-        </div>
-      ) : accounts.length === 0 ? (
-        <GlassCard
-          className="p-12 glass-surface border border-separator/90"
-          style={{ minHeight: `${CONTAINER_HEIGHT}px` }}
-        >
-          <div className="text-center">
-            <svg
-              className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-              />
-            </svg>
-            <p className="text-lg font-medium text-foreground">
-              {t("settings.account.no_accounts")}
-            </p>
-            <p className="text-sm text-muted mt-2">
-              {i18n.language === "zh"
-                ? "点击右上角添加账户开始使用"
-                : "Click the button above to add an account"}
-            </p>
-          </div>
-        </GlassCard>
-      ) : (
-        <div className="flex flex-col flex-1">
-          {/* 账户卡片区域 - 带外框 */}
-          <GlassCard className="shadow-sm border-2 border-separator p-0 flex flex-col">
-            <div
-              ref={containerRef}
-              className="relative px-[15px] py-[15px] space-y-[5px]"
-            >
-              {currentPageAccounts.map((account) => {
-                const isSelected = account.id === currentAccountId;
-                const isPreviousActive = account.id === previousAccountId;
+        ) : sklandAccounts.length === 0 ? (
+          <GlassCard className="account-glass-panel p-6 text-sm text-muted">
+            {t("settings.account.no_accounts")}
+          </GlassCard>
+        ) : (
+          <div className="space-y-3">
+            {sklandAccounts.map((sklandAccount) => {
+              const isExpanded = expandedSklandId === sklandAccount.userId;
+              const roleSet = sklandRoleSets[sklandAccount.userId];
+              const boundRoles = accounts.filter(
+                (account) => account.userId === sklandAccount.userId,
+              );
+              const boundRoleIds = new Set(boundRoles.map((role) => role.id));
+              const allRoles = roleSet?.roles || [];
+              const boundRoleDetails = allRoles.filter((role) =>
+                boundRoleIds.has(role.roleId),
+              );
+              const unboundRoleDetails = allRoles.filter(
+                (role) => !boundRoleIds.has(role.roleId),
+              );
 
-                // 判断账户是否有错误状态
-                const hasErrorStatus =
-                  account.syncStatus === "HYTOKEN_EXPIRED" ||
-                  account.syncStatus === "FAILED";
-
-                // 计算动画类型
-                let animationClass = "";
-                let zIndex = 0;
-
-                if (isAnimating) {
-                  if (isSelected) {
-                    animationClass = "animate-fade-in";
-                    zIndex = 30;
-                  } else if (isPreviousActive) {
-                    animationClass = "animate-fade-out";
-                    zIndex = 20;
-                  }
-                } else {
-                  animationClass = "animate-fade-in";
-                }
-
-                // 根据状态决定边框颜色
-                let borderColorClass =
-                  "border-separator hover:border-content3/50";
-                let shadowClass = "shadow-md hover:shadow-lg";
-                let statusDotTone: StatusDotTone | null = null;
-                if (isSelected && !hasErrorStatus) {
-                  borderColorClass = "border-success";
-                  shadowClass = "shadow-xl";
-                  statusDotTone = "success";
-                } else if (isSelected && hasErrorStatus) {
-                  statusDotTone =
-                    account.syncStatus === "HYTOKEN_EXPIRED"
-                      ? "danger"
-                      : "warning";
-                  borderColorClass =
-                    account.syncStatus === "HYTOKEN_EXPIRED"
-                      ? "border-danger"
-                      : "border-warning";
-                  shadowClass = "shadow-xl";
-                } else if (!isSelected && !hasErrorStatus) {
-                  statusDotTone = "default";
-                }
-
-                // 状态徽章 - 错误状态优先级高于 ACTIVE/AVAILABLE
-                const statusBadgeConfig: StatusConfig | null =
-                  account.syncStatus === "HYTOKEN_EXPIRED"
-                    ? SYNC_STATUS_META.HYTOKEN_EXPIRED
-                    : account.syncStatus === "FAILED"
-                      ? SYNC_STATUS_META.FAILED
-                      : isSelected
-                        ? { tone: "success", label: "ACTIVE" }
-                        : { tone: "default", label: "AVAILABLE" };
-
-                return (
-                  <GlassCard
-                    key={account.id}
-                    data-account-card="true"
-                    className={`cursor-pointer transition-all duration-300 ease-in-out ${borderColorClass} ${shadowClass} border-2 box-border ${animationClass}`}
-                    style={{
-                      height: `${CARD_HEIGHT}px`,
-                      position: isAnimating ? "relative" : "static",
-                      zIndex,
-                    }}
-                    isPressable
-                    onPress={() => handleSelectAccount(account.id)}
+              return (
+                <article
+                  key={sklandAccount.userId}
+                  className="account-glass-panel overflow-hidden rounded-xl border border-separator/70 shadow-sm"
+                >
+                  <button
+                    type="button"
+                    aria-expanded={isExpanded}
+                    onClick={() =>
+                      handleExpandSklandAccount(sklandAccount.userId)
+                    }
+                    className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-white/10"
                   >
-                    <div className="flex items-center h-full px-3">
-                      <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-3 flex-1">
-                          {/* LED 指示灯 - 根据状态显示不同颜色 */}
-                          {statusDotTone && (
-                            <StatusDot tone={statusDotTone} ping={isSelected} />
-                          )}
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-sm font-semibold text-primary">
+                      S
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-foreground">
+                        {t("settings.account.skland_account")}
+                      </p>
+                      <p className="truncate text-xs text-muted">
+                        {sklandAccount.userId}
+                      </p>
+                    </div>
+                    <span className="hidden shrink-0 text-xs text-muted sm:block">
+                      {t("settings.account.bound_role_count", {
+                        count: boundRoles.length,
+                      })}
+                    </span>
+                    <ChevronDownIcon
+                      size={18}
+                      className={`shrink-0 text-muted transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                    />
+                  </button>
 
-                          {/* Avatar */}
-                          <div className="w-10 h-10 rounded-lg flex items-center justify-center text-base font-bold text-primary flex-shrink-0 overflow-hidden">
-                            {account.avatar ? (
-                              <Img
-                                src={account.avatar}
-                                alt={account.nickname}
-                                className="w-full h-full avatar-feather"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).style.display =
-                                    "none";
-                                  const parent = (e.target as HTMLImageElement)
-                                    .parentElement;
-                                  if (parent) {
-                                    parent.textContent = account.nickname
-                                      .charAt(0)
-                                      .toUpperCase();
-                                  }
-                                }}
-                              />
-                            ) : (
-                              account.nickname.charAt(0).toUpperCase()
+                  {isExpanded && (
+                    <div className="account-glass-inner border-t border-separator/60 p-4 sm:p-5">
+                      {loadingSklandId === sklandAccount.userId ? (
+                        <div className="flex items-center justify-center gap-3 py-8 text-sm text-muted">
+                          <GlassSpinner color="primary" size="sm" />
+                          {t("settings.account.loading_game_roles")}
+                        </div>
+                      ) : roleLoadErrors[sklandAccount.userId] ? (
+                        <p className="py-5 text-center text-sm text-danger">
+                          {roleLoadErrors[sklandAccount.userId]}
+                        </p>
+                      ) : roleSet ? (
+                        <div className="grid gap-5 lg:grid-cols-2">
+                          <RoleGroup
+                            title={t("settings.account.bound_game_roles")}
+                            count={boundRoleDetails.length}
+                            emptyLabel={t(
+                              "settings.account.no_bound_game_roles",
                             )}
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-foreground truncate">
-                              {account.nickname}
-                            </p>
-                            <p className="text-xs text-muted">
-                              {i18n.language === "zh" ? "等级" : "Level"}:{" "}
-                              {account.level} •{" "}
-                              {account.server === "1"
-                                ? i18n.language === "zh"
-                                  ? "官服"
-                                  : "Official"
-                                : account.server === "2"
-                                  ? i18n.language === "zh"
-                                    ? "BiliBili服"
-                                    : "BiliBili"
-                                  : account.server}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {statusBadgeConfig && (
-                            <StatusBadge config={statusBadgeConfig} />
-                          )}
-
-                          <GlassButton
-                            size="sm"
-                            variant="outline"
-                            onPress={() => handleViewDetails(account)}
-                            className="!h-7 !px-2 text-xs"
                           >
-                            {t("settings.account.view_details")}
-                          </GlassButton>
-                          <GlassButton
-                            size="sm"
-                            variant="outline"
-                            onPress={() => handleLogout(account)}
-                            className="text-danger border-danger hover:bg-danger-50 !h-7 !px-2 text-xs"
+                            {boundRoleDetails.map((role) => {
+                              const key = `${sklandAccount.userId}:${role.serverId}:${role.roleId}`;
+                              return (
+                                <GameRoleRow
+                                  key={key}
+                                  role={role}
+                                  isBound={true}
+                                  isActive={currentAccountId === role.roleId}
+                                  actionLabel={t(
+                                    "settings.account.unbind_role",
+                                  )}
+                                  isBusy={savingRoleKey === key}
+                                  isDisabled={savingRoleKey !== null}
+                                  onSetActive={() =>
+                                    handleSelectAccount(role.roleId)
+                                  }
+                                  onAction={() =>
+                                    handleToggleGameRole(
+                                      sklandAccount.userId,
+                                      role,
+                                      true,
+                                    )
+                                  }
+                                />
+                              );
+                            })}
+                          </RoleGroup>
+                          <RoleGroup
+                            title={t("settings.account.unbound_game_roles")}
+                            count={unboundRoleDetails.length}
+                            emptyLabel={t(
+                              "settings.account.no_unbound_game_roles",
+                            )}
                           >
-                            {t("settings.account.logout")}
-                          </GlassButton>
+                            {unboundRoleDetails.map((role) => {
+                              const key = `${sklandAccount.userId}:${role.serverId}:${role.roleId}`;
+                              return (
+                                <GameRoleRow
+                                  key={key}
+                                  role={role}
+                                  isBound={false}
+                                  isActive={false}
+                                  actionLabel={t("settings.account.bind_role")}
+                                  isBusy={savingRoleKey === key}
+                                  isDisabled={savingRoleKey !== null}
+                                  onAction={() =>
+                                    handleToggleGameRole(
+                                      sklandAccount.userId,
+                                      role,
+                                      false,
+                                    )
+                                  }
+                                />
+                              );
+                            })}
+                          </RoleGroup>
                         </div>
+                      ) : null}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Accounts List */}
+      {false && (
+        <>
+          {isLoading || isRefreshing ? (
+            <div className="flex flex-col flex-1">
+              <GlassCard className="border border-separator/80 p-0 flex flex-col">
+                <div
+                  ref={containerRef}
+                  className="relative px-[15px] py-[15px] space-y-[5px]"
+                >
+                  {renderSkeleton()}
+                </div>
+
+                {/* Card footer: pagination (disabled during refresh) */}
+                <div className="border-t border-separator/60 px-3 py-3 w-full">
+                  <div className="flex items-center justify-center w-full gap-3">
+                    <GlassButton
+                      size="sm"
+                      variant="outline"
+                      isDisabled={true}
+                      className="flex items-center gap-2"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M15 19l-7-7 7-7"
+                        />
+                      </svg>
+                      {t("common.pagination.previous")}
+                    </GlassButton>
+
+                    <div className="flex items-center">
+                      <SimplePagination
+                        total={Math.max(
+                          1,
+                          Math.ceil(expectedAccountCount / itemsPerPage) || 1,
+                        )}
+                        page={1}
+                        onChange={() => {}}
+                        showControls={false}
+                      />
+                      {/* keep pagination for screen reader compatibility (visually hidden) */}
+                      <div className="sr-only" aria-hidden="true">
+                        <span>
+                          {totalPages} {i18n.language === "zh" ? "页" : "pages"}
+                        </span>
                       </div>
                     </div>
-                  </GlassCard>
-                );
-              })}
-            </div>
 
-            {/* Card footer: pagination */}
-            <div className="border-t border-separator px-3 py-3 w-full">
-              <div className="flex items-center justify-center w-full gap-3">
-                <GlassButton
-                  size="sm"
-                  variant="outline"
-                  isDisabled={currentPage === 1}
-                  onPress={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  className="flex items-center gap-2"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M15 19l-7-7 7-7"
-                    />
-                  </svg>
-                  {t("common.pagination.previous")}
-                </GlassButton>
-
-                <div className="flex items-center">
-                  <SimplePagination
-                    total={Math.max(1, totalPages)}
-                    page={currentPage}
-                    onChange={setCurrentPage}
-                    showControls={false}
-                  />
-                  {/* keep pagination for screen reader compatibility (visually hidden) */}
-                  <div className="sr-only" aria-hidden="true">
-                    <span>
-                      {totalPages} {i18n.language === "zh" ? "页" : "pages"}
-                    </span>
+                    <GlassButton
+                      size="sm"
+                      variant="outline"
+                      isDisabled={true}
+                      className="flex items-center gap-2"
+                    >
+                      {t("common.pagination.next")}
+                      <svg
+                        className="w-4 h-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </GlassButton>
                   </div>
                 </div>
-
-                <GlassButton
-                  size="sm"
-                  variant="outline"
-                  isDisabled={currentPage >= totalPages}
-                  onPress={() =>
-                    setCurrentPage(Math.min(totalPages, currentPage + 1))
-                  }
-                  className="flex items-center gap-2"
-                >
-                  {t("common.pagination.next")}
-                  <svg
-                    className="w-4 h-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </GlassButton>
-              </div>
+              </GlassCard>
             </div>
-          </GlassCard>
-        </div>
+          ) : accounts.length === 0 ? (
+            <GlassCard
+              className="p-12 glass-surface border border-separator/90"
+              style={{ minHeight: `${CONTAINER_HEIGHT}px` }}
+            >
+              <div className="text-center">
+                <svg
+                  className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+                <p className="text-lg font-medium text-foreground">
+                  {sklandAccounts.length > 0
+                    ? t("settings.account.no_game_roles")
+                    : t("settings.account.no_accounts")}
+                </p>
+                <p className="text-sm text-muted mt-2">
+                  {sklandAccounts.length > 0
+                    ? t("settings.account.manage_game_roles")
+                    : i18n.language === "zh"
+                      ? "点击右上角添加账户开始使用"
+                      : "Click the button above to add an account"}
+                </p>
+              </div>
+            </GlassCard>
+          ) : (
+            <div className="flex flex-col flex-1">
+              {/* 账户卡片区域 - 带外框 */}
+              <GlassCard className="shadow-sm border-2 border-separator p-0 flex flex-col">
+                <div
+                  ref={containerRef}
+                  className="relative px-[15px] py-[15px] space-y-[5px]"
+                >
+                  {currentPageAccounts.map((account) => {
+                    const isSelected = account.id === currentAccountId;
+                    const isPreviousActive = account.id === previousAccountId;
+
+                    // 判断账户是否有错误状态
+                    const hasErrorStatus =
+                      account.syncStatus === "HYTOKEN_EXPIRED" ||
+                      account.syncStatus === "FAILED";
+
+                    // 计算动画类型
+                    let animationClass = "";
+                    let zIndex = 0;
+
+                    if (isAnimating) {
+                      if (isSelected) {
+                        animationClass = "animate-fade-in";
+                        zIndex = 30;
+                      } else if (isPreviousActive) {
+                        animationClass = "animate-fade-out";
+                        zIndex = 20;
+                      }
+                    } else {
+                      animationClass = "animate-fade-in";
+                    }
+
+                    // 根据状态决定边框颜色
+                    let borderColorClass =
+                      "border-separator hover:border-content3/50";
+                    let shadowClass = "shadow-md hover:shadow-lg";
+                    let statusDotTone: StatusDotTone | null = null;
+                    if (isSelected && !hasErrorStatus) {
+                      borderColorClass = "border-success";
+                      shadowClass = "shadow-xl";
+                      statusDotTone = "success";
+                    } else if (isSelected && hasErrorStatus) {
+                      statusDotTone =
+                        account.syncStatus === "HYTOKEN_EXPIRED"
+                          ? "danger"
+                          : "warning";
+                      borderColorClass =
+                        account.syncStatus === "HYTOKEN_EXPIRED"
+                          ? "border-danger"
+                          : "border-warning";
+                      shadowClass = "shadow-xl";
+                    } else if (!isSelected && !hasErrorStatus) {
+                      statusDotTone = "default";
+                    }
+
+                    // 状态徽章 - 错误状态优先级高于 ACTIVE/AVAILABLE
+                    const statusBadgeConfig: StatusConfig | null =
+                      account.syncStatus === "HYTOKEN_EXPIRED"
+                        ? SYNC_STATUS_META.HYTOKEN_EXPIRED
+                        : account.syncStatus === "FAILED"
+                          ? SYNC_STATUS_META.FAILED
+                          : isSelected
+                            ? { tone: "success", label: "ACTIVE" }
+                            : { tone: "default", label: "AVAILABLE" };
+
+                    return (
+                      <GlassCard
+                        key={account.id}
+                        data-account-card="true"
+                        className={`cursor-pointer transition-all duration-300 ease-in-out ${borderColorClass} ${shadowClass} border-2 box-border ${animationClass}`}
+                        style={{
+                          height: `${CARD_HEIGHT}px`,
+                          position: isAnimating ? "relative" : "static",
+                          zIndex,
+                        }}
+                        isPressable
+                        onPress={() => handleSelectAccount(account.id)}
+                      >
+                        <div className="flex items-center h-full px-3">
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-3 flex-1">
+                              {/* LED 指示灯 - 根据状态显示不同颜色 */}
+                              {statusDotTone && (
+                                <StatusDot
+                                  tone={statusDotTone}
+                                  ping={isSelected}
+                                />
+                              )}
+
+                              {/* Avatar */}
+                              <div className="w-10 h-10 rounded-lg flex items-center justify-center text-base font-bold text-primary flex-shrink-0 overflow-hidden">
+                                {account.avatar ? (
+                                  <Img
+                                    src={account.avatar}
+                                    alt={account.nickname}
+                                    className="w-full h-full avatar-feather"
+                                    onError={(e) => {
+                                      (
+                                        e.target as HTMLImageElement
+                                      ).style.display = "none";
+                                      const parent = (
+                                        e.target as HTMLImageElement
+                                      ).parentElement;
+                                      if (parent) {
+                                        parent.textContent = account.nickname
+                                          .charAt(0)
+                                          .toUpperCase();
+                                      }
+                                    }}
+                                  />
+                                ) : (
+                                  account.nickname.charAt(0).toUpperCase()
+                                )}
+                              </div>
+
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-foreground truncate">
+                                  {account.nickname}
+                                </p>
+                                <p className="text-xs text-muted">
+                                  {i18n.language === "zh" ? "等级" : "Level"}:{" "}
+                                  {account.level} •{" "}
+                                  {account.server === "1"
+                                    ? i18n.language === "zh"
+                                      ? "官服"
+                                      : "Official"
+                                    : account.server === "2"
+                                      ? i18n.language === "zh"
+                                        ? "BiliBili服"
+                                        : "BiliBili"
+                                      : account.server}
+                                </p>
+                                {account.userId && (
+                                  <p className="text-[11px] text-muted/70 truncate">
+                                    {t("settings.account.skland_account")}:{" "}
+                                    {account.userId}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {statusBadgeConfig && (
+                                <StatusBadge config={statusBadgeConfig} />
+                              )}
+
+                              <GlassButton
+                                size="sm"
+                                variant="outline"
+                                onPress={() => handleViewDetails(account)}
+                                className="!h-7 !px-2 text-xs"
+                              >
+                                {t("settings.account.view_details")}
+                              </GlassButton>
+                              <GlassButton
+                                size="sm"
+                                variant="outline"
+                                onPress={() => handleLogout(account)}
+                                className="text-danger border-danger hover:bg-danger-50 !h-7 !px-2 text-xs"
+                              >
+                                {t("settings.account.logout")}
+                              </GlassButton>
+                            </div>
+                          </div>
+                        </div>
+                      </GlassCard>
+                    );
+                  })}
+                </div>
+
+                {/* Card footer: pagination */}
+                <div className="border-t border-separator px-3 py-3 w-full">
+                  <div className="flex items-center justify-center w-full gap-3">
+                    <GlassButton
+                      size="sm"
+                      variant="outline"
+                      isDisabled={currentPage === 1}
+                      onPress={() =>
+                        setCurrentPage(Math.max(1, currentPage - 1))
+                      }
+                      className="flex items-center gap-2"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M15 19l-7-7 7-7"
+                        />
+                      </svg>
+                      {t("common.pagination.previous")}
+                    </GlassButton>
+
+                    <div className="flex items-center">
+                      <SimplePagination
+                        total={Math.max(1, totalPages)}
+                        page={currentPage}
+                        onChange={setCurrentPage}
+                        showControls={false}
+                      />
+                      {/* keep pagination for screen reader compatibility (visually hidden) */}
+                      <div className="sr-only" aria-hidden="true">
+                        <span>
+                          {totalPages} {i18n.language === "zh" ? "页" : "pages"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <GlassButton
+                      size="sm"
+                      variant="outline"
+                      isDisabled={currentPage >= totalPages}
+                      onPress={() =>
+                        setCurrentPage(Math.min(totalPages, currentPage + 1))
+                      }
+                      className="flex items-center gap-2"
+                    >
+                      {t("common.pagination.next")}
+                      <svg
+                        className="w-4 h-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </GlassButton>
+                  </div>
+                </div>
+              </GlassCard>
+            </div>
+          )}
+        </>
       )}
 
       {/* Account Details Modal */}
@@ -1867,24 +2358,52 @@ export default function AccountPage() {
         isOpen={isAddModalOpen}
         onClose={handleCloseAddModal}
         size="lg"
-        height={availableRoles.length > 3 ? "fixed" : "auto"}
-        disableBackdropClick={availableRoles.length > 0} // 当有角色可选时，禁用点击背景关闭
+        height={
+          isRoleSelectionOpen && availableRoles.length > 3 ? "fixed" : "auto"
+        }
+        disableBackdropClick={
+          showSklandConfirmation ||
+          (isRoleSelectionOpen && availableRoles.length > 0)
+        }
       >
         <CustomModalHeader onClose={handleCloseAddModal}>
-          {t("settings.account.add_account")}
+          {showSklandConfirmation
+            ? t("settings.account.confirm_skland_binding")
+            : isManagingSklandRoles
+              ? t("settings.account.manage_game_roles")
+              : t("settings.account.add_account")}
         </CustomModalHeader>
         <CustomModalBody
           className={
             loginMethod === "sms" && showOtpInput ? "overflow-hidden" : ""
           }
         >
-          {availableRoles.length > 0 ? (
+          {showSklandConfirmation ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted">
+                {t("settings.account.confirm_skland_binding_desc")}
+              </p>
+              <div className="rounded-lg border border-separator p-4">
+                <p className="text-xs text-muted">
+                  {t("settings.account.skland_account")}
+                </p>
+                <p className="mt-1 text-sm font-medium text-foreground break-all">
+                  {loginUserId}
+                </p>
+              </div>
+              {loginError && (
+                <p className="text-sm text-danger" role="alert">
+                  {loginError}
+                </p>
+              )}
+            </div>
+          ) : isRoleSelectionOpen && availableRoles.length > 0 ? (
             // 角色选择界面
             <div className="space-y-4">
               <p className="text-sm text-muted text-center mb-4">
-                {i18n.language === "zh"
-                  ? "请选择要绑定的角色"
-                  : "Please select roles to bind"}
+                {t("settings.account.select_roles_for_skland", {
+                  userId: loginUserId,
+                })}
               </p>
 
               <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
@@ -1954,6 +2473,12 @@ export default function AccountPage() {
                   );
                 })}
               </div>
+            </div>
+          ) : isRoleSelectionOpen ? (
+            <div className="py-8 text-center">
+              <p className="text-sm text-muted">
+                {t("settings.account.no_game_roles")}
+              </p>
             </div>
           ) : !loginMethod ? (
             // 登录方式选择
@@ -2519,7 +3044,6 @@ export default function AccountPage() {
                       </div>
                     )}
                   </div>
-
                   <p className="text-sm text-muted text-center">
                     {scanWaiting
                       ? t("settings.account.scan_tip")
@@ -2542,30 +3066,49 @@ export default function AccountPage() {
           )}
         </CustomModalBody>
         <CustomModalFooter>
-          {availableRoles.length > 0 ? (
+          {showSklandConfirmation ? (
             <>
               <GlassButton
                 variant="outline"
-                onPress={() => {
-                  // 放弃角色选择，清除所有登录状态
-                  setAvailableRoles([]);
-                  setSelectedRoles([]);
-                  setLoginCred("");
-                  setLoginToken("");
-                  setLoginUserId("");
-                  setLoginMethod("sms");
-                }}
+                onPress={handleCloseAddModal}
+                isDisabled={isLoading}
               >
-                {t("settings.account.back")}
+                {t("settings.account.cancel")}
+              </GlassButton>
+              <GlassButton
+                variant="primary"
+                onPress={handleConfirmSklandAccount}
+                isDisabled={isLoading}
+              >
+                {isLoading
+                  ? t("settings.account.loading")
+                  : t("settings.account.confirm")}
+              </GlassButton>
+            </>
+          ) : isRoleSelectionOpen ? (
+            <>
+              <GlassButton
+                variant="outline"
+                onPress={handleCloseAddModal}
+                isDisabled={isLoading}
+              >
+                {t("settings.account.cancel")}
               </GlassButton>
               <GlassButton
                 variant="primary"
                 onPress={handleConfirmRoles}
-                isDisabled={selectedRoles.length === 0 || isLoading}
+                isDisabled={
+                  isLoading ||
+                  (availableRoles.length > 0 &&
+                    selectedRoles.length === 0 &&
+                    !isManagingSklandRoles)
+                }
               >
                 {isLoading
                   ? t("settings.account.loading")
-                  : `${t("settings.account.confirm")} (${selectedRoles.length})`}
+                  : availableRoles.length === 0
+                    ? t("settings.account.close")
+                    : `${t("settings.account.confirm")} (${selectedRoles.length})`}
               </GlassButton>
             </>
           ) : loginMethod === "phone" ? (

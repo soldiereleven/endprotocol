@@ -976,6 +976,12 @@ export const Sidebar = ({ onNavigate }: SidebarProps = {}) => {
                     Lv.{selectedAccount.level} •{" "}
                     {resolveServerLabel(selectedAccount.server, i18n.language)}
                   </p>
+                  {selectedAccount.userId && (
+                    <p className="text-[10px] text-muted/70 truncate">
+                      {i18n.language === "zh" ? "森空岛" : "Skland"}:{" "}
+                      {selectedAccount.userId}
+                    </p>
+                  )}
                 </div>
               </div>
 

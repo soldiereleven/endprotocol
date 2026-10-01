@@ -43,7 +43,8 @@ export default function AccountSwitchModal({
       setExpectedAccountCount(Math.min(detail?.count || 3, 5));
     };
     window.addEventListener("manualRefresh", handleManualRefresh);
-    return () => window.removeEventListener("manualRefresh", handleManualRefresh);
+    return () =>
+      window.removeEventListener("manualRefresh", handleManualRefresh);
   }, [isOpen]);
 
   const loadAccounts = async () => {
@@ -66,7 +67,8 @@ export default function AccountSwitchModal({
         (a) =>
           a.nickname.toLowerCase().includes(q) ||
           a.id.toLowerCase().includes(q) ||
-          a.server.toLowerCase().includes(q),
+          a.server.toLowerCase().includes(q) ||
+          a.userId?.toLowerCase().includes(q),
       );
     }
     list.sort((a, b) => {
@@ -164,6 +166,12 @@ export default function AccountSwitchModal({
                         Lv.{account.level} •{" "}
                         {resolveServerLabel(account.server, i18n.language)}
                       </p>
+                      {account.userId && (
+                        <p className="text-[11px] text-muted/70 mt-0.5 truncate">
+                          {t("settings.account.skland_account")}:{" "}
+                          {account.userId}
+                        </p>
+                      )}
                     </div>
                     {isSwitching && (
                       <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
