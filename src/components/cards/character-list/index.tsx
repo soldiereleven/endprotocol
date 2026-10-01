@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GlassButton, GlassCard, GlassProgressCircle } from "@/components/ui/glass";
+import {
+  GlassButton,
+  GlassCard,
+  GlassProgressCircle,
+} from "@/components/ui/glass";
 import { CharDetailData, CharacterItem } from "@/types/charDetail";
 import { CharSelectModal } from "./char-select-modal";
 import { logDebug, logError } from "@/utils/logger";
@@ -8,7 +12,10 @@ import { useTranslation } from "react-i18next";
 import { roleDataService } from "@/utils/roleDataService";
 import { BaseCardProps } from "../registry/types";
 import { CardConfigService } from "@/utils/cardConfigService";
-import type { CharacterListCardSettings, CharacterListDisplayMode } from "@/types/card-settings";
+import type {
+  CharacterListCardSettings,
+  CharacterListDisplayMode,
+} from "@/types/card-settings";
 import { useCardData } from "../base/use-card-data";
 import { Img } from "@/utils/imageLoader";
 import { useImageRequest, usePinImages } from "@/utils/imageCacheManager";
@@ -21,7 +28,10 @@ import {
   CustomModalFooter,
 } from "@/components/custom-modal";
 
-const DISPLAY_MODE_CONFIG: Record<CharacterListDisplayMode, { slotCount: number; gridCols: number }> = {
+const DISPLAY_MODE_CONFIG: Record<
+  CharacterListDisplayMode,
+  { slotCount: number; gridCols: number }
+> = {
   single: { slotCount: 1, gridCols: 1 },
   double: { slotCount: 2, gridCols: 2 },
   triple: { slotCount: 3, gridCols: 3 },
@@ -46,7 +56,8 @@ export default function CharacterListCard({
 }: BaseCardProps) {
   const { t, i18n } = useTranslation();
   const [selectedCharIds, setSelectedCharIds] = useState<string[]>([]);
-  const [displayMode, setDisplayMode] = useState<CharacterListDisplayMode>("triple");
+  const [displayMode, setDisplayMode] =
+    useState<CharacterListDisplayMode>("triple");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [preopenCharId, setPreopenCharId] = useState<string | null>(null);
   const [customRoleId, setCustomRoleId] = useState<string | null>(null);
@@ -58,7 +69,10 @@ export default function CharacterListCard({
   useEffect(() => {
     const loadCustomRoleId = async () => {
       try {
-        const settings = await CardConfigService.getCardSettings<CharacterListCardSettings>(cardId);
+        const settings =
+          await CardConfigService.getCardSettings<CharacterListCardSettings>(
+            cardId,
+          );
         if (settings.roleId) {
           setCustomRoleId(settings.roleId);
         }
@@ -73,7 +87,8 @@ export default function CharacterListCard({
   const effectiveRoleId = customRoleId || roleId;
 
   // 跟踪 roleId 变化
-  const roleIdChanged = prevRoleIdRef.current !== null && prevRoleIdRef.current !== effectiveRoleId;
+  const roleIdChanged =
+    prevRoleIdRef.current !== null && prevRoleIdRef.current !== effectiveRoleId;
   useEffect(() => {
     prevRoleIdRef.current = effectiveRoleId;
   }, [effectiveRoleId]);
@@ -131,7 +146,11 @@ export default function CharacterListCard({
   const { slotCount, gridCols } = DISPLAY_MODE_CONFIG[displayMode];
 
   const selectedCharacters = useMemo(() => {
-    return getSelectedCharacters(processedCharDetail, selectedCharIds, slotCount);
+    return getSelectedCharacters(
+      processedCharDetail,
+      selectedCharIds,
+      slotCount,
+    );
   }, [processedCharDetail, selectedCharIds, slotCount]);
 
   const avatarPaths = useMemo(
@@ -154,10 +173,14 @@ export default function CharacterListCard({
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { cardId: string; action: string } | undefined;
+      const detail = (e as CustomEvent).detail as
+        { cardId: string; action: string } | undefined;
       if (detail?.cardId === cardId && detail?.action === "view-list") {
         setIsModalOpen(true);
-      } else if (detail?.cardId === cardId && detail?.action === "change-role") {
+      } else if (
+        detail?.cardId === cardId &&
+        detail?.action === "change-role"
+      ) {
         handleOpenRoleSelect();
       }
     };
@@ -184,7 +207,10 @@ export default function CharacterListCard({
         CardConfigService.updateCardSetting(cardId, "roleId", newRoleId),
         CardConfigService.updateCardSetting(cardId, "selectedCharIds", []),
       ]);
-      logDebug(`Updated roleId for card ${cardId}, empty selection:`, newRoleId);
+      logDebug(
+        `Updated roleId for card ${cardId}, empty selection:`,
+        newRoleId,
+      );
     } catch (error) {
       logError("Failed to save roleId:", error);
     }
@@ -192,24 +218,30 @@ export default function CharacterListCard({
 
   function rarityLineColor(value: string): string {
     switch (value) {
-      case "6": return "#ff7100";
-      case "5": return "#ffcc00";
-      case "4": return "#b380ff";
-      default: return "transparent";
+      case "6":
+        return "#ff7100";
+      case "5":
+        return "#ffcc00";
+      case "4":
+        return "#b380ff";
+      default:
+        return "transparent";
     }
   }
 
   const ICON_BASE = "/assets/icons";
-  const professionIconUrl = (key: string) => `${ICON_BASE}/profession/${key}.png`;
+  const professionIconUrl = (key: string) =>
+    `${ICON_BASE}/profession/${key}.png`;
   const propertyIconUrl = (key: string) => `${ICON_BASE}/property/${key}.png`;
 
   function renderCharSlot(char: CharacterItem) {
     const data = char.charData;
-    const coverUrl = data.illustrationUrl || data.avatarRtUrl || data.avatarSqUrl;
+    const coverUrl =
+      data.illustrationUrl || data.avatarRtUrl || data.avatarSqUrl;
     return (
       <div
         key={data.id}
-        className="group relative h-full w-full overflow-hidden border border-separator glass-surface transition-all duration-200 hover:border-blue-400/60 hover:shadow-md cursor-pointer first:rounded-l-[10px] last:rounded-r-[10px]"
+        className="group relative h-full w-full overflow-hidden border border-separator transition-all duration-200 hover:border-blue-400/60 hover:shadow-md cursor-pointer first:rounded-l-[10px] last:rounded-r-[10px]"
         onClick={(e) => {
           if (isEditMode) return;
           e.stopPropagation();
@@ -221,6 +253,7 @@ export default function CharacterListCard({
           src={coverUrl}
           alt={data.name}
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          transparentPlaceholder
           loading="lazy"
           draggable={false}
         />
@@ -271,7 +304,9 @@ export default function CharacterListCard({
                 />
               )}
               {char.level != null && (
-                <span className="text-sm font-bold text-gray-800 drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]">Lv.{char.level}</span>
+                <span className="text-sm font-bold text-gray-800 drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]">
+                  Lv.{char.level}
+                </span>
               )}
             </div>
             <span className="flex-1 min-w-0 text-xs font-medium text-white truncate text-right drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]">
@@ -279,7 +314,10 @@ export default function CharacterListCard({
             </span>
           </div>
           <div
-            style={{ borderBottom: "3px solid " + rarityLineColor(data.rarity.value), width: "100%" }}
+            style={{
+              borderBottom: "3px solid " + rarityLineColor(data.rarity.value),
+              width: "100%",
+            }}
           />
         </div>
       </div>
@@ -289,7 +327,12 @@ export default function CharacterListCard({
   if (isLoading) {
     return (
       <GlassCard className="p-6 glass-surface border border-separator/90 h-full w-full flex items-center justify-center">
-        <GlassProgressCircle isIndeterminate size="md" aria-label="Loading" className="text-primary">
+        <GlassProgressCircle
+          isIndeterminate
+          size="md"
+          aria-label="Loading"
+          className="text-primary"
+        >
           <GlassProgressCircle.Track>
             <GlassProgressCircle.TrackCircle />
             <GlassProgressCircle.FillCircle />
@@ -302,9 +345,7 @@ export default function CharacterListCard({
   if (!processedCharDetail) {
     return (
       <GlassCard className="p-6 glass-surface border border-separator/90">
-        <p className="text-muted text-center">
-          {t("card:no_data")}
-        </p>
+        <p className="text-muted text-center">{t("card:no_data")}</p>
       </GlassCard>
     );
   }
@@ -316,44 +357,50 @@ export default function CharacterListCard({
         isPressable
         onPress={() => !isEditMode && setIsModalOpen(true)}
       >
-        <div className="grid flex-1 min-h-0 h-full" style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}>
-            {selectedCharacters.map(renderCharSlot)}
+        <div
+          className="grid flex-1 min-h-0 h-full"
+          style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
+        >
+          {selectedCharacters.map(renderCharSlot)}
 
-            {Array.from({
-              length: Math.max(0, slotCount - selectedCharacters.length),
-            }).map((_, index) => (
-              <div
-                key={`empty-${index}`}
-                className="h-full flex flex-col items-center justify-center cursor-pointer hover:bg-default-50/60 first:rounded-l-[10px] last:rounded-r-[10px]"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  !isEditMode && setIsModalOpen(true);
-                }}
+          {Array.from({
+            length: Math.max(0, slotCount - selectedCharacters.length),
+          }).map((_, index) => (
+            <div
+              key={`empty-${index}`}
+              className="h-full flex flex-col items-center justify-center cursor-pointer hover:bg-default-50/60 first:rounded-l-[10px] last:rounded-r-[10px]"
+              onClick={(e) => {
+                e.stopPropagation();
+                !isEditMode && setIsModalOpen(true);
+              }}
+            >
+              <svg
+                className="w-6 h-6 mb-1 text-foreground opacity-70"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <svg
-                  className="w-6 h-6 mb-1 text-foreground opacity-70"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-                <span className="text-foreground text-xs">
-                  {t("card:empty_slot")}
-                </span>
-              </div>
-            ))}
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              <span className="text-foreground text-xs">
+                {t("card:empty_slot")}
+              </span>
+            </div>
+          ))}
         </div>
       </GlassCard>
 
       <CharSelectModal
         isOpen={isModalOpen}
-        onClose={() => { setIsModalOpen(false); setPreopenCharId(null); }}
+        onClose={() => {
+          setIsModalOpen(false);
+          setPreopenCharId(null);
+        }}
         charDetail={processedCharDetail}
         selectedCharIds={selectedCharIds.slice(0, slotCount)}
         roleId={effectiveRoleId}
@@ -423,7 +470,8 @@ export default function CharacterListCard({
                       {account.nickname || t("common.unknown") || "Unknown"}
                     </div>
                     <div className="text-xs text-muted">
-                      {resolveServerLabel(account.server, i18n.language)} · Lv.{account.level}
+                      {resolveServerLabel(account.server, i18n.language)} · Lv.
+                      {account.level}
                     </div>
                   </div>
                   {effectiveRoleId === account.id && (

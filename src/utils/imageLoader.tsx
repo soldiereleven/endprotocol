@@ -4,13 +4,20 @@ import clsx from "clsx";
 
 interface ImgProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
+  transparentPlaceholder?: boolean;
 }
 
 /**
  * 图片组件：通过 IntersectionObserver 实现懒加载。
  * 图片进入视口附近（rootMargin 预取范围）才触发实际加载/下载缓存。
  */
-export function Img({ src, className, alt, ...props }: ImgProps) {
+export function Img({
+  src,
+  className,
+  alt,
+  transparentPlaceholder = false,
+  ...props
+}: ImgProps) {
   const [resolvedSrc, setResolvedSrc] = useState("");
   const placeholderRef = useRef<HTMLDivElement>(null);
 
@@ -64,7 +71,12 @@ export function Img({ src, className, alt, ...props }: ImgProps) {
     return (
       <div
         ref={placeholderRef}
-        className={clsx(className, "bg-default-200 animate-pulse")}
+        className={clsx(
+          className,
+          transparentPlaceholder
+            ? "bg-transparent"
+            : "bg-default-200 animate-pulse",
+        )}
         aria-label={alt}
         role="img"
       />
