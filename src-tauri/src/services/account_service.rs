@@ -6,7 +6,7 @@ use tauri::async_runtime;
 use tauri::{AppHandle, Emitter};
 
 use crate::models::account::{
-    AccountInfo, AccountLoginResult, AccountRefreshResult, AccountSummary,
+    AccountInfo, AccountLoginResult, AccountRefreshResult, AccountSummary, SklandAccountInfo,
 };
 use crate::models::login::{
     CodeLoginRequest, LoginRequest, ScanLoginInfo, ScanStatus, SendCodeRequest,
@@ -1447,10 +1447,7 @@ impl AccountService {
 
     /// 登出单个账户
     ///
-    /// 当账户下角色被全部移除时：
-    /// - `keep_device_token = true`: 保留配置项，但删除除 device_token 外的所有数据，
-    ///   下次密码登录可在本地匹配到 device token，跳过新设备验证码
-    /// - `keep_device_token = false`: 删除整个配置项，下次密码登录需要重新验证新设备
+    /// 解绑游戏角色，但保留父级森空岛账户和凭证。
     pub async fn logout_account(&self, account_id: String, keep_device_token: bool) -> bool {
         let mut config = self.config_service.lock().unwrap();
 
@@ -1458,7 +1455,6 @@ impl AccountService {
         // 遍历所有 account_token_* 配置项来找到匹配的 role
         let all_config = config.get_all();
         let mut keys_to_update = Vec::new();
-        let mut keys_to_remove = Vec::new();
 
         for (key, value) in &all_config {
             if key.starts_with("account_token_") {
@@ -1478,12 +1474,7 @@ impl AccountService {
                                         != Some(account_id.as_str())
                                 });
 
-                                // 如果该用户没有其他角色了，标记删除
-                                if roles_vec.is_empty() {
-                                    keys_to_remove.push(key.clone());
-                                } else {
-                                    keys_to_update.push((key.clone(), updated_value));
-                                }
+                                keys_to_update.push((key.clone(), updated_value));
                             }
                         }
                     }
@@ -1491,29 +1482,27 @@ impl AccountService {
             }
         }
 
-        // 更新配置
-        for (key, value) in keys_to_update {
-            let _ = config.set(key, value);
-        }
+        let changed_user_ids: Vec<String> = keys_to_update
+            .iter()
+            .filter_map(|(key, _)| key.strip_prefix("account_token_").map(str::to_string))
+            .collect();
 
-        // 删除空的用户配置项（可选择保留 device_token 供下次登录跳过新设备验证）
-        for key in keys_to_remove {
-            if keep_device_token {
-                if let Some(value) = config.get::<serde_json::Value>(&key) {
-                    if let Some(dev) = value.get("device_token").and_then(|v| v.as_str()) {
-                        if !dev.is_empty() {
-                            // 仅保留 device_token，删除其他所有数据（cred/token/hytoken/u8token/roles）
-                            let _ = config.set(key.clone(), json!({ "device_token": dev }));
-                            log_info!(
-                                "logout_account: Kept device_token for {} (removed all other data)",
-                                key
-                            );
-                            continue;
-                        }
-                    }
+        // 更新配置
+        for (key, mut value) in keys_to_update {
+            if !keep_device_token
+                && value
+                    .get("roles")
+                    .and_then(|roles| roles.as_array())
+                    .is_some_and(Vec::is_empty)
+            {
+                if let Some(object) = value.as_object_mut() {
+                    object.remove("device_token");
                 }
             }
-            config.remove(&key);
+            let _ = config.set(key, value);
+        }
+        for user_id in changed_user_ids {
+            self.clear_account_cache(&user_id);
         }
 
         // 更新 account_list（如果需要的话）
@@ -2371,96 +2360,147 @@ impl AccountService {
             }
         }
 
-        // Step 4: 获取玩家绑定列表
-        let bindings = match self.skland_service.get_player_binding(&cred, &token).await {
-            Ok(bindings) => bindings,
-            Err(e) => {
-                return Ok(AccountLoginResult {
-                    success: false,
-                    error_message: Some(format!("Failed to get binding list: {}", e)),
-                    account: None,
-                    available_roles: None,
-                    cred: None,
-                    token: None,
-                    user_id: None,
-                });
-            }
-        };
-
-        // Step 5: 提取终末地角色
-        let endfield_roles = SklandService::extract_endfield_roles(&bindings);
-
-        if endfield_roles.is_empty() {
-            log_error!("No Endfield roles found!");
-            return Ok(AccountLoginResult {
-                success: false,
-                error_message: Some("No Endfield roles found in binding list".to_string()),
-                account: None,
-                available_roles: None,
-                cred: Some(cred.clone()),
-                token: Some(token.clone()),
-                user_id: Some(user_id.clone()),
-            });
-        }
-
-        // Step 6: 获取每个角色的详情
-        log_debug!(
-            "Step 6: Getting role details for {} roles...",
-            endfield_roles.len()
-        );
-        let mut role_details = Vec::new();
-        for (uid, server_id, role_id) in &endfield_roles {
-            log_debug!(
-                "  Getting detail for role_id={}, server_id={}",
-                role_id,
-                server_id
-            );
-            match self
-                .skland_service
-                .get_role_detail(&cred, &token, role_id, server_id, &user_id)
-                .await
-            {
-                Ok(char_detail_response) => {
-                    // 从完整响应中提取 AccountInfo 所需字段
-                    let base = &char_detail_response.data.detail.base;
-
-                    log_debug!("  Role detail success: nickname={}", base.name);
-                    // 下载并缓存头像（返回 base64）
-                    let cached_avatar = self
-                        .avatar_cache_service
-                        .get_or_download_avatar(&base.avatar_url)
-                        .await
-                        .unwrap_or_else(|_| base.avatar_url.clone());
-
-                    let detail = RoleDisplayInfo {
-                        role_id: role_id.clone(),
-                        user_id: user_id.clone(),
-                        server_id: server_id.clone(),
-                        nickname: base.name.clone(),
-                        level: base.level,
-                        avatar_url: cached_avatar,
-                    };
-                    role_details.push(detail);
-                }
-                Err(e) => {
-                    log_error!("Failed to get role detail for {}: {}", role_id, e);
-                    // 跳过失败的角色
-                }
-            }
-        }
-
-        log_debug!("Step 6 complete: got {} role details", role_details.len());
-
-        // 返回可用角色列表，等待前端选择
+        // Return the parent credentials first. The UI loads its game roles only
+        // after the user confirms binding this Skland account.
         Ok(AccountLoginResult {
             success: true,
             error_message: None,
             account: None,
-            available_roles: Some(role_details),
+            available_roles: None,
             cred: Some(cred),
             token: Some(token),
             user_id: Some(user_id),
         })
+    }
+
+    async fn fetch_endfield_roles(
+        &self,
+        cred: &str,
+        token: &str,
+        user_id: &str,
+    ) -> Result<Vec<RoleDisplayInfo>, AppError> {
+        let bindings = self.skland_service.get_player_binding(cred, token).await?;
+        let game_roles = SklandService::extract_endfield_roles(&bindings);
+        let mut roles = Vec::new();
+
+        for (_game_uid, server_id, role_id) in game_roles {
+            match self
+                .skland_service
+                .get_role_detail(cred, token, &role_id, &server_id, user_id)
+                .await
+            {
+                Ok(response) => {
+                    let base = &response.data.detail.base;
+                    let avatar_url = self
+                        .avatar_cache_service
+                        .get_or_download_avatar(&base.avatar_url)
+                        .await
+                        .unwrap_or_else(|_| base.avatar_url.clone());
+                    roles.push(RoleDisplayInfo {
+                        role_id,
+                        user_id: user_id.to_string(),
+                        server_id,
+                        nickname: base.name.clone(),
+                        level: base.level,
+                        avatar_url,
+                    });
+                }
+                Err(error) => {
+                    log_error!("Failed to get role detail for {}: {}", role_id, error);
+                }
+            }
+        }
+
+        Ok(roles)
+    }
+
+    /// 获取已绑定森空岛账户的游戏角色，供后续绑定和解绑使用
+    pub async fn get_skland_account_roles(
+        &self,
+        user_id: String,
+    ) -> Result<AccountLoginResult, AppError> {
+        self.check_and_refresh_user_cred(&user_id).await?;
+        let (cred, token) = {
+            let config = self.config_service.lock().unwrap();
+            let token_key = format!("account_token_{}", user_id);
+            let data: serde_json::Value =
+                config.get(&token_key).ok_or_else(|| AppError::AuthError {
+                    message: "Skland account was not found".to_string(),
+                })?;
+            let cred = data
+                .get("cred")
+                .and_then(|value| value.as_str())
+                .ok_or_else(|| AppError::AuthError {
+                    message: "Skland cred was not found".to_string(),
+                })?
+                .to_string();
+            let token = data
+                .get("token")
+                .and_then(|value| value.as_str())
+                .ok_or_else(|| AppError::AuthError {
+                    message: "Skland token was not found".to_string(),
+                })?
+                .to_string();
+            (cred, token)
+        };
+        let available_roles = self.fetch_endfield_roles(&cred, &token, &user_id).await?;
+
+        Ok(AccountLoginResult {
+            success: true,
+            error_message: None,
+            account: None,
+            available_roles: Some(available_roles),
+            cred: Some(cred),
+            token: Some(token),
+            user_id: Some(user_id),
+        })
+    }
+
+    /// 获取已确认绑定的森空岛账户
+    pub fn get_skland_accounts(&self) -> Vec<SklandAccountInfo> {
+        let config = self.config_service.lock().unwrap();
+        config
+            .get_all()
+            .iter()
+            .filter_map(|(key, value)| {
+                let user_id = key.strip_prefix("account_token_")?;
+                let roles = value.get("roles").and_then(|v| v.as_array());
+                let is_bound = value
+                    .get("skland_account_bound")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or_else(|| roles.is_some_and(|roles| !roles.is_empty()));
+                is_bound.then(|| SklandAccountInfo {
+                    user_id: user_id.to_string(),
+                    game_role_count: roles.map_or(0, Vec::len),
+                })
+            })
+            .collect()
+    }
+
+    /// 用户确认绑定森空岛账户后保存其 Skland 凭证
+    pub fn save_skland_account(
+        &self,
+        cred: String,
+        token: String,
+        user_id: String,
+    ) -> Result<(), AppError> {
+        let mut config = self.config_service.lock().unwrap();
+        let token_key = format!("account_token_{}", user_id);
+        let mut data = config
+            .get::<serde_json::Value>(&token_key)
+            .unwrap_or_else(|| json!({}));
+        if !data.is_object() {
+            data = json!({});
+        }
+        let object = data.as_object_mut().expect("object checked above");
+        object.insert("cred".to_string(), json!(cred));
+        object.insert("token".to_string(), json!(token));
+        object.insert("skland_account_bound".to_string(), json!(true));
+        object
+            .entry("roles".to_string())
+            .or_insert_with(|| json!([]));
+        config.set(token_key, data)?;
+        Ok(())
     }
 
     /// 保存用户选择的角色
@@ -2500,6 +2540,21 @@ impl AccountService {
                 .and_then(|d| d.get("device_token"))
                 .and_then(|h| h.as_str())
                 .map(|s| s.to_string());
+            let existing_role_ids: Vec<String> = existing_data
+                .as_ref()
+                .and_then(|data| data.get("roles"))
+                .and_then(|roles| roles.as_array())
+                .map(|roles| {
+                    roles
+                        .iter()
+                        .filter_map(|role| {
+                            role.get("roleId")
+                                .and_then(|value| value.as_str())
+                                .map(str::to_string)
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
 
             log_debug!(
                 "save_selected_roles: Existing hytoken exists: {}",
@@ -2532,6 +2587,7 @@ impl AccountService {
             token_data_obj.insert("cred".to_string(), json!(cred));
             token_data_obj.insert("token".to_string(), json!(token));
             token_data_obj.insert("roles".to_string(), json!(roles));
+            token_data_obj.insert("skland_account_bound".to_string(), json!(true));
             if let Some(hyt) = hytoken {
                 token_data_obj.insert("hytoken".to_string(), json!(hyt));
                 log_debug!("save_selected_roles: Preserved hytoken in config");
@@ -2551,6 +2607,7 @@ impl AccountService {
 
             // 更新 account_list
             let mut account_list: Vec<String> = config.get("account_list").unwrap_or_default();
+            account_list.retain(|role_id| !existing_role_ids.contains(role_id));
             for role in &selected_roles {
                 if !account_list.contains(&role.role_id) {
                     account_list.push(role.role_id.clone());
@@ -2594,6 +2651,12 @@ impl AccountService {
             };
             accounts.push(account);
         }
+
+        self.cache_account_list(&user_id, accounts.clone());
+        self.cache_account_summary(
+            &user_id,
+            accounts.iter().map(AccountInfo::to_summary).collect(),
+        );
 
         Ok(accounts)
     }

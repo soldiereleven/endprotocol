@@ -2,7 +2,9 @@ use std::sync::Arc;
 use tauri::State;
 use tokio::sync::Mutex;
 
-use crate::models::account::{AccountInfo, AccountLoginResult, AccountRefreshResult};
+use crate::models::account::{
+    AccountInfo, AccountLoginResult, AccountRefreshResult, SklandAccountInfo,
+};
 use crate::models::login::{
     CodeLoginRequest, LoginRequest, ScanLoginInfo, ScanStatus, SendCodeRequest,
 };
@@ -58,6 +60,43 @@ pub async fn get_accounts(
     // 否则调用 API 获取最新数据
     log_debug!("[get_accounts] Cache miss, fetching from API");
     Ok(service.get_accounts().await)
+}
+
+/// 获取已绑定的森空岛账户
+#[tauri::command]
+pub async fn get_skland_accounts(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+) -> Result<Vec<SklandAccountInfo>, String> {
+    let service = state.lock().await;
+    Ok(service.get_skland_accounts())
+}
+
+/// 用户确认绑定森空岛账户
+#[tauri::command]
+pub async fn save_skland_account(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+    cred: String,
+    token: String,
+    user_id: String,
+) -> Result<bool, String> {
+    let service = state.lock().await;
+    service
+        .save_skland_account(cred, token, user_id)
+        .map_err(|error| error.to_string())?;
+    Ok(true)
+}
+
+/// 获取指定森空岛账户下的游戏角色
+#[tauri::command]
+pub async fn get_skland_account_roles(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+    user_id: String,
+) -> Result<AccountLoginResult, String> {
+    let service = state.lock().await;
+    service
+        .get_skland_account_roles(user_id)
+        .await
+        .map_err(|error| error.to_string())
 }
 
 /// 添加账户（登录）

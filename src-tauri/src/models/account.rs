@@ -13,6 +13,14 @@ pub struct AccountSummary {
     pub sync_status: Option<String>, // SYNCING/FAILED/null
 }
 
+/// 森空岛账户摘要（父级账户，游戏角色通过 user_id 关联）
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SklandAccountInfo {
+    pub user_id: String,
+    pub game_role_count: usize,
+}
+
 /// 完整账户信息模型 (包含认证信息)
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]

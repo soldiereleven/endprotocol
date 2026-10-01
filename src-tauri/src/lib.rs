@@ -11,8 +11,8 @@ mod utils;
 use services::account_service::AccountService;
 use services::avatar_cache_service::AvatarCacheService;
 use services::config_service::ConfigService;
-use services::game_launcher_service::GameLauncherService;
 use services::gacha_service::GachaService;
+use services::game_launcher_service::GameLauncherService;
 use services::network_service::NetworkService;
 use services::skland_service::SklandService;
 
@@ -51,6 +51,9 @@ pub fn run() {
             commands::gacha::get_saved_weapon_gacha_records,
             // Account commands
             commands::account::get_accounts,
+            commands::account::get_skland_accounts,
+            commands::account::save_skland_account,
+            commands::account::get_skland_account_roles,
             commands::account::add_account,
             commands::account::logout_account,
             commands::account::batch_logout,

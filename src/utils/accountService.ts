@@ -18,6 +18,11 @@ export interface Account {
   serverId?: string;
 }
 
+export interface SklandAccount {
+  userId: string;
+  gameRoleCount: number;
+}
+
 /**
  * 角色展示信息接口
  */
@@ -104,6 +109,37 @@ export async function getAccounts(): Promise<Account[]> {
   } catch (error) {
     logError('Failed to get accounts:', error);
     return [];
+  }
+}
+
+export async function getSklandAccounts(): Promise<SklandAccount[]> {
+  try {
+    return await invoke('get_skland_accounts');
+  } catch (error) {
+    logError('Failed to get Skland accounts:', error);
+    return [];
+  }
+}
+
+export async function saveSklandAccount(
+  cred: string,
+  token: string,
+  userId: string,
+): Promise<boolean> {
+  try {
+    return await invoke('save_skland_account', { cred, token, userId });
+  } catch (error) {
+    logError('Failed to save Skland account:', error);
+    return false;
+  }
+}
+
+export async function getSklandAccountRoles(userId: string): Promise<LoginResult> {
+  try {
+    return await invoke('get_skland_account_roles', { userId });
+  } catch (error) {
+    logError('Failed to get Skland account roles:', error);
+    return { success: false, errorMessage: String(error) };
   }
 }
 
