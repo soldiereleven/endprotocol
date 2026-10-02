@@ -110,7 +110,11 @@
     "game_launch": {
       "title": "Game Launch",
       "verify_threads": "Verify Thread Count",
-      "verify_threads_desc": "Number of parallel threads for file verification"
+      "verify_threads_desc": "Number of parallel threads for file verification",
+      "bg_media": "Game Background",
+      "bg_media_desc": "Choose whether the game screen background shows a video or a static image (video by default)",
+      "bg_media_video": "Video",
+      "bg_media_image": "Image"
     },
     "appearance": {
       "title": "Appearance",

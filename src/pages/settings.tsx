@@ -7,7 +7,7 @@ import {
   GlassSkeleton,
   GlassSwitch,
 } from "@/components/ui/glass";
-import { Slider } from "@/components/ui/slider";
+import { GameLaunchSettings } from "@/components/game-launch-settings";
 import { AppearanceSettings } from "@/components/appearance-settings";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
@@ -53,8 +53,6 @@ export default function SettingsPage() {
   const [lazyLoadEnabled, setLazyLoadEnabled] = useState(true);
   const [wikiDetailPreload, setWikiDetailPreload] = useState(false);
   const [closeAction, setCloseAction] = useState<string>("ask");
-  const [cancelBehavior, setCancelBehavior] = useState<string>("ask");
-  const [verifyThreads, setVerifyThreads] = useState<number>(12);
   const [trayUserRoleId, setTrayUserRoleId] = useState<string>("");
   const [accounts, setAccounts] = useState<
     Array<{ id: string; nickname: string; avatar: string }>
@@ -117,18 +115,6 @@ export default function SettingsPage() {
       setAppId(identifier);
       setCloseAction(closeAct ?? "ask");
       setTrayUserRoleId(trayUser ?? "");
-      setCancelBehavior(
-        localStorage.getItem("launcher_cancel_behavior") || "ask",
-      );
-      const savedVerifyThreads = parseInt(
-        localStorage.getItem("launcher_verify_threads") || "12",
-        10,
-      );
-      setVerifyThreads(
-        Number.isFinite(savedVerifyThreads)
-          ? Math.min(32, Math.max(1, savedVerifyThreads))
-          : 12,
-      );
       setIsConfigLoading(false);
 
       // Load accounts for tray user selection
@@ -750,86 +736,7 @@ export default function SettingsPage() {
             {t("settings.game_launch.title")}
           </h2>
           <div className="space-y-6">
-            {/* Cancel Download Behavior */}
-            <div id="settings-cancel-behavior">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="font-medium text-foreground">
-                    {t("launcher.cancel_download_behavior")}
-                  </p>
-                  <p className="text-sm text-muted mt-0.5">
-                    {t("launcher.cancel_download_behavior_desc")}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  {[
-                    { value: "ask", label: t("launcher.cancel_behavior_ask") },
-                    {
-                      value: "keep",
-                      label: t("launcher.cancel_behavior_keep"),
-                    },
-                    {
-                      value: "delete",
-                      label: t("launcher.cancel_behavior_delete"),
-                    },
-                  ].map((opt) => (
-                    <button
-                      key={opt.value}
-                      className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
-                        cancelBehavior === opt.value
-                          ? "border-primary/50 bg-primary/10 text-primary font-medium"
-                          : "border-separator/40 text-muted hover:bg-default-100/50"
-                      }`}
-                      onClick={() => {
-                        setCancelBehavior(opt.value);
-                        localStorage.setItem(
-                          "launcher_cancel_behavior",
-                          opt.value,
-                        );
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <SettingsDivider />
-
-            {/* Verify Threads */}
-            <div id="settings-verify-threads">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="font-medium text-foreground">
-                    {t("settings.game_launch.verify_threads")}
-                  </p>
-                  <p className="text-sm text-muted mt-0.5">
-                    {t("settings.game_launch.verify_threads_desc")}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 sm:w-56">
-                  <Slider
-                    min={1}
-                    max={32}
-                    step={1}
-                    value={[verifyThreads]}
-                    aria-label={t("settings.game_launch.verify_threads")}
-                    className="w-full"
-                    onValueChange={([value]) => {
-                      setVerifyThreads(value);
-                      localStorage.setItem(
-                        "launcher_verify_threads",
-                        String(value),
-                      );
-                    }}
-                  />
-                  <span className="w-8 text-right text-sm tabular-nums text-muted">
-                    {verifyThreads}
-                  </span>
-                </div>
-              </div>
-            </div>
+            <GameLaunchSettings />
           </div>
         </GlassCard>
 

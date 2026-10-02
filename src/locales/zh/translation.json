@@ -110,7 +110,11 @@
     "game_launch": {
       "title": "游戏启动",
       "verify_threads": "校验线程数",
-      "verify_threads_desc": "文件校验时的并行线程数"
+      "verify_threads_desc": "文件校验时的并行线程数",
+      "bg_media": "游戏界面背景",
+      "bg_media_desc": "选择游戏界面背景显示视频还是静态图片，默认为视频",
+      "bg_media_video": "视频",
+      "bg_media_image": "图片"
     },
     "appearance": {
       "title": "外观",
