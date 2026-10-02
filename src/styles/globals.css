@@ -154,7 +154,6 @@
 .glass-field {
   background: color-mix(in oklch, var(--field) var(--glass-field-opacity, 80%), transparent);
   backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.43)) saturate(1.5);
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.43)) saturate(1.5);
   border: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 3px rgba(0, 0, 0, 0.06);
 }
@@ -283,7 +282,6 @@ body::before {
 .glass-surface {
   background: color-mix(in oklch, var(--surface) var(--glass-surface-opacity, 78%), transparent);
   backdrop-filter: blur(var(--glass-blur, 28px)) saturate(1.35);
-  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(1.35);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 .dark .glass-surface {
@@ -292,7 +290,6 @@ body::before {
 .glass-surface-strong {
   background: color-mix(in oklch, var(--surface) var(--glass-strong-opacity, 85%), transparent);
   backdrop-filter: blur(var(--glass-blur, 28px)) saturate(1.35);
-  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(1.35);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 .glass-control-surface {
@@ -302,24 +299,20 @@ body::before {
     transparent
   );
   backdrop-filter: blur(var(--glass-blur, 28px)) saturate(1.35);
-  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(1.35);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 8px rgba(0, 0, 0, 0.14);
 }
 .account-glass-panel {
   background: color-mix(in oklch, var(--surface) 48%, transparent);
   backdrop-filter: blur(28px) saturate(1.35);
-  -webkit-backdrop-filter: blur(28px) saturate(1.35);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 .account-glass-inner {
   background: color-mix(in oklch, var(--surface) 30%, transparent);
   backdrop-filter: blur(18px) saturate(1.2);
-  -webkit-backdrop-filter: blur(18px) saturate(1.2);
 }
 .account-glass-row {
   background: color-mix(in oklch, var(--surface) 22%, transparent);
   backdrop-filter: blur(12px) saturate(1.15);
-  -webkit-backdrop-filter: blur(12px) saturate(1.15);
 }
 .dark .account-glass-panel {
   background: color-mix(in oklch, var(--surface) 58%, transparent);
@@ -352,7 +345,6 @@ body::before {
 .glass-backdrop {
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
 }
 .avatar-feather {
   mask-image: radial-gradient(ellipse 90% 90% at center, black 60%, transparent 100%);
