@@ -559,6 +559,7 @@ src/components/cards/
 
 | 文档 | 内容 |
 | --- | --- |
+| [AGENTS.md](AGENTS.md) | **Agent 工作约定**：先查索引再读源码、编码与验证规范、完成改动后必须同步更新索引 |
 | [docs/README.md](docs/README.md) | 文档总索引、快速定位表、文件参考清单 |
 | [docs/reference/](docs/reference/) | 逐文件功能参考（前端 18 篇 + 后端 8 篇 + `ipc_index.md` 命令对照表，共 27 篇） |
 | [docs/project_structure.md](docs/project_structure.md) | 项目结构与三条核心数据流 |
