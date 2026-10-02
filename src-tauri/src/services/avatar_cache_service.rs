@@ -3,7 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::{Mutex, OnceLock};
 
-use crate::utils::{paths, AppError};
+use crate::utils::{capture, paths, AppError};
 use crate::{log_debug, log_info};
 
 /// URL → 缓存子目录的注册表，供按需下载（download_image 空 sub_dir 时）确定图片类型。
@@ -173,11 +173,13 @@ impl ImageCacheService {
         log_info!("Method: GET");
         log_info!("URL: {}", url);
 
-        let response = client
-            .get(url)
-            .header("Referer", "https://game.skland.com/")
-            .send()
-            .await?;
+        let response = capture::send(
+            &client,
+            client
+                .get(url)
+                .header("Referer", "https://game.skland.com/"),
+        )
+        .await?;
 
         let elapsed = start_time.elapsed();
         let status = response.status();

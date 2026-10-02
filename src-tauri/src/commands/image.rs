@@ -1,7 +1,7 @@
 use crate::services::avatar_cache_service::{all_sub_dir_names, resolve_url_subdir};
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine as _;
-use crate::utils::paths;
+use crate::utils::{capture, paths};
 use crate::{log_info, log_warn};
 use std::fs;
 use std::path::PathBuf;
@@ -102,12 +102,14 @@ pub async fn download_image(
     // 下载图片
     log_info!("[download_image] Downloading from: {}", url);
     let client = reqwest::Client::new();
-    let response = client
-        .get(&url)
-        .header("Referer", "https://game.skland.com/")
-        .send()
-        .await
-        .map_err(|e| {
+    let response = capture::send(
+        &client,
+        client
+            .get(&url)
+            .header("Referer", "https://game.skland.com/"),
+    )
+    .await
+    .map_err(|e| {
             let msg = format!("Failed to download image '{}': {}", url, e);
             log_warn!("[download_image] {}", msg);
             msg

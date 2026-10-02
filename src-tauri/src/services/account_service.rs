@@ -16,7 +16,7 @@ use crate::services::avatar_cache_service::AvatarCacheService;
 use crate::services::config_service::ConfigService;
 use crate::services::network_service::{NetworkService, PreloadRoleInfo};
 use crate::services::skland_service::SklandService;
-use crate::utils::{http_client, AppError};
+use crate::utils::{capture, http_client, AppError};
 use crate::{log_debug, log_error, log_info, log_warn};
 
 /// 用于异步任务的简化版账户服务（避免 Arc<Mutex<>> 的复杂性）
@@ -1845,11 +1845,13 @@ impl AccountService {
         log_info!("Method: POST");
         log_info!("URL: https://as.hypergryph.com/general/v1/send_phone_code");
 
-        let response = client
-            .post("https://as.hypergryph.com/general/v1/send_phone_code")
-            .json(&payload)
-            .send()
-            .await?;
+        let response = capture::send(
+            &client,
+            client
+                .post("https://as.hypergryph.com/general/v1/send_phone_code")
+                .json(&payload),
+        )
+        .await?;
 
         let elapsed = start_time.elapsed();
         let status = response.status();
@@ -1897,11 +1899,13 @@ impl AccountService {
         log_info!("Method: POST");
         log_info!("URL: https://as.hypergryph.com/user/auth/v2/token_by_phone_code");
 
-        let response = client
-            .post("https://as.hypergryph.com/user/auth/v2/token_by_phone_code")
-            .json(&payload)
-            .send()
-            .await?;
+        let response = capture::send(
+            &client,
+            client
+                .post("https://as.hypergryph.com/user/auth/v2/token_by_phone_code")
+                .json(&payload),
+        )
+        .await?;
 
         let elapsed = start_time.elapsed();
         let status = response.status();
@@ -1995,11 +1999,13 @@ impl AccountService {
         log_info!("Method: POST");
         log_info!("URL: https://as.hypergryph.com/general/v1/gen_scan/login");
 
-        let response = client
-            .post("https://as.hypergryph.com/general/v1/gen_scan/login")
-            .json(&payload)
-            .send()
-            .await?;
+        let response = capture::send(
+            &client,
+            client
+                .post("https://as.hypergryph.com/general/v1/gen_scan/login")
+                .json(&payload),
+        )
+        .await?;
 
         let elapsed = start_time.elapsed();
         let status = response.status();
@@ -2056,11 +2062,13 @@ impl AccountService {
         log_info!("Method: GET");
         log_info!("URL: https://as.hypergryph.com/general/v1/scan_status");
 
-        let response = client
-            .get("https://as.hypergryph.com/general/v1/scan_status")
-            .query(&[("scanId", scan_id)])
-            .send()
-            .await?;
+        let response = capture::send(
+            &client,
+            client
+                .get("https://as.hypergryph.com/general/v1/scan_status")
+                .query(&[("scanId", scan_id)]),
+        )
+        .await?;
 
         let elapsed = start_time.elapsed();
         let status = response.status();
@@ -2119,17 +2127,19 @@ impl AccountService {
         log_info!("Method: POST");
         log_info!("URL: https://as.hypergryph.com/user/auth/v1/token_by_scan_code");
 
-        let response = client
-            .post("https://as.hypergryph.com/user/auth/v1/token_by_scan_code")
-            .header("X-AppCode", "dd7b852d5f1dd9da")
-            .header("X-DeviceId", "9b7a08ae4be1fe2d7520528ca45a225b")
-            .header("X-DeviceId2", "632cddd5993b41590886e8b538ab2894")
-            .header("X-DeviceModel", "DESKTOP-F7UQANK")
-            .header("X-DeviceType", "2")
-            .header("X-OSVer", "10.0.26220")
-            .json(&payload)
-            .send()
-            .await?;
+        let response = capture::send(
+            &client,
+            client
+                .post("https://as.hypergryph.com/user/auth/v1/token_by_scan_code")
+                .header("X-AppCode", "dd7b852d5f1dd9da")
+                .header("X-DeviceId", "9b7a08ae4be1fe2d7520528ca45a225b")
+                .header("X-DeviceId2", "632cddd5993b41590886e8b538ab2894")
+                .header("X-DeviceModel", "DESKTOP-F7UQANK")
+                .header("X-DeviceType", "2")
+                .header("X-OSVer", "10.0.26220")
+                .json(&payload),
+        )
+        .await?;
 
         let elapsed = start_time.elapsed();
         let status = response.status();
@@ -2715,11 +2725,13 @@ impl AccountService {
         log_info!("Method: POST");
         log_info!("URL: https://as.hypergryph.com/user/auth/v1/token_by_phone_password");
 
-        let response = client
-            .post("https://as.hypergryph.com/user/auth/v1/token_by_phone_password")
-            .json(&payload)
-            .send()
-            .await?;
+        let response = capture::send(
+            &client,
+            client
+                .post("https://as.hypergryph.com/user/auth/v1/token_by_phone_password")
+                .json(&payload),
+        )
+        .await?;
 
         let elapsed = start_time.elapsed();
         let status = response.status();
@@ -2793,11 +2805,13 @@ impl AccountService {
         log_info!("Method: POST");
         log_info!("URL: https://as.hypergryph.com/user/oauth2/v2/grant");
 
-        let response = client
-            .post("https://as.hypergryph.com/user/oauth2/v2/grant")
-            .json(&payload)
-            .send()
-            .await?;
+        let response = capture::send(
+            &client,
+            client
+                .post("https://as.hypergryph.com/user/oauth2/v2/grant")
+                .json(&payload),
+        )
+        .await?;
 
         let elapsed = start_time.elapsed();
         let status = response.status();
@@ -2847,11 +2861,13 @@ impl AccountService {
         log_info!("Method: POST");
         log_info!("URL: https://zonai.skland.com/api/v1/user/auth/generate_cred_by_code");
 
-        let response = client
-            .post("https://zonai.skland.com/api/v1/user/auth/generate_cred_by_code")
-            .json(&payload)
-            .send()
-            .await?;
+        let response = capture::send(
+            &client,
+            client
+                .post("https://zonai.skland.com/api/v1/user/auth/generate_cred_by_code")
+                .json(&payload),
+        )
+        .await?;
 
         let elapsed = start_time.elapsed();
         let status = response.status();

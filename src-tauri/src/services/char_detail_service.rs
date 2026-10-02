@@ -6,7 +6,7 @@ use crate::services::avatar_cache_service::{
     register_url_subdir, AvatarCacheService, ImageCacheService, ImageType,
 };
 use crate::services::skland_service::SklandService;
-use crate::utils::AppError;
+use crate::utils::{capture, AppError};
 use crate::{log_debug, log_error, log_info, log_warn};
 
 /// 懒加载本地化：登记 URL 对应的缓存类型；若图片已缓存在本地则替换为本地路径，
@@ -628,11 +628,13 @@ impl CharDetailService {
         // 3) Download the matched cover and save with the original filename
         if !filename.is_empty() {
             let client = reqwest::Client::new();
-            let resp = match client
-                .get(&cover_url)
-                .header("Referer", "https://game.skland.com/")
-                .send()
-                .await
+            let resp = match capture::send(
+                &client,
+                client
+                    .get(&cover_url)
+                    .header("Referer", "https://game.skland.com/"),
+            )
+            .await
             {
                 Ok(r) => r,
                 Err(e) => {

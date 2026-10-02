@@ -17,7 +17,7 @@ use uuid::Uuid;
 use crate::models::char_detail::CharDetailResponse;
 use crate::models::role::{BindingInfo, BindingResponse, GameBinding, RoleDisplayInfo, RoleInfo};
 use crate::services::config_service::ConfigService;
-use crate::utils::{http_client, AppError};
+use crate::utils::{capture, http_client, AppError};
 use crate::{log_debug, log_error, log_info, log_warn};
 
 type HmacSha256 = Hmac<Sha256>;
@@ -335,11 +335,13 @@ impl SklandService {
         log_info!("URL: https://fp-it.portal101.cn/deviceprofile/v4");
 
         let start_time = std::time::Instant::now();
-        let resp = client
-            .post("https://fp-it.portal101.cn/deviceprofile/v4")
-            .json(&payload)
-            .send()
-            .await?;
+        let resp = capture::send(
+            &client,
+            client
+                .post("https://fp-it.portal101.cn/deviceprofile/v4")
+                .json(&payload),
+        )
+        .await?;
         let elapsed = start_time.elapsed();
 
         let status = resp.status();
@@ -561,7 +563,7 @@ impl SklandService {
             }
 
             let start_time = std::time::Instant::now();
-            let response = match req.send().await {
+            let response = match capture::send(&client, req).await {
                 Ok(r) => r,
                 Err(e) => {
                     last_err = Some(AppError::AuthError {
@@ -672,15 +674,17 @@ impl SklandService {
         log_info!("URL: https://zonai.skland.com/api/v1/user/check");
         log_debug!("Request Headers: cred=***");
 
-        let response = client
-            .get("https://zonai.skland.com/api/v1/user/check")
-            .header("cred", cred)
-            .header("Content-Type", "application/json")
-            .send()
-            .await
-            .map_err(|e| AppError::AuthError {
-                message: format!("HTTP request failed: {}", e),
-            })?;
+        let response = capture::send(
+            &client,
+            client
+                .get("https://zonai.skland.com/api/v1/user/check")
+                .header("cred", cred)
+                .header("Content-Type", "application/json"),
+        )
+        .await
+        .map_err(|e| AppError::AuthError {
+            message: format!("HTTP request failed: {}", e),
+        })?;
 
         let elapsed = start_time.elapsed();
         let status = response.status();
@@ -757,14 +761,16 @@ impl SklandService {
         log_info!("Method: POST");
         log_info!("URL: https://zonai.skland.com/api/v1/user/auth/generate_cred_by_code");
 
-        let response = client
-            .post("https://zonai.skland.com/api/v1/user/auth/generate_cred_by_code")
-            .json(&payload2)
-            .send()
-            .await
-            .map_err(|e| AppError::AuthError {
-                message: format!("Step 2 (generate cred) failed: {}", e),
-            })?;
+        let response = capture::send(
+            &client,
+            client
+                .post("https://zonai.skland.com/api/v1/user/auth/generate_cred_by_code")
+                .json(&payload2),
+        )
+        .await
+        .map_err(|e| AppError::AuthError {
+            message: format!("Step 2 (generate cred) failed: {}", e),
+        })?;
 
         let elapsed = start_time.elapsed();
         let status = response.status();
@@ -849,21 +855,23 @@ impl SklandService {
         log_info!("Method: POST");
         log_info!("URL: https://u8.hypergryph.com/u8/user/auth/v2/token_by_channel_token");
 
-        let response = client
-            .post("https://u8.hypergryph.com/u8/user/auth/v2/token_by_channel_token")
-            .header(
-                "User-Agent",
-                "UnityPlayer/2021.3.34f5 (UnityWebRequest/1.0, libcurl/8.4.0-DEV)",
-            )
-            .header("X-Unity-Version", "2021.3.34f5")
-            .header("Accept", "*/*")
-            .header("Accept-Encoding", "deflate, gzip")
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| AppError::AuthError {
-                message: format!("U8 token request failed: {}", e),
-            })?;
+        let response = capture::send(
+            &client,
+            client
+                .post("https://u8.hypergryph.com/u8/user/auth/v2/token_by_channel_token")
+                .header(
+                    "User-Agent",
+                    "UnityPlayer/2021.3.34f5 (UnityWebRequest/1.0, libcurl/8.4.0-DEV)",
+                )
+                .header("X-Unity-Version", "2021.3.34f5")
+                .header("Accept", "*/*")
+                .header("Accept-Encoding", "deflate, gzip")
+                .json(&payload),
+        )
+        .await
+        .map_err(|e| AppError::AuthError {
+            message: format!("U8 token request failed: {}", e),
+        })?;
 
         let elapsed = start_time.elapsed();
         let status = response.status();
@@ -946,14 +954,16 @@ impl SklandService {
         log_info!("Method: POST");
         log_info!("URL: https://as.hypergryph.com/user/oauth2/v2/grant");
 
-        let response = client
-            .post("https://as.hypergryph.com/user/oauth2/v2/grant")
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| AppError::AuthError {
-                message: format!("U8 OAuth grant failed: {}", e),
-            })?;
+        let response = capture::send(
+            &client,
+            client
+                .post("https://as.hypergryph.com/user/oauth2/v2/grant")
+                .json(&payload),
+        )
+        .await
+        .map_err(|e| AppError::AuthError {
+            message: format!("U8 OAuth grant failed: {}", e),
+        })?;
 
         let elapsed = start_time.elapsed();
         let status = response.status();
@@ -1005,14 +1015,16 @@ impl SklandService {
         log_info!("Method: POST");
         log_info!("URL: https://as.hypergryph.com/user/oauth2/v2/grant");
 
-        let response = client
-            .post("https://as.hypergryph.com/user/oauth2/v2/grant")
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| AppError::AuthError {
-                message: format!("Step 1 (OAuth grant) failed: {}", e),
-            })?;
+        let response = capture::send(
+            &client,
+            client
+                .post("https://as.hypergryph.com/user/oauth2/v2/grant")
+                .json(&payload),
+        )
+        .await
+        .map_err(|e| AppError::AuthError {
+            message: format!("Step 1 (OAuth grant) failed: {}", e),
+        })?;
 
         let elapsed = start_time.elapsed();
         let status = response.status();

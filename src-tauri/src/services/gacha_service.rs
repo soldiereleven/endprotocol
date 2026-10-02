@@ -9,7 +9,7 @@ use crate::models::gacha::{
     GachaSyncProgress, GachaSyncResult, GachaWeaponRecord, GachaWeaponRecordData, SavedGachaData,
     SavedWeaponGachaData,
 };
-use crate::utils::{http_client, paths, AppError};
+use crate::utils::{capture, http_client, paths, AppError};
 use crate::{log_debug, log_info};
 
 /// ef-webview 抽卡记录服务基础 URL
@@ -777,13 +777,15 @@ impl GachaService {
         );
         let client = http_client::create_client();
         log_debug!("gacha: GET {}", url);
-        let response = client
-            .get(url)
-            .header(reqwest::header::USER_AGENT, GACHA_USER_AGENT)
-            .header(reqwest::header::REFERER, referer)
-            .header(reqwest::header::ACCEPT, "application/json, text/plain, */*")
-            .send()
-            .await?;
+        let response = capture::send(
+            &client,
+            client
+                .get(url)
+                .header(reqwest::header::USER_AGENT, GACHA_USER_AGENT)
+                .header(reqwest::header::REFERER, referer)
+                .header(reqwest::header::ACCEPT, "application/json, text/plain, */*"),
+        )
+        .await?;
         let response = response.error_for_status()?;
         let wrapper: GachaApiResponse<T> = response.json().await?;
         if wrapper.code != 0 {

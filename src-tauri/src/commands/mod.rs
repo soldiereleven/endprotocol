@@ -1,5 +1,6 @@
 pub mod account;
 pub mod attendance;
+pub mod capture;
 pub mod card_config;
 pub mod color_picker;
 pub mod config;
@@ -9,5 +10,4 @@ pub mod launcher;
 pub mod logs;
 pub mod tray;
 pub mod updater;
-pub mod wiki_debug;
 pub mod window;

@@ -4,6 +4,8 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::Emitter;
 
+use crate::utils::capture;
+
 static DOWNLOAD_CANCELLED: AtomicBool = AtomicBool::new(false);
 
 /// Write binary data to a file at the specified path.
@@ -30,9 +32,7 @@ pub fn get_temp_dir() -> Result<String, String> {
 #[tauri::command]
 pub async fn fetch_url(url: String) -> Result<String, String> {
     let client = reqwest::Client::new();
-    let resp = client
-        .get(&url)
-        .send()
+    let resp = capture::send(&client, client.get(&url))
         .await
         .map_err(|e| format!("Failed to fetch '{}': {}", url, e))?;
 
@@ -67,9 +67,7 @@ pub async fn download_file(
     DOWNLOAD_CANCELLED.store(false, Ordering::SeqCst);
 
     let client = reqwest::Client::new();
-    let resp = client
-        .get(&url)
-        .send()
+    let resp = capture::send_stream(&client, client.get(&url))
         .await
         .map_err(|e| format!("Failed to start download from '{}': {}", url, e))?;
 

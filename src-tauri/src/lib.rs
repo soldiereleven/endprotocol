@@ -92,12 +92,14 @@ pub fn run() {
             commands::color_picker::finish_screen_pick,
             // Logger commands
             commands::logs::get_backend_logs,
-            // Wiki debug commands
-            commands::wiki_debug::debug_dump_wiki_catalogs,
-            commands::wiki_debug::debug_wiki_debug_dir,
-            // User info debug commands
-            commands::wiki_debug::debug_dump_user_info,
-            commands::wiki_debug::debug_user_info_dir,
+            // Network capture commands
+            commands::capture::capture_start,
+            commands::capture::capture_stop,
+            commands::capture::capture_status,
+            commands::capture::capture_list_sessions,
+            commands::capture::capture_read_entries,
+            commands::capture::capture_delete_session,
+            commands::capture::capture_dir,
             // Updater commands
             commands::updater::write_file,
             commands::updater::get_temp_dir,
@@ -148,6 +150,26 @@ pub fn run() {
                 ConfigService::new().map_err(|e| e.to_string())?,
             ));
             app.manage(config_service.clone());
+
+            // 启动时自动录制：必须在任何 API 请求发出之前开始
+            let auto_capture = config_service
+                .lock()
+                .map(|config| config.get::<bool>("capture_autostart"))
+                .unwrap_or(None)
+                .unwrap_or(false);
+            if auto_capture {
+                match utils::capture::start() {
+                    Ok(status) => {
+                        log_info!(
+                            "[capture] auto-started on launch: {:?}",
+                            status.session_id
+                        );
+                    }
+                    Err(e) => {
+                        log_warn!("[capture] auto-start on launch failed: {}", e);
+                    }
+                }
+            }
 
             // 初始化系统托盘
             if let Err(e) = tray::setup_tray(app.handle(), config_service.clone()) {

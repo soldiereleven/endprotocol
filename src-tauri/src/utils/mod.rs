@@ -1,3 +1,4 @@
+pub mod capture;
 pub mod encrypt;
 pub mod error;
 pub mod hg_crypto;

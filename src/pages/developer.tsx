@@ -19,23 +19,80 @@ import { logError } from "@/utils/logger";
 import { MorphIcon } from "morphicons/react";
 import { FileText, Settings } from "lucide";
 
-interface WikiDumpEntry {
-  name: string;
-  path: string;
-  code: number | null;
-  message: string | null;
-  catalog_count: number;
-  type_sub_count: number;
-  item_count: number;
+interface CaptureBody {
+  encoding: string;
+  size: number;
+  truncated: boolean;
+  data: string;
 }
 
-interface UserInfoDumpEntry {
-  name: string;
-  path: string;
-  code: number | null;
-  message: string | null;
-  info: string;
+interface CaptureEntry {
+  index: number;
+  timestamp: string;
+  method: string;
+  url: string;
+  request_headers: [string, string][];
+  request_body: CaptureBody | null;
+  status: number | null;
+  response_headers: [string, string][] | null;
+  response_body: CaptureBody | null;
+  duration_ms: number;
+  error: string | null;
+  note: string | null;
 }
+
+interface CaptureSession {
+  id: string;
+  started_at: string;
+  ended_at: string | null;
+  status: string;
+  count: number;
+  size_bytes: number;
+  path: string;
+}
+
+interface CaptureStatusInfo {
+  recording: boolean;
+  session_id: string | null;
+  started_at: string | null;
+  count: number;
+  size_bytes: number;
+}
+
+interface CapturePage {
+  total: number;
+  entries: CaptureEntry[];
+}
+
+const CAPTURE_PAGE_SIZE = 100;
+const MAX_BODY_VIEW = 50000;
+
+const formatBytes = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+};
+
+const formatBodyText = (body: CaptureBody | null, note: string | null): string => {
+  if (note && !body) return `[${note}]`;
+  if (!body) return "";
+  if (body.encoding === "base64") {
+    return `[binary] ${formatBytes(body.size)}`;
+  }
+  let text = body.data;
+  try {
+    text = JSON.stringify(JSON.parse(text), null, 2);
+  } catch {
+    text = body.data;
+  }
+  if (text.length > MAX_BODY_VIEW) {
+    text = `${text.slice(0, MAX_BODY_VIEW)}\n… (${formatBytes(body.size)})`;
+  }
+  if (body.truncated) {
+    text = `${text}\n… (truncated)`;
+  }
+  return text;
+};
 
 const LOG_LEVEL_NAMES: Record<LogLevel, string> = {
   [LogLevel.DEBUG]: "DEBUG",
@@ -80,6 +137,7 @@ type LogLevelFilter = LogLevel | "all";
 
 export default function DeveloperPage() {
   const { t, i18n } = useTranslation();
+  const zh = i18n.language === "zh";
 
   const [cacheMode, setCacheMode] = useState<CacheMode>("smart");
   const [cacheMaxEntries, setCacheMaxEntries] = useState(200);
@@ -98,47 +156,141 @@ export default function DeveloperPage() {
 
   const [isConfigLoading, setIsConfigLoading] = useState(true);
 
-  const [dumpEntries, setDumpEntries] = useState<WikiDumpEntry[]>([]);
-  const [isDumping, setIsDumping] = useState(false);
-  const [dumpError, setDumpError] = useState<string | null>(null);
-  const [dumpDir, setDumpDir] = useState<string>("");
+  const [captureStatus, setCaptureStatus] = useState<CaptureStatusInfo | null>(null);
+  const [captureSessions, setCaptureSessions] = useState<CaptureSession[]>([]);
+  const [captureBusy, setCaptureBusy] = useState(false);
+  const [captureError, setCaptureError] = useState<string | null>(null);
+  const [autoStartCapture, setAutoStartCapture] = useState(false);
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  const [captureEntries, setCaptureEntries] = useState<CaptureEntry[]>([]);
+  const [captureTotal, setCaptureTotal] = useState(0);
+  const [selectedEntry, setSelectedEntry] = useState<CaptureEntry | null>(null);
 
-  const [userInfoEntries, setUserInfoEntries] = useState<UserInfoDumpEntry[]>([]);
-  const [isUserInfoDumping, setIsUserInfoDumping] = useState(false);
-  const [userInfoError, setUserInfoError] = useState<string | null>(null);
-  const [userInfoDir, setUserInfoDir] = useState<string>("");
-
-  const handleDumpUserInfo = async () => {
-    setIsUserInfoDumping(true);
-    setUserInfoError(null);
+  const refreshCapture = useCallback(async () => {
     try {
-      const entries = await invoke<UserInfoDumpEntry[]>("debug_dump_user_info");
-      setUserInfoEntries(entries);
-      const dir = await invoke<string>("debug_user_info_dir");
-      setUserInfoDir(dir);
+      const [statusInfo, sessionList] = await Promise.all([
+        invoke<CaptureStatusInfo>("capture_status"),
+        invoke<CaptureSession[]>("capture_list_sessions"),
+      ]);
+      setCaptureStatus(statusInfo);
+      setCaptureSessions(sessionList);
+    } catch {
+      // Tauri not available
+    }
+  }, []);
+
+  const loadCaptureEntries = useCallback(
+    async (id: string, from: number, replace: boolean) => {
+      try {
+        const page = await invoke<CapturePage>("capture_read_entries", {
+          id,
+          offset: from,
+          limit: CAPTURE_PAGE_SIZE,
+        });
+        setCaptureTotal(page.total);
+        setCaptureEntries((prev) =>
+          replace ? page.entries : [...prev, ...page.entries]
+        );
+      } catch (e) {
+        logError("[Developer] capture read failed:", e);
+        setCaptureError(String(e));
+      }
+    },
+    []
+  );
+
+  const handleCaptureStart = async () => {
+    setCaptureBusy(true);
+    setCaptureError(null);
+    try {
+      setCaptureStatus(await invoke<CaptureStatusInfo>("capture_start"));
+      await refreshCapture();
     } catch (e) {
-      logError("[Developer] user info dump failed:", e);
-      setUserInfoError(String(e));
+      logError("[Developer] capture start failed:", e);
+      setCaptureError(String(e));
     } finally {
-      setIsUserInfoDumping(false);
+      setCaptureBusy(false);
     }
   };
 
-  const handleDumpWiki = async () => {
-    setIsDumping(true);
-    setDumpError(null);
+  const handleCaptureStop = async () => {
+    setCaptureBusy(true);
+    setCaptureError(null);
     try {
-      const entries = await invoke<WikiDumpEntry[]>("debug_dump_wiki_catalogs");
-      setDumpEntries(entries);
-      const dir = await invoke<string>("debug_wiki_debug_dir");
-      setDumpDir(dir);
+      setCaptureStatus(await invoke<CaptureStatusInfo>("capture_stop"));
+      await refreshCapture();
+      if (viewingId) {
+        await loadCaptureEntries(viewingId, 0, true);
+      }
     } catch (e) {
-      logError("[Developer] wiki dump failed:", e);
-      setDumpError(String(e));
+      logError("[Developer] capture stop failed:", e);
+      setCaptureError(String(e));
     } finally {
-      setIsDumping(false);
+      setCaptureBusy(false);
     }
   };
+
+  const handleViewSession = async (id: string) => {
+    setViewingId(id);
+    setSelectedEntry(null);
+    setCaptureEntries([]);
+    setCaptureTotal(0);
+    await loadCaptureEntries(id, 0, true);
+  };
+
+  const handleCloseSession = () => {
+    setViewingId(null);
+    setSelectedEntry(null);
+    setCaptureEntries([]);
+    setCaptureTotal(0);
+  };
+
+  const handleDeleteSession = async (id: string) => {
+    setCaptureError(null);
+    try {
+      await invoke("capture_delete_session", { id });
+      if (viewingId === id) {
+        handleCloseSession();
+      }
+      await refreshCapture();
+    } catch (e) {
+      logError("[Developer] capture delete failed:", e);
+      setCaptureError(String(e));
+    }
+  };
+
+  const handleOpenCaptureDir = async () => {
+    try {
+      const dir = await invoke<string>("capture_dir");
+      await revealItemInDir(dir);
+    } catch (e) {
+      logError("[Developer] capture dir failed:", e);
+      setCaptureError(String(e));
+    }
+  };
+
+  const handleAutoStartChange = async (value: boolean) => {
+    setAutoStartCapture(value);
+    try {
+      await setConfig("capture_autostart", value);
+    } catch (e) {
+      logError("[Developer] save capture_autostart failed:", e);
+      setCaptureError(String(e));
+    }
+  };
+
+  useEffect(() => {
+    refreshCapture();
+    getConfig<boolean>("capture_autostart")
+      .then((v) => setAutoStartCapture(v ?? false))
+      .catch((e) => logError("[Developer] load capture_autostart failed:", e));
+  }, [refreshCapture]);
+
+  useEffect(() => {
+    if (!captureStatus?.recording) return;
+    const timer = setInterval(refreshCapture, 2000);
+    return () => clearInterval(timer);
+  }, [captureStatus?.recording, refreshCapture]);
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -495,138 +647,193 @@ export default function DeveloperPage() {
           )}
         </GlassCard>
 
-        {/* Wiki 数据抓取（调试） */}
-        <GlassCard id="developer-wiki-dump" className="p-6 glass-surface border border-separator/90 overflow-hidden">
+        {/* 网络请求录制 */}
+        <GlassCard id="developer-capture" className="p-6 glass-surface border border-separator/90 overflow-hidden">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
-              <span className="w-1 h-5 bg-warning rounded-full" />
-              {i18n.language === "zh" ? "Wiki 数据抓取（调试）" : "Wiki Data Dump (Debug)"}
+              <span
+                className={`w-1 h-5 rounded-full ${
+                  captureStatus?.recording ? "bg-danger" : "bg-primary"
+                }`}
+              />
+              {zh ? "网络请求录制" : "Network Recording"}
+              <span
+                className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                  captureStatus?.recording
+                    ? "bg-danger/10 text-danger"
+                    : "bg-default-100 text-muted"
+                }`}
+              >
+                {captureStatus?.recording
+                  ? zh
+                    ? "录制中"
+                    : "Recording"
+                  : zh
+                    ? "未录制"
+                    : "Idle"}
+              </span>
             </h2>
             <div className="flex items-center gap-2">
-              {dumpDir && (
-                <GlassButton variant="outline" size="sm" onPress={() => revealItemInDir(dumpDir)}>
-                  {i18n.language === "zh" ? "打开目录" : "Open Folder"}
+              {!captureStatus?.recording ? (
+                <GlassButton
+                  variant="primary"
+                  size="sm"
+                  isDisabled={captureBusy}
+                  onPress={handleCaptureStart}
+                >
+                  {captureBusy
+                    ? zh
+                      ? "处理中…"
+                      : "Working…"
+                    : zh
+                      ? "开始录制"
+                      : "Start Recording"}
+                </GlassButton>
+              ) : (
+                <GlassButton
+                  variant="danger"
+                  size="sm"
+                  isDisabled={captureBusy}
+                  onPress={handleCaptureStop}
+                >
+                  {captureBusy
+                    ? zh
+                      ? "处理中…"
+                      : "Working…"
+                    : zh
+                      ? "停止录制"
+                      : "Stop Recording"}
                 </GlassButton>
               )}
-              <GlassButton variant="outline" size="sm" isDisabled={isDumping} onPress={handleDumpWiki}>
-                {isDumping
-                  ? (i18n.language === "zh" ? "抓取中…" : "Fetching…")
-                  : (i18n.language === "zh" ? "保存全部 Wiki JSON" : "Dump All Wiki JSON")}
+              <GlassButton variant="outline" size="sm" onPress={handleOpenCaptureDir}>
+                {zh ? "打开目录" : "Open Folder"}
+              </GlassButton>
+              <GlassButton variant="outline" size="sm" onPress={refreshCapture}>
+                {t("common.refresh")}
               </GlassButton>
             </div>
           </div>
-          <p className="text-sm text-muted mb-4">
-            {i18n.language === "zh"
-              ? "抓取 wiki 目录各接口变体的原始响应并保存到 wiki_debug 目录（含总目录、干员、武器、无 onlyOnline 变体），用于核对返回结构与 items 内容。"
-              : "Fetch raw responses of each wiki catalog variant and save them to the wiki_debug folder (catalog, char, weapon, no-onlyOnline), for inspecting response structure and items."}
-          </p>
-          {dumpError && (
-            <p className="text-sm text-danger mb-3 break-all">{dumpError}</p>
-          )}
-          {dumpEntries.length > 0 && (
-            <GlassTable>
-              <GlassTable.ScrollContainer>
-                <GlassTable.Content aria-label="Wiki dump results" className="min-w-[520px]">
-                  <GlassTable.Header>
-                    <GlassTable.Column isRowHeader>{i18n.language === "zh" ? "变体" : "Variant"}</GlassTable.Column>
-                    <GlassTable.Column>{i18n.language === "zh" ? "code" : "code"}</GlassTable.Column>
-                    <GlassTable.Column>{i18n.language === "zh" ? "message" : "message"}</GlassTable.Column>
-                    <GlassTable.Column>{i18n.language === "zh" ? "目录" : "Catalogs"}</GlassTable.Column>
-                    <GlassTable.Column>{i18n.language === "zh" ? "子类" : "Subs"}</GlassTable.Column>
-                    <GlassTable.Column>{i18n.language === "zh" ? "条目" : "Items"}</GlassTable.Column>
-                  </GlassTable.Header>
-                  <GlassTable.Body>
-                    {dumpEntries.map((e) => (
-                      <GlassTable.Row key={e.name}>
-                        <GlassTable.Cell className="font-mono text-xs">{e.name}</GlassTable.Cell>
-                        <GlassTable.Cell>
-                          <span className={e.code === 0 ? "text-success" : "text-danger font-semibold"}>
-                            {e.code ?? "—"}
-                          </span>
-                        </GlassTable.Cell>
-                        <GlassTable.Cell className="text-xs text-muted max-w-[160px] truncate">
-                          {e.message ?? "—"}
-                        </GlassTable.Cell>
-                        <GlassTable.Cell>{e.catalog_count}</GlassTable.Cell>
-                        <GlassTable.Cell>{e.type_sub_count}</GlassTable.Cell>
-                        <GlassTable.Cell className={e.item_count > 0 ? "text-success font-semibold" : "text-danger"}>
-                          {e.item_count}
-                        </GlassTable.Cell>
-                      </GlassTable.Row>
-                    ))}
-                  </GlassTable.Body>
-                </GlassTable.Content>
-              </GlassTable.ScrollContainer>
-            </GlassTable>
-          )}
-        </GlassCard>
 
-        {/* 用户信息抓取（调试） */}
-        <GlassCard id="developer-user-dump" className="p-6 glass-surface border border-separator/90 overflow-hidden">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <span className="w-1 h-5 bg-primary rounded-full" />
-              {i18n.language === "zh" ? "用户信息数据抓取（调试）" : "User Info Dump (Debug)"}
-            </h2>
-            <div className="flex items-center gap-2">
-              {userInfoDir && (
-                <GlassButton variant="outline" size="sm" onPress={() => revealItemInDir(userInfoDir)}>
-                  {i18n.language === "zh" ? "打开目录" : "Open Folder"}
-                </GlassButton>
-              )}
-              <GlassButton variant="outline" size="sm" isDisabled={isUserInfoDumping} onPress={handleDumpUserInfo}>
-                {isUserInfoDumping
-                  ? (i18n.language === "zh" ? "抓取中…" : "Fetching…")
-                  : (i18n.language === "zh" ? "抓取用户信息" : "Dump User Info")}
-              </GlassButton>
-            </div>
-          </div>
           <p className="text-sm text-muted mb-4">
-            {i18n.language === "zh"
-              ? "抓取玩家绑定（player/binding）与角色卡片详情（card/detail）的原始响应并保存到 user_debug 目录，用于核对用户信息字段。"
-              : "Fetch raw responses of player binding and card detail, save them to the user_debug folder for inspecting user info fields."}
+            {zh
+              ? "开始录制后，应用发出的所有网络请求及其返回内容会逐条保存到本地 network_capture 目录，直到点击停止录制；可在下方浏览每个会话的请求头、请求体与完整响应。流式下载的大型文件仅记录请求与状态，不保存响应体。"
+              : "While recording, every network request sent by the app and its response content is saved to the local network_capture folder until you stop. Browse request headers, request bodies and full responses of each session below. Large streaming downloads only record the request and status."}
           </p>
-          {userInfoError && (
-            <p className="text-sm text-danger mb-3 break-all">{userInfoError}</p>
+
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-foreground">
+                {zh ? "启动时自动录制" : "Auto-record on launch"}
+              </p>
+              <p className="text-sm text-muted mt-0.5">
+                {zh
+                  ? "下次启动应用时，在发出任何 API 请求之前自动开始录制；不影响当前录制会话，打开后下次启动状态会直接显示为「录制中」。"
+                  : "Start recording automatically on the next launch, before any API request is sent. Does not affect the current session; on the next launch the status shows Recording right away."}
+              </p>
+            </div>
+            <GlassSwitch
+              isSelected={autoStartCapture}
+              onValueChange={handleAutoStartChange}
+              isDisabled={captureBusy}
+              aria-label={zh ? "启动时自动录制" : "Auto-record on launch"}
+              className="shrink-0"
+            >
+              <GlassSwitch.Control>
+                <GlassSwitch.Thumb />
+              </GlassSwitch.Control>
+            </GlassSwitch>
+          </div>
+
+          {captureError && (
+            <p className="text-sm text-danger mb-3 break-all">{captureError}</p>
           )}
-          {userInfoEntries.length > 0 && (
+
+          <div className="flex flex-wrap items-center gap-3 mb-4 text-xs text-muted font-mono">
+            {captureStatus?.recording && captureStatus.session_id ? (
+              <>
+                <span className="text-danger font-semibold">
+                  ● {captureStatus.session_id}
+                </span>
+                <span>
+                  {captureStatus.count} {zh ? "条请求" : "requests"}
+                </span>
+                <span>{formatBytes(captureStatus.size_bytes)}</span>
+              </>
+            ) : (
+              <span>{zh ? "当前未在录制" : "Not recording"}</span>
+            )}
+            <span className="ml-auto">
+              {captureSessions.length} {zh ? "个会话" : "sessions"}
+            </span>
+          </div>
+
+          {captureSessions.length === 0 ? (
+            <p className="text-sm text-muted">
+              {zh ? "暂无录制会话" : "No recording sessions yet"}
+            </p>
+          ) : (
             <GlassTable>
               <GlassTable.ScrollContainer>
-                <GlassTable.Content aria-label="User info dump results" className="min-w-[520px]">
+                <GlassTable.Content aria-label="Capture sessions" className="min-w-[620px]">
                   <GlassTable.Header>
-                    <GlassTable.Column isRowHeader>{i18n.language === "zh" ? "接口" : "API"}</GlassTable.Column>
-                    <GlassTable.Column>{i18n.language === "zh" ? "code" : "code"}</GlassTable.Column>
-                    <GlassTable.Column>{i18n.language === "zh" ? "message" : "message"}</GlassTable.Column>
-                    <GlassTable.Column>{i18n.language === "zh" ? "摘要" : "Summary"}</GlassTable.Column>
-                    <GlassTable.Column>JSON</GlassTable.Column>
+                    <GlassTable.Column isRowHeader>
+                      {zh ? "开始时间" : "Started"}
+                    </GlassTable.Column>
+                    <GlassTable.Column>{zh ? "结束时间" : "Ended"}</GlassTable.Column>
+                    <GlassTable.Column>{zh ? "请求数" : "Requests"}</GlassTable.Column>
+                    <GlassTable.Column>{zh ? "大小" : "Size"}</GlassTable.Column>
+                    <GlassTable.Column>{zh ? "状态" : "Status"}</GlassTable.Column>
+                    <GlassTable.Column>{zh ? "操作" : "Actions"}</GlassTable.Column>
                   </GlassTable.Header>
                   <GlassTable.Body>
-                    {userInfoEntries.map((e) => (
-                      <GlassTable.Row key={e.name}>
-                        <GlassTable.Cell className="font-mono text-xs">{e.name}</GlassTable.Cell>
+                    {captureSessions.map((session) => (
+                      <GlassTable.Row key={session.id}>
+                        <GlassTable.Cell className="font-mono text-xs">
+                          {session.started_at}
+                        </GlassTable.Cell>
+                        <GlassTable.Cell className="font-mono text-xs">
+                          {session.ended_at ?? "—"}
+                        </GlassTable.Cell>
+                        <GlassTable.Cell>{session.count}</GlassTable.Cell>
+                        <GlassTable.Cell>{formatBytes(session.size_bytes)}</GlassTable.Cell>
                         <GlassTable.Cell>
-                          <span className={e.code === 0 ? "text-success" : "text-danger font-semibold"}>
-                            {e.code ?? "—"}
+                          <span
+                            className={
+                              session.status === "recording"
+                                ? "text-danger font-semibold"
+                                : "text-success"
+                            }
+                          >
+                            {session.status === "recording"
+                              ? zh
+                                ? "录制中"
+                                : "Recording"
+                              : zh
+                                ? "已完成"
+                                : "Done"}
                           </span>
                         </GlassTable.Cell>
-                        <GlassTable.Cell className="text-xs text-muted max-w-[160px] truncate">
-                          {e.message ?? "—"}
-                        </GlassTable.Cell>
-                        <GlassTable.Cell className="text-xs text-foreground max-w-[200px] truncate">
-                          {e.info || "—"}
-                        </GlassTable.Cell>
                         <GlassTable.Cell>
-                          {e.path ? (
+                          <div className="flex items-center gap-3 text-xs">
                             <button
-                              className="text-primary hover:underline text-xs font-mono truncate block max-w-[140px]"
-                              onClick={() => revealItemInDir(e.path)}
-                              title={e.path}
+                              className="text-primary hover:underline"
+                              onClick={() => handleViewSession(session.id)}
                             >
-                              {e.path.split(/[\\/]/).pop()}
+                              {zh ? "浏览" : "Browse"}
                             </button>
-                          ) : (
-                            <span className="text-muted text-xs">—</span>
-                          )}
+                            <button
+                              className="text-primary hover:underline"
+                              onClick={() => revealItemInDir(session.path)}
+                            >
+                              {zh ? "目录" : "Folder"}
+                            </button>
+                            <button
+                              className="text-danger hover:underline"
+                              onClick={() => handleDeleteSession(session.id)}
+                            >
+                              {zh ? "删除" : "Delete"}
+                            </button>
+                          </div>
                         </GlassTable.Cell>
                       </GlassTable.Row>
                     ))}
@@ -634,6 +841,178 @@ export default function DeveloperPage() {
                 </GlassTable.Content>
               </GlassTable.ScrollContainer>
             </GlassTable>
+          )}
+
+          {viewingId && (
+            <div className="mt-6 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-mono text-xs text-foreground break-all">
+                  {viewingId} · {captureEntries.length} / {captureTotal}
+                </p>
+                <div className="flex items-center gap-2">
+                  {captureEntries.length < captureTotal && (
+                    <GlassButton
+                      variant="outline"
+                      size="sm"
+                      onPress={() => loadCaptureEntries(viewingId, captureEntries.length, false)}
+                    >
+                      {zh ? "加载更多" : "Load more"}
+                    </GlassButton>
+                  )}
+                  <GlassButton variant="outline" size="sm" onPress={handleCloseSession}>
+                    {zh ? "关闭" : "Close"}
+                  </GlassButton>
+                </div>
+              </div>
+
+              {captureEntries.length === 0 ? (
+                <p className="text-sm text-muted">
+                  {zh ? "该会话没有记录" : "No entries in this session"}
+                </p>
+              ) : (
+                <GlassTable>
+                  <GlassTable.ScrollContainer>
+                    <GlassTable.Content aria-label="Capture entries" className="min-w-[620px]">
+                      <GlassTable.Header>
+                        <GlassTable.Column isRowHeader>#</GlassTable.Column>
+                        <GlassTable.Column>{zh ? "方法" : "Method"}</GlassTable.Column>
+                        <GlassTable.Column>{zh ? "状态" : "Status"}</GlassTable.Column>
+                        <GlassTable.Column>{zh ? "耗时" : "Time"}</GlassTable.Column>
+                        <GlassTable.Column>URL</GlassTable.Column>
+                      </GlassTable.Header>
+                      <GlassTable.Body>
+                        {captureEntries.map((entry) => (
+                          <GlassTable.Row key={`${entry.index}-${entry.timestamp}`}>
+                            <GlassTable.Cell className="font-mono text-xs">
+                              {entry.index}
+                            </GlassTable.Cell>
+                            <GlassTable.Cell className="font-mono text-xs font-semibold">
+                              {entry.method}
+                            </GlassTable.Cell>
+                            <GlassTable.Cell>
+                              <span
+                                className={
+                                  entry.error
+                                    ? "text-danger font-semibold"
+                                    : (entry.status ?? 0) < 400
+                                      ? "text-success font-semibold"
+                                      : "text-warning font-semibold"
+                                }
+                              >
+                                {entry.error ? "ERR" : entry.status ?? "—"}
+                              </span>
+                            </GlassTable.Cell>
+                            <GlassTable.Cell className="font-mono text-xs">
+                              {entry.duration_ms} ms
+                            </GlassTable.Cell>
+                            <GlassTable.Cell className="max-w-[320px]">
+                              <button
+                                className={`text-left text-xs font-mono truncate block w-full hover:text-primary transition-colors ${
+                                  selectedEntry?.index === entry.index
+                                    ? "text-primary font-semibold"
+                                    : "text-foreground/80"
+                                }`}
+                                onClick={() => setSelectedEntry(entry)}
+                                title={entry.url}
+                              >
+                                {entry.url}
+                              </button>
+                            </GlassTable.Cell>
+                          </GlassTable.Row>
+                        ))}
+                      </GlassTable.Body>
+                    </GlassTable.Content>
+                  </GlassTable.ScrollContainer>
+                </GlassTable>
+              )}
+
+              {selectedEntry && (
+                <div className="glass-surface rounded-xl border border-separator/80 p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-mono text-xs break-all text-foreground flex-1">
+                      <span className="font-bold text-primary">{selectedEntry.method}</span>{" "}
+                      {selectedEntry.url}
+                    </p>
+                    <GlassButton
+                      variant="outline"
+                      size="sm"
+                      onPress={() => setSelectedEntry(null)}
+                    >
+                      {zh ? "关闭详情" : "Close"}
+                    </GlassButton>
+                  </div>
+
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-muted">
+                    <span>
+                      {zh ? "时间" : "Time"}: {selectedEntry.timestamp}
+                    </span>
+                    <span>
+                      {zh ? "状态" : "Status"}:{" "}
+                      <span
+                        className={
+                          selectedEntry.error
+                            ? "text-danger"
+                            : (selectedEntry.status ?? 0) < 400
+                              ? "text-success"
+                              : "text-warning"
+                        }
+                      >
+                        {selectedEntry.error ?? selectedEntry.status ?? "—"}
+                      </span>
+                    </span>
+                    <span>
+                      {zh ? "耗时" : "Duration"}: {selectedEntry.duration_ms} ms
+                    </span>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold text-foreground mb-1">
+                      {zh ? "请求头" : "Request Headers"}
+                    </p>
+                    <pre className="text-[11px] font-mono text-muted bg-default-100/60 rounded-lg p-2.5 overflow-auto max-h-40 whitespace-pre-wrap break-all">
+                      {selectedEntry.request_headers
+                        .map(([key, value]) => `${key}: ${value}`)
+                        .join("\n") || "—"}
+                    </pre>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold text-foreground mb-1">
+                      {zh ? "请求体" : "Request Body"}
+                    </p>
+                    <pre className="text-[11px] font-mono text-muted bg-default-100/60 rounded-lg p-2.5 overflow-auto max-h-60 whitespace-pre-wrap break-all">
+                      {formatBodyText(selectedEntry.request_body, null) || "—"}
+                    </pre>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold text-foreground mb-1">
+                      {zh ? "响应头" : "Response Headers"}
+                    </p>
+                    <pre className="text-[11px] font-mono text-muted bg-default-100/60 rounded-lg p-2.5 overflow-auto max-h-40 whitespace-pre-wrap break-all">
+                      {(selectedEntry.response_headers ?? [])
+                        .map(([key, value]) => `${key}: ${value}`)
+                        .join("\n") || "—"}
+                    </pre>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold text-foreground mb-1">
+                      {zh ? "响应体" : "Response Body"}
+                      {selectedEntry.response_body ? (
+                        <span className="text-muted font-normal">
+                          {" "}
+                          ({formatBytes(selectedEntry.response_body.size)})
+                        </span>
+                      ) : null}
+                    </p>
+                    <pre className="text-[11px] font-mono text-muted bg-default-100/60 rounded-lg p-2.5 overflow-auto max-h-[420px] whitespace-pre-wrap break-all">
+                      {formatBodyText(selectedEntry.response_body, selectedEntry.note) || "—"}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </GlassCard>
 

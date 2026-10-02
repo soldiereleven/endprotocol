@@ -35,6 +35,11 @@ pub fn config_file_path() -> Result<PathBuf, &'static str> {
     app_data_dir().map(|d| d.join("app_config.json"))
 }
 
+/// 网络请求录制目录
+pub fn capture_dir() -> Result<PathBuf, &'static str> {
+    app_data_dir().map(|d| d.join("network_capture"))
+}
+
 /// 抽卡记录文件路径（gacha_records 子目录，按 userId+serverId 区分）
 pub fn gacha_records_file_path(user_id: &str, server_id: &str) -> Result<PathBuf, &'static str> {
     app_data_dir().map(|d| {
