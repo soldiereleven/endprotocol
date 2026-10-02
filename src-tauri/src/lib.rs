@@ -54,6 +54,8 @@ pub fn run() {
             commands::account::get_skland_accounts,
             commands::account::save_skland_account,
             commands::account::get_skland_account_roles,
+            commands::account::get_skland_user_info,
+            commands::account::get_skland_games,
             commands::account::add_account,
             commands::account::logout_account,
             commands::account::batch_logout,

@@ -21,6 +21,94 @@ export interface Account {
 export interface SklandAccount {
   userId: string;
   gameRoleCount: number;
+  /** 已缓存的森空岛昵称（未获取过时为空） */
+  nickname?: string;
+  /** 已缓存的森空岛头像地址（未获取过时为空） */
+  avatar?: string;
+}
+
+/**
+ * 森空岛用户在单个游戏下的等级/积分
+ */
+export interface SklandGameScore {
+  gameId: number;
+  level: number;
+  iconUrl: string;
+  darkModeIconUrl: string;
+  checkedDays: number;
+  score: number;
+  gameName: string;
+  levelUrl: string;
+}
+
+/**
+ * 森空岛头像挂件
+ */
+export interface SklandPendant {
+  id: number;
+  iconUrl: string;
+  title: string;
+  description: string;
+}
+
+/**
+ * 森空岛个人主页背景
+ */
+export interface SklandBackground {
+  id: number;
+  url: string;
+  resourceKind: number;
+}
+
+/**
+ * 森空岛社区互动数据（接口以字符串返回数值）
+ */
+export interface SklandUserStats {
+  liked: string;
+  collect: string;
+  comment: string;
+  follow: string;
+  fans: string;
+  black: string;
+  pub: string;
+}
+
+/**
+ * 森空岛游戏基础信息（GET /web/v1/game）
+ */
+export interface SklandGameInfo {
+  gameId: number;
+  name: string;
+  iconUrl: string;
+  backgroundUrl: string;
+}
+
+/**
+ * 森空岛用户资料（GET /web/v1/user）
+ */
+export interface SklandUserInfo {
+  id: string;
+  nickname: string;
+  profile: string;
+  avatar: string;
+  avatarCode: number;
+  backgroundCode: number;
+  isCreator: boolean;
+  status: number;
+  operationStatus: number;
+  identity: number;
+  kind: number;
+  latestIpLocation: string;
+  moderatorStatus: number;
+  moderatorChangeTime: number;
+  gender: number;
+  birthday: string;
+  hgId: string;
+  showId: string;
+  scoreInfoList: SklandGameScore[];
+  pendant?: SklandPendant;
+  stats?: SklandUserStats;
+  background?: SklandBackground;
 }
 
 /**
@@ -141,6 +229,28 @@ export async function getSklandAccountRoles(userId: string): Promise<LoginResult
     logError('Failed to get Skland account roles:', error);
     return { success: false, errorMessage: String(error) };
   }
+}
+
+/**
+ * 获取森空岛账户的用户资料（昵称、头像、游戏等级/积分、社区互动数据）
+ * @param userId 森空岛用户 ID
+ * @returns 用户资料
+ */
+export async function getSklandUserInfo(userId: string): Promise<SklandUserInfo> {
+  return await invoke('get_skland_user_info', { userId });
+}
+
+/**
+ * 获取森空岛游戏列表（游戏图标等基础信息，后端带缓存）
+ * @param userId 用于鉴权的森空岛用户 ID
+ * @param force 是否强制刷新缓存
+ * @returns 游戏列表
+ */
+export async function getSklandGames(
+  userId: string,
+  force: boolean = false,
+): Promise<SklandGameInfo[]> {
+  return await invoke('get_skland_games', { userId, force });
 }
 
 /**

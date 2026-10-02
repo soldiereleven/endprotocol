@@ -7,6 +7,7 @@ use tauri::{AppHandle, Emitter};
 
 use crate::models::account::{
     AccountInfo, AccountLoginResult, AccountRefreshResult, AccountSummary, SklandAccountInfo,
+    SklandGameInfo, SklandUserInfo,
 };
 use crate::models::login::{
     CodeLoginRequest, LoginRequest, ScanLoginInfo, ScanStatus, SendCodeRequest,
@@ -18,6 +19,19 @@ use crate::services::network_service::{NetworkService, PreloadRoleInfo};
 use crate::services::skland_service::SklandService;
 use crate::utils::{capture, http_client, AppError};
 use crate::{log_debug, log_error, log_info, log_warn};
+
+/// 森空岛游戏列表缓存配置键
+const SKLAND_GAMES_CACHE_KEY: &str = "skland_games_cache";
+/// 森空岛游戏列表缓存有效期（12 小时）
+const SKLAND_GAMES_CACHE_TTL_SECS: i64 = 12 * 60 * 60;
+
+/// 当前 Unix 时间戳（秒）
+fn now_unix_secs() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs() as i64)
+        .unwrap_or(0)
+}
 
 /// 用于异步任务的简化版账户服务（避免 Arc<Mutex<>> 的复杂性）
 struct AsyncAccountService {
@@ -2424,35 +2438,153 @@ impl AccountService {
         Ok(roles)
     }
 
+    /// 读取指定森空岛账户已保存的 cred / token
+    fn read_skland_credentials(&self, user_id: &str) -> Result<(String, String), AppError> {
+        let config = self.config_service.lock().unwrap();
+        let token_key = format!("account_token_{}", user_id);
+        let data: serde_json::Value = config.get(&token_key).ok_or_else(|| AppError::AuthError {
+            message: "Skland account was not found".to_string(),
+        })?;
+        let cred = data
+            .get("cred")
+            .and_then(|value| value.as_str())
+            .ok_or_else(|| AppError::AuthError {
+                message: "Skland cred was not found".to_string(),
+            })?
+            .to_string();
+        let token = data
+            .get("token")
+            .and_then(|value| value.as_str())
+            .ok_or_else(|| AppError::AuthError {
+                message: "Skland token was not found".to_string(),
+            })?
+            .to_string();
+        Ok((cred, token))
+    }
+
+    /// 将森空岛用户资料写入 `account_token_{user_id}.user_info` 缓存
+    fn cache_skland_user_info(&self, user_id: &str, info: &SklandUserInfo) -> Result<(), AppError> {
+        let mut config = self.config_service.lock().unwrap();
+        let token_key = format!("account_token_{}", user_id);
+        let mut data: serde_json::Value = config.get(&token_key).unwrap_or_else(|| json!({}));
+        if !data.is_object() {
+            data = json!({});
+        }
+        let serialized = serde_json::to_value(info).map_err(|error| AppError::ConfigError {
+            message: format!("Failed to serialize Skland user info: {}", error),
+        })?;
+        if let Some(object) = data.as_object_mut() {
+            object.insert("user_info".to_string(), serialized);
+        }
+        config.set(token_key, data)
+    }
+
+    /// 获取森空岛用户资料（昵称、头像、游戏等级/积分、社区互动数据）
+    ///
+    /// 请求 `GET /web/v1/user`，成功后把结果缓存进账户配置，
+    /// 供 [`Self::get_skland_accounts`] 在列表中直接展示昵称与头像。
+    pub async fn get_skland_user_info(&self, user_id: String) -> Result<SklandUserInfo, AppError> {
+        log_debug!("get_skland_user_info: START for user_id={}", user_id);
+
+        // cred 过期时自动通过 hytoken 刷新
+        self.check_and_refresh_user_cred(&user_id).await?;
+        let (cred, token) = self.read_skland_credentials(&user_id)?;
+        let info = self.skland_service.get_user_info(&cred, &token).await?;
+
+        if let Err(error) = self.cache_skland_user_info(&user_id, &info) {
+            log_warn!(
+                "get_skland_user_info: failed to cache user info for {}: {}",
+                user_id,
+                error
+            );
+        }
+
+        log_debug!(
+            "get_skland_user_info: DONE for user_id={}, nickname={}",
+            user_id,
+            info.nickname
+        );
+        Ok(info)
+    }
+
+    /// 获取森空岛游戏列表（游戏图标等基础信息）
+    ///
+    /// `GET /web/v1/game` 与账户无关，因此统一缓存在配置项 `skland_games_cache` 中，
+    /// 缓存有效期 [`SKLAND_GAMES_CACHE_TTL_SECS`]；过期后重新拉取，
+    /// 拉取失败时退回旧缓存（图标不会因为一次网络异常而消失）。
+    pub async fn get_skland_games(
+        &self,
+        user_id: String,
+        force: bool,
+    ) -> Result<Vec<SklandGameInfo>, AppError> {
+        let cached = self.read_skland_games_cache();
+        if !force {
+            if let Some((fetched_at, games)) = &cached {
+                if now_unix_secs() - fetched_at < SKLAND_GAMES_CACHE_TTL_SECS {
+                    return Ok(games.clone());
+                }
+            }
+        }
+
+        let fetched = async {
+            self.check_and_refresh_user_cred(&user_id).await?;
+            let (cred, token) = self.read_skland_credentials(&user_id)?;
+            self.skland_service.get_game_list(&cred, &token).await
+        }
+        .await;
+
+        match fetched {
+            Ok(games) => {
+                if let Err(error) = self.cache_skland_games(&games) {
+                    log_warn!("get_skland_games: failed to cache game list: {}", error);
+                }
+                Ok(games)
+            }
+            Err(error) => match cached {
+                Some((_, games)) => {
+                    log_warn!(
+                        "get_skland_games: refresh failed ({}), falling back to cached list",
+                        error
+                    );
+                    Ok(games)
+                }
+                None => Err(error),
+            },
+        }
+    }
+
+    /// 读取 `skland_games_cache`（返回 `(fetched_at, games)`）
+    fn read_skland_games_cache(&self) -> Option<(i64, Vec<SklandGameInfo>)> {
+        let config = self.config_service.lock().unwrap();
+        let value: serde_json::Value = config.get(SKLAND_GAMES_CACHE_KEY)?;
+        let fetched_at = value
+            .get("fetched_at")
+            .and_then(|value| value.as_i64())
+            .unwrap_or(0);
+        let games: Vec<SklandGameInfo> =
+            serde_json::from_value(value.get("games")?.clone()).ok()?;
+        (!games.is_empty()).then_some((fetched_at, games))
+    }
+
+    /// 写入 `skland_games_cache`
+    fn cache_skland_games(&self, games: &[SklandGameInfo]) -> Result<(), AppError> {
+        let mut config = self.config_service.lock().unwrap();
+        let value = json!({
+            "fetched_at": now_unix_secs(),
+            "games": serde_json::to_value(games).map_err(|error| AppError::ConfigError {
+                message: format!("Failed to serialize Skland game list: {}", error),
+            })?,
+        });
+        config.set(SKLAND_GAMES_CACHE_KEY.to_string(), value)
+    }
+
     /// 获取已绑定森空岛账户的游戏角色，供后续绑定和解绑使用
     pub async fn get_skland_account_roles(
         &self,
         user_id: String,
     ) -> Result<AccountLoginResult, AppError> {
         self.check_and_refresh_user_cred(&user_id).await?;
-        let (cred, token) = {
-            let config = self.config_service.lock().unwrap();
-            let token_key = format!("account_token_{}", user_id);
-            let data: serde_json::Value =
-                config.get(&token_key).ok_or_else(|| AppError::AuthError {
-                    message: "Skland account was not found".to_string(),
-                })?;
-            let cred = data
-                .get("cred")
-                .and_then(|value| value.as_str())
-                .ok_or_else(|| AppError::AuthError {
-                    message: "Skland cred was not found".to_string(),
-                })?
-                .to_string();
-            let token = data
-                .get("token")
-                .and_then(|value| value.as_str())
-                .ok_or_else(|| AppError::AuthError {
-                    message: "Skland token was not found".to_string(),
-                })?
-                .to_string();
-            (cred, token)
-        };
+        let (cred, token) = self.read_skland_credentials(&user_id)?;
         let available_roles = self.fetch_endfield_roles(&cred, &token, &user_id).await?;
 
         Ok(AccountLoginResult {
@@ -2479,9 +2611,21 @@ impl AccountService {
                     .get("skland_account_bound")
                     .and_then(|v| v.as_bool())
                     .unwrap_or_else(|| roles.is_some_and(|roles| !roles.is_empty()));
+                // 已缓存的森空岛用户资料（可能尚未获取过）
+                let user_info: Option<SklandUserInfo> = value
+                    .get("user_info")
+                    .and_then(|info| serde_json::from_value(info.clone()).ok());
                 is_bound.then(|| SklandAccountInfo {
                     user_id: user_id.to_string(),
                     game_role_count: roles.map_or(0, Vec::len),
+                    nickname: user_info
+                        .as_ref()
+                        .map(|info| info.nickname.clone())
+                        .filter(|nickname| !nickname.is_empty()),
+                    avatar: user_info
+                        .as_ref()
+                        .map(|info| info.avatar.clone())
+                        .filter(|avatar| !avatar.is_empty()),
                 })
             })
             .collect()

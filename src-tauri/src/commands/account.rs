@@ -3,7 +3,8 @@ use tauri::State;
 use tokio::sync::Mutex;
 
 use crate::models::account::{
-    AccountInfo, AccountLoginResult, AccountRefreshResult, SklandAccountInfo,
+    AccountInfo, AccountLoginResult, AccountRefreshResult, SklandAccountInfo, SklandGameInfo,
+    SklandUserInfo,
 };
 use crate::models::login::{
     CodeLoginRequest, LoginRequest, ScanLoginInfo, ScanStatus, SendCodeRequest,
@@ -95,6 +96,33 @@ pub async fn get_skland_account_roles(
     let service = state.lock().await;
     service
         .get_skland_account_roles(user_id)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+/// 获取森空岛账户的用户资料（昵称、头像、游戏等级/积分等）
+#[tauri::command]
+pub async fn get_skland_user_info(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+    user_id: String,
+) -> Result<SklandUserInfo, String> {
+    let service = state.lock().await;
+    service
+        .get_skland_user_info(user_id)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+/// 获取森空岛游戏列表（游戏图标等基础信息，带缓存）
+#[tauri::command]
+pub async fn get_skland_games(
+    state: State<'_, Arc<Mutex<AccountService>>>,
+    user_id: String,
+    force: Option<bool>,
+) -> Result<Vec<SklandGameInfo>, String> {
+    let service = state.lock().await;
+    service
+        .get_skland_games(user_id, force.unwrap_or(false))
         .await
         .map_err(|error| error.to_string())
 }

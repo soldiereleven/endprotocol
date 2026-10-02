@@ -14,6 +14,9 @@ use sha2::Sha256;
 use std::io::Write;
 use uuid::Uuid;
 
+use crate::models::account::{
+    SklandBackground, SklandGameInfo, SklandPendant, SklandUserInfo, SklandUserStats,
+};
 use crate::models::char_detail::CharDetailResponse;
 use crate::models::role::{BindingInfo, BindingResponse, GameBinding, RoleDisplayInfo, RoleInfo};
 use crate::services::config_service::ConfigService;
@@ -614,6 +617,106 @@ impl SklandService {
         }))
     }
 
+    /// 获取森空岛用户资料（昵称、头像、各游戏等级/积分、社区互动数据）
+    ///
+    /// 对应抓包请求：
+    /// ```text
+    /// GET /web/v1/user HTTP/2
+    /// host: zonai.skland.com
+    /// cred / timestamp / sign / vName / dId / platform: 3 ...
+    /// ```
+    /// 无查询参数与请求体，认证 header 由 [`Self::call_skland_api`] 统一注入
+    /// （cred、dId、sign、timestamp、platform、vName），签名算法与其余接口一致。
+    pub async fn get_user_info(&self, cred: &str, token: &str) -> Result<SklandUserInfo, AppError> {
+        let path = "/web/v1/user";
+        let json = self
+            .call_skland_api("GET", path, None, None, cred, token, vec![])
+            .await?;
+
+        let info = Self::parse_user_info_response(&json)?;
+
+        log_info!(
+            "Skland user info loaded: id={}, nickname={}, games={}",
+            info.id,
+            info.nickname,
+            info.score_info_list.len()
+        );
+        Ok(info)
+    }
+
+    /// 解析 `GET /web/v1/user` 的响应体
+    ///
+    /// - `data.user` → [`SklandUserInfo`] 主体
+    /// - `data.userRts` / `data.background` → 社区互动数据与主页背景（解析失败非致命）
+    /// - `data.pendant` 优先于 `data.user.pendant`
+    pub fn parse_user_info_response(json: &serde_json::Value) -> Result<SklandUserInfo, AppError> {
+        let data = json.get("data").ok_or_else(|| AppError::AuthError {
+            message: "data not found in user info response".to_string(),
+        })?;
+        let user = data.get("user").ok_or_else(|| AppError::AuthError {
+            message: "data.user not found in user info response".to_string(),
+        })?;
+
+        let mut info: SklandUserInfo =
+            serde_json::from_value(user.clone()).map_err(|e| AppError::AuthError {
+                message: format!("Failed to parse SklandUserInfo: {}", e),
+            })?;
+
+        // data.userRts / data.background 与 user 同级，解析失败时保持为空（非致命）
+        info.stats = data
+            .get("userRts")
+            .and_then(|value| serde_json::from_value::<SklandUserStats>(value.clone()).ok());
+        info.background = data
+            .get("background")
+            .and_then(|value| serde_json::from_value::<SklandBackground>(value.clone()).ok());
+        // 顶层 pendant 优先，缺失时沿用 user.pendant
+        if let Some(pendant) = data
+            .get("pendant")
+            .and_then(|value| serde_json::from_value::<SklandPendant>(value.clone()).ok())
+        {
+            info.pendant = Some(pendant);
+        }
+
+        Ok(info)
+    }
+
+    /// 获取森空岛游戏列表（用于账号资料中的游戏图标）
+    ///
+    /// 对应抓包请求 `GET /web/v1/game`（host: zonai.skland.com），
+    /// 无查询参数与请求体，header 与签名同样由 [`Self::call_skland_api`] 处理。
+    pub async fn get_game_list(
+        &self,
+        cred: &str,
+        token: &str,
+    ) -> Result<Vec<SklandGameInfo>, AppError> {
+        let path = "/web/v1/game";
+        let json = self
+            .call_skland_api("GET", path, None, None, cred, token, vec![])
+            .await?;
+        let games = Self::parse_game_list_response(&json)?;
+        log_info!("Skland game list loaded: {} games", games.len());
+        Ok(games)
+    }
+
+    /// 解析 `GET /web/v1/game` 的响应体，提取 `data.list[].game`
+    pub fn parse_game_list_response(
+        json: &serde_json::Value,
+    ) -> Result<Vec<SklandGameInfo>, AppError> {
+        let list = json
+            .get("data")
+            .and_then(|data| data.get("list"))
+            .and_then(|list| list.as_array())
+            .ok_or_else(|| AppError::AuthError {
+                message: "data.list not found in game list response".to_string(),
+            })?;
+
+        Ok(list
+            .iter()
+            .filter_map(|entry| entry.get("game"))
+            .filter_map(|game| serde_json::from_value::<SklandGameInfo>(game.clone()).ok())
+            .collect())
+    }
+
     /// 获取玩家绑定列表
     pub async fn get_player_binding(
         &self,
@@ -1133,5 +1236,189 @@ mod tests {
 
         // dId 应该是以 == 结尾的 Base64 字符串
         assert!(did.ends_with("=="), "dId should end with '=='");
+    }
+
+    /// 抓包样本：`GET /web/v1/user` 响应体（节选自真实返回）
+    const USER_INFO_RESPONSE: &str = r#"{
+      "code": 0,
+      "message": "OK",
+      "timestamp": "1790924989",
+      "data": {
+        "user": {
+          "id": "7345042541775",
+          "nickname": "sciencekill",
+          "profile": "",
+          "avatarCode": 200092,
+          "avatar": "https://bbs.hycdn.cn/image/2025/04/07/9638ca2e1ff259e6a9d39f856645e41e.png",
+          "backgroundCode": 1,
+          "isCreator": false,
+          "status": 1,
+          "operationStatus": 30,
+          "identity": 1,
+          "kind": 1,
+          "latestIpLocation": "中国",
+          "moderatorStatus": 4,
+          "moderatorChangeTime": 0,
+          "gender": 0,
+          "birthday": "1267891200",
+          "hgId": "1333697894290",
+          "creatorIdentifiers": [],
+          "scoreInfoList": [
+            {
+              "gameId": 1,
+              "level": 1,
+              "iconUrl": "https://bbs.hycdn.cn/asset/score/level-icon/Lv1.webp",
+              "darkModeIconUrl": "",
+              "checkedDays": 0,
+              "score": 14,
+              "gameName": "明日方舟",
+              "levelUrl": "https://bbs.hycdn.cn/asset/score/level-name-thin/Lv1.webp"
+            },
+            {
+              "gameId": 3,
+              "level": 1,
+              "iconUrl": "https://bbs.hycdn.cn/asset/score/level-icon/Lv1.webp",
+              "darkModeIconUrl": "",
+              "checkedDays": 0,
+              "score": 138,
+              "gameName": "明日方舟：终末地",
+              "levelUrl": "https://bbs.hycdn.cn/asset/score/level-name-thin/Lv1.webp"
+            }
+          ],
+          "pendant": {
+            "id": 60,
+            "iconUrl": "https://bbs.hycdn.cn/image/2026/01/14/f8123f455ec880c750efc0b93bdf5e00.webp",
+            "title": "佩丽卡主题",
+            "description": "参与森空岛明日方舟：终末地全球公测开启活动获取"
+          },
+          "showId": "7345042541775"
+        },
+        "userRts": {
+          "liked": "0",
+          "collect": "0",
+          "comment": "1",
+          "follow": "3",
+          "fans": "0",
+          "black": "0",
+          "pub": "0"
+        },
+        "moderator": {
+          "isModerator": false,
+          "operations": [],
+          "role": "ROLE_UNSPECIFIED",
+          "since": "0",
+          "status": 0,
+          "gameOperations": {}
+        },
+        "pendant": {
+          "id": 60,
+          "iconUrl": "https://bbs.hycdn.cn/image/2026/01/14/f8123f455ec880c750efc0b93bdf5e00.webp",
+          "title": "佩丽卡主题",
+          "description": "参与森空岛明日方舟：终末地全球公测开启活动获取"
+        },
+        "background": {
+          "id": 3,
+          "url": "https://bbs.hycdn.cn/image/2024/12/27/f087e6b13b2d28815c70d8de0b004e1c.png",
+          "resourceKind": 1
+        },
+        "userSanctionList": [],
+        "userInfoApply": {
+          "nickname": "",
+          "profile": ""
+        }
+      }
+    }"#;
+
+    #[test]
+    fn test_parse_user_info_response() {
+        let json: serde_json::Value = serde_json::from_str(USER_INFO_RESPONSE).unwrap();
+        let info = SklandService::parse_user_info_response(&json).unwrap();
+
+        assert_eq!(info.id, "7345042541775");
+        assert_eq!(info.nickname, "sciencekill");
+        assert_eq!(info.show_id, "7345042541775");
+        assert_eq!(info.avatar_code, 200092);
+        assert_eq!(info.latest_ip_location, "中国");
+        assert!(!info.is_creator);
+        assert_eq!(info.score_info_list.len(), 2);
+        assert_eq!(info.score_info_list[0].game_name, "明日方舟");
+        assert_eq!(info.score_info_list[1].level, 1);
+        assert_eq!(info.score_info_list[1].score, 138);
+        assert_eq!(
+            info.pendant.as_ref().map(|p| p.title.as_str()),
+            Some("佩丽卡主题")
+        );
+
+        let stats = info.stats.expect("userRts should be parsed");
+        assert_eq!(stats.follow, "3");
+        assert_eq!(stats.comment, "1");
+        assert_eq!(stats.published, "0");
+
+        let background = info.background.expect("background should be parsed");
+        assert_eq!(background.id, 3);
+        assert_eq!(background.resource_kind, 1);
+    }
+
+    #[test]
+    fn test_parse_user_info_response_requires_data_user() {
+        let json: serde_json::Value = serde_json::json!({ "code": 0, "message": "OK" });
+        assert!(SklandService::parse_user_info_response(&json).is_err());
+    }
+
+    /// 抓包样本：`GET /web/v1/game` 响应体（节选自真实返回）
+    const GAME_LIST_RESPONSE: &str = r#"{
+      "code": 0,
+      "message": "OK",
+      "data": {
+        "list": [
+          {
+            "game": {
+              "gameId": 1,
+              "name": "明日方舟",
+              "iconUrl": "https://bbs.hycdn.cn/asset/rhodes_island.png",
+              "backgroundUrl": "https://bbs.hycdn.cn/asset/arknights_bg.png",
+              "pcIconUrl": "https://bbs.hycdn.cn/asset/rhodes_island.png",
+              "backgroundStyle": 1,
+              "description": "明日方舟游戏相关讨论区",
+              "checkinIcon": { "key": "gameId1" }
+            },
+            "cates": [{ "id": 14, "gameId": 1, "name": "推荐" }]
+          },
+          {
+            "game": {
+              "gameId": 3,
+              "name": "明日方舟：终末地",
+              "iconUrl": "https://bbs.hycdn.cn/asset/endfield.png",
+              "backgroundUrl": "https://bbs.hycdn.cn/asset/endfield_bg.png",
+              "backgroundStyle": 1
+            },
+            "cates": []
+          }
+        ],
+        "homeTabs": [{ "name": "关注", "kind": "FOLLOW" }]
+      }
+    }"#;
+
+    #[test]
+    fn test_parse_game_list_response() {
+        let json: serde_json::Value = serde_json::from_str(GAME_LIST_RESPONSE).unwrap();
+        let games = SklandService::parse_game_list_response(&json).unwrap();
+
+        assert_eq!(games.len(), 2);
+        assert_eq!(games[0].game_id, 1);
+        assert_eq!(games[0].name, "明日方舟");
+        assert_eq!(
+            games[0].icon_url,
+            "https://bbs.hycdn.cn/asset/rhodes_island.png"
+        );
+        assert_eq!(games[1].game_id, 3);
+        assert_eq!(games[1].name, "明日方舟：终末地");
+        assert_eq!(games[1].icon_url, "https://bbs.hycdn.cn/asset/endfield.png");
+    }
+
+    #[test]
+    fn test_parse_game_list_response_requires_data_list() {
+        let json: serde_json::Value = serde_json::json!({ "code": 0, "data": {} });
+        assert!(SklandService::parse_game_list_response(&json).is_err());
     }
 }

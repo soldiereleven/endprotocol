@@ -15,6 +15,7 @@ import {
   Bell,
   Link2,
   Unlink,
+  Info,
 } from "lucide";
 import { createMorphIcon } from "@/components/morph-icon";
 import clsx from "clsx";
@@ -35,6 +36,7 @@ export const MenuIcon = createMorphIcon(Menu);
 export const BellIcon = createMorphIcon(Bell);
 export const LinkIcon = createMorphIcon(Link2);
 export const UnlinkIcon = createMorphIcon(Unlink);
+export const InfoIcon = createMorphIcon(Info);
 
 export function StatusDot({
   tone = "default",

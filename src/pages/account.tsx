@@ -23,6 +23,7 @@ import {
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import {
   ChevronDownIcon,
+  InfoIcon,
   LinkIcon,
   UnlinkIcon,
 } from "@/components/ui/app-icon";
@@ -38,6 +39,8 @@ import {
   getSklandAccounts,
   saveSklandAccount,
   getSklandAccountRoles,
+  getSklandUserInfo,
+  getSklandGames,
   getSelectedAccount,
   refreshAccountData,
   logoutAccount as apiLogoutAccount,
@@ -53,6 +56,8 @@ import {
   LoginResult,
   RoleDisplayInfo,
   SklandAccount,
+  SklandGameInfo,
+  SklandUserInfo,
 } from "@/utils/accountService";
 import { roleDetailService } from "@/utils/roleDetailService";
 import logger, { logDebug, logError } from "../utils/logger";
@@ -171,6 +176,241 @@ function GameRoleRow({
   );
 }
 
+/**
+ * 森空岛用户资料详情（Modal 内容，数据来自 GET /web/v1/user）
+ */
+function SklandProfileDetails({
+  userInfo,
+  gameList,
+  isLoading,
+  errorMessage,
+  onRetry,
+}: {
+  userInfo?: SklandUserInfo;
+  gameList: SklandGameInfo[];
+  isLoading: boolean;
+  errorMessage?: string;
+  onRetry: () => void;
+}) {
+  const { t } = useTranslation();
+
+  if (!userInfo) {
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center gap-3 py-10 text-sm text-muted">
+          <GlassSpinner color="primary" size="sm" />
+          {t("settings.account.loading")}
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-3 py-8 text-center">
+        <p className="text-sm text-danger">
+          {t("settings.account.skland_profile_failed")}
+        </p>
+        {errorMessage && (
+          <p className="break-all text-xs text-muted">{errorMessage}</p>
+        )}
+        <GlassButton variant="outline" size="sm" onPress={onRetry}>
+          {t("settings.account.retry")}
+        </GlassButton>
+      </div>
+    );
+  }
+
+  // level 为 0 的游戏不展示
+  const games = userInfo.scoreInfoList.filter((score) => score.level > 0);
+  // gameId → 游戏图标（来自 GET /web/v1/game，等级接口返回的是等级图标）
+  const gameIcons = new Map(
+    gameList.map((game) => [game.gameId, game.iconUrl] as const),
+  );
+  const stats = userInfo.stats
+    ? [
+        {
+          key: "follow",
+          label: t("settings.account.skland_follow"),
+          value: userInfo.stats.follow,
+        },
+        {
+          key: "fans",
+          label: t("settings.account.skland_fans"),
+          value: userInfo.stats.fans,
+        },
+        {
+          key: "liked",
+          label: t("settings.account.skland_liked"),
+          value: userInfo.stats.liked,
+        },
+        {
+          key: "collect",
+          label: t("settings.account.skland_collect"),
+          value: userInfo.stats.collect,
+        },
+        {
+          key: "comment",
+          label: t("settings.account.skland_comment"),
+          value: userInfo.stats.comment,
+        },
+        {
+          key: "pub",
+          label: t("settings.account.skland_publish"),
+          value: userInfo.stats.pub,
+        },
+      ]
+    : [];
+
+  return (
+    <div className="space-y-5">
+      {/* 基本资料 */}
+      <div className="flex items-center gap-4">
+        {/* 挂件的透明开孔约为整图的 61%，102–104px 时正好套住 64px 头像 */}
+        <div
+          className={`relative flex shrink-0 items-center justify-center ${
+            userInfo.pendant?.iconUrl ? "h-[104px] w-[104px]" : "h-16 w-16"
+          }`}
+        >
+          <div className="h-16 w-16 overflow-hidden rounded-full border border-separator/60 bg-content2/30">
+            {userInfo.avatar ? (
+              <Img
+                src={userInfo.avatar}
+                alt={userInfo.nickname}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-lg font-semibold text-muted">
+                S
+              </div>
+            )}
+          </div>
+          {/* 头像框（挂件）套在头像外侧；max-w-none 覆盖 img 的 max-width:100% 限制 */}
+          {userInfo.pendant?.iconUrl && (
+            <Img
+              src={userInfo.pendant.iconUrl}
+              alt={userInfo.pendant.title || ""}
+              title={userInfo.pendant.title}
+              transparentPlaceholder
+              className="pointer-events-none absolute inset-0 h-full w-full max-w-none object-contain"
+            />
+          )}
+        </div>
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="truncate text-base font-semibold text-foreground">
+            {userInfo.nickname || t("settings.account.skland_account")}
+          </p>
+          <p className="truncate font-mono text-xs text-muted">
+            {userInfo.showId || userInfo.id}
+          </p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+            {userInfo.latestIpLocation && (
+              <span>
+                {t("settings.account.skland_ip_location")}:{" "}
+                {userInfo.latestIpLocation}
+              </span>
+            )}
+            {userInfo.isCreator && (
+              <span className="text-primary">
+                {t("settings.account.skland_creator")}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {userInfo.profile && (
+        <div className="space-y-1.5">
+          <h3 className="text-xs font-semibold uppercase text-muted">
+            {t("settings.account.skland_bio")}
+          </h3>
+          <p className="whitespace-pre-wrap break-words text-sm text-foreground/85">
+            {userInfo.profile}
+          </p>
+        </div>
+      )}
+
+      {/* 游戏等级（level 为 0 的游戏不显示） */}
+      {games.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase text-muted">
+            {t("settings.account.skland_game_levels")}
+          </h3>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {games.map((game) => {
+              const iconUrl = gameIcons.get(game.gameId) || "";
+              return (
+                <div
+                  key={game.gameId}
+                  className="account-glass-row flex items-center gap-3 rounded-lg border border-separator/60 p-2.5"
+                >
+                  <div className="h-9 w-9 shrink-0 overflow-hidden rounded-md border border-separator/50 bg-content2/30">
+                    {iconUrl ? (
+                      <Img
+                        src={iconUrl}
+                        alt={game.gameName}
+                        className="h-full w-full object-contain"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs font-semibold text-muted">
+                        {game.gameName.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {game.gameName}
+                    </p>
+                    <p className="truncate text-xs text-muted">
+                      {t("settings.account.skland_score")} {game.score}
+                      {game.checkedDays > 0
+                        ? ` · ${t("settings.account.skland_checked_days")} ${game.checkedDays}`
+                        : ""}
+                    </p>
+                  </div>
+                  {/* 等级用等级图标（scoreInfoList[].iconUrl）展示，替代 "Lv.x" 文字 */}
+                  {game.iconUrl ? (
+                    <Img
+                      src={game.iconUrl}
+                      alt={`Lv.${game.level}`}
+                      title={`Lv.${game.level}`}
+                      transparentPlaceholder
+                      className="h-7 w-auto max-w-none shrink-0 object-contain"
+                    />
+                  ) : (
+                    <span className="shrink-0 text-xs font-medium text-muted">
+                      Lv.{game.level}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 社区数据 */}
+      {stats.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase text-muted">
+            {t("settings.account.skland_stats")}
+          </h3>
+          <div className="grid grid-cols-3 gap-2">
+            {stats.map((item) => (
+              <div
+                key={item.key}
+                className="rounded-lg border border-separator/60 bg-content2/20 px-2 py-2 text-center"
+              >
+                <p className="text-sm font-semibold tabular-nums text-foreground">
+                  {item.value}
+                </p>
+                <p className="truncate text-[11px] text-muted">{item.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // 二维码图片组件（使用 qrcode 库生成 dataURL）
 function QRCodeImage({ value, size = 200 }: { value: string; size?: number }) {
   const [dataUrl, setDataUrl] = useState("");
@@ -233,6 +473,20 @@ export default function AccountPage() {
   // 状态管理
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [sklandAccounts, setSklandAccounts] = useState<SklandAccount[]>([]);
+  // 森空岛用户资料（GET /web/v1/user），按 userId 索引
+  const [sklandUserInfos, setSklandUserInfos] = useState<
+    Record<string, SklandUserInfo>
+  >({});
+  // 资料获取失败信息，按 userId 索引
+  const [sklandUserInfoErrors, setSklandUserInfoErrors] = useState<
+    Record<string, string>
+  >({});
+  // 森空岛游戏列表（GET /web/v1/game），用于展示游戏图标
+  const [sklandGames, setSklandGames] = useState<SklandGameInfo[]>([]);
+  // 当前打开资料的森空岛账户
+  const [profileSklandId, setProfileSklandId] = useState<string | null>(null);
+  const sklandUserInfoRequestsRef = useRef<Set<string>>(new Set());
+  const sklandGamesLoadingRef = useRef(false);
   const [expandedSklandId, setExpandedSklandId] = useState<string | null>(null);
   const [sklandRoleSets, setSklandRoleSets] = useState<
     Record<string, { roles: RoleDisplayInfo[]; cred: string; token: string }>
@@ -364,6 +618,13 @@ export default function AccountPage() {
         );
         setAccounts(accounts || []);
         setSklandAccounts(parents);
+
+        // 为尚未缓存昵称/头像的森空岛账户补齐用户资料
+        for (const parent of parents) {
+          if (!parent.nickname || !parent.avatar) {
+            void ensureSklandUserInfo(parent.userId);
+          }
+        }
 
         const activeId = accounts.some((account) => account.id === selectedId)
           ? selectedId
@@ -571,7 +832,16 @@ export default function AccountPage() {
         setAccounts(result.accounts);
         setLastRefreshTime(new Date(result.refreshTime));
       }
-      setSklandAccounts(await getSklandAccounts());
+      const parents = await getSklandAccounts();
+      setSklandAccounts(parents);
+      // 手动刷新时同步更新森空岛用户资料（昵称/头像/游戏等级）
+      for (const parent of parents) {
+        void ensureSklandUserInfo(parent.userId, { force: true });
+      }
+      // 以及游戏图标列表
+      if (parents[0]) {
+        void ensureSklandGames(parents[0].userId, { force: true });
+      }
     } catch (error) {
       logError("Failed to refresh data:", error);
     } finally {
@@ -1214,12 +1484,73 @@ export default function AccountPage() {
     }
   };
 
+  // 读取森空岛用户资料（昵称、头像、游戏等级等），后端会同时写入本地缓存
+  const ensureSklandUserInfo = async (
+    userId: string,
+    options?: { force?: boolean },
+  ) => {
+    if (!options?.force && sklandUserInfos[userId]) return;
+    if (sklandUserInfoRequestsRef.current.has(userId)) return;
+
+    sklandUserInfoRequestsRef.current.add(userId);
+    // 重新请求前清掉上一次的错误，让弹窗回到加载态
+    setSklandUserInfoErrors((previous) => {
+      if (!(userId in previous)) return previous;
+      const next = { ...previous };
+      delete next[userId];
+      return next;
+    });
+    try {
+      const info = await getSklandUserInfo(userId);
+      if (isMountedRef.current) {
+        setSklandUserInfos((previous) => ({ ...previous, [userId]: info }));
+      }
+    } catch (error) {
+      // 资料获取失败不影响账户列表与角色绑定
+      logError(`Failed to load Skland user info for ${userId}:`, error);
+      if (isMountedRef.current) {
+        setSklandUserInfoErrors((previous) => ({
+          ...previous,
+          [userId]: String(error),
+        }));
+      }
+    } finally {
+      sklandUserInfoRequestsRef.current.delete(userId);
+    }
+  };
+
+  // 读取森空岛游戏列表（游戏图标），后端带 12 小时缓存
+  const ensureSklandGames = async (userId: string, options?: { force?: boolean }) => {
+    if (!options?.force && sklandGames.length > 0) return;
+    if (sklandGamesLoadingRef.current) return;
+
+    sklandGamesLoadingRef.current = true;
+    try {
+      const games = await getSklandGames(userId, options?.force ?? false);
+      if (isMountedRef.current) setSklandGames(games);
+    } catch (error) {
+      // 图标属于附加信息，失败时降级为文字占位
+      logError("Failed to load Skland game list:", error);
+    } finally {
+      sklandGamesLoadingRef.current = false;
+    }
+  };
+
+  // 打开森空岛资料 Modal（未加载过时按需拉取资料与游戏列表）
+  const handleOpenSklandProfile = (userId: string) => {
+    setProfileSklandId(userId);
+    void ensureSklandUserInfo(userId);
+    void ensureSklandGames(userId);
+  };
+
   const handleExpandSklandAccount = async (userId: string) => {
     if (expandedSklandId === userId) {
       setExpandedSklandId(null);
       return;
     }
     setExpandedSklandId(userId);
+    // 展开时按需拉取森空岛用户资料（已获取过则直接使用缓存）
+    void ensureSklandUserInfo(userId);
     if (sklandRoleSets[userId]) return;
 
     setLoadingSklandId(userId);
@@ -1600,9 +1931,10 @@ export default function AccountPage() {
 
         <div className="flex gap-2">
           <GlassButton
-            variant="outline"
+            variant="ghost"
             onPress={refreshData}
             isDisabled={isRefreshing}
+            className="glass-surface border border-separator/70"
           >
             {isRefreshing
               ? t("settings.account.refreshing")
@@ -1648,6 +1980,10 @@ export default function AccountPage() {
             {sklandAccounts.map((sklandAccount) => {
               const isExpanded = expandedSklandId === sklandAccount.userId;
               const roleSet = sklandRoleSets[sklandAccount.userId];
+              const userInfo = sklandUserInfos[sklandAccount.userId];
+              const accountAvatar = userInfo?.avatar || sklandAccount.avatar;
+              const accountNickname =
+                userInfo?.nickname || sklandAccount.nickname;
               const boundRoles = accounts.filter(
                 (account) => account.userId === sklandAccount.userId,
               );
@@ -1665,116 +2001,164 @@ export default function AccountPage() {
                   key={sklandAccount.userId}
                   className="account-glass-panel overflow-hidden rounded-xl border border-separator/70 shadow-sm"
                 >
-                  <button
-                    type="button"
-                    aria-expanded={isExpanded}
-                    onClick={() =>
-                      handleExpandSklandAccount(sklandAccount.userId)
-                    }
-                    className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-white/10"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-sm font-semibold text-primary">
-                      S
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-foreground">
-                        {t("settings.account.skland_account")}
-                      </p>
-                      <p className="truncate text-xs text-muted">
-                        {sklandAccount.userId}
-                      </p>
-                    </div>
-                    <span className="hidden shrink-0 text-xs text-muted sm:block">
-                      {t("settings.account.bound_role_count", {
-                        count: boundRoles.length,
-                      })}
-                    </span>
-                    <ChevronDownIcon
-                      size={18}
-                      className={`shrink-0 text-muted transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                    />
-                  </button>
-
-                  {isExpanded && (
-                    <div className="account-glass-inner border-t border-separator/60 p-4 sm:p-5">
-                      {loadingSklandId === sklandAccount.userId ? (
-                        <div className="flex items-center justify-center gap-3 py-8 text-sm text-muted">
-                          <GlassSpinner color="primary" size="sm" />
-                          {t("settings.account.loading_game_roles")}
-                        </div>
-                      ) : roleLoadErrors[sklandAccount.userId] ? (
-                        <p className="py-5 text-center text-sm text-danger">
-                          {roleLoadErrors[sklandAccount.userId]}
+                  <div className="flex w-full items-center gap-2 p-4 transition-colors hover:bg-white/10">
+                    <button
+                      type="button"
+                      aria-expanded={isExpanded}
+                      onClick={() =>
+                        handleExpandSklandAccount(sklandAccount.userId)
+                      }
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-primary/30 bg-primary/10 text-sm font-semibold text-primary">
+                        {accountAvatar ? (
+                          <Img
+                            src={accountAvatar}
+                            alt={accountNickname || sklandAccount.userId}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          "S"
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {accountNickname ||
+                            t("settings.account.skland_account")}
                         </p>
-                      ) : roleSet ? (
-                        <div className="grid gap-5 lg:grid-cols-2">
-                          <RoleGroup
-                            title={t("settings.account.bound_game_roles")}
-                            count={boundRoleDetails.length}
-                            emptyLabel={t(
-                              "settings.account.no_bound_game_roles",
-                            )}
-                          >
-                            {boundRoleDetails.map((role) => {
-                              const key = `${sklandAccount.userId}:${role.serverId}:${role.roleId}`;
-                              return (
-                                <GameRoleRow
-                                  key={key}
-                                  role={role}
-                                  isBound={true}
-                                  isActive={currentAccountId === role.roleId}
-                                  actionLabel={t(
-                                    "settings.account.unbind_role",
-                                  )}
-                                  isBusy={savingRoleKey === key}
-                                  isDisabled={savingRoleKey !== null}
-                                  onSetActive={() =>
-                                    handleSelectAccount(role.roleId)
-                                  }
-                                  onAction={() =>
-                                    handleToggleGameRole(
-                                      sklandAccount.userId,
-                                      role,
-                                      true,
-                                    )
-                                  }
-                                />
-                              );
-                            })}
-                          </RoleGroup>
-                          <RoleGroup
-                            title={t("settings.account.unbound_game_roles")}
-                            count={unboundRoleDetails.length}
-                            emptyLabel={t(
-                              "settings.account.no_unbound_game_roles",
-                            )}
-                          >
-                            {unboundRoleDetails.map((role) => {
-                              const key = `${sklandAccount.userId}:${role.serverId}:${role.roleId}`;
-                              return (
-                                <GameRoleRow
-                                  key={key}
-                                  role={role}
-                                  isBound={false}
-                                  isActive={false}
-                                  actionLabel={t("settings.account.bind_role")}
-                                  isBusy={savingRoleKey === key}
-                                  isDisabled={savingRoleKey !== null}
-                                  onAction={() =>
-                                    handleToggleGameRole(
-                                      sklandAccount.userId,
-                                      role,
-                                      false,
-                                    )
-                                  }
-                                />
-                              );
-                            })}
-                          </RoleGroup>
-                        </div>
-                      ) : null}
+                        <p className="truncate text-xs text-muted">
+                          {sklandAccount.userId}
+                        </p>
+                      </div>
+                      <span className="hidden shrink-0 text-xs text-muted sm:block">
+                        {t("settings.account.bound_role_count", {
+                          count: boundRoles.length,
+                        })}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleOpenSklandProfile(sklandAccount.userId)
+                      }
+                      aria-label={t("settings.account.skland_profile")}
+                      title={t("settings.account.skland_profile")}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-separator/60 text-muted transition-colors hover:bg-white/10 hover:text-foreground active:scale-95"
+                    >
+                      <InfoIcon size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      aria-expanded={isExpanded}
+                      onClick={() =>
+                        handleExpandSklandAccount(sklandAccount.userId)
+                      }
+                      aria-label={t("settings.account.manage_game_roles")}
+                      title={t("settings.account.manage_game_roles")}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-foreground"
+                    >
+                      <ChevronDownIcon
+                        size={18}
+                        className={`transition-transform duration-300 ease-out ${isExpanded ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* 展开区域：grid-template-rows 过渡，实现平滑的高度动画 */}
+                  <div
+                    aria-hidden={!isExpanded}
+                    inert={!isExpanded}
+                    className={`account-glass-inner grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 ease-out ${
+                      isExpanded
+                        ? "grid-rows-[1fr] border-t border-separator/60 opacity-100"
+                        : "grid-rows-[0fr] border-t-0 opacity-0"
+                    }`}
+                  >
+                    <div className="min-h-0 overflow-hidden">
+                      <div
+                        className={`p-4 transition-transform duration-300 ease-out sm:p-5 ${
+                          isExpanded ? "translate-y-0" : "-translate-y-2"
+                        }`}
+                      >
+                        {loadingSklandId === sklandAccount.userId ? (
+                          <div className="flex items-center justify-center gap-3 py-8 text-sm text-muted">
+                            <GlassSpinner color="primary" size="sm" />
+                            {t("settings.account.loading_game_roles")}
+                          </div>
+                        ) : roleLoadErrors[sklandAccount.userId] ? (
+                          <p className="py-5 text-center text-sm text-danger">
+                            {roleLoadErrors[sklandAccount.userId]}
+                          </p>
+                        ) : roleSet ? (
+                          <div className="grid gap-5 lg:grid-cols-2">
+                            <RoleGroup
+                              title={t("settings.account.bound_game_roles")}
+                              count={boundRoleDetails.length}
+                              emptyLabel={t(
+                                "settings.account.no_bound_game_roles",
+                              )}
+                            >
+                              {boundRoleDetails.map((role) => {
+                                const key = `${sklandAccount.userId}:${role.serverId}:${role.roleId}`;
+                                return (
+                                  <GameRoleRow
+                                    key={key}
+                                    role={role}
+                                    isBound={true}
+                                    isActive={currentAccountId === role.roleId}
+                                    actionLabel={t(
+                                      "settings.account.unbind_role",
+                                    )}
+                                    isBusy={savingRoleKey === key}
+                                    isDisabled={savingRoleKey !== null}
+                                    onSetActive={() =>
+                                      handleSelectAccount(role.roleId)
+                                    }
+                                    onAction={() =>
+                                      handleToggleGameRole(
+                                        sklandAccount.userId,
+                                        role,
+                                        true,
+                                      )
+                                    }
+                                  />
+                                );
+                              })}
+                            </RoleGroup>
+                            <RoleGroup
+                              title={t("settings.account.unbound_game_roles")}
+                              count={unboundRoleDetails.length}
+                              emptyLabel={t(
+                                "settings.account.no_unbound_game_roles",
+                              )}
+                            >
+                              {unboundRoleDetails.map((role) => {
+                                const key = `${sklandAccount.userId}:${role.serverId}:${role.roleId}`;
+                                return (
+                                  <GameRoleRow
+                                    key={key}
+                                    role={role}
+                                    isBound={false}
+                                    isActive={false}
+                                    actionLabel={t("settings.account.bind_role")}
+                                    isBusy={savingRoleKey === key}
+                                    isDisabled={savingRoleKey !== null}
+                                    onAction={() =>
+                                      handleToggleGameRole(
+                                        sklandAccount.userId,
+                                        role,
+                                        false,
+                                      )
+                                    }
+                                  />
+                                );
+                              })}
+                            </RoleGroup>
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </article>
               );
             })}
@@ -2349,6 +2733,45 @@ export default function AccountPage() {
             {isLoggingOut
               ? t("settings.account.loading")
               : t("settings.account.logout")}
+          </GlassButton>
+        </CustomModalFooter>
+      </CustomModal>
+
+      {/* Skland Profile Modal（森空岛用户资料详情） */}
+      <CustomModal
+        isOpen={!!profileSklandId}
+        onClose={() => setProfileSklandId(null)}
+        size="md"
+      >
+        <CustomModalHeader onClose={() => setProfileSklandId(null)}>
+          {sklandUserInfos[profileSklandId || ""]?.nickname ||
+            sklandAccounts.find(
+              (account) => account.userId === profileSklandId,
+            )?.nickname ||
+            t("settings.account.skland_profile")}
+        </CustomModalHeader>
+        <CustomModalBody>
+          {profileSklandId && (
+            <SklandProfileDetails
+              userInfo={sklandUserInfos[profileSklandId]}
+              gameList={sklandGames}
+              isLoading={
+                !sklandUserInfos[profileSklandId] &&
+                !sklandUserInfoErrors[profileSklandId]
+              }
+              errorMessage={sklandUserInfoErrors[profileSklandId]}
+              onRetry={() =>
+                void ensureSklandUserInfo(profileSklandId, { force: true })
+              }
+            />
+          )}
+        </CustomModalBody>
+        <CustomModalFooter>
+          <GlassButton
+            variant="outline"
+            onPress={() => setProfileSklandId(null)}
+          >
+            {t("settings.account.close")}
           </GlassButton>
         </CustomModalFooter>
       </CustomModal>

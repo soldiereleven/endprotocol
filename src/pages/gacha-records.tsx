@@ -439,11 +439,11 @@ export default function GachaRecordsPage() {
           {/* 角色选择（仅本页生效） */}
           <div className="relative" ref={roleMenuRef}>
             <GlassButton
-              variant="secondary"
+              variant="ghost"
               isDisabled={syncing || accounts.length === 0}
               onPress={() => setShowRoleMenu((v) => !v)}
               endContent={<ChevronDownIcon size={14} />}
-              className="max-w-48"
+              className="glass-surface border border-separator/70 max-w-48"
             >
               <span className="truncate">
                 {selectedAccount?.nickname ?? (isZh ? "选择角色" : "Select role")}
