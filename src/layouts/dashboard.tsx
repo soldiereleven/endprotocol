@@ -8,7 +8,10 @@ import {
   getLauncherBgMedia,
   setLauncherBgMedia,
   subscribeLauncherBgMedia,
+  getGameBgMode,
+  subscribeGameBgMode,
   type LauncherBgMedia,
+  type GameBgMode,
 } from "@/stores/launcherMode";
 import {
   openInAppBrowser,
@@ -38,6 +41,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [bgMedia, setBgMedia] = useState<LauncherBgMedia | null>(
     getLauncherBgMedia,
   );
+  const [bgMediaMode, setBgMediaMode] = useState<GameBgMode>(getGameBgMode);
   const [channel] = useState<GameChannel>(() => {
     return (
       (localStorage.getItem(STORAGE_KEY_CHANNEL) as GameChannel) || "official"
@@ -69,6 +73,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   useEffect(() => {
     return subscribeLauncherBgMedia(() => {
       setBgMedia(getLauncherBgMedia());
+    });
+  }, []);
+
+  useEffect(() => {
+    return subscribeGameBgMode(() => {
+      setBgMediaMode(getGameBgMode());
     });
   }, []);
 
@@ -129,15 +139,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // ========== GAME MODE ==========
   if (isGameMode) {
+    const bgVideoSrc =
+      bgMedia && bgMediaMode === "video" ? bgMedia.video_url : null;
+    const bgImageSrc = bgMedia
+      ? (bgMedia.image_url ?? bgMedia.video_url)
+      : null;
+    const showVideo =
+      typeof bgVideoSrc === "string" && bgVideoSrc.length > 0;
+    const bgSrc = showVideo ? bgVideoSrc : bgImageSrc;
+
     return (
       <div className="flex flex-col h-screen">
         {/* Full-bleed background */}
         <div className="fixed inset-0 z-0">
-          {bgMedia ? (
+          {bgSrc ? (
             <>
-              {bgMedia.media_type === "video" ? (
+              {showVideo ? (
                 <video
-                  src={bgMedia.url}
+                  src={bgSrc}
                   autoPlay
                   loop
                   muted
@@ -146,7 +165,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 />
               ) : (
                 <img
-                  src={bgMedia.url}
+                  src={bgSrc}
                   alt="Background"
                   className="w-full h-full object-cover"
                 />

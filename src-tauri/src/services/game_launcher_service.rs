@@ -12,7 +12,7 @@ use tokio::sync::{Mutex, Semaphore};
 use walkdir::WalkDir;
 
 use crate::models::game::*;
-use crate::utils::hg_crypto;
+use crate::utils::{capture, hg_crypto};
 
 /// 全局下载取消标志
 static DOWNLOAD_CANCELLED: AtomicBool = AtomicBool::new(false);
@@ -177,13 +177,14 @@ impl GameLauncherService {
             serde_json::to_string_pretty(&req_body).unwrap_or_default()
         );
 
-        let resp = self
-            .http_client
-            .post(channel.api_url())
-            .json(&req_body)
-            .send()
-            .await
-            .map_err(|e| format!("API request failed: {}", e))?;
+        let resp = capture::send(
+            &self.http_client,
+            self.http_client
+                .post(channel.api_url())
+                .json(&req_body),
+        )
+        .await
+        .map_err(|e| format!("API request failed: {}", e))?;
 
         let status = resp.status();
         let text = resp
@@ -458,10 +459,7 @@ impl GameLauncherService {
         let manifest_url = format!("{}/game_files", resource_base_url);
         tracing::info!("[manifest] Fetching from: {}", manifest_url);
 
-        let resp = self
-            .http_client
-            .get(&manifest_url)
-            .send()
+        let resp = capture::send(&self.http_client, self.http_client.get(&manifest_url))
             .await
             .map_err(|e| format!("Failed to download manifest: {}", e))?;
 
@@ -664,7 +662,7 @@ impl GameLauncherService {
                 req = req.header("Range", format!("bytes={}-", start_byte));
             }
 
-            match req.send().await {
+            match capture::send_stream(&self.download_client, req).await {
                 Ok(resp) => {
                     let status = resp.status();
                     let is_partial = status == 206;
@@ -2015,13 +2013,14 @@ impl GameLauncherService {
             "proxy_reqs": proxy_reqs
         });
 
-        let resp = self
-            .http_client
-            .post(channel.web_api_url())
-            .json(&req_body)
-            .send()
-            .await
-            .map_err(|e| format!("Web API request failed: {}", e))?;
+        let resp = capture::send(
+            &self.http_client,
+            self.http_client
+                .post(channel.web_api_url())
+                .json(&req_body),
+        )
+        .await
+        .map_err(|e| format!("Web API request failed: {}", e))?;
 
         let text = resp
             .text()
@@ -2173,13 +2172,14 @@ impl GameLauncherService {
             "proxy_reqs": proxy_reqs
         });
 
-        let resp = self
-            .http_client
-            .post(channel.web_api_url())
-            .json(&req_body)
-            .send()
-            .await
-            .map_err(|e| format!("Web API request failed: {}", e))?;
+        let resp = capture::send(
+            &self.http_client,
+            self.http_client
+                .post(channel.web_api_url())
+                .json(&req_body),
+        )
+        .await
+        .map_err(|e| format!("Web API request failed: {}", e))?;
 
         let text = resp
             .text()
@@ -2382,12 +2382,30 @@ impl GameLauncherService {
                 eprintln!("[Launcher] get_main_bg_image_rsp: {:?}", bg_rsp);
                 if let Some(ref bg_data) = bg_rsp.main_bg_image {
                     let url = bg_data.url.clone();
-                    let media_type = self.classify_media_type(&url);
+                    let alt = bg_data.video_url.clone().filter(|u| !u.is_empty());
+                    let url_is_video = self.classify_media_type(&url) == "video";
+
+                    // 接口把图片和视频放在同一条响应里，两者都返回给前端，
+                    // 由前端根据用户设置选择展示图片还是视频
+                    let (image_url, video_url) = if url_is_video {
+                        // url 本身就是视频，另一个字段若是图片则作为图片
+                        let image = alt
+                            .clone()
+                            .filter(|u| self.classify_media_type(u) != "video");
+                        (image, Some(url))
+                    } else {
+                        let video = alt.filter(|u| self.classify_media_type(u) == "video");
+                        (if url.is_empty() { None } else { Some(url) }, video)
+                    };
+
                     eprintln!(
-                        "[Launcher] Background media found: url={}, type={}",
-                        url, media_type
+                        "[Launcher] Background media found: image={:?}, video={:?}",
+                        image_url, video_url
                     );
-                    return Ok(Some(BackgroundMedia { url, media_type }));
+                    return Ok(Some(BackgroundMedia {
+                        image_url,
+                        video_url,
+                    }));
                 }
             }
         }
@@ -2801,7 +2819,7 @@ async fn download_single_file(
             req = req.header("Range", format!("bytes={}-", start_byte));
         }
 
-        match req.send().await {
+        match capture::send_stream(&client, req).await {
             Ok(resp) => {
                 let status = resp.status();
                 let is_partial = status == 206;

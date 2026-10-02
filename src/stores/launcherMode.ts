@@ -42,8 +42,8 @@ export function subscribeLauncherMode(fn: () => void): () => void {
 
 // ========== Background media store ==========
 export interface LauncherBgMedia {
-  url: string;
-  media_type: "image" | "video";
+  image_url: string | null;
+  video_url: string | null;
 }
 
 let currentBgMedia: LauncherBgMedia | null = null;
@@ -66,5 +66,44 @@ export function subscribeLauncherBgMedia(fn: () => void): () => void {
   bgListeners.push(fn);
   return () => {
     bgListeners = bgListeners.filter((l) => l !== fn);
+  };
+}
+
+// ========== Background mode (video / image) store ==========
+export type GameBgMode = "video" | "image";
+
+const BG_MODE_STORAGE_KEY = "game_bg_mode";
+
+let currentBgMode: GameBgMode = (() => {
+  try {
+    const stored = localStorage.getItem(BG_MODE_STORAGE_KEY);
+    if (stored === "video" || stored === "image") return stored;
+  } catch {}
+  return "video";
+})();
+
+let bgModeListeners: Array<() => void> = [];
+
+function emitBgMode() {
+  bgModeListeners.forEach((fn) => fn());
+}
+
+export function getGameBgMode(): GameBgMode {
+  return currentBgMode;
+}
+
+export function setGameBgMode(mode: GameBgMode) {
+  if (currentBgMode === mode) return;
+  currentBgMode = mode;
+  try {
+    localStorage.setItem(BG_MODE_STORAGE_KEY, mode);
+  } catch {}
+  emitBgMode();
+}
+
+export function subscribeGameBgMode(fn: () => void): () => void {
+  bgModeListeners.push(fn);
+  return () => {
+    bgModeListeners = bgModeListeners.filter((l) => l !== fn);
   };
 }

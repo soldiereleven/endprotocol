@@ -46,8 +46,8 @@ export interface DownloadProgress {
 }
 
 export interface BackgroundMedia {
-  url: string;
-  media_type: "image" | "video";
+  image_url: string | null;
+  video_url: string | null;
 }
 
 export interface LauncherResult {

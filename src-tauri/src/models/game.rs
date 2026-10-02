@@ -390,6 +390,8 @@ pub struct MainBgImageRsp {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MainBgImageData {
     pub url: String,
+    #[serde(default)]
+    pub video_url: Option<String>,
 }
 
 /// 背景图信息
@@ -398,11 +400,13 @@ pub struct BackgroundImage {
     pub url: String,
 }
 
-/// 启动器背景媒体（图片或视频）
+/// 启动器背景媒体（图片与视频地址一起返回，由前端按设置选择）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BackgroundMedia {
-    pub url: String,
-    pub media_type: String,
+    #[serde(default)]
+    pub image_url: Option<String>,
+    #[serde(default)]
+    pub video_url: Option<String>,
 }
 
 /// 安装目录扫描结果
