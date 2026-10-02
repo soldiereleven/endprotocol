@@ -1,5 +1,8 @@
 # Card 系统开发指南
 
+> 定位现有实现请查：[reference/frontend/cards_core.md](reference/frontend/cards_core.md)（registry/loader、CardContainer、base 工具的行号级说明），
+> 以及 [cards_character_list.md](reference/frontend/cards_character_list.md)、[cards_account_achievement.md](reference/frontend/cards_account_achievement.md)、[cards_attendance_domain_spaceship.md](reference/frontend/cards_attendance_domain_spaceship.md)（9 张现有卡片的逐文件说明）。
+
 ## 概述
 
 Card 系统采用插件化架构，支持通过简单的文件约定自动发现和注册新卡片类型。开发者只需创建 2-3 个文件即可添加新的卡片类型，无需修改核心代码。
@@ -364,5 +367,21 @@ A: 当前使用 `eager: true` 预加载所有卡片。如果卡片数量很多�
 ## 下一步
 
 - 查看 `_template` 目录获取完整模板
-- 参考 `character-list` 卡片了解实际实现
-- 阅读 `registry/types.ts` 了解类型定义
+- 参考 `character-list` 卡片了解实际实现（[cards_character_list.md](reference/frontend/cards_character_list.md)）
+- 阅读 `registry/types.ts` 了解类型定义（[cards_core.md](reference/frontend/cards_core.md)）
+
+## 附：关键实现位置速查
+
+| 事项 | 位置 |
+| --- | --- |
+| 自动发现与注册 | `src/components/cards/registry/loader.ts`（`import.meta.glob`，`eager: true`） |
+| 卡片类型定义（`CardMeta`/`BaseCardProps`/`CardModule`） | `src/components/cards/registry/types.ts` |
+| 数据加载 Hook | `src/components/cards/base/use-card-data.ts` |
+| 卡片渲染容器（拖拽/编辑模式/尺寸） | `src/components/cards/card-container.tsx`（由 `src/pages/dashboard.tsx:422` 调用） |
+| 「添加卡片」对话框 | `src/components/add-card-modal.tsx`（`getAvailableCards()` 自动收录，无需登记） |
+| 卡片配置读写 | `src/utils/cardConfigService.ts` → 命令 `get/save/remove_card_settings` → `commands/card_config.rs:9/26/66` |
+| 布局与标签页持久化 | `src/utils/dashboardConfig.ts`、`src/utils/tabService.ts` → `set_config`（键 `dashboard_tabs`） |
+| 卡片间事件 | `window.dispatchEvent(new CustomEvent("cardAction", {...}))` |
+| 启动任务（`startup(roleId)`） | `src/cards/startup-service.ts` |
+| 卡片 settings 类型 | `src/types/card-settings.ts` |
+| 卡片 i18n 命名空间 | 各卡片 `locales/{zh,en}.json`，由 loader 扁平合并进 `card` 命名空间（同名 key 会互相覆盖） |

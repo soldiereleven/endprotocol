@@ -1,0 +1,227 @@
+# 设置面板与系统集成组件 — 文件功能参考
+
+> 逐文件精读源码生成。行号基于当前工作区版本，仅用于快速定位。
+
+## `src/components/appearance-settings.tsx`
+**职责**：外观设置面板，集中管理主题模式（浅色/深色/跟随系统）、主题色（预设 + 自定义色阶）、窗口背景图（选择/删除/透明度/模糊）与毛玻璃清晰度，并实时写入 CSS 变量与持久化配置。
+**导出**：`getAllColors`、`findColorByName`、`AppearanceSettings`（另有未导出的 `ThemeMode`、`ThemeColor`、`PRESET_COLORS`、多个颜色转换函数、`useDragArea`、`generateColorScale`、`applyThemeColor`、`applyGlassClarity`、`applyThemeModeLocal`、`dispatchThemeChange`）。
+**主要依赖**：`react`（含 `createPortal`）、`react-i18next`、`@tauri-apps/api/core`（`isTauri`/`invoke`）、`@tauri-apps/api/event`（`emit`）、`@/components/ui/settings-row`（`SettingsDivider`）、`@/components/ui/slider`（`Slider`）、`@/components/screen-color-picker`（`ScreenColorPicker`）、`@/utils/configService`（`getConfig`/`setConfig`）、`morphicons/react`（`MorphIcon`）、`lucide`（`Sun`/`Moon`/`Monitor`/`Check`/`Plus`/`Pencil`/`Trash2`/`Pipette`/`ImagePlus`/`X`）。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `ThemeMode`（type） | 31 | `"light" \| "dark" \| "system"` 主题模式字面量类型 |
+| `applyGlassClarity(clarity)` | 33-45 | 将 0-100 清晰度换算为模糊/不透明度，写入 `--glass-blur`、`--glass-surface-opacity`、`--glass-strong-opacity`、`--glass-field-opacity` |
+| `ThemeColor`（interface） | 47-63 | `name`/`label`/`colors`（50-900 十级 + `foreground`） |
+| `PRESET_COLORS` | 65-168 | 6 组内置主题色：indigo、blue、emerald、rose、amber、slate |
+| `hexToHsl(hex)` | 170-187 | HEX → HSL（度/百分比取整） |
+| `hslToHex(h,s,l)` | 189-201 | HSL → HEX |
+| `hexToRgb(hex)` | 203-210 | HEX → `{r,g,b}` |
+| `rgbToHex(rgb)` | 212-215 | `{r,g,b}` → HEX |
+| `hexToHsv(hex)` | 217-232 | HEX → HSV |
+| `hsvToHex(h,s,v)` | 234-254 | HSV → HEX |
+| `useDragArea(onPosition)` | 256-301 | 指针拖拽 hook，返回 `{ref, onPointerDown, onPointerMove, onPointerUp, onPointerCancel}`，回调归一化 0-1 的 `(left, top)` |
+| `generateColorScale(hex)` | 303-320 | 由单色生成 50-900 色阶（500 为原色，foreground 固定白） |
+| `applyThemeColor(colors)` | 322-336 | 写入 `--primary-50`…`--primary-900`、`--primary`、`--primary-foreground` |
+| `getAllColors(customColors)`（export） | 338-340 | 预设色 + 自定义色合并列表 |
+| `findColorByName(name, customColors)`（export） | 342-347 | 按 `name` 查找颜色（仓库内暂无调用方） |
+| `AppearanceSettings`（export） | 349-1450 | 主组件，无 props；内部状态与处理函数见下表 |
+| `applyThemeModeLocal(mode)` | 1452-1457 | 按模式/系统深色切换 `<html>` 的 `dark` class |
+| `dispatchThemeChange()` | 1459-1461 | 派发 window `CustomEvent("themeChange")` |
+
+**内部结构**：
+- 1-30 行：导入（React hooks、`createPortal`、i18n、Tauri `invoke`/`isTauri`/`emit`、`SettingsDivider`、`Slider`、`ScreenColorPicker`、`getConfig`/`setConfig`、`MorphIcon`、lucide 图标）。
+- 31-45 行：`ThemeMode` 类型与 `applyGlassClarity`。
+- 47-168 行：`ThemeColor` 接口与 `PRESET_COLORS` 常量数据。
+- 170-254 行：六组颜色空间转换纯函数（HSL/RGB/HSV ↔ HEX）。
+- 256-301 行：`useDragArea` 拖拽 hook（用于取色面板）。
+- 303-347 行：色阶生成、主题色变量应用、两个导出工具函数。
+- 349-389 行：组件状态声明（主题模式/颜色/自定义色、取色器显隐与坐标、Hex/RGB 草稿、编辑中的颜色、右键菜单、屏幕取色开关、背景图路径/预览/透明度/模糊、玻璃清晰度、默认值常量、文件输入 ref）。
+- 391-476 行：取色器交互——`pickerHex` → RGB 草稿同步（391-394）、`applyHex`（396-399）、饱和度/亮度与色相拖拽回调（401-420）、RGB 输入处理（422-431）、`repositionPicker` 浮层定位（433-456，面板按 264×460 预估并做上下翻转）、草稿同步 effect（458-462）、布局 effect（464-466）、resize/scroll 监听（468-476）。
+- 478-536 行：`loadConfig`——并行读取 7 个配置键，应用 CSS 变量，调用 `invoke("read_image_file")` 读取背景图字节并生成 objectURL 写入 `--bg-image`。
+- 538-552 行：监听 window `themeChange`，重新拉取主题配置以保持高亮同步。
+- 554-571 行：主题色/模式应用 effect；`system` 模式下监听 `prefers-color-scheme` 变化并 `emit("theme-changed", "system")`。
+- 573-588 行：取色器点击外部/滚动关闭（屏幕取色打开时不关闭）。
+- 590-617 行：`handleModeChange`（写配置、派发事件、淡出淡入切换）、`handleColorChange`。
+- 619-726 行：`convertToWebP`、背景图选择/删除、背景图透明度与模糊的修改与重置、玻璃清晰度修改与重置（均写 CSS 变量 + 配置键）。
+- 728-835 行：`handleSaveCustom`（新增/编辑自定义色）、`handleDeleteCustom`（删除并回退到 indigo）、`openPicker`/`closePicker`、`handleScreenPick`、`handlePickFromScreen`（Tauri 走原生截图覆盖层，浏览器走 `EyeDropper`）。
+- 837-858 行：`isLoading` 时返回 `null`；`modeOptions` 三选项（浅/深/系统，含图标）；计算当前 HSV。
+- 860-888 行：主题模式分段按钮 UI。
+- 890-1296 行：主题色区块——预设色行（903-937）、自定义色行与右键菜单入口（939-976）、新增按钮（977-985）、取色器 portal（987-1236：SV 面板 1006-1050、色相条 1052-1097、预览 + Hex 输入 1099-1173、屏幕取色按钮 1159-1172、RGB 输入 1175-1209、名称输入 1211-1217、取消/保存按钮 1219-1232）、自定义色右键菜单 portal（1243-1286）、`ScreenColorPicker` portal（1288-1295）。
+- 1298-1413 行：背景图区块——隐藏 file input（1311-1318）、预览与移除按钮（1320-1343）、不透明度滑杆（1345-1371）、模糊滑杆（1373-1399）、无图时的虚线选择按钮（1401-1412）。
+- 1415-1447 行：毛玻璃清晰度滑杆 + 重置按钮。
+- 1452-1461 行：文件末尾的 `applyThemeModeLocal` 与 `dispatchThemeChange`。
+
+**设置项/能力清单**：
+
+| 能力 | 配置键 | 控件 | 行号 |
+| --- | --- | --- | --- |
+| 主题模式（浅色/深色/跟随系统） | `theme_mode` | 三段按钮组（`handleModeChange`） | 590-611，UI 863-888 |
+| 系统深色变化跟随 | `theme_mode`（读） | `matchMedia` 监听 + `emit` | 562-571 |
+| 主题色预设（6 色） | `theme_color` | 圆形色块按钮（`handleColorChange`） | 613-617，UI 903-937 |
+| 自定义主题色新增 | `theme_custom_colors` + `theme_color` | 「+」按钮 + 取色器弹层 + 保存 | 748-764，UI 977-985 / 1226-1231 |
+| 自定义主题色编辑 | `theme_custom_colors` | 右键菜单「编辑」+ 取色器 | 733-746，菜单 1261-1275 |
+| 自定义主题色删除 | `theme_color`（回退 indigo）+ `theme_custom_colors` | 右键菜单「删除」 | 766-778，菜单 1276-1282 |
+| 取色器（SV 面板 / 色相条 / Hex 输入 / RGB 输入 / 名称输入） | 草稿态，保存时并入 `theme_custom_colors` | portal 弹层 + 拖拽 + 受控输入 | 面板 987-1236，交互 401-431 |
+| 屏幕取色（Tauri 截图放大镜 / 浏览器 EyeDropper） | —（结果进入取色器草稿） | `Pipette` 按钮 + `ScreenColorPicker` | 811-835，按钮 1159-1172，portal 1288-1295 |
+| 背景图选择/替换（WebP 转码后保存） | `bg_image_path` | 隐藏 file input + 预览按钮 | 644-666，input 1311-1318，预览 1323-1331 |
+| 背景图移除 | `bg_image_path`（置 null） | 预览图右上角 X | 668-678，按钮 1333-1342 |
+| 背景图不透明度（0-1） | `bg_image_opacity` | `Slider` + 重置按钮 | 680-697，UI 1345-1371 |
+| 背景图模糊（0-40px） | `bg_blur` | `Slider` + 重置按钮 | 699-713，UI 1373-1399 |
+| 毛玻璃清晰度（0-100） | `glass_clarity` | `Slider` + 重置按钮 | 715-726，UI 1417-1447 |
+
+**备注**：
+- `invoke` 命令：`read_image_file`（516，参数 `{ path }`）、`save_background_image`（650，参数 `{ data }`，返回保存路径）、`delete_background_image`（670）。
+- Tauri `emit` 事件：`theme-changed`（567、594）。
+- window 事件：监听 `themeChange`（550）、派发 `themeChange`（593，由 1459-1461 的 `dispatchThemeChange` 封装；另在 616、741、761、776 调用）；另有原生 `resize`/`scroll`/`mousedown`/`matchMedia` 监听。本文件**没有** `listen(...)`。
+- 配置键（经 `@/utils/configService`）：`theme_mode`、`theme_color`、`theme_custom_colors`、`bg_image_path`、`bg_image_opacity`、`bg_blur`、`glass_clarity`。
+- 写入的 CSS 变量：`--glass-blur`、`--glass-surface-opacity`、`--glass-strong-opacity`、`--glass-field-opacity`、`--primary-50`…`--primary-900`、`--primary`、`--primary-foreground`、`--bg-image-opacity`、`--bg-blur`、`--bg-image`。
+- 默认值常量：背景图透明度 0.5（383）、背景模糊 16（385）、玻璃清晰度 55（386）、默认取色 `#6366f1`（356/791）、自定义色命名前缀 `custom-${Date.now()}`（748）。
+
+## `src/components/language-switch.tsx`
+**职责**：顶栏语言切换下拉（English/中文），带搜索、旗帜图标与选中校验，切换后写入持久化配置。
+**导出**：`LanguageSwitch`（另有未导出的 `USFlag`、`CNFlag` 内联 SVG 组件）。
+**主要依赖**：`react`、`react-dom`（`createPortal`）、`react-i18next`（`i18n`）、`@/components/ui/glass`（`GlassInput`）、`@/utils/configService`（`setConfig`）、`morphicons/react`（`MorphIcon`）、`lucide`（`ChevronDown`、`Check`）。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `USFlag` | 12-26 | 美国国旗内联 SVG（`w-6 h-4`） |
+| `CNFlag` | 28-40 | 中国国旗内联 SVG |
+| `LanguageSwitch`（export） | 42-179 | 无 props 的下拉切换组件 |
+
+**内部结构**：
+- 43-49 行：`i18n`、开关/搜索状态、`wrapperRef`/`buttonRef`/`menuRef`、`dropdownPos` 浮层坐标。
+- 51-57 行：硬编码语言列表（`en`/`zh`，含 `label`/`code`/`flag`）与当前选中项回退逻辑。
+- 60-74 行：点击外部与滚动关闭浮层的 effect。
+- 76-81 行：`handleLanguageChange`——`i18n.changeLanguage` + `setConfig("app.language", ...)` + 复位搜索。
+- 83-87 行：`filteredLanguages` 按 label/code 过滤。
+- 89-100 行：`handleToggle` 计算浮层初始位置（按钮下方 +4px，宽度取 `max(220, 按钮宽)`）。
+- 103-118 行：渲染后按菜单实际高度/视口二次校准（下方放不下则翻到上方，左右各留 8px）。
+- 120-178 行：渲染——触发按钮（123-136，旗帜 + 文案 + 旋转箭头）、portal 菜单（139-176，含搜索框 147-152、可滚动列表 154-173，选中项显示 `Check`）。
+
+**备注**：无 `invoke`、无 `listen`、无 `emit`；配置键 `app.language`；window/document 事件：`mousedown`、`scroll`（capture）。语言列表当前仅 2 项且写死在组件内。
+
+## `src/components/theme-switch.tsx`
+**职责**：顶栏/侧边栏主题快捷切换按钮，只在浅色与深色之间切换（不进入「跟随系统」），与设置页通过 `themeChange` 事件双向同步。
+**导出**：`ThemeSwitch`、`ThemeSwitchProps`。
+**主要依赖**：`react`（`FC`）、`morphicons/react`（`MorphIcon`）、`lucide`（`Sun`、`Moon`）、`@/utils/configService`（`getConfig`、`setConfig`）、`@tauri-apps/api/event`（`emit`）。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `ThemeMode`（type） | 7 | `"light" \| "dark" \| "system"` |
+| `ThemeSwitchProps`（export interface） | 9-11 | `className?: string` |
+| `getSystemDark()` | 13-15 | 读取 `prefers-color-scheme: dark` |
+| `applyThemeMode(mode)` | 17-21 | 切换 `<html>` 的 `dark` class |
+| `resolveEffective(mode)` | 24-27 | `system` 解析为当前实际生效的浅/深 |
+| `ThemeSwitch`（export） | 29-111 | 圆形切换按钮 |
+
+**内部结构**：
+- 30-32 行：`isMounted`、`themeMode`、`btnRef` 状态。
+- 34-43 行：初始化——读 `theme_mode`、应用主题、置 `isMounted`。
+- 46-55 行：监听 window `themeChange` 回读配置并应用（与设置页双向同步）。
+- 58-67 行：`system` 模式下监听系统深浅变化，应用并 `emit("theme-changed", "system")`。
+- 70-94 行：`toggleTheme`——解析当前有效模式，浅↔深切换，写 `theme_mode`、派发 `themeChange`、`emit("theme-changed", ...)`，再做 170ms 淡出 → 应用 → 40ms 淡入。
+- 96-110 行：未挂载时渲染占位 `div`；否则渲染带 `Sun`/`Moon` 图标的按钮（含 `aria-label`）。
+
+**备注**：`invoke`：无；`listen`：无；Tauri `emit`：`theme-changed`（63、77）；window 事件：监听 `themeChange`（53）、派发 `themeChange`（76）；配置键 `theme_mode`（读 36/48，写 75）。未使用的 `btnRef` 仅绑定在按钮上。
+
+## `src/components/game-launch-settings.tsx`
+**职责**：游戏启动相关设置组（取消下载行为 / 校验线程数 / 启动界面背景媒体），存储在 localStorage 并通过自定义事件与数据模式设置页实时同步；另提供游戏模式右下角弹出的毛玻璃设置弹窗。
+**导出**：`GameLaunchSettings`、`GameLaunchSettingsModal`。
+**主要依赖**：`react`、`react-i18next`、`@/components/ui/slider`（`Slider`）、`@/components/ui/settings-row`（`SettingsDivider`）、`@/components/ui/modal`（`GlassModalCompound`）、`@/stores/launcherMode`（`getGameBgMode`、`setGameBgMode`、`GameBgMode`）。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `CANCEL_BEHAVIOR_KEY` | 12 | localStorage 键 `launcher_cancel_behavior` |
+| `VERIFY_THREADS_KEY` | 13 | localStorage 键 `launcher_verify_threads` |
+| `SYNC_EVENT` | 14 | window 事件名 `game-launch-settings-sync` |
+| `readCancelBehavior()` | 16-22 | 读取消行为，默认 `"ask"` |
+| `readVerifyThreads()` | 24-31 | 读线程数并夹取 1-32，默认 12 |
+| `persist(key, value)` | 33-38 | 写 localStorage 并广播 `SYNC_EVENT` |
+| `GameLaunchSettings`（export） | 44-185 | 设置组主体，无 props |
+| `GameLaunchSettingsModal`（export） | 190-216 | 弹窗包装；props：`onClose: () => void`（`isOpen` 恒为 true） |
+
+**内部结构**：
+- 46-48 行：三个状态用懒初始化读取（`cancelBehavior`、`verifyThreads`、`bgMediaMode`）。
+- 50-58 行：监听 `SYNC_EVENT` 重读三项状态。
+- 60-75 行：`handleCancelChange`、`handleThreadsChange`（走 `persist`）、`handleBgMediaChange`（走 `setGameBgMode` + 手动广播）。
+- 77-111 行：取消下载行为区块（`ask`/`keep`/`delete` 三按钮，`id="settings-cancel-behavior"`）。
+- 113-141 行：分隔线 + 校验线程数区块（`Slider` 1-32 + 数值，`id="settings-verify-threads"`）。
+- 143-182 行：分隔线 + 背景媒体区块（`video`/`image` 两按钮，`id="settings-bg-media"`）。
+- 190-216 行：`GameLaunchSettingsModal`——`GlassModal` 复合组件（Backdrop/Container/Dialog/Header/Heading/CloseTrigger/Body），Body 内嵌 `GameLaunchSettings`。
+
+**备注**：无 `invoke`、无 `listen`、无 Tauri `emit`。localStorage 键：`launcher_cancel_behavior`、`launcher_verify_threads`；背景媒体模式经 `@/stores/launcherMode` 存取（其内部同样使用 localStorage）。window 事件：`game-launch-settings-sync`（监听 56，派发 37、74）。i18n 键：`launcher.cancel_download_behavior(_desc)`、`launcher.cancel_behavior_ask/keep/delete`、`settings.game_launch.verify_threads(_desc)`、`settings.game_launch.bg_media(_desc)`、`settings.game_launch.bg_media_video/image`、`settings.game_launch.title`；三块之间由 `SettingsDivider` 分隔。
+
+## `src/components/in-app-browser.tsx`
+**职责**：应用内嵌浏览器覆盖层——玻璃工具栏（前进/后退/刷新/地址栏/关闭）+ 加载进度条 + 沙箱 `iframe`，开合与地址由 `@/stores/inAppBrowser` 状态驱动。
+**导出**：`InAppBrowser`。
+**主要依赖**：`react`、`@/stores/inAppBrowser`（`isBrowserOpen`、`getInAppBrowserUrl`、`closeInAppBrowser`、`navigateInAppBrowser`、`subscribeInAppBrowser`）。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `InAppBrowser`（export） | 10-167 | 无 props；未打开时返回 `null` |
+
+**内部结构**：
+- 11-15 行：`isOpen`/`url`/`inputValue`/`loading` 状态与 `iframeRef`。
+- 17-26 行：订阅 store，变化时同步开关、地址、输入框并置 `loading=true`。
+- 28-30 行：`url` 变化时同步输入框。
+- 32-34 行：`handleClose` 调 `closeInAppBrowser()`。
+- 36-50 行：`handleBack`/`handleForward` 尝试操作 `iframe.contentWindow.history`，跨域异常静默忽略。
+- 52-57 行：`handleRefresh` 重设 `iframe.src = url` 并置加载中。
+- 59-69 行：`handleNavigate`——去空格、无协议自动补 `https://`，写 store 并置加载中。
+- 71-76 行：回车触发导航。
+- 78 行：`!isOpen` 时返回 `null`。
+- 81-147 行：玻璃工具栏（后退 85-94、前进 97-106、刷新 109-118、地址栏 121-134、关闭 137-146，图标为内联 SVG）。
+- 150-154 行：`loading` 时的顶部脉冲进度条。
+- 157-164 行：`iframe`（`sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-downloads"`，`onLoad` 关闭 loading）。
+
+**备注**：无 `invoke`、无 `listen`、无 `emit`、无配置键；开合状态完全来自 `@/stores/inAppBrowser` 的订阅。注意：前进/后退依赖同源，跨域时静默失败；地址栏导航不改写浏览器 history（仅 store + iframe）。
+
+## `src/components/tray-panel.tsx`
+**职责**：系统托盘悬浮面板——展示当前用户（头像/昵称/等级）、理智、每日活跃、每周事务、通行证四项进度与理智恢复倒计时，并提供「显示窗口」「退出」两个操作。
+**导出**：`TrayPanel`。
+**主要依赖**：`react`、`@tauri-apps/api/core`（`invoke`）、`@tauri-apps/api/window`（`getCurrentWindow`）、`@tauri-apps/api/event`（`listen`）、`@/utils/imageLoader`（`Img`）。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `TrayUserInfo`（interface） | 7-20 | `roleId`、`nickname`、`avatar`、`curStamina`/`maxStamina`/`maxTs`、`dailyActivation`/`maxDailyActivation`、`weeklyScore`/`weeklyTotal`、`bpCurLevel`/`bpMaxLevel` |
+| `formatRecoveryTime(maxTs)` | 22-30 | 秒级时间戳 → `HH:MM:SS` 倒计时，已到点返回 `"已满"` |
+| `StatItem`（内部组件） | 32-70 | props：`icon: ReactNode`、`label: string`、`cur: number`、`max: number`、`recovery?: string`；渲染进度条与百分比 |
+| `TrayPanel`（export） | 72-231 | 面板主体，无 props |
+
+**内部结构**：
+- 73-74 行：`userInfo`、每秒 tick 的 `now`（用于倒计时刷新）。
+- 76-83 行：`loadUserInfo`——`invoke("get_tray_user_info")`，失败静默。
+- 85-106 行：mount effect——初始加载、`listen("tray-user-info-updated")` 更新数据、`getCurrentWindow().onFocusChanged` 失焦即 `win.hide()`、1 秒定时器；清理时依次解绑。
+- 108-112 行：派生值（`hasUser`、当前/上限体力、恢复倒计时）。
+- 114-121 行：`handleShowMain`——`invoke("show_main_window")`，失败则隐藏自身窗口。
+- 123-129 行：`handleQuit`——`invoke("app_quit")`，失败则 `getCurrentWindow().app.exit(0)`。
+- 131-207 行：渲染头部（ENDPROTOCOL 标题）、用户区（头像/昵称/Lv、分隔线、四个 `StatItem`：理智 169-175、每日活跃 176-181、每周事务 182-187、通行证 188-193）或未选用户占位（196-203）。
+- 205-228 行：分隔线与菜单按钮（显示窗口 210-218、退出 219-227，均内联 SVG 图标）。
+
+**备注**：
+- `invoke` 命令：`get_tray_user_info`（78）、`show_main_window`（116）、`app_quit`（125）。
+- `listen` 事件：`tray-user-info-updated`（88，payload 为 `TrayUserInfo`）。
+- 窗口事件：`getCurrentWindow().onFocusChanged`（93，失焦隐藏）。
+- 无配置键、无 `emit`；文案（"理智"、"每日活跃"、"每周事务"、"通行证"、"未选择用户"、"显示窗口"、"退出"、"已满"）为硬编码中文，未走 i18n。
+
+## `src/components/update-dialog.tsx`
+**职责**：应用更新对话框——打开时检查更新（或恢复进行中的下载状态），展示当前/最新版本、更新渠道、发布日期与 Markdown 风格更新日志，并提供下载按钮与进度提示。
+**导出**：`UpdateDialog`（`UpdateDialogProps` 接口定义于同文件 17-20 行但未加 `export`，仅在文件内可见）。
+**主要依赖**：`react`、`react-i18next`、`@/components/ui/button`（`GlassButton`）、`@/components/ui/modal`（`GlassModalCompound`）、`@/components/ui/skeleton`（`GlassSkeleton`）、`@/utils/updateService`（`checkForUpdate`、`downloadUpdate`、`getChannel`、`getCurrentUpdateInfo`、`getIsDownloading`、`UpdateCheckResult`、`ChangelogStatus`、`UpdateChannel`）。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `UpdateDialogProps`（interface） | 17-20 | `isOpen: boolean`、`onOpenChange: (open: boolean) => void` |
+| `UpdateDialog`（export） | 22-340 | 对话框主体 |
+
+**内部结构**：
+- 25-31 行：`result`、`isChecking`、`isDownloading`、`changelogStatus`、`changelog`、`channel`（默认 `"stable"`）状态。
+- 34-80 行：`isOpen` 变化时的 effect——下载中则用 `getIsDownloading()`/`getCurrentUpdateInfo()` 恢复状态并补拉日志（40-59）；否则执行 `checkForUpdate()` 并用 `cancelled` 标记防止竞态（61-79）。
+- 82-90 行：`handleDownload`——调用 `downloadUpdate()`，`finally` 复位 `isDownloading`。
+- 92-94 行：`handleClose`。
+- 96-175 行：`renderChangelog`——`loading` 显示骨架屏（97-106）、`failed`/`unavailable` 显示警告条（108-131）、`success` 按行渲染 `#`/`##`/`- ` 层级（133-172）。
+- 177-247 行：`renderVersionInfo`——检查中显示骨架（178-201）；有更新时展示当前版本、最新版本、渠道、发布日期四格（205-246）。
+- 249-339 行：`GlassModal` 结构——Backdrop（254）、Header（257-292，含下载图标、标题、版本箭头/骨架）、Body（294-312，版本信息 + 下载中旋转提示 299-308 + 日志）、Footer（314-334，下载中仅一个禁用按钮，否则「稍后」+「下载更新」）。
+- 250-253 行：`onOpenChange` 直接透传（下载中允许关闭，下载在后台继续）。
+
+**备注**：本文件不直接 `invoke`/`listen`/`emit`，也不直接读写配置键——所有 Tauri 交互（含更新检查/下载/渠道）封装在 `@/utils/updateService`。window 事件：无。涉及的 `localStorage`/事件均由该 service 内部管理。i18n 键：`settings.update.update_available/checking/current_version/latest_version/channel/release_date/changelog_failed/downloading/downloading_install/later/download_update`、`settings.update_channel.stable/preview`。

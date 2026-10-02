@@ -1,41 +1,77 @@
 # 前端开发规范与拓展指南
 
+> 定位现有实现请查 [README.md](README.md) 快速定位表，或 [reference/frontend/](reference/frontend/)（18 篇逐文件参考，含行号与 props 清单）。
+
 ## 1. 目录结构与文件定位
-- **页面组件**: `src/pages/` (如 `dashboard.tsx`, `account.tsx`)
-- **通用组件**: `src/components/` (如 `custom-modal.tsx`, `navbar.tsx`)
-- **卡片组件**: `src/components/cards/` (专门用于仪表板的卡片)
-- **工具类**: `src/utils/` (封装 Tauri Invoke 调用及数据处理逻辑)
-- **类型定义**: `src/types/` (TypeScript 接口与类型)
+
+| 目录 | 内容 | 对应 reference 文档 |
+| --- | --- | --- |
+| `src/pages/` | 9 个页面（dashboard、account、char-select、characters、gacha-records、attendance、medals、settings、developer） | [pages_*.md](reference/frontend/pages_core.md) |
+| `src/layouts/` | dashboard / default 布局 | [pages_core.md](reference/frontend/pages_core.md) |
+| `src/components/` | 弹窗、面板、侧栏、图表等大组件（约 28 个 tsx） | [components_dialogs.md](reference/frontend/components_dialogs.md)、[components_settings_panels.md](reference/frontend/components_settings_panels.md)、[components_sidebar_charts.md](reference/frontend/components_sidebar_charts.md)、[components_game_action_panel.md](reference/frontend/components_game_action_panel.md) |
+| `src/components/ui/` | 36 个通用 UI 组件 + `glass/` | [ui_components.md](reference/frontend/ui_components.md) |
+| `src/components/cards/` | 卡片系统：`registry/`、`base/`、`card-container.tsx`、`_template/` 与 9 张卡片 | [cards_core.md](reference/frontend/cards_core.md) 及各 `cards_*.md` |
+| `src/utils/` | 18 个 IPC 封装与工具（account/config/cardConfig/dashboard/role/launcher/update/image/logger…） | [utils_services_a.md](reference/frontend/utils_services_a.md)、[utils_services_b.md](reference/frontend/utils_services_b.md) |
+| `src/types/` | TypeScript 类型 | [types_locales_styles.md](reference/frontend/types_locales_styles.md) |
+| `src/locales/{zh,en}/` | 国际化资源 | 同上 |
+| `src/styles/globals.css` | 全局样式、主题变量、玻璃拟态类 | 同上 |
+| `src/stores/`、`src/hooks/`、`src/lib/`、`src/config/` | 轻量状态、hooks、工具函数 | [entry_and_app.md](reference/frontend/entry_and_app.md) |
 
 ## 2. 开发规范
-- **状态管理**: 优先使用 React Hooks (`useState`, `useEffect`)。对于跨组件共享的复杂状态，建议使用 Context API 或 Zustand（若后续引入）。
-- **样式编写**: 使用 Tailwind CSS 进行原子化样式开发，避免编写大量自定义 CSS。
-- **国际化**: 所有用户可见文本必须通过 `useTranslation` hook 从 `locales/` 目录获取。
-- **日志记录**: 使用 `src/utils/logger.ts` 提供的 `logInfo`, `logError` 等方法，禁止直接使用 `console.log`。
+
+- **状态管理**: 优先使用 React Hooks (`useState`, `useEffect`)；跨窗口/轻量全局状态用 `src/stores/`（`inAppBrowser.ts`、`launcherMode.ts`）。
+- **样式编写**: 使用 Tailwind CSS 原子类 + `src/components/ui/glass` 的玻璃组件；深色模式通过 `globals.css` 的 `.dark` 类切换。
+- **国际化**: 用户可见文本必须通过 `useTranslation` 从 `locales/` 获取；卡片文案放各自的 `locales/{zh,en}.json`（合并进 `card` 命名空间）。
+- **日志记录**: 使用 `src/utils/logger.ts` 的 `logger` / `logInfo` / `logError` / `logDebug`，**禁止 `console.log`**。
+- **IPC 调用**: 页面/组件不直接散写 `invoke`，统一走 `src/utils/*Service.ts` 封装；需要新增命令时先在封装层加函数（含类型与错误兜底）。
+- **错误处理**: 封装层统一 `try/catch` + `logError`，并明确失败时的返回值约定（空数组/`false`/`null`）。
 
 ## 3. 拓展位置与方法
 
 ### 3.1 新增仪表板卡片
-1. **定义类型**: 在 `src/types/dashboard.ts` 中添加新的卡片类型标识。
-2. **创建组件**: 在 `src/components/cards/` 下创建新卡片组件（例如 `MyNewCard.tsx`）。
-3. **注册渲染**: 在 `src/pages/dashboard.tsx` 的渲染逻辑中，根据卡片类型动态加载新组件。
-4. **配置支持**: 更新 `src/utils/dashboardConfig.ts`，确保新卡片可以被添加和保存。
+
+卡片系统是**约定式自动发现**的，无需改核心代码（详见 [card_development.md](card_development.md)）：
+
+1. 新建 `src/components/cards/<card-name>/`
+2. 添加 `<card-name>.meta.json`（`id`、`name{zh,en}`、`description{zh,en}`、`icon`、`defaultSize`、`version`、可选 `allowMultiple`）
+3. 添加 `index.tsx` 默认导出组件，props 用 `BaseCardProps`（`roleId/cardId/settings/isEditMode`）
+4. 添加 `locales/{zh,en}.json`，组件内用 `t("card:key")`
+5. 若有配置项，在 `src/types/card-settings.ts` 增加 settings 类型
+6. 重启开发服务器，卡片自动进入「添加卡片」对话框（`getAvailableCards()`）
+
+渲染由 `src/pages/dashboard.tsx:422` 的 `CardContainer` 统一负责（拖拽、编辑模式、右键菜单），
+布局持久化走 `src/utils/dashboardConfig.ts`（配置键 `dashboard_tabs`），配置读写走 `src/utils/cardConfigService.ts`。
 
 ### 3.2 新增页面路由
-1. **创建页面**: 在 `src/pages/` 下创建新页面组件。
-2. **配置路由**: 在 `src/App.tsx` 中使用 `react-router-dom` 的 `<Route>` 注册新路径。
-3. **导航入口**: 在 `src/components/navbar.tsx` 或侧边栏中添加跳转链接。
+
+1. 在 `src/pages/` 创建页面组件
+2. 在 `src/App.tsx` 用 `react-router-dom` 的 `<Route>` 注册
+3. 导航入口：`src/components/dashboard-sidebar.tsx` 或 `navbar.tsx`（入口与侧栏结构见 [components_sidebar_charts.md](reference/frontend/components_sidebar_charts.md)）
 
 ### 3.3 新增后端命令调用
-1. **封装服务**: 在 `src/utils/` 下创建或更新服务文件（如 `xxxService.ts`）。
-2. **定义类型**: 确保请求参数和返回值的 TypeScript 类型已定义。
-3. **错误处理**: 统一使用 `try-catch` 捕获 `invoke` 异常，并通过 `logger` 记录。
+
+1. 在 `src/utils/` 对应服务文件（或新建 `xxxService.ts`）中封装 `invoke`
+2. 定义请求参数与返回值的 TypeScript 类型（放 `src/types/` 或服务文件内）
+3. `try/catch` 捕获异常并用 `logger` 记录，明确失败返回值
+4. 同步在 [reference/ipc_index.md](reference/ipc_index.md) 与 `reference/frontend/utils_services_*.md` 补一行
+
+### 3.4 新增通用 UI 组件
+
+- 放 `src/components/ui/`，遵循现有组件的 props 风格（受控 `isOpen`/`onOpenChange`、`className` 合并用 `cn`）
+- 复用 `glass/` 的视觉变量，支持深色模式
+- 组件清单与 props 见 [ui_components.md](reference/frontend/ui_components.md)
 
 ## 4. 拓展流程示例：添加一个新的数据展示卡片
-1. **需求分析**: 确定卡片需要展示的数据字段及来源。
-2. **后端准备**: 确认后端已有对应的 Tauri Command 提供数据。
+
+1. **需求分析**: 确定卡片展示的数据字段及来源（是否已有后端命令 → 查 [ipc_index.md](reference/ipc_index.md)）
+2. **后端准备**: 若无命令，按 [backend_development.md](backend_development.md) 新增 command + service 方法
 3. **前端实现**:
-   - 编写卡片 UI 组件。
-   - 在 `dashboard.tsx` 中集成该组件。
-   - 在 `add-card-modal.tsx` 中添加该卡片的选项。
-4. **测试验证**: 运行项目，测试卡片的添加、数据显示及拖拽排序功能。
+   - 复制 `src/components/cards/_template/` 并重命名，写 `meta.json` + `index.tsx` + `locales`
+   - 数据获取用 `useCardData`（`src/components/cards/base/use-card-data.ts`）
+   - 需要用户配置时走 `CardConfigService` 并在 `types/card-settings.ts` 补类型
+   - 「添加卡片」对话框（`src/components/add-card-modal.tsx`）会自动收录，无需改代码
+4. **测试验证**: 运行项目，测试卡片添加、数据显示、拖拽排序、配置保存与卡片删除后的配置清理
+
+## 5. 改代码后的文档同步
+
+改动涉及新增/重命名文件、导出符号或 IPC 命令时，同步更新对应的 `reference/*.md`（格式见 [README.md](README.md#5-文档维护约定)）。

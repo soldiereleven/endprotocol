@@ -1,0 +1,254 @@
+# 前端入口与应用骨架 — 文件功能参考
+
+> 逐文件精读源码生成。行号基于当前工作区版本，仅用于快速定位。
+
+## `src/main.tsx`
+**职责**：主窗口（index.html）的唯一入口。在渲染前从配置服务读取语言与主题并应用（避免闪白/闪黑），随后挂载 React 应用，并在渲染后串行触发卡片注册、启动任务、更新检查、托盘数据拉取等副作用。
+**导出**：（无导出）
+**主要依赖**：`react` / `react-dom/client` / `react-router-dom`（BrowserRouter）、`./App.tsx`、`./provider.tsx`、`./i18n`、`@/styles/globals.css`、`@/utils/configService`、`@/cards/startup-service`、`@/components/cards/registry/loader`、`@/utils/overlayScrollbar`、`@/utils/updateService`、`@/utils/logger`、`@/utils/roleDataService`、`@/utils/accountService`、`@/utils/backgroundSettings`、`@tauri-apps/api/core`（invoke）。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `ThemeMode`（类型） | main.tsx:20 | `"light" \| "dark" \| "system"`，主题模式联合类型 |
+| `ThemeColor`（接口） | main.tsx:22 | 自定义主题色对象：`name` + `colors`（色阶映射） |
+| `PRESET_COLORS` | main.tsx:27 | 6 套预设色板（indigo/blue/emerald/rose/amber/slate），每套含 50–900 色阶与 `foreground` |
+| `findColors` | main.tsx:108 | 按名称查找颜色：先在自定义色 `customColors` 中匹配，命中则返回，否则回退到 `PRESET_COLORS` |
+| `applyThemeColor` | main.tsx:117 | 把色阶写入 `document.documentElement` 的 CSS 变量 `--primary-50`…`--primary-900`、`--primary`（取 500）、`--primary-foreground` |
+| `applyThemeMode` | main.tsx:133 | `dark` 或（`system` 且系统深色）时给 `<html>` 加 `dark` 类，否则移除 |
+| 顶层 `Promise.all(...).then(...)` | main.tsx:141-216 | 渲染前的初始化主流程，见「备注」 |
+
+**备注**：
+- 初始化读取的配置键：`app.language`、`theme_mode`、`theme_color`、`theme_custom_colors`，并 `loadBackgroundSettings()`；语言未保存时按 `navigator.language` 以 `zh` 开头判定中/英（main.tsx:142-149）；主题色默认 `indigo`，主题模式默认 `system`（main.tsx:152-155）。
+- 渲染结构：`StrictMode > BrowserRouter > Provider > App`，挂载到 `#root`（main.tsx:161-169）。
+- 渲染后的四个延时副作用：`loadAllCards()` 立即执行注册启动处理器，随后 `setTimeout 0` 调用 `CardStartupService.runAll()`（main.tsx:172-175）；`setTimeout 3000` 调用 `checkAndNotify()` 自动检查更新（main.tsx:178-180）；`setTimeout 5000` 读取 `tray_user_role_id`，查 `char_detail`（字段 `dungeon`/`bpSystem`/`dailyMission`/`weeklyMission`）并汇总账号昵称/头像后推送托盘数据（main.tsx:183-215）。
+- `invoke("update_tray_user_data", ...)`（main.tsx:194）：本文件唯一的 Tauri 命令，payload 为 `userInfo`（roleId、nickname、avatar、体力 curStamina/maxStamina/maxTs、每日活跃 dailyActivation/maxDailyActivation、周分 weeklyScore/weeklyTotal、BP 等级 bpCurLevel/bpMaxLevel），数值均做 `Number(...) || 0` 兜底。
+- 魔数：3000（更新检查延迟 ms）、5000（托盘数据拉取延迟 ms）、0（启动任务延迟 ms）；进度/主题色阶键名 50–900 为 Tailwind 风格约定。
+
+## `src/App.tsx`
+**职责**：定义应用的路由表（8 条顶层路由，全部包在 `DashboardLayout` 中），并挂载两个无 UI 的副作用组件：路由恢复（记住/还原 `last_route`）与更新检查。
+**导出**：`export default App`（App.tsx:128）。
+**主要依赖**：`react`（useEffect/useRef）、`react-router-dom`（Route/Routes/useLocation/useNavigate）、页面组件 `@/pages/{dashboard,settings,developer,account,characters,medals,attendance,gacha-records}`、`@/layouts/dashboard`、`@/utils/configService`（getConfig/setConfig）、`@/utils/updateService`（checkAndNotify）。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `ROUTES` | App.tsx:16 | 白名单路由数组 `["/", "/settings", "/account", "/characters", "/medals", "/attendance", "/gacha", "/developer"]`，用于校验可恢复路径 |
+| `RouteRestore` | App.tsx:18-39 | 无 UI 组件。首次 effect 读取 `last_route`，若在白名单内且与当前路径不同则 `navigate(savedPath, { replace: true })`；`restored` ref 防止恢复前就覆盖保存；路径变化后写回 `setConfig("last_route", pathname)` |
+| `UpdateChecker` | App.tsx:41-51 | 无 UI 组件。用 `notified` ref 保证 `checkAndNotify()` 仅执行一次 |
+| `App`（default） | App.tsx:53-126 | 渲染 `<RouteRestore/>`、`<UpdateChecker/>` 与 `<Routes>` |
+| 路由 `/` | App.tsx:59-66 | `DashboardLayout` 包 `DashboardPage` |
+| 路由 `/settings` | App.tsx:67-74 | `DashboardLayout` 包 `SettingsPage` |
+| 路由 `/account` | App.tsx:75-82 | `DashboardLayout` 包 `AccountPage` |
+| 路由 `/characters` | App.tsx:83-90 | `DashboardLayout` 包 `CharactersPage` |
+| 路由 `/medals` | App.tsx:91-98 | `DashboardLayout` 包 `MedalsPage` |
+| 路由 `/attendance` | App.tsx:99-106 | `DashboardLayout` 包 `AttendancePage` |
+| 路由 `/gacha` | App.tsx:107-114 | `DashboardLayout` 包 `GachaRecordsPage` |
+| 路由 `/developer` | App.tsx:115-122 | `DashboardLayout` 包 `DeveloperPage` |
+
+**备注**：
+- 路由表（path → 页面）：`/`→dashboard、`/settings`→settings、`/account`→account、`/characters`→characters、`/medals`→medals、`/attendance`→attendance、`/gacha`→gacha-records、`/developer`→developer；无 404/通配路由。
+- 配置键 `last_route` 由 `RouteRestore` 读写；`ROUTES` 与上述路径必须同步维护。
+
+## `src/App.css`
+**职责**：Vite/Tauri 模板遗留的全局样式（logo hover 光晕、根字体、按钮/输入框基础样式、暗色偏好媒体查询）。当前 `App.tsx` 与 `main.tsx` 均未导入它，实际样式来自 `@/styles/globals.css`。
+**导出**：（无导出，纯 CSS）
+**主要依赖**：无。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `.logo.vite:hover` / `.logo.react:hover` / `.logo.tauri:hover` | App.css:1-7, 40-42 | 模板 logo 的 drop-shadow 悬停光晕（#747bff / #61dafb / #24c8db） |
+| `:root` | App.css:8-22 | 字体栈 Inter/Avenir/Helvetica 等、16px/24px、浅色前景 `#0f0f0f` 与背景 `#f6f6f6`、字体渲染优化 |
+| `.container` / `.logo` / `.row` | App.css:24-47 | 模板布局：垂直居中容器、6em logo、水平 flex 行 |
+| `a` / `a:hover` / `h1` | App.css:49-61 | 链接颜色 #646cff（hover #535bf2）、h1 居中 |
+| `input, button` / `button:hover` / `button:active` | App.css:63-92 | 圆角 8px、白底、阴影与 hover/active 边框色 #396cd8 |
+| `#greet-input` | App.css:94-96 | 模板 greet 输入框右边距 5px |
+| `@media (prefers-color-scheme: dark)` | App.css:98-116 | 系统深色时翻转前景/背景、链接 hover 改 #24c8db、控件半透明深底 |
+
+**备注**：疑似死代码（未被任何入口 import），后续 Agent 若要清理可整体删除，但需先全局确认无引用。
+
+## `src/provider.tsx`
+**职责**：应用级 UI 基础设施的组合层：最外层错误边界 + 全局弹窗宿主（全局 Alert、确认对话框），子内容包在其中。
+**导出**：`Provider`（provider.tsx:10）。
+**主要依赖**：`@/components/ui/error-boundary`（ErrorBoundary）、`@/components/ui/global-error-fallback`（GlobalErrorFallback）、`@/components/ui/global-alert`（GlobalAlertHost）、`@/components/ui/confirm-dialog`（ConfirmDialogHost）。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `ProviderProps`（接口） | provider.tsx:6 | `children: React.ReactNode` |
+| `Provider` | provider.tsx:10-18 | 结构：`ErrorBoundary(fallback=GlobalErrorFallback)` 内依次渲染 `GlobalAlertHost`、`ConfirmDialogHost`、`children` |
+
+**备注**：仅在 `main.tsx` 中被使用，包在 `BrowserRouter` 内、`App` 外。
+
+## `src/i18n.ts`
+**职责**：初始化 i18next（绑定 react-i18next），静态打包 en/zh 两份翻译 JSON，并提供渲染前切换初始语言的函数。
+**导出**：`setInitialLanguage`（i18n.ts:30）、`export default i18n`（i18n.ts:35）。
+**主要依赖**：`i18next`、`react-i18next`（initReactI18next）、`./locales/en/translation.json`、`./locales/zh/translation.json`。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `resources` | i18n.ts:8-15 | `{ en: { translation }, zh: { translation } }` 命名空间固定为 `translation` |
+| `initialLanguage`（模块内变量） | i18n.ts:19 | 默认 `"en"`，由 `setInitialLanguage` 覆写 |
+| i18n.init | i18n.ts:21-28 | `lng: initialLanguage`、`fallbackLng: "en"`、`interpolation.escapeValue: false`（React 已做 XSS 防护） |
+| `setInitialLanguage` | i18n.ts:30-33 | 更新模块变量并调用 `i18n.changeLanguage(lng)`，由 `main.tsx` 在渲染前调用 |
+
+**备注**：翻译键需在 `src/locales/en|zh/translation.json` 中成对维护；`import i18n from "./i18n"` 的副作用即完成初始化。
+
+## `src/tray-panel.tsx`
+**职责**：托盘面板窗口（`tray-panel.html`）的第二入口：读取主题并监听主题变更事件，然后把 `TrayPanel` 组件挂到 `#tray-panel-root`。
+**导出**：（无导出）
+**主要依赖**：`react` / `react-dom/client`、`./components/tray-panel`（TrayPanel）、`./styles/globals.css`、`./utils/configService`（getConfig）、`@tauri-apps/api/event`（listen）。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `ThemeMode`（类型） | tray-panel.tsx:8 | 与 main.tsx 相同的 `"light" \| "dark" \| "system"`（各自独立声明） |
+| `applyTheme` | tray-panel.tsx:10-15 | 与 main.tsx 的 `applyThemeMode` 逻辑一致：给 `<html>` 切换 `dark` 类 |
+| `initTheme` | tray-panel.tsx:17-24 | 读 `theme_mode` 配置应用主题（默认 `system`），并注册 Tauri 事件监听 `theme-changed`（payload 为 ThemeMode）实时应用；注意未 `await` listen |
+| 顶层调用 `initTheme()` | tray-panel.tsx:26 | 模块加载即执行 |
+| 渲染调用 | tray-panel.tsx:28-32 | `StrictMode > TrayPanel` 挂到 `#tray-panel-root` |
+
+**备注**：
+- 双入口区分：根目录 `src/tray-panel.tsx` 是 HTML 入口（tray-panel.html 引用，vite.config.ts:40 定义 rollup input `tray-panel`，Tauri 窗口 label `tray-panel`，见 tauri.conf.json:28-30）；`src/components/tray-panel.tsx` 是被渲染的组件本体。
+- Tauri 事件：`listen("theme-changed", ...)`，主题切换由主窗口侧 emit，托盘面板只订阅。
+- 配置键：`theme_mode`。本文件不渲染路由、不挂 Provider。
+
+## `src/vite-env.d.ts`
+**职责**：Vite 客户端类型引用 + 声明 `*.json` 为任意类型模块，使 TS 允许直接 import 翻译 JSON。
+**导出**：无运行时导出（纯类型声明文件）。
+**主要依赖**：`vite/client` 类型。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `/// <reference types="vite/client" />` | vite-env.d.ts:1 | 引入 Vite 客户端全局类型（`import.meta.env` 等） |
+| `declare module "*.json"` | vite-env.d.ts:3-6 | 兜底声明 JSON 模块默认导出为 `any` |
+
+## `src/config/site.ts`
+**职责**：存放静态、与语言无关的站点元信息与外链（供 About/页脚等复用；需要本地化的 nav 标签由组件内 `useTranslation` 处理）。
+**导出**：`siteConfig`（site.ts:5）、`SiteConfig`（类型，site.ts:16）。
+**主要依赖**：无。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `siteConfig` | site.ts:5-14 | `as const` 对象：`name: "EndProtocol"`、`description`、`links.github`（soldiereleven/endprotocol）、`links.docs`（heroui.com）、`links.sponsor`（patreon.com/jrgarciadev） |
+| `SiteConfig` | site.ts:16 | `typeof siteConfig` 派生类型 |
+
+**备注**：`links.docs`/`links.sponsor` 仍是模板默认值（HeroUI / Patreon），疑似未替换。
+
+## `src/lib/cn.ts`
+**职责**：`cn` 的再导出别名文件。
+**导出**：`cn`（cn.ts:1，来自 `./utils`）。
+**主要依赖**：`./utils`。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `cn`（re-export） | cn.ts:1 | 一行 `export { cn } from "./utils"`，实现见 `src/lib/utils.ts:4` |
+
+## `src/lib/utils.ts`
+**职责**：Tailwind 类名拼接工具：合并 clsx 输出并用 tailwind-merge 去重冲突类。
+**导出**：`cn`（utils.ts:4）。
+**主要依赖**：`clsx`（ClassValue）、`tailwind-merge`。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `cn` | utils.ts:4-6 | `twMerge(clsx(inputs))`，接受可变参数（对象/数组/字符串/条件值） |
+
+## `src/hooks/useLongPressDrag.ts`
+**职责**：可复用的「长按进入编辑态并随后开始拖拽」Hook：长按期间按 40ms 步进显示进度环，达到时长后触发回调并置位待拖拽标志，提供取消与模拟 pointerdown 的接口。
+**导出**：`useLongPressDrag`（useLongPressDrag.ts:23）。
+**主要依赖**：`react`（useState/useEffect/useRef）、`@/utils/logger`。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `UseLongPressDragOptions`（接口） | useLongPressDrag.ts:4-9 | `isEditMode`、`isDragging`、`onLongPress?`、`longPressDuration?`（默认 1200ms） |
+| `UseLongPressDragReturn`（接口） | useLongPressDrag.ts:11-17 | 返回 `longPressProgress`、`handlePointerDown`、`handlePointerUp`、`handlePointerLeave`、`triggerDragStart` |
+| `useLongPressDrag` | useLongPressDrag.ts:23-146 | 主 Hook，内部状态与分支见「内部结构」 |
+
+**内部结构**：
+- `29-34 行`：状态定义——定时器、进度 0–100、进度 interval、`shouldStartDrag`、`enteredEditModeViaLongPress`、`pointerDownEventRef`。
+- `36-80 行`：`handlePointerDown`——已处于编辑态或拖拽中直接 return；否则缓存事件，启动 40ms 间隔的进度累加（`increment = 100 / (duration/40)`），并设 `setTimeout(longPressDuration)` 触发 `onLongPress`、置 `enteredEditModeViaLongPress` 与 `shouldStartDrag`，150ms 后把进度清零。
+- `83-96 行`：`triggerDragStart(onPointerDown)`——当 `shouldStartDrag` 且缓存事件与回调都存在时，延时 50ms 调用 `onPointerDown(缓存事件)` 模拟 pointerdown 启动拖拽，并复位标志；否则仅记日志。
+- `98-111 行`：`handlePointerUp`——清理 timer/interval、进度归零、清 `shouldStartDrag` 与缓存事件。
+- `113-115 行`：`handlePointerLeave` 直接转调 `handlePointerUp`。
+- `118-129 行`：全局事件 `window 'clearLongPressTimers'` 监听（如弹窗打开时调用 `window.dispatchEvent(new Event('clearLongPressTimers'))` 可取消长按），回调执行 `handlePointerUp`；依赖 `[longPressTimer, progressInterval]`。
+- `132-137 行`：`shouldStartDrag && isEditMode` 成立时把 `shouldStartDrag` 置回 false（拖拽由组件调用 `triggerDragStart` 负责）。
+- `139-145 行`：返回对象。
+
+**备注**：魔数——默认长按 1200ms（注释注明由 800ms 改为规范要求的 1200ms）、进度刷新 40ms、完成后进度隐藏延时 150ms、模拟 pointerdown 延时 50ms；日志 tag 为 `"useLongPressDrag"`。
+
+## `src/stores/inAppBrowser.ts`
+**职责**：应用内置浏览器（WebView 覆盖层）的极简可订阅状态 store（模块级单例，无依赖框架），支持打开/关闭/挂起/恢复/跳转。
+**导出**：`InAppBrowserState`（接口，:1）、`getInAppBrowserUrl`（:15）、`isBrowserOpen`（:19）、`isBrowserSuspended`（:23）、`openInAppBrowser`（:27）、`closeInAppBrowser`（:34）、`suspendInAppBrowser`（:41）、`resumeInAppBrowser`（:49）、`navigateInAppBrowser`（:57）、`subscribeInAppBrowser`（:62）。
+**主要依赖**：无。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `InAppBrowserState`（接口） | inAppBrowser.ts:1-4 | `{ url: string; isOpen: boolean }`（注意：该类型当前未被本文件任何函数返回） |
+| 模块内状态 | inAppBrowser.ts:6-9 | `currentUrl`、`isOpen`、`isSuspended`、`listeners` |
+| `emit` | inAppBrowser.ts:11-13 | 遍历通知所有 listener（无参） |
+| `getInAppBrowserUrl` | inAppBrowser.ts:15-17 | 返回当前 URL |
+| `isBrowserOpen` | inAppBrowser.ts:19-21 | 是否处于打开态 |
+| `isBrowserSuspended` | inAppBrowser.ts:23-25 | 是否处于挂起态 |
+| `openInAppBrowser` | inAppBrowser.ts:27-32 | 设置 url、`isOpen=true`、清除挂起态并通知 |
+| `closeInAppBrowser` | inAppBrowser.ts:34-39 | 全部复位（url 清空）并通知 |
+| `suspendInAppBrowser` | inAppBrowser.ts:41-47 | 仅当打开时：转为挂起、`isOpen=false`、通知（URL 保留以便恢复） |
+| `resumeInAppBrowser` | inAppBrowser.ts:49-55 | 仅当挂起且有 URL 时恢复打开 |
+| `navigateInAppBrowser` | inAppBrowser.ts:57-60 | 只换 URL（不改开关状态）并通知 |
+| `subscribeInAppBrowser` | inAppBrowser.ts:62-67 | 注册回调，返回退订函数 |
+
+**备注**：状态机为 `closed ↔ open ↔ suspended`；`suspend` 不清 URL，`close` 清 URL。
+
+## `src/stores/launcherMode.ts`
+**职责**：启动器（launcher）相关的三组模块级可订阅 store：视图模式（data/game，localStorage 持久化）、背景媒体（内存态）、背景模式（video/image，localStorage 持久化）。
+**导出**：`LauncherViewMode`（:1）、`getLauncherMode`（:19）、`setLauncherMode`（:23）、`isGameMode`（:32）、`subscribeLauncherMode`（:36）、`LauncherBgMedia`（接口，:44）、`getLauncherBgMedia`（:56）、`setLauncherBgMedia`（:60）、`subscribeLauncherBgMedia`（:65）、`GameBgMode`（:73）、`getGameBgMode`（:91）、`setGameBgMode`（:95）、`subscribeGameBgMode`（:104）。
+**主要依赖**：`localStorage`（浏览器原生）。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `LauncherViewMode` | launcherMode.ts:1 | `"data" \| "game"` |
+| `STORAGE_KEY` | launcherMode.ts:3 | `"launcher_view_mode"` |
+| `currentMode` 初始化 | launcherMode.ts:5-11 | 从 localStorage 读取并校验，非法/异常回退 `"data"` |
+| `emit` | launcherMode.ts:15-17 | 通知 view mode 监听者 |
+| `getLauncherMode` | launcherMode.ts:19-21 | 读当前模式 |
+| `setLauncherMode` | launcherMode.ts:23-30 | 相同值直接 return；写内存 + localStorage（try/catch）+ emit |
+| `isGameMode` | launcherMode.ts:32-34 | `currentMode === "game"` |
+| `subscribeLauncherMode` | launcherMode.ts:36-41 | 注册/退订 view mode |
+| `LauncherBgMedia`（接口） | launcherMode.ts:44-47 | `{ image_url: string \| null; video_url: string \| null }` |
+| `emitBg` | launcherMode.ts:52-54 | 通知背景媒体监听者 |
+| `getLauncherBgMedia` / `setLauncherBgMedia` / `subscribeLauncherBgMedia` | launcherMode.ts:56-70 | 背景媒体读写与订阅（**不持久化**，仅内存，随会话重置） |
+| `GameBgMode` | launcherMode.ts:73 | `"video" \| "image"` |
+| `BG_MODE_STORAGE_KEY` | launcherMode.ts:75 | `"game_bg_mode"` |
+| `currentBgMode` 初始化 | launcherMode.ts:77-83 | 从 localStorage 读取校验，回退 `"video"` |
+| `emitBgMode` | launcherMode.ts:87-89 | 通知背景模式监听者 |
+| `getGameBgMode` / `setGameBgMode` / `subscribeGameBgMode` | launcherMode.ts:91-109 | 背景模式读写（相同值短路）与订阅 |
+
+**备注**：三个 store 各自独立的 listeners 数组与 emit，互不干扰；localStorage 键名仅两枚：`launcher_view_mode`、`game_bg_mode`。
+
+## `src/cards/startup-service.ts`
+**职责**：卡片启动任务服务（单例对象）：登记各卡片类型的启动处理器、管理「自动签到用户」名单与「卡片—用户」映射（均持久化到配置服务），启动时并行跑签到任务并对外广播任务状态。
+**导出**：`CardStartupService`（startup-service.ts:25）。
+**主要依赖**：`@/utils/configService`（getConfig/setConfig）、`@/utils/logger`（logInfo/logError）。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `StartupHandler`（类型） | startup-service.ts:4 | `(roleId: string) => Promise<void>` |
+| `StatusListener`（类型） | startup-service.ts:5 | 监听 `{ status: "pending"\|"running"\|"done"\|"error"; error? }` |
+| `AutoSignListener`（类型） | startup-service.ts:6 | `(roleId, enabled) => void` |
+| `AUTO_SIGN_KEY` | startup-service.ts:8 | 配置键 `"card_auto_sign_users"`（string[]） |
+| `MAPPING_KEY` | startup-service.ts:9 | 配置键 `"card_user_mapping"`（`Record<roleId, cardId[]>`） |
+| 模块内 Maps/Sets | startup-service.ts:11-14 | `handlers`（cardType→handler）、`taskStatuses`（roleId→状态）、`statusListeners`、`autoSignListeners` |
+| `notifyStatusChange` | startup-service.ts:16-23 | 取 roleId 状态并通知该 roleId 的所有监听者（无状态则跳过） |
+| `CardStartupService.register` | startup-service.ts:26-29 | 按 cardType 注册启动处理器（同名覆盖）并记日志 |
+| `CardStartupService.getAutoSignUsers` | startup-service.ts:31-38 | 读 `card_auto_sign_users`，异常返回 `[]` |
+| `CardStartupService.isAutoSignEnabled` | startup-service.ts:40-43 | 名单是否包含 roleId |
+| `CardStartupService.addAutoSignUser` | startup-service.ts:45-52 | 去重后追加、写回配置、广播 `(roleId, true)` |
+| `CardStartupService.removeAutoSignUser` | startup-service.ts:54-61 | 过滤移除（无变化则跳过写入）、广播 `(roleId, false)` |
+| `CardStartupService.onAutoSignChanged` | startup-service.ts:63-66 | 注册自动签到变更监听，返回退订函数 |
+| `CardStartupService.updateUserMapping` | startup-service.ts:68-81 | 先把 cardId 从所有 roleId 下移除（空数组删键），再把 cardId 加入 `newRoleId`（`undefined` 表示解绑），最后写回 |
+| `CardStartupService.removeCardFromMapping` | startup-service.ts:83-90 | 从所有 roleId 下移除该 cardId 并清理空项 |
+| `CardStartupService.getCardIdsByUser` | startup-service.ts:92-95 | 返回 roleId 对应的 cardId 数组（默认 `[]`） |
+| `CardStartupService.runAll` | startup-service.ts:97-127 | 取自动签到用户列表，为空直接返回；`Promise.all` 并行执行，固定取 handler `"attendance"`：无处理器→状态 `error`；否则置 `running` → 执行 → 成功 `done` / 异常 `error`（`String(e)`），每步 `notifyStatusChange` |
+| `CardStartupService.getTaskStatus` | startup-service.ts:129-131 | 读单个 roleId 的任务状态 |
+| `CardStartupService.subscribe` | startup-service.ts:133-141 | 按 roleId 注册状态监听（Set 去重），返回退订函数 |
+
+**备注**：
+- `runAll` 目前只执行 `"attendance"` 一个处理器（即使注册了其他 cardType 也不会跑），且注册必须发生在 `runAll` 之前——`main.tsx` 通过 `loadAllCards()` 同步注册、再 `setTimeout 0` 调用 `runAll` 来保证顺序。
+- 状态四态：`pending` 实际只在类型上定义，运行时写入的是 `running` / `done` / `error`。
+- 所有持久化均走配置服务（Tauri 后端存储），非 localStorage。
+- 日志 tag：`"StartupService"`，消息前缀 `[Startup]`。

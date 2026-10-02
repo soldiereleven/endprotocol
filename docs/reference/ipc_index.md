@@ -1,0 +1,119 @@
+﻿# IPC 命令索引（前端 invoke ↔ 后端定义）
+
+> 由脚本扫描 `#[tauri::command]` 与前端 `invoke("...")` 自动生成。共 99 个后端命令，其中 90 个在前端有直接调用；9 个未见前端调用。行号基于当前工作区版本。
+
+每个命令的参数、返回值与内部调用链见 [commands.md](backend/commands.md)；前端侧的封装函数见各 `utils_services_*.md`。
+
+| 命令名 | 后端定义 | 前端调用方 |
+| --- | --- | --- |
+| `add_account` | [src-tauri/src/commands/account.rs:131](backend/commands.md) | [src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `add_account_by_code` | [src-tauri/src/commands/account.rs:189](backend/commands.md) | [src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `add_account_by_scan` | [src-tauri/src/commands/account.rs:224](backend/commands.md) | [src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `app_quit` | [src-tauri/src/commands/tray.rs:77](backend/commands.md) | [src/components/custom-titlebar.tsx](../../src/components/custom-titlebar.tsx)<br>[src/components/tray-panel.tsx](../../src/components/tray-panel.tsx) |
+| `batch_logout` | [src-tauri/src/commands/account.rs:157](backend/commands.md) | [src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `cancel_download` | [src-tauri/src/commands/updater.rs:46](backend/commands.md) | —（前端未调用） |
+| `capture_delete_session` | [src-tauri/src/commands/capture.rs:32](backend/commands.md) | [src/pages/developer.tsx](../../src/pages/developer.tsx) |
+| `capture_dir` | [src-tauri/src/commands/capture.rs:37](backend/commands.md) | [src/pages/developer.tsx](../../src/pages/developer.tsx) |
+| `capture_list_sessions` | [src-tauri/src/commands/capture.rs:18](backend/commands.md) | [src/pages/developer.tsx](../../src/pages/developer.tsx) |
+| `capture_read_entries` | [src-tauri/src/commands/capture.rs:23](backend/commands.md) | [src/pages/developer.tsx](../../src/pages/developer.tsx) |
+| `capture_screen` | [src-tauri/src/commands/color_picker.rs:28](backend/commands.md) | [src/components/screen-color-picker.tsx](../../src/components/screen-color-picker.tsx) |
+| `capture_start` | [src-tauri/src/commands/capture.rs:3](backend/commands.md) | [src/pages/developer.tsx](../../src/pages/developer.tsx) |
+| `capture_status` | [src-tauri/src/commands/capture.rs:13](backend/commands.md) | [src/pages/developer.tsx](../../src/pages/developer.tsx) |
+| `capture_stop` | [src-tauri/src/commands/capture.rs:8](backend/commands.md) | [src/pages/developer.tsx](../../src/pages/developer.tsx) |
+| `check_and_refresh_cred` | [src-tauri/src/commands/account.rs:282](backend/commands.md) | [src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `close_window` | [src-tauri/src/commands/window.rs:21](backend/commands.md) | —（前端未调用） |
+| `delete_background_image` | [src-tauri/src/commands/image.rs:190](backend/commands.md) | [src/components/appearance-settings.tsx](../../src/components/appearance-settings.tsx) |
+| `do_attendance` | [src-tauri/src/commands/attendance.rs:181](backend/commands.md) | [src/components/cards/attendance/index.tsx](../../src/components/cards/attendance/index.tsx) |
+| `download_file` | [src-tauri/src/commands/updater.rs:60](backend/commands.md) | [src/utils/updateService.ts](../../src/utils/updateService.ts) |
+| `download_image` | [src-tauri/src/commands/image.rs:29](backend/commands.md) | [src/components/cards/character-list/char-select-modal.tsx](../../src/components/cards/character-list/char-select-modal.tsx)<br>[src/utils/imageCacheManager.ts](../../src/utils/imageCacheManager.ts) |
+| `fetch_url` | [src-tauri/src/commands/updater.rs:32](backend/commands.md) | [src/utils/updateService.ts](../../src/utils/updateService.ts) |
+| `finish_screen_pick` | [src-tauri/src/commands/color_picker.rs:47](backend/commands.md) | [src/components/screen-color-picker.tsx](../../src/components/screen-color-picker.tsx) |
+| `gen_scan_login` | [src-tauri/src/commands/account.rs:202](backend/commands.md) | [src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `get_accounts` | [src-tauri/src/commands/account.rs:16](backend/commands.md) | [src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `get_all_configs` | [src-tauri/src/commands/config.rs:34](backend/commands.md) | [src/utils/configService.ts](../../src/utils/configService.ts) |
+| `get_attendance` | [src-tauri/src/commands/attendance.rs:59](backend/commands.md) | [src/components/cards/attendance/index.tsx](../../src/components/cards/attendance/index.tsx)<br>[src/pages/attendance.tsx](../../src/pages/attendance.tsx) |
+| `get_backend_logs` | [src-tauri/src/commands/logs.rs:4](backend/commands.md) | [src/pages/developer.tsx](../../src/pages/developer.tsx) |
+| `get_backgrounds_dir` | [src-tauri/src/commands/image.rs:141](backend/commands.md) | —（前端未调用） |
+| `get_card_settings` | [src-tauri/src/commands/card_config.rs:9](backend/commands.md) | [src/utils/cardConfigService.ts](../../src/utils/cardConfigService.ts) |
+| `get_config` | [src-tauri/src/commands/config.rs:9](backend/commands.md) | [src/utils/configService.ts](../../src/utils/configService.ts) |
+| `get_gacha_pool_meta` | [src-tauri/src/commands/gacha.rs:79](backend/commands.md) | —（前端未调用） |
+| `get_gacha_record_stats` | [src-tauri/src/commands/gacha.rs:475](backend/commands.md) | —（前端未调用） |
+| `get_image_cache_dir` | [src-tauri/src/commands/image.rs:16](backend/commands.md) | [src/components/cards/character-list/char-select-modal.tsx](../../src/components/cards/character-list/char-select-modal.tsx)<br>[src/utils/imageCacheManager.ts](../../src/utils/imageCacheManager.ts) |
+| `get_saved_gacha_records` | [src-tauri/src/commands/gacha.rs:143](backend/commands.md) | [src/pages/gacha-records.tsx](../../src/pages/gacha-records.tsx) |
+| `get_saved_weapon_gacha_records` | [src-tauri/src/commands/gacha.rs:210](backend/commands.md) | [src/pages/gacha-records.tsx](../../src/pages/gacha-records.tsx) |
+| `get_selected_account` | [src-tauri/src/commands/account.rs:253](backend/commands.md) | [src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `get_skland_account_roles` | [src-tauri/src/commands/account.rs:91](backend/commands.md) | [src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `get_skland_accounts` | [src-tauri/src/commands/account.rs:67](backend/commands.md) | [src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `get_skland_games` | [src-tauri/src/commands/account.rs:117](backend/commands.md) | [src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `get_skland_user_info` | [src-tauri/src/commands/account.rs:104](backend/commands.md) | [src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `get_temp_dir` | [src-tauri/src/commands/updater.rs:24](backend/commands.md) | [src/utils/updateService.ts](../../src/utils/updateService.ts) |
+| `get_tray_user_info` | [src-tauri/src/commands/tray.rs:8](backend/commands.md) | [src/components/tray-panel.tsx](../../src/components/tray-panel.tsx) |
+| `hide_tray_panel` | [src-tauri/src/commands/tray.rs:62](backend/commands.md) | —（前端未调用） |
+| `is_lazy_load_enabled` | [src-tauri/src/commands/account.rs:309](backend/commands.md) | [src/utils/roleDetailService.ts](../../src/utils/roleDetailService.ts) |
+| `launcher_browse_folder` | [src-tauri/src/commands/launcher.rs:376](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_cancel_all` | [src-tauri/src/commands/launcher.rs:233](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_cancel_download` | [src-tauri/src/commands/launcher.rs:200](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_cancel_switch` | [src-tauri/src/commands/launcher.rs:227](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_check_executable` | [src-tauri/src/commands/launcher.rs:513](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_check_game_running` | [src-tauri/src/commands/launcher.rs:521](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_check_status` | [src-tauri/src/commands/launcher.rs:27](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_decrypt_file` | [src-tauri/src/commands/launcher.rs:240](backend/commands.md) | —（前端未调用） |
+| `launcher_detect_channel` | [src-tauri/src/commands/launcher.rs:462](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_get_announcements` | [src-tauri/src/commands/launcher.rs:257](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_get_background_image` | [src-tauri/src/commands/launcher.rs:279](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_get_banners` | [src-tauri/src/commands/launcher.rs:246](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_get_disk_space` | [src-tauri/src/commands/launcher.rs:393](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_get_notice_content` | [src-tauri/src/commands/launcher.rs:268](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_get_payload_state` | [src-tauri/src/commands/launcher.rs:189](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_get_process_read_bytes` | [src-tauri/src/commands/launcher.rs:9](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_get_remote_version` | [src-tauri/src/commands/launcher.rs:144](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_has_download_cache` | [src-tauri/src/commands/launcher.rs:213](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_install_or_update` | [src-tauri/src/commands/launcher.rs:48](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_kill_game` | [src-tauri/src/commands/launcher.rs:533](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_preload_download` | [src-tauri/src/commands/launcher.rs:155](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_reset_download_cancel` | [src-tauri/src/commands/launcher.rs:221](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_scan_install_dir` | [src-tauri/src/commands/launcher.rs:450](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_start_game` | [src-tauri/src/commands/launcher.rs:290](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_switch_channel` | [src-tauri/src/commands/launcher.rs:573](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `launcher_verify_and_repair` | [src-tauri/src/commands/launcher.rs:98](backend/commands.md) | [src/utils/launcherService.ts](../../src/utils/launcherService.ts) |
+| `logout_account` | [src-tauri/src/commands/account.rs:144](backend/commands.md) | [src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `minimize_to_tray` | [src-tauri/src/commands/window.rs:28](backend/commands.md) | [src/components/custom-titlebar.tsx](../../src/components/custom-titlebar.tsx) |
+| `minimize_window` | [src-tauri/src/commands/window.rs:3](backend/commands.md) | [src/components/custom-titlebar.tsx](../../src/components/custom-titlebar.tsx) |
+| `query_role_data` | [src-tauri/src/commands/account.rs:340](backend/commands.md) | [src/utils/roleDataService.ts](../../src/utils/roleDataService.ts)<br>[src/utils/roleDetailService.ts](../../src/utils/roleDetailService.ts) |
+| `read_image_file` | [src-tauri/src/commands/image.rs:10](backend/commands.md) | [src/components/appearance-settings.tsx](../../src/components/appearance-settings.tsx)<br>[src/utils/backgroundSettings.ts](../../src/utils/backgroundSettings.ts)<br>[src/utils/imageCacheManager.ts](../../src/utils/imageCacheManager.ts) |
+| `refresh_accounts` | [src-tauri/src/commands/account.rs:167](backend/commands.md) | [src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `remove_card_settings` | [src-tauri/src/commands/card_config.rs:66](backend/commands.md) | [src/utils/cardConfigService.ts](../../src/utils/cardConfigService.ts) |
+| `remove_config` | [src-tauri/src/commands/config.rs:27](backend/commands.md) | [src/utils/configService.ts](../../src/utils/configService.ts) |
+| `reset_download_cancel` | [src-tauri/src/commands/updater.rs:52](backend/commands.md) | [src/utils/updateService.ts](../../src/utils/updateService.ts) |
+| `resolve_gacha_avatar_map` | [src-tauri/src/commands/gacha.rs:251](backend/commands.md) | [src/components/gacha-pity-chart.tsx](../../src/components/gacha-pity-chart.tsx) |
+| `run_installer` | [src-tauri/src/commands/updater.rs:123](backend/commands.md) | [src/utils/updateService.ts](../../src/utils/updateService.ts) |
+| `save_background_image` | [src-tauri/src/commands/image.rs:152](backend/commands.md) | [src/components/appearance-settings.tsx](../../src/components/appearance-settings.tsx) |
+| `save_card_settings` | [src-tauri/src/commands/card_config.rs:26](backend/commands.md) | [src/utils/cardConfigService.ts](../../src/utils/cardConfigService.ts) |
+| `save_selected_roles` | [src-tauri/src/commands/account.rs:237](backend/commands.md) | [src/components/role-select-modal.tsx](../../src/components/role-select-modal.tsx)<br>[src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `save_skland_account` | [src-tauri/src/commands/account.rs:76](backend/commands.md) | [src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `scan_status` | [src-tauri/src/commands/account.rs:211](backend/commands.md) | [src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `send_verification_code` | [src-tauri/src/commands/account.rs:176](backend/commands.md) | [src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `set_config` | [src-tauri/src/commands/config.rs:16](backend/commands.md) | [src/utils/configService.ts](../../src/utils/configService.ts) |
+| `set_current_role_id` | [src-tauri/src/commands/account.rs:318](backend/commands.md) | [src/utils/roleDetailService.ts](../../src/utils/roleDetailService.ts) |
+| `set_lazy_load_enabled` | [src-tauri/src/commands/account.rs:295](backend/commands.md) | [src/utils/roleDetailService.ts](../../src/utils/roleDetailService.ts) |
+| `set_selected_account` | [src-tauri/src/commands/account.rs:264](backend/commands.md) | [src/utils/accountService.ts](../../src/utils/accountService.ts) |
+| `set_tray_user` | [src-tauri/src/commands/tray.rs:17](backend/commands.md) | [src/pages/settings.tsx](../../src/pages/settings.tsx) |
+| `show_main_window` | [src-tauri/src/commands/tray.rs:68](backend/commands.md) | [src/components/tray-panel.tsx](../../src/components/tray-panel.tsx) |
+| `show_tray_panel` | [src-tauri/src/commands/tray.rs:56](backend/commands.md) | —（前端未调用） |
+| `sync_gacha_records` | [src-tauri/src/commands/gacha.rs:111](backend/commands.md) | [src/pages/gacha-records.tsx](../../src/pages/gacha-records.tsx) |
+| `sync_weapon_gacha_records` | [src-tauri/src/commands/gacha.rs:174](backend/commands.md) | [src/pages/gacha-records.tsx](../../src/pages/gacha-records.tsx) |
+| `toggle_maximize_window` | [src-tauri/src/commands/window.rs:10](backend/commands.md) | [src/components/custom-titlebar.tsx](../../src/components/custom-titlebar.tsx) |
+| `update_tray_user_data` | [src-tauri/src/commands/tray.rs:38](backend/commands.md) | [src/pages/settings.tsx](../../src/pages/settings.tsx)<br>[src/main.tsx](../../src/main.tsx) |
+| `write_file` | [src-tauri/src/commands/updater.rs:12](backend/commands.md) | —（前端未调用） |
+
+## 前端未调用的命令
+
+- `cancel_download` — src-tauri/src/commands/updater.rs:46
+- `close_window` — src-tauri/src/commands/window.rs:21
+- `get_backgrounds_dir` — src-tauri/src/commands/image.rs:141
+- `get_gacha_pool_meta` — src-tauri/src/commands/gacha.rs:79
+- `get_gacha_record_stats` — src-tauri/src/commands/gacha.rs:475
+- `hide_tray_panel` — src-tauri/src/commands/tray.rs:62
+- `launcher_decrypt_file` — src-tauri/src/commands/launcher.rs:240
+- `show_tray_panel` — src-tauri/src/commands/tray.rs:56
+- `write_file` — src-tauri/src/commands/updater.rs:12

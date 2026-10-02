@@ -555,8 +555,12 @@ src/components/cards/
 
 ## 开发文档
 
+**先看 [docs/README.md](docs/README.md)**：文档总索引 + 「我想找 X → 打开哪个文件」快速定位表 + IPC 命令索引。定位代码位置优先查 `docs/reference/`（27 篇逐文件功能参考，含行号），无需通读源码。
+
 | 文档 | 内容 |
 | --- | --- |
+| [docs/README.md](docs/README.md) | 文档总索引、快速定位表、文件参考清单 |
+| [docs/reference/](docs/reference/) | 逐文件功能参考（前端 18 篇 + 后端 8 篇 + `ipc_index.md` 命令对照表，共 27 篇） |
 | [docs/project_structure.md](docs/project_structure.md) | 项目结构与三条核心数据流 |
 | [docs/frontend_development.md](docs/frontend_development.md) | 前端目录约定、编码规范、扩展方式 |
 | [docs/backend_development.md](docs/backend_development.md) | Rust 分层、编码规范、加密与签名说明 |

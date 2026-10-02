@@ -1,5 +1,9 @@
 # 卡片配置系统
 
+> 相关实现参考：[reference/frontend/utils_services_a.md](reference/frontend/utils_services_a.md)（`cardConfigService.ts` 逐函数说明）、
+> [reference/backend/commands.md](reference/backend/commands.md)（`get/save/remove_card_settings` 的参数与合并逻辑）、
+> [reference/frontend/types_locales_styles.md](reference/frontend/types_locales_styles.md)（`types/card-settings.ts` 全部类型）。
+
 ## 概述
 
 卡片配置系统提供统一的配置管理机制，所有卡片的内部数据都通过此系统进行存储和读取。
@@ -365,3 +369,15 @@ A: 打开 `app_config.json` 文件，查找 `card_settings` 对象。
 - Windows: `%LOCALAPPDATA%\cn.msk-network.endprotocol\app_config.json`
 - macOS: `~/Library/Application Support/cn.msk-network.endprotocol/app_config.json`
 - Linux: `~/.local/share/cn.msk-network.endprotocol/app_config.json`
+
+## 关键实现位置速查
+
+| 事项 | 位置 |
+| --- | --- |
+| 前端读写封装 | `src/utils/cardConfigService.ts`（`getCardSettings` / `saveCardSettings` 合并更新 / `updateCardSetting` 读-改-写 / `removeCardSettings`） |
+| settings 类型定义 | `src/types/card-settings.ts`（`CardSettingsMap` 按卡片 `id` 映射） |
+| 后端命令 | `src-tauri/src/commands/card_config.rs:9/26/66`，状态经 `State<Arc<Mutex<AccountService>>>` → `get_config_service()` |
+| 存储键 | `app_config.json` 顶层 `card_settings.{cardId}`（点号路径，由 `ConfigService::get/set` 解析） |
+| 合并语义 | `save_card_settings` 做对象浅合并后整体写回（`commands/card_config.rs:36`） |
+| 卡片删除时清理 | `src/pages/dashboard.tsx` 的移除逻辑 → `CardConfigService.removeCardSettings(cardId)` |
+| 配置文件位置 | 见上文「迁移指南 → 打开配置文件」各平台路径 |
