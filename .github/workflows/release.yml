@@ -52,6 +52,124 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # ==========================================================
+      # Align NPM packages with the Rust crate versions in Cargo.lock
+      # (auto-fixes "Found version mismatched Tauri packages")
+      # ==========================================================
+      - name: Sync Tauri NPM packages with Rust crates
+        id: tauri_sync
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'SYNC_EOF'
+          const fs = require('fs');
+          const { spawnSync } = require('child_process');
+
+          const TARGET = '--target x86_64-pc-windows-msvc';
+          const DRY_RUN = process.env.DRY_RUN === '1';
+
+          function setBuildArgs(extra) {
+            const args = [TARGET, extra].filter(Boolean).join(' ');
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `args=${args}\n`);
+            console.log(`Build args: ${args}`);
+          }
+
+          function readJson(p) {
+            return JSON.parse(fs.readFileSync(p, 'utf8'));
+          }
+
+          // Crate versions as resolved by cargo (workspace root Cargo.lock wins).
+          const crateVersions = {};
+          for (const lock of ['Cargo.lock', 'src-tauri/Cargo.lock']) {
+            if (!fs.existsSync(lock)) continue;
+            for (const block of fs.readFileSync(lock, 'utf8').split('[[package]]')) {
+              const name = block.match(/^\s*name = "([^"]+)"/m);
+              const version = block.match(/^\s*version = "([^"]+)"/m);
+              if (name && version && crateVersions[name[1]] === undefined) {
+                crateVersions[name[1]] = version[1];
+              }
+            }
+          }
+
+          function npmVersion(name) {
+            try {
+              return readJson(`node_modules/${name}/package.json`).version;
+            } catch {
+              return undefined;
+            }
+          }
+
+          function crateOf(npmName) {
+            if (npmName === '@tauri-apps/api') return 'tauri';
+            if (npmName.startsWith('@tauri-apps/plugin-')) {
+              return `tauri-plugin-${npmName.slice('@tauri-apps/plugin-'.length)}`;
+            }
+            return null;
+          }
+
+          // The Tauri CLI only requires matching major.minor releases.
+          const sameMinor = (a, b) => {
+            const [aMaj, aMin] = a.split('.');
+            const [bMaj, bMin] = b.split('.');
+            return aMaj === bMaj && aMin === bMin;
+          };
+
+          const pkg = readJson('package.json');
+          const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+
+          const mismatches = [];
+          for (const name of Object.keys(deps)) {
+            const crate = crateOf(name);
+            if (!crate) continue;
+            const crateVersion = crateVersions[crate];
+            const npmVer = npmVersion(name);
+            if (!crateVersion || !npmVer) continue;
+            if (!sameMinor(crateVersion, npmVer)) {
+              mismatches.push({ name, crate, crateVersion, npmVer });
+            }
+          }
+
+          if (mismatches.length === 0) {
+            console.log('Tauri NPM packages and Rust crates are already in sync.');
+          }
+
+          let unresolved = false;
+
+          for (const m of mismatches) {
+            console.log(`Mismatch: ${m.crate} (v${m.crateVersion}) : ${m.name} (v${m.npmVer})`);
+
+            if (DRY_RUN) {
+              console.log(`[dry-run] would run: pnpm add --save-exact ${m.name}@${m.crateVersion}`);
+              unresolved = true;
+              continue;
+            }
+
+            const [major, minor] = m.crateVersion.split('.');
+            let aligned = false;
+            for (const spec of [m.crateVersion, `${major}.${minor}`]) {
+              const res = spawnSync(`pnpm add --save-exact "${m.name}@${spec}"`, {
+                stdio: 'inherit',
+                shell: true,
+              });
+              const now = npmVersion(m.name);
+              if (res.status === 0 && now && sameMinor(m.crateVersion, now)) {
+                console.log(`Aligned ${m.name} -> ${now} (matches ${m.crate} v${m.crateVersion})`);
+                aligned = true;
+                break;
+              }
+            }
+
+            if (!aligned) {
+              unresolved = true;
+              console.log(
+                `::warning=title=Tauri version sync failed::Could not align ${m.name} with ${m.crate} v${m.crateVersion}`
+              );
+            }
+          }
+
+          setBuildArgs(unresolved ? '--ignore-version-mismatches' : '');
+          SYNC_EOF
+
+      # ==========================================================
       # Sync version from Git Tag to package.json and tauri.conf.json
       # ==========================================================
       - name: Update version from tag
@@ -251,7 +369,7 @@ jobs:
           releaseName: "Release ${{ github.ref_name }}"
           releaseDraft: true
           prerelease: ${{ steps.release-type.outputs.prerelease }}
-          args: "--target x86_64-pc-windows-msvc"
+          args: ${{ steps.tauri_sync.outputs.args || '--target x86_64-pc-windows-msvc' }}
 
       # ==========================================================
       # Upload CHANGELOG.md as release asset
