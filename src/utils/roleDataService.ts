@@ -6,6 +6,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { logDebug, logInfo, logError } from './logger';
+import { trackStartupTask } from './startupProgress';
 
 /**
  * 查询结果类型
@@ -96,7 +97,7 @@ export class RoleDataService {
     })();
 
     queryCache.set(key, promise);
-    return promise;
+    return trackStartupTask(promise);
   }
 
   /**

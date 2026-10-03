@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import logger, {  logError } from "./logger";
+import { trackStartupTask } from "@/utils/startupProgress";
 
 /**
  * 账户信息接口
@@ -193,7 +194,7 @@ export interface ScanStatus {
  */
 export async function getAccounts(): Promise<Account[]> {
   try {
-    return await invoke('get_accounts');
+    return await trackStartupTask(invoke<Account[]>('get_accounts'));
   } catch (error) {
     logError('Failed to get accounts:', error);
     return [];
@@ -430,7 +431,7 @@ export async function saveSelectedRoles(
  */
 export async function getSelectedAccount(): Promise<string | null> {
   try {
-    return await invoke('get_selected_account');
+    return await trackStartupTask(invoke<string | null>('get_selected_account'));
   } catch (error) {
     logger.error('Failed to get selected account: ' + error, "AccountService");
     return null;

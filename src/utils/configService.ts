@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import logger from "@/utils/logger";
+import { trackStartupTask } from "@/utils/startupProgress";
 
 /**
  * 获取配置值
@@ -8,7 +9,7 @@ import logger from "@/utils/logger";
  */
 export async function getConfig<T = any>(key: string): Promise<T | null> {
   try {
-    const value = await invoke<any>('get_config', { key });
+    const value = await trackStartupTask(invoke<any>('get_config', { key }));
     return value ?? null;
   } catch (error) {
     logger.warn('Failed to get config from Tauri, using localStorage fallback: ' + error, "ConfigService");

@@ -41,7 +41,7 @@
 | `openRewardsModal` | 125-128 | 有数据才允许打开奖励弹窗 |
 | `loadSettings` | 130-143 | `CardConfigService.getCardSettings<AttendanceCardSettings>(cardId)`；无 `selectedRoleId` 且 `firstTimePrompt` 时弹首次设置 |
 | effect（触发 loadSettings） | 145-147 | 挂载执行 |
-| `fetchAttendance` | 149-169 | `invoke("get_attendance", { roleId })` → `parseAttendanceData` → `hasToday ? "signed" : "unsigned"` |
+| `fetchAttendance` | 149-169 | `invoke("get_attendance", { roleId })`（启动 Splash 跟踪期间计入初始任务）→ `parseAttendanceData` → `hasToday ? "signed" : "unsigned"` |
 | `loadAccounts` | 171-178 | `getAccounts()` 缓存账号列表 |
 | effect（取数入口） | 180-188 | 设置未加载则等待；无 `selectedRoleId` 置 `unsigned`；否则 `fetchAttendance()` + `loadAccounts()` |
 | `completeSignIn` | 190-197 | `completing` → 600ms 后 `done`+`signed` 并重新 `fetchAttendance()` |

@@ -20,6 +20,7 @@ import {
 } from "@/stores/inAppBrowser";
 import { InAppBrowser } from "@/components/in-app-browser";
 import { GameActionPanel } from "@/components/game-action-panel";
+import { trackStartupTask } from "@/utils/startupProgress";
 import {
   type GameChannel,
   type BannerItem,
@@ -91,27 +92,31 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // Fetch background + banners when channel changes
   useEffect(() => {
-    getBackgroundImage(channel)
-      .then(setLauncherBgMedia)
-      .catch(() => setLauncherBgMedia(null));
+    const initialData = Promise.all([
+      getBackgroundImage(channel)
+        .then(setLauncherBgMedia)
+        .catch(() => setLauncherBgMedia(null)),
 
-    getNoticeContent(channel)
-      .then((content) => {
-        console.log(
-          "[Dashboard] Notices loaded:",
-          content.banners.length,
-          "banners,",
-          content.announcements.length,
-          "announcements",
-        );
-        setBanners(content.banners);
-        setAnnouncements(content.announcements);
-      })
-      .catch((e) => {
-        console.error("[Dashboard] Failed to load notices:", e);
-        setBanners([]);
-        setAnnouncements([]);
-      });
+      getNoticeContent(channel)
+        .then((content) => {
+          console.log(
+            "[Dashboard] Notices loaded:",
+            content.banners.length,
+            "banners,",
+            content.announcements.length,
+            "announcements",
+          );
+          setBanners(content.banners);
+          setAnnouncements(content.announcements);
+        })
+        .catch((e) => {
+          console.error("[Dashboard] Failed to load notices:", e);
+          setBanners([]);
+          setAnnouncements([]);
+        }),
+    ]);
+
+    void trackStartupTask(initialData);
   }, [channel]);
 
   // Banner auto-rotate (paused on hover)

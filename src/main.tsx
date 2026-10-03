@@ -6,6 +6,7 @@ import App from "./App.tsx";
 import { Provider } from "./provider.tsx";
 import "@/styles/globals.css";
 import { setInitialLanguage } from "./i18n";
+import i18n from "./i18n";
 import { getConfig } from "./utils/configService";
 import { CardStartupService } from "@/cards/startup-service";
 import { loadAllCards } from "@/components/cards/registry/loader";
@@ -16,6 +17,12 @@ import { roleDataService } from "@/utils/roleDataService";
 import { getAccounts } from "@/utils/accountService";
 import { invoke } from "@tauri-apps/api/core";
 import { loadBackgroundSettings } from "@/utils/backgroundSettings";
+import {
+  beginStartupTracking,
+  failStartup,
+  setStartupPhase,
+  trackStartupTask,
+} from "@/utils/startupProgress";
 
 type ThemeMode = "light" | "dark" | "system";
 
@@ -138,6 +145,7 @@ function applyThemeMode(mode: ThemeMode) {
 }
 
 // Initialize language and theme from config service before rendering
+setStartupPhase(12, i18n.t("startup.loadingSettings"));
 Promise.all([
   getConfig<string>("app.language"),
   getConfig<ThemeMode>("theme_mode"),
@@ -147,6 +155,7 @@ Promise.all([
 ]).then(([savedLang, savedMode, savedColor, savedCustom]) => {
   const lng = savedLang || (navigator.language.startsWith("zh") ? "zh" : "en");
   setInitialLanguage(lng);
+  setStartupPhase(30, i18n.t("startup.loadingData"));
 
   // Apply theme before render to avoid flash
   const colorName = savedColor ?? "indigo";
@@ -167,11 +176,15 @@ Promise.all([
       </BrowserRouter>
     </React.StrictMode>,
   );
+  beginStartupTracking(
+    i18n.t("startup.loadingData"),
+    i18n.t("startup.ready"),
+  );
 
   // Build card registry to register startup handlers, then run startup tasks
   loadAllCards();
   setTimeout(() => {
-    CardStartupService.runAll();
+    void trackStartupTask(CardStartupService.runAll());
   }, 0);
 
   // Auto-check for updates on startup
@@ -213,4 +226,7 @@ Promise.all([
       logger.error("Failed to fetch tray user data on startup: " + err);
     }
   }, 5000);
+}).catch((error: unknown) => {
+  logger.error("Failed to initialize the application", error);
+  failStartup(i18n.t("startup.failed"));
 });

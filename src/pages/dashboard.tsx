@@ -39,6 +39,7 @@ import {
   CustomModalFooter,
 } from "@/components/custom-modal";
 import { resolveServerLabel } from "@/types";
+import { trackStartupTask } from "@/utils/startupProgress";
 
 type DashboardView = "loading" | "selector" | "tab";
 
@@ -105,7 +106,7 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    loadDashboard();
+    void trackStartupTask(loadDashboard());
 
     const handleAccountChange = () => {
       loadDashboard();

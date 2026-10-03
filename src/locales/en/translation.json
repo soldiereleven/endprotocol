@@ -1,4 +1,10 @@
 {
+  "startup": {
+    "loadingSettings": "Preparing application…",
+    "loadingData": "Loading initial data…",
+    "ready": "Ready",
+    "failed": "Startup failed. Check the application status and try again."
+  },
   "nav": {
     "dashboard": "Dashboard",
     "analytics": "Analytics",

@@ -8,7 +8,7 @@
 **导出**：`export default function DashboardLayout`（默认导出，React 组件，接收 `{ children }`）。
 
 **主要依赖**：
-- 项目内：`@/components/custom-titlebar`（`CustomTitlebar`）、`@/components/dashboard-sidebar`（`Sidebar`）、`@/components/in-app-browser`（`InAppBrowser`）、`@/components/game-action-panel`（`GameActionPanel`）、`@/stores/launcherMode`（模式与背景媒体的可订阅 store）、`@/stores/inAppBrowser`（`openInAppBrowser`/`suspendInAppBrowser`/`resumeInAppBrowser`）、`@/utils/launcherService`（`getNoticeContent`/`getBackgroundImage` 与 `GameChannel`/`BannerItem`/`AnnouncementItem` 类型）。
+- 项目内：`@/components/custom-titlebar`（`CustomTitlebar`）、`@/components/dashboard-sidebar`（`Sidebar`）、`@/components/in-app-browser`（`InAppBrowser`）、`@/components/game-action-panel`（`GameActionPanel`）、`@/stores/launcherMode`（模式与背景媒体的可订阅 store）、`@/stores/inAppBrowser`（`openInAppBrowser`/`suspendInAppBrowser`/`resumeInAppBrowser`）、`@/utils/launcherService`（`getNoticeContent`/`getBackgroundImage` 与 `GameChannel`/`BannerItem`/`AnnouncementItem` 类型）、`@/utils/startupProgress`（`trackStartupTask`）。
 - 第三方：`react`（`useState`/`useEffect`/`useRef`）、`react-router-dom`（`useLocation`）。
 
 | 符号 | 位置 | 说明 |
@@ -24,7 +24,7 @@
 - 65-74 行：`prevModeRef` + effect：`game → data` 调用 `suspendInAppBrowser()`，`data → game` 调用 `resumeInAppBrowser()`（模式切换时暂停/恢复内嵌浏览器）。
 - 76-86 行：订阅 `subscribeLauncherBgMedia` 与 `subscribeGameBgMode`，同步 `bgMedia`、`bgMediaMode`。
 - 88-90 行：`channel` 变化时写回 localStorage（当前等价于挂载时写一次）。
-- 92-115 行：**核心数据拉取**（依赖 `[channel]`）：`getBackgroundImage(channel)` 成功则 `setLauncherBgMedia(...)`、失败置 `null`；`getNoticeContent(channel)` 成功则写入 `banners`/`announcements`（含 console 日志），失败清空两者。
+- 92-115 行：**核心数据拉取**（依赖 `[channel]`）：`getBackgroundImage(channel)` 成功则 `setLauncherBgMedia(...)`、失败置 `null`；`getNoticeContent(channel)` 成功则写入 `banners`/`announcements`（含 console 日志），失败清空两者；两项请求共同计入启动 Splash 初始任务。
 - 117-124 行：Banner 自动轮播，`setInterval` 5000ms，`banners.length <= 1` 或 `bannerHovered` 时不启动。
 - 126-142 行：轮播「推动」动画 effect——`bannerIndex` 变化时按 `bannerIndex === (prev + 1) % len` 判定 `bannerDir`（`1` 向右推、`-1` 向左推），把前一索引写入 `outgoingBanner` 并在 400ms 后清空；列表重载而索引未变时清掉残留离场图。
 - 144-151 行：预加载全部 banner 图片（`new Image()`），避免翻页动画首帧闪白。
@@ -77,7 +77,7 @@
 **导出**：`export default function DashboardPage`（默认导出组件）。
 
 **主要依赖**：
-- 项目内：`@/components/ui/glass`（`GlassButton`/`GlassProgressCircle`/`GlassTooltip`）、`@/components/cards/card-container`（`CardContainer`）、`@/components/dashboard-fab`（`DashboardFAB`）、`@/components/add-card-modal`（`AddCardModal`）、`@/components/cards/character-list/character-list-size-modal`（`CharacterListSizeModal`）、`@/components/tab-selector`（`TabSelector`）、`@/components/tab-editor-modal`（`TabEditorModal`）、`@/components/custom-modal`（`CustomModal` 系列）、`@/components/ui/confirm-dialog`（`confirmDialog`）、`@/components/ui/app-icon`（`RefreshIcon`/`ChevronLeftIcon`）、`@/utils/accountService`、`@/utils/dashboardConfig`、`@/utils/tabService`、`@/utils/tabIcons`（`getTabIcon`，实为 `tabIcons.tsx`）、`@/utils/logger`、`@/utils/roleDetailService`、`@/utils/cardConfigService`（`CardConfigService`）、`@/cards/startup-service`（`CardStartupService`）、`@/utils/imageLoader`（`Img`）、`@/types/dashboard`、`@/types/card-settings`、`@/types`（`resolveServerLabel`）。
+- 项目内：`@/components/ui/glass`（`GlassButton`/`GlassProgressCircle`/`GlassTooltip`）、`@/components/cards/card-container`（`CardContainer`）、`@/components/dashboard-fab`（`DashboardFAB`）、`@/components/add-card-modal`（`AddCardModal`）、`@/components/cards/character-list/character-list-size-modal`（`CharacterListSizeModal`）、`@/components/tab-selector`（`TabSelector`）、`@/components/tab-editor-modal`（`TabEditorModal`）、`@/components/custom-modal`（`CustomModal` 系列）、`@/components/ui/confirm-dialog`（`confirmDialog`）、`@/components/ui/app-icon`（`RefreshIcon`/`ChevronLeftIcon`）、`@/utils/accountService`、`@/utils/dashboardConfig`、`@/utils/tabService`、`@/utils/tabIcons`（`getTabIcon`，实为 `tabIcons.tsx`）、`@/utils/logger`、`@/utils/roleDetailService`、`@/utils/cardConfigService`（`CardConfigService`）、`@/cards/startup-service`（`CardStartupService`）、`@/utils/imageLoader`（`Img`）、`@/utils/startupProgress`（`trackStartupTask`）、`@/types/dashboard`、`@/types/card-settings`、`@/types`（`resolveServerLabel`）。
 - 第三方：`react`（`useEffect`/`useState`）、`react-i18next`（`useTranslation`）。
 
 | 符号 | 位置 | 说明 |
@@ -86,7 +86,7 @@
 | `DashboardPage` | dashboard.tsx:45 | 页面组件（唯一导出），见内部结构 |
 | `activeTab`（派生） | dashboard.tsx:67 | `tabs.find(t => t.id === activeTabId)` |
 | `loadDashboard` | dashboard.tsx:69 | 核心加载流程：取选中账户 → `roleDetailService.setCurrentRoleId` → 读全部 Tab → 恢复/兜底激活 Tab → `getDashboardConfig` → 决定 `view` |
-| 初始加载 effect | dashboard.tsx:107 | 挂载时 `loadDashboard()`；监听 window 事件 `accountChanged`、`manualRefresh` 并重载 |
+| 初始加载 effect | dashboard.tsx:108 | 挂载时 `trackStartupTask(loadDashboard())`；监听 window 事件 `accountChanged`、`manualRefresh` 并重载 |
 | `handleRefresh` | dashboard.tsx:125 | 派发 `manualRefresh` 自定义事件 → `refreshAccountData()` → 成功后 `loadDashboard()`；控制 `isRefreshing` |
 | `handleAddCard` | dashboard.tsx:145 | 新增卡片入口：`character_list` 先弹尺寸弹窗，其余直接 `openRoleSelect` |
 | `openRoleSelect` | dashboard.tsx:155 | 拉取 `getAccounts()`，设置 `availableAccounts`/`pendingCardType`/默认选中角色，打开角色选择弹窗 |

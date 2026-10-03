@@ -1,4 +1,10 @@
 {
+  "startup": {
+    "loadingSettings": "正在准备应用…",
+    "loadingData": "正在加载初始数据…",
+    "ready": "准备就绪",
+    "failed": "启动失败，请检查应用状态后重试"
+  },
   "nav": {
     "dashboard": "仪表板",
     "analytics": "分析",

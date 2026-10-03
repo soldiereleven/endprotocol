@@ -2,9 +2,105 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/png" href="/app-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri + React + Typescript</title>
+    <meta name="theme-color" content="#090d18" />
+    <title>EndProtocol</title>
+    <style>
+      #startup-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        isolation: isolate;
+        background: #090d18;
+        color: #f3f5fb;
+        opacity: 1;
+        transition: opacity 420ms ease;
+      }
+
+      #startup-splash::before {
+        position: absolute;
+        z-index: -1;
+        inset: -64px;
+        background-image: var(--bg-image, none),
+          radial-gradient(circle at 15% 15%, color-mix(in oklch, var(--primary, #6366f1) 18%, transparent), transparent 42%),
+          radial-gradient(circle at 85% 80%, color-mix(in oklch, var(--accent, #a78bfa) 16%, transparent), transparent 38%),
+          linear-gradient(135deg, var(--background, #090d18), color-mix(in oklch, var(--background, #090d18) 72%, var(--primary, #6366f1)));
+        background-position: center, 15% 15%, 85% 80%, center;
+        background-size: cover, 70% 70%, 60% 60%, cover;
+        background-repeat: no-repeat;
+        opacity: var(--bg-image-opacity, 0.5);
+        filter: blur(var(--bg-blur, 16px));
+        content: "";
+      }
+
+      #startup-splash.is-hiding {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .startup-splash-content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        width: min(320px, calc(100vw - 48px));
+        flex-direction: column;
+        align-items: center;
+        transform: translateY(-12px);
+      }
+
+      .startup-splash-logo {
+        width: 88px;
+        height: 88px;
+        margin-bottom: 24px;
+        border-radius: 24px;
+        box-shadow: 0 0 52px rgba(105, 125, 255, 0.28);
+        animation: startup-logo-pulse 2.4s ease-in-out infinite;
+      }
+
+      .startup-splash-title {
+        margin: 0;
+        font: 650 22px/1.3 system-ui, sans-serif;
+        letter-spacing: 0.12em;
+      }
+
+      .startup-splash-status {
+        min-height: 20px;
+        margin: 10px 0 24px;
+        color: #9da8c1;
+        font: 13px/20px system-ui, sans-serif;
+      }
+
+      .startup-splash-track {
+        width: 100%;
+        height: 3px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(190, 201, 230, 0.16);
+      }
+
+      .startup-splash-progress {
+        width: 8%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #7287ff, #b4c1ff);
+        box-shadow: 0 0 12px rgba(130, 151, 255, 0.7);
+        transition: width 360ms ease;
+      }
+
+      @keyframes startup-logo-pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.035); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .startup-splash-logo { animation: none; }
+        #startup-splash, .startup-splash-progress { transition-duration: 0ms; }
+      }
+    </style>
     <script>
       (function () {
         try {
@@ -20,7 +116,26 @@
   </head>
 
   <body>
+    <div id="startup-splash" role="status" aria-live="polite">
+      <div class="startup-splash-content">
+        <img class="startup-splash-logo" src="/app-icon.png" alt="" />
+        <h1 class="startup-splash-title">EndProtocol</h1>
+        <p class="startup-splash-status" id="startup-splash-status"></p>
+        <div class="startup-splash-track" id="startup-splash-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="8">
+          <div class="startup-splash-progress" id="startup-splash-progress"></div>
+        </div>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      (function () {
+        var chinese = navigator.language.toLowerCase().startsWith("zh");
+        var status = document.getElementById("startup-splash-status");
+        var progress = document.getElementById("startup-splash-track");
+        if (status) status.textContent = chinese ? "正在启动…" : "Starting…";
+        if (progress) progress.setAttribute("aria-label", chinese ? "加载进度" : "Loading");
+      })();
+    </script>
   </body>
 </html>

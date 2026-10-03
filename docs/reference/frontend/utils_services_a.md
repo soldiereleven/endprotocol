@@ -5,11 +5,11 @@
 ## `src/utils/accountService.ts`
 **职责**：封装森空岛/游戏账户相关的全部 Tauri IPC 调用（登录、登出、刷新、扫码、验证码、选中账户、凭证刷新），并定义账户相关的 TS 类型。是前端访问账户后端的唯一入口层。
 **导出**：类型 `Account`、`SklandAccount`、`SklandGameScore`、`SklandPendant`、`SklandBackground`、`SklandUserStats`、`SklandGameInfo`、`SklandUserInfo`、`RoleDisplayInfo`、`LoginRequest`、`LoginResult`、`RefreshResult`、`SendCodeRequest`、`CodeLoginRequest`、`ScanLoginInfo`、`ScanStatus`；函数 `getAccounts`、`getSklandAccounts`、`saveSklandAccount`、`getSklandAccountRoles`、`getSklandUserInfo`、`getSklandGames`、`addAccount`、`logoutAccount`、`batchLogout`、`refreshAccounts`、`sendVerificationCode`、`addAccountByCode`、`genScanLogin`、`scanStatus`、`addAccountByScan`、`saveSelectedRoles`、`getSelectedAccount`、`setSelectedAccount`、`checkAndRefreshCred`；别名常量 `refreshAccountData`、`batchLogoutAccounts`。
-**主要依赖**：`@tauri-apps/api/core` 的 `invoke`、`./logger` 的 `logger` / `logError`。
+**主要依赖**：`@tauri-apps/api/core` 的 `invoke`、`./logger` 的 `logger` / `logError`、`./startupProgress` 的 `trackStartupTask`。
 
 | 符号 | 位置 | 说明 |
 | --- | --- | --- |
-| `getAccounts` | accountService.ts:194 | invoke `get_accounts`，无参，返回 `Account[]`；失败 `logError` 后返回 `[]` |
+| `getAccounts` | accountService.ts:195 | invoke `get_accounts`，无参，返回 `Account[]`；启动 Splash 跟踪期间计入初始任务；失败 `logError` 后返回 `[]` |
 | `getSklandAccounts` | accountService.ts:203 | invoke `get_skland_accounts`，无参，返回 `SklandAccount[]`；失败返回 `[]` |
 | `saveSklandAccount` | accountService.ts:212 | invoke `save_skland_account`，参数 `{cred, token, userId}`，返回 `boolean`；失败返回 `false` |
 | `getSklandAccountRoles` | accountService.ts:225 | invoke `get_skland_account_roles`，参数 `{userId}`，返回 `LoginResult`；失败返回 `{success:false, errorMessage:String(error)}` |
@@ -27,7 +27,7 @@
 | `scanStatus` | accountService.ts:378 | invoke `scan_status`，参数 `{scanId}`，返回 `ScanStatus \| null`；失败返回 `null` |
 | `addAccountByScan` | accountService.ts:392 | invoke `add_account_by_scan`，参数 `{scanCode}`，返回 `LoginResult`；失败记录日志并返回 `{success:false, errorMessage}` |
 | `saveSelectedRoles` | accountService.ts:413 | invoke `save_selected_roles`，参数 `{cred, token, userId, selectedRoles}`，返回 `Account[]`（创建的账户列表）；失败记录日志后**重新 throw** |
-| `getSelectedAccount` | accountService.ts:431 | invoke `get_selected_account`，无参，返回 `string \| null`（当前选中账户 ID）；失败记录日志并返回 `null` |
+| `getSelectedAccount` | accountService.ts:432 | invoke `get_selected_account`，无参，返回 `string \| null`（当前选中账户 ID）；启动 Splash 跟踪期间计入初始任务；失败记录日志并返回 `null` |
 | `setSelectedAccount` | accountService.ts:445 | invoke `set_selected_account`，参数 `{accountId}`，返回 `boolean`；失败返回 `false` |
 | `checkAndRefreshCred` | accountService.ts:459 | invoke `check_and_refresh_cred`，参数 `{userId}`，返回 `[cred, token] \| null`（`null` 表示无需刷新）；失败记录日志后**重新 throw** |
 
@@ -51,7 +51,7 @@
 
 | 符号 | 位置 | 说明 |
 | --- | --- | --- |
-| `getConfig<T>` | configService.ts:9 | invoke `get_config`，参数 `{key}`，返回 `T \| null`（`undefined` 归一为 `null`）；失败时 `logger.warn` 并读取 localStorage 的 `config_${key}`（JSON.parse）作兜底 |
+| `getConfig<T>` | configService.ts:10 | invoke `get_config`，参数 `{key}`，返回 `T \| null`（`undefined` 归一为 `null`）；启动 Splash 跟踪期间会计入初始任务；失败时 `logger.warn` 并读取 localStorage 的 `config_${key}`（JSON.parse）作兜底 |
 | `setConfig` | configService.ts:26 | invoke `set_config`，参数 `{key, value}`，返回 `void`；失败时 `logger.warn` 并写入 localStorage `config_${key}`（JSON.stringify） |
 | `removeConfig` | configService.ts:41 | invoke `remove_config`，参数 `{key}`，返回 `boolean`；失败时 `logger.warn`、移除 localStorage 同名键并**固定返回 `true`** |
 | `getAllConfigs` | configService.ts:55 | invoke `get_all_configs`，无参，返回 `Record<string, any>`；失败时遍历 localStorage，取所有 `config_` 前缀键、去掉前 7 个字符作为配置键并 JSON.parse 后返回 |
@@ -147,11 +147,11 @@
 ## `src/utils/roleDataService.ts`
 **职责**：角色数据统一查询服务（单例 `RoleDataService`），通过单一 IPC 命令 `query_role_data` 按 JSON 叶节点路径取数，并提供角色详情、干员、Wiki 物品目录等语义化封装；内置按查询键的 Promise 级内存缓存，避免组件重挂载重复 IPC。
 **导出**：类型 `QueryResult`、类 `RoleDataService`、单例 `roleDataService`。
-**主要依赖**：`@tauri-apps/api/core` 的 `invoke`、`./logger` 的 `logDebug`/`logInfo`/`logError`。
+**主要依赖**：`@tauri-apps/api/core` 的 `invoke`、`./logger` 的 `logDebug`/`logInfo`/`logError`、`./startupProgress` 的 `trackStartupTask`。
 
 | 符号 | 位置 | 说明 |
 | --- | --- | --- |
-| `queryData` | roleDataService.ts:64 | invoke `query_role_data`，参数 `{roleId, apiName, paths}`；返回 `QueryResult \| null`（路径不存在为 `null` 值，键为请求路径）。先查 `queryCache`（命中直接返回缓存的 Promise）；失败时**从缓存删除该键**、`logError`、返回 `null` |
+| `queryData` | roleDataService.ts:65 | invoke `query_role_data`，参数 `{roleId, apiName, paths}`；返回 `QueryResult \| null`（路径不存在为 `null` 值，键为请求路径）。先查 `queryCache`（命中直接返回缓存的 Promise）；启动 Splash 跟踪期间计入初始任务；失败时**从缓存删除该键**、`logError`、返回 `null` |
 | `clearCache` | roleDataService.ts:30 | 删除 `queryCache` 中 `roleId\|apiName\|paths.join(",")` 单条记录；返回 `void` |
 | `clearAllCache` | roleDataService.ts:37 | `queryCache.clear()` 清空全部缓存；返回 `void` |
 | `getFullCharDetail` | roleDataService.ts:108 | 内部 `queryData(roleId,'char_detail',[])`，返回 `result.__full__`；无结果返回 `null` |

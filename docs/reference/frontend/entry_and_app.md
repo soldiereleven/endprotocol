@@ -3,9 +3,9 @@
 > 逐文件精读源码生成。行号基于当前工作区版本，仅用于快速定位。
 
 ## `src/main.tsx`
-**职责**：主窗口（index.html）的唯一入口。在渲染前从配置服务读取语言与主题并应用（避免闪白/闪黑），随后挂载 React 应用，并在渲染后串行触发卡片注册、启动任务、更新检查、托盘数据拉取等副作用。
+**职责**：主窗口（index.html）的唯一入口。在渲染前从配置服务读取语言与主题并应用（避免闪白/闪黑），随后挂载 React 应用，并在渲染后串行触发卡片注册、启动任务、更新检查、托盘数据拉取等副作用；原生 HTML Splash 覆盖 React 启动与首屏初始数据加载。
 **导出**：（无导出）
-**主要依赖**：`react` / `react-dom/client` / `react-router-dom`（BrowserRouter）、`./App.tsx`、`./provider.tsx`、`./i18n`、`@/styles/globals.css`、`@/utils/configService`、`@/cards/startup-service`、`@/components/cards/registry/loader`、`@/utils/overlayScrollbar`、`@/utils/updateService`、`@/utils/logger`、`@/utils/roleDataService`、`@/utils/accountService`、`@/utils/backgroundSettings`、`@tauri-apps/api/core`（invoke）。
+**主要依赖**：`react` / `react-dom/client` / `react-router-dom`（BrowserRouter）、`./App.tsx`、`./provider.tsx`、`./i18n`、`@/styles/globals.css`、`@/utils/configService`、`@/cards/startup-service`、`@/components/cards/registry/loader`、`@/utils/overlayScrollbar`、`@/utils/updateService`、`@/utils/logger`、`@/utils/roleDataService`、`@/utils/accountService`、`@/utils/backgroundSettings`、`@/utils/startupProgress`、`@tauri-apps/api/core`（invoke）。
 
 | 符号 | 位置 | 说明 |
 | --- | --- | --- |
@@ -15,14 +15,17 @@
 | `findColors` | main.tsx:108 | 按名称查找颜色：先在自定义色 `customColors` 中匹配，命中则返回，否则回退到 `PRESET_COLORS` |
 | `applyThemeColor` | main.tsx:117 | 把色阶写入 `document.documentElement` 的 CSS 变量 `--primary-50`…`--primary-900`、`--primary`（取 500）、`--primary-foreground` |
 | `applyThemeMode` | main.tsx:133 | `dark` 或（`system` 且系统深色）时给 `<html>` 加 `dark` 类，否则移除 |
-| 顶层 `Promise.all(...).then(...)` | main.tsx:141-216 | 渲染前的初始化主流程，见「备注」 |
+| `setStartupPhase` / `beginStartupTracking` | main.tsx:148-187 | 更新静态 Splash 的初始化阶段；React 挂载后开始跟踪首屏请求 |
+| 顶层 `Promise.all(...).then(...)` | main.tsx:148-230 | 渲染前初始化、React 挂载与启动副作用，见「备注」 |
 
 **备注**：
 - 初始化读取的配置键：`app.language`、`theme_mode`、`theme_color`、`theme_custom_colors`，并 `loadBackgroundSettings()`；语言未保存时按 `navigator.language` 以 `zh` 开头判定中/英（main.tsx:142-149）；主题色默认 `indigo`，主题模式默认 `system`（main.tsx:152-155）。
 - 渲染结构：`StrictMode > BrowserRouter > Provider > App`，挂载到 `#root`（main.tsx:161-169）。
+- 启动 Splash 在 `index.html` 中由静态 HTML/CSS 提前展示，使用 `/app-icon.png`；背景层复用 `loadBackgroundSettings()` 设置的用户背景图、透明度和模糊度，没有自定义背景时回退到主题渐变。配置读取完成后继续保持显示。`startupProgress.ts` 汇总启动任务、仪表板首载、角色数据 IPC 与公告/背景加载，在请求静稳 650ms 后将进度补满并淡出；初始化配置异常时保留 Splash 并显示错误文案。
 - 渲染后的四个延时副作用：`loadAllCards()` 立即执行注册启动处理器，随后 `setTimeout 0` 调用 `CardStartupService.runAll()`（main.tsx:172-175）；`setTimeout 3000` 调用 `checkAndNotify()` 自动检查更新（main.tsx:178-180）；`setTimeout 5000` 读取 `tray_user_role_id`，查 `char_detail`（字段 `dungeon`/`bpSystem`/`dailyMission`/`weeklyMission`）并汇总账号昵称/头像后推送托盘数据（main.tsx:183-215）。
 - `invoke("update_tray_user_data", ...)`（main.tsx:194）：本文件唯一的 Tauri 命令，payload 为 `userInfo`（roleId、nickname、avatar、体力 curStamina/maxStamina/maxTs、每日活跃 dailyActivation/maxDailyActivation、周分 weeklyScore/weeklyTotal、BP 等级 bpCurLevel/bpMaxLevel），数值均做 `Number(...) || 0` 兜底。
 - 魔数：3000（更新检查延迟 ms）、5000（托盘数据拉取延迟 ms）、0（启动任务延迟 ms）；进度/主题色阶键名 50–900 为 Tailwind 风格约定。
+- `index.html` 的启动动画遵循 `prefers-reduced-motion`，静态启动文案先按浏览器语言显示，配置读取后切换为应用保存语言。
 
 ## `src/App.tsx`
 **职责**：定义应用的路由表（8 条顶层路由，全部包在 `DashboardLayout` 中），并挂载两个无 UI 的副作用组件：路由恢复（记住/还原 `last_route`）与更新检查。

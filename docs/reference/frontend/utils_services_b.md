@@ -253,3 +253,20 @@
 | 22–37 | 初始化状态与 `MutationObserver` 守护 |
 
 **备注**：无 Tauri 命令、无 HTTP 端点、无缓存、无日志写入；仅修改元素内联样式与 `data-ovs` 属性。
+
+## `src/utils/startupProgress.ts`
+**职责**：管理主窗口 Splash 的首屏启动进度；汇总初始化阶段以及显式跟踪的初始异步任务，并在任务静稳后完成进度动画、淡出静态 Splash。
+
+**导出**：`setStartupPhase`、`beginStartupTracking`、`trackStartupTask`、`failStartup`。
+
+**主要依赖**：浏览器 DOM API（更新 `index.html` 中的启动进度条、状态和 `#startup-splash`）。
+
+| 符号 | 位置 | 说明 |
+| --- | --- | --- |
+| `setStartupPhase` | startupProgress.ts:28 | 单调更新当前进度（最高 94%）并设置本地化状态文案 |
+| `beginStartupTracking` | startupProgress.ts:33 | React 挂载后开启任务计数，并设定加载中/完成文案 |
+| `trackStartupTask` | startupProgress.ts:40 | 统计启动阶段 Promise；任务完成后不吞异常，并重置 650ms 静稳计时 |
+| `finishWhenIdle`（私有） | startupProgress.ts:18 | 无待处理任务且持续静稳 650ms 后设为 100%、淡出并移除 Splash |
+| `failStartup` | startupProgress.ts:56 | 关闭启动跟踪并在 Splash 中显示初始化错误 |
+
+**备注**：启动进度由 `index.html` 提供纯静态 UI，因此 React 配置初始化之前也不会显示空白页；配置/API 失败时状态文案明确显示，既有调用者仍负责记录与呈现各自错误。

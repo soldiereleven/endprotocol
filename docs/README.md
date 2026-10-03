@@ -22,6 +22,7 @@
 | 角色（干员）数据查询与缓存 | `src/utils/roleDataService.ts`、`roleDetailService.ts` | [utils_services_a.md](reference/frontend/utils_services_a.md)、`query_role_data` 见 [commands.md](reference/backend/commands.md) |
 | 干员列表卡片 / 选择弹窗（实际生效实现） | `src/components/cards/character-list/char-select-modal.tsx` | [cards_character_list.md](reference/frontend/cards_character_list.md) |
 | 卡片自动发现与注册 | `src/components/cards/registry/loader.ts` | [cards_core.md](reference/frontend/cards_core.md) |
+| 应用启动 Splash 与初始数据加载 | `index.html`、`src/utils/startupProgress.ts` | [entry_and_app.md](reference/frontend/entry_and_app.md)、[utils_services_b.md](reference/frontend/utils_services_b.md) |
 | 卡片内部配置存取 | `src/utils/cardConfigService.ts`、`commands/card_config.rs` | [utils_services_a.md](reference/frontend/utils_services_a.md)、[card_configuration.md](card_configuration.md) |
 | 仪表板布局 / 标签页（多 Tab） | `src/pages/dashboard.tsx`、`src/utils/dashboardConfig.ts` | [pages_core.md](reference/frontend/pages_core.md)、[utils_services_a.md](reference/frontend/utils_services_a.md) |
 | 每日签到 | `src/components/cards/attendance/index.tsx`、`pages/attendance.tsx`、`commands/attendance.rs` | [cards_attendance_domain_spaceship.md](reference/frontend/cards_attendance_domain_spaceship.md)、[commands.md](reference/backend/commands.md) |
@@ -157,4 +158,3 @@ Get-ChildItem src -Recurse -Include *.ts,*.tsx -File | ForEach-Object { $rel=$_.
 ```
 
 注意：正则里的 `<[^()]*>` 用于兼容 `invoke<Record<string, any>>(...)` 这类嵌套泛型写法；不要用 `<[^>]*>`，会漏掉 `query_role_data` 等调用。
-

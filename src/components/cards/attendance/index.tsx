@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { GlassButton, GlassCard, GlassProgressCircle } from "@/components/ui/glass";
 import { useTranslation } from "react-i18next";
 import { BaseCardProps } from "../registry/types";
+import { trackStartupTask } from "@/utils/startupProgress";
 import { CardConfigService } from "@/utils/cardConfigService";
 import { CardStartupService } from "@/cards/startup-service";
 import type { AttendanceCardSettings } from "@/types/card-settings";
@@ -152,7 +153,9 @@ export default function AttendanceCard({
     setAttendanceState("loading");
     setSignError(null);
     try {
-      const result = await invoke<any>("get_attendance", { roleId: rid });
+      const result = await trackStartupTask(
+        invoke<any>("get_attendance", { roleId: rid }),
+      );
       const parsed = parseAttendanceData(result);
       if (!parsed) {
         setAttendanceState("error");
