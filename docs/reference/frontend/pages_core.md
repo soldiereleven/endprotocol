@@ -19,28 +19,30 @@
 
 **内部结构**：
 - 1-31 行：导入与常量。`STORAGE_KEY_CHANNEL = "launcher_channel"`。
-- 33-54 行：组件声明与全部状态：`location`(useLocation)、`mobileOpen`（移动端抽屉开关）、`viewMode`（初始 `getLauncherMode()`）、`bgMedia`（`LauncherBgMedia | null`，初始 `getLauncherBgMedia`）、`bgMediaMode`（`GameBgMode`，初始 `getGameBgMode`）、`channel`（从 localStorage 读取的 `GameChannel`，默认 `"official"`；**只有 getter 的只读 state，本文件内无 setter，不可切换渠道**）、`banners`/`announcements`（公告数据）、`bannerIndex`（轮播索引）、`bannerHovered`（悬停暂停轮播）、`announcementTab`（公告分类标签索引）。
-- 56-60 行：`subscribeLauncherMode` 订阅 → 同步 `viewMode`。
-- 62-71 行：`prevModeRef` + effect：`game → data` 调用 `suspendInAppBrowser()`，`data → game` 调用 `resumeInAppBrowser()`（模式切换时暂停/恢复内嵌浏览器）。
-- 73-83 行：订阅 `subscribeLauncherBgMedia` 与 `subscribeGameBgMode`，同步 `bgMedia`、`bgMediaMode`。
-- 85-87 行：`channel` 变化时写回 localStorage（当前等价于挂载时写一次）。
-- 90-112 行：**核心数据拉取**（依赖 `[channel]`）：`getBackgroundImage(channel)` 成功则 `setLauncherBgMedia(...)`、失败置 `null`；`getNoticeContent(channel)` 成功则写入 `banners`/`announcements`（含 console 日志），失败清空两者。
-- 115-121 行：Banner 自动轮播，`setInterval` 5000ms，`banners.length <= 1` 或 `bannerHovered` 时不启动。
-- 124-128 行：卸载时 `setLauncherBgMedia(null)` 清理背景。
-- 130-138 行：派生值：`isGameMode`、`announcementCategories`（去重分类）、`activeAnnouncementCategory`、`filteredAnnouncements`（按当前分类过滤）。
-- 141-316 行：**GAME MODE 分支**：
-  - 142-149 行：背景源选择——`bgMediaMode === "video"` 且有 `video_url` 用视频，否则用 `image_url ?? video_url`。
-  - 151-178 行：固定全屏背景（`<video autoPlay loop muted playsInline>` 或 `<img>` + 渐变遮罩；无资源时使用 CSS 渐变占位）。
-  - 180-183 行：`CustomTitlebar` + `InAppBrowser` 覆盖层（位于标题栏下方）。
-  - 186-312 行：内容层（`z-10`）：底部左侧「Banner + 公告」玻璃盒（193-306 行）与右侧 `GameActionPanel`（309-311 行）。
-    - 195-258 行：Banner 图片——点击 `jump_url` 走 `openInAppBrowser`（205-208 行），`onError` 隐藏图片（209-211 行）；悬停显示左右箭头（215-240 行，环形取模翻页）；底部圆点指示器（243-256 行）。
-    - 261-305 行：公告区——分类 Tab（264-279 行，`setAnnouncementTab`）+ 列表（282-299 行，`slice(0, 6)` 只显示 6 条，点击条目 `openInAppBrowser(item.jump_url)`）；无分类时显示 “No announcements”（301-305 行）。
-- 318-377 行：**DATA MODE 分支**（默认业务界面）：
-  - 321 行：`dashboard-background` 背景层；323 行：`CustomTitlebar`。
-  - 327-329 行：桌面端侧边栏（`hidden lg:flex w-72`，`<Sidebar />`）。
-  - 332-344 行：移动端抽屉（`mobileOpen` 为真时渲染遮罩 + `Sidebar onNavigate={关闭}`）。
-  - 346-352 行：`<main>` 滚动容器，内部 `div` 以 `location.pathname` 为 key 强制路由切换时重挂载，渲染 `{children}`。
-  - 356-375 行：移动端右下角浮动菜单按钮（`lg:hidden`），点击 `setMobileOpen(true)`。
+- 33-57 行：组件声明与全部状态：`location`(useLocation)、`mobileOpen`（移动端抽屉开关）、`viewMode`（初始 `getLauncherMode()`）、`bgMedia`（`LauncherBgMedia | null`，初始 `getLauncherBgMedia`）、`bgMediaMode`（`GameBgMode`，初始 `getGameBgMode`）、`channel`（从 localStorage 读取的 `GameChannel`，默认 `"official"`；**只有 getter 的只读 state，本文件内无 setter，不可切换渠道**）、`banners`/`announcements`（公告数据）、`bannerIndex`（轮播索引）、`bannerHovered`（悬停暂停轮播）、`bannerPrevIndexRef`/`bannerDir`/`outgoingBanner`（翻页「推动」动画：前一索引 ref、方向 `1|-1`、离场图索引）、`announcementTab`（公告分类标签索引）。
+- 59-63 行：`subscribeLauncherMode` 订阅 → 同步 `viewMode`。
+- 65-74 行：`prevModeRef` + effect：`game → data` 调用 `suspendInAppBrowser()`，`data → game` 调用 `resumeInAppBrowser()`（模式切换时暂停/恢复内嵌浏览器）。
+- 76-86 行：订阅 `subscribeLauncherBgMedia` 与 `subscribeGameBgMode`，同步 `bgMedia`、`bgMediaMode`。
+- 88-90 行：`channel` 变化时写回 localStorage（当前等价于挂载时写一次）。
+- 92-115 行：**核心数据拉取**（依赖 `[channel]`）：`getBackgroundImage(channel)` 成功则 `setLauncherBgMedia(...)`、失败置 `null`；`getNoticeContent(channel)` 成功则写入 `banners`/`announcements`（含 console 日志），失败清空两者。
+- 117-124 行：Banner 自动轮播，`setInterval` 5000ms，`banners.length <= 1` 或 `bannerHovered` 时不启动。
+- 126-142 行：轮播「推动」动画 effect——`bannerIndex` 变化时按 `bannerIndex === (prev + 1) % len` 判定 `bannerDir`（`1` 向右推、`-1` 向左推），把前一索引写入 `outgoingBanner` 并在 400ms 后清空；列表重载而索引未变时清掉残留离场图。
+- 144-151 行：预加载全部 banner 图片（`new Image()`），避免翻页动画首帧闪白。
+- 153-158 行：卸载时 `setLauncherBgMedia(null)` 清理背景。
+- 160-168 行：派生值：`isGameMode`、`announcementCategories`（去重分类）、`activeAnnouncementCategory`、`filteredAnnouncements`（按当前分类过滤）。
+- 170-373 行：**GAME MODE 分支**：
+  - 172-179 行：背景源选择——`bgMediaMode === "video"` 且有 `video_url` 用视频，否则用 `image_url ?? video_url`。
+  - 181-208 行：固定全屏背景（`<video autoPlay loop muted playsInline>` 或 `<img>` + 渐变遮罩；无资源时使用 CSS 渐变占位）。
+  - 210-213 行：`CustomTitlebar` + `InAppBrowser` 覆盖层（位于标题栏下方）。
+  - 215-370 行：内容层（`z-10`）：底部左侧「Banner + 公告」玻璃盒（220-363 行）与右侧 `GameActionPanel`（365-368 行）。
+    - 224-315 行：Banner 轮播（`overflow-hidden` 圆角容器）——翻页时离场图（231-244 行，绝对定位）向反方向推走（`.animate-banner-push-out-left/right`），入场图（246-268 行，`z-[1]`）从对应方向推入（`.animate-banner-push-in-right/left`）；点击 `jump_url` 走 `openInAppBrowser`，`onError` 隐藏图片；图片悬停时 `group-hover:scale-[1.08]` + `transition-transform duration-300` 缩放。悬停显示左右箭头（271-297 行，环形取模翻页）；底部圆点指示器（299-314 行）。
+    - 317-362 行：公告区——分类 Tab（320-336 行，`setAnnouncementTab`）+ 列表（338-356 行，`slice(0, 6)` 只显示 6 条，点击条目 `openInAppBrowser(item.jump_url)`）；无分类时显示 “No announcements”（358-361 行）。
+- 375-435 行：**DATA MODE 分支**（默认业务界面）：
+  - 378 行：`dashboard-background` 背景层；380 行：`CustomTitlebar`。
+  - 383-386 行：桌面端侧边栏（`hidden lg:flex w-72`，`<Sidebar />`）。
+  - 388-401 行：移动端抽屉（`mobileOpen` 为真时渲染遮罩 + `Sidebar onNavigate={关闭}`）。
+  - 403-409 行：`<main>` 滚动容器，内部 `div` 以 `location.pathname` 为 key 强制路由切换时重挂载，渲染 `{children}`。
+  - 412-432 行：移动端右下角浮动菜单按钮（`lg:hidden`），点击 `setMobileOpen(true)`。
 
 **备注**：
 - **invoke 命令**：本文件无直接 `invoke(...)`；间接经 `launcherService` 调用 `launcher_get_notice_content`（公告）与 `launcher_get_background_image`（背景）。

@@ -51,6 +51,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [bannerIndex, setBannerIndex] = useState(0);
   const [bannerHovered, setBannerHovered] = useState(false);
+  const bannerPrevIndexRef = useRef(0);
+  const [bannerDir, setBannerDir] = useState<1 | -1>(1);
+  const [outgoingBanner, setOutgoingBanner] = useState<number | null>(null);
   const [announcementTab, setAnnouncementTab] = useState(0);
 
   useEffect(() => {
@@ -119,6 +122,33 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }, 5000);
     return () => clearInterval(timer);
   }, [banners.length, bannerHovered]);
+
+  // Derive push direction + keep the outgoing banner mounted for the transition
+  useEffect(() => {
+    const prev = bannerPrevIndexRef.current;
+    if (prev === bannerIndex) {
+      // List reloaded without navigating (e.g. channel switch): drop any stale clone.
+      setOutgoingBanner(null);
+      return;
+    }
+    const len = banners.length;
+    // Wrap-around (last -> first) counts as "next"; anything else that is not
+    // the immediate successor slides in from the left.
+    setBannerDir(len > 1 && bannerIndex === (prev + 1) % len ? 1 : -1);
+    setOutgoingBanner(prev);
+    bannerPrevIndexRef.current = bannerIndex;
+    const timer = setTimeout(() => setOutgoingBanner(null), 400);
+    return () => clearTimeout(timer);
+  }, [bannerIndex, banners.length]);
+
+  // Preload banner images so the push transition never flashes a blank frame
+  useEffect(() => {
+    banners.forEach((b) => {
+      if (!b.image_url) return;
+      const img = new Image();
+      img.src = b.image_url;
+    });
+  }, [banners]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -194,22 +224,49 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               {/* Banner — left side, 4px margin top/left/bottom, auto width by aspect ratio */}
               {banners.length > 0 && (
                 <div
-                  className="relative shrink-0 my-1 ml-1 flex items-center group"
+                  className="relative shrink-0 my-1 ml-1 flex items-center group overflow-hidden rounded-lg"
                   onMouseEnter={() => setBannerHovered(true)}
                   onMouseLeave={() => setBannerHovered(false)}
                 >
-                  <img
-                    src={banners[bannerIndex].image_url}
-                    alt="Banner"
-                    className="h-full w-auto object-contain rounded-lg cursor-pointer"
-                    onClick={() => {
-                      const url = banners[bannerIndex].jump_url;
-                      if (url) openInAppBrowser(url);
-                    }}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
-                  />
+                  {/* Outgoing banner — pushed out to the opposite side */}
+                  {outgoingBanner !== null && banners[outgoingBanner] && (
+                    <img
+                      key={`banner-out-${outgoingBanner}`}
+                      src={banners[outgoingBanner].image_url}
+                      alt=""
+                      aria-hidden="true"
+                      className={`absolute inset-y-0 left-0 h-full w-auto object-contain rounded-lg pointer-events-none ${
+                        bannerDir === 1
+                          ? "animate-banner-push-out-left"
+                          : "animate-banner-push-out-right"
+                      }`}
+                    />
+                  )}
+
+                  {/* Incoming banner — slides in, then zooms on hover */}
+                  <div
+                    key={`banner-in-${bannerIndex}`}
+                    className={`relative z-[1] h-full flex items-center ${
+                      outgoingBanner !== null
+                        ? bannerDir === 1
+                          ? "animate-banner-push-in-right"
+                          : "animate-banner-push-in-left"
+                        : ""
+                    }`}
+                  >
+                    <img
+                      src={banners[bannerIndex].image_url}
+                      alt="Banner"
+                      className="h-full w-auto object-contain rounded-lg cursor-pointer transition-transform duration-300 ease-out group-hover:scale-[1.08]"
+                      onClick={() => {
+                        const url = banners[bannerIndex].jump_url;
+                        if (url) openInAppBrowser(url);
+                      }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  </div>
 
                   {/* Left / Right arrows — visible on hover */}
                   {banners.length > 1 && bannerHovered && (

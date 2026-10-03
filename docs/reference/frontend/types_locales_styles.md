@@ -149,7 +149,7 @@
 - 同样存在 `settings.update` 的 `latest_version` / `release_date` 重复键（:177/:187、:179/:188），与 zh 完全一致。
 
 ## `src/styles/globals.css`
-**职责**：全局样式与设计令牌（Tailwind CSS v4 + CSS 变量体系）。定义浅/深色主题变量、`@theme` 映射、玻璃拟态（glassmorphism）工具类、交互动效与游戏内技能文本标记样式。共 455 行。
+**职责**：全局样式与设计令牌（Tailwind CSS v4 + CSS 变量体系）。定义浅/深色主题变量、`@theme` 映射、玻璃拟态（glassmorphism）工具类、交互动效与游戏内技能文本标记样式。共 457 行。
 
 **内部结构**：
 
@@ -164,15 +164,16 @@
 | 166-171 行 | Tauri 窗口背景变量组 + `body` 背景色（浅/深两套） |
 | 172-186 行 | `.dashboard-background` 固定背景层（背景图 + 三层渐变叠加 + blur） |
 | 187-206 行 | 对比度自适应文本（`.adaptive-contrast-text`、弱化文字色强制改用 `--foreground`、全局 `text-shadow`） |
-| 207-225 行 | `.titlebar-mode-toggle` 标题栏模式切换胶囊动画（`.is-game` 右移） |
-| 227-228 行 | `::selection` 选区配色 |
-| 231-254 行 | 动画 keyframes 与 `.animate-*` 工具类（slide-down/up、fade-in/out、slide-in-left/right、scale-in、spin-slow、pulse-soft、card-flash 等） |
-| 256-272 行 | 页面转场（`.page-transition-enter/slide-up/scale-in`）与列表项级联动画 `.animate-list-item`（8 档 40ms 阶梯延迟） |
-| 274-277 行 | 滚动条：全局隐藏（width:0），`[data-ovs]:hover` 时才显示悬浮 thumb |
-| 279-367 行 | **玻璃拟态工具类**（详见下表） |
-| 369-414 行 | 交互动效工具类：`.interactive-hover`、`.card-hover`、`.button-hover`、`.icon-hover`、`.nav-hover`、`.list-item-hover`、`.input-hover`、`.chip-hover`、`.switch-hover`、`.checkbox-hover`、`.modal-hover`、`.tooltip-hover`、`.dropdown-item-hover`、`.table-row-hover`、`.link-hover` |
-| 416-422 行 | 状态发光阴影：`.shadow-glow-success/danger/warning`（深色模式加强） |
-| 424-455 行 | 技能描述富文本标记：`.ba-tag`、`.ba-at-*` / `.ba-hash-*` / `.ba-tips-*` 系列属性关键字配色（cryst/key/vup/poise/speedup/slow/spellburst 等） |
+| 206-224 行 | `.titlebar-mode-toggle` 标题栏模式切换胶囊动画（`.is-game` 右移） |
+| 226-227 行 | `::selection` 选区配色 |
+| 229-253 行 | 动画 keyframes 与 `.animate-*` 工具类（slide-down/up、fade-in/out、slide-in-left/right、scale-in、spin-slow、pulse-soft、card-flash 等） |
+| 255-263 行 | Banner 轮播「翻页推动」动画：`@keyframes banner-push-in/out-left/right` 与 `.animate-banner-push-*` 工具类（dashboard 游戏模式底部宣传图使用） |
+| 265-281 行 | 页面转场（`.page-transition-enter/slide-up/scale-in`）与列表项级联动画 `.animate-list-item`（8 档 40ms 阶梯延迟） |
+| 283-286 行 | 滚动条：全局隐藏（width:0），`[data-ovs]:hover` 时才显示悬浮 thumb |
+| 288-369 行 | **玻璃拟态工具类**（详见下表） |
+| 371-416 行 | 交互动效工具类：`.interactive-hover`、`.card-hover`、`.button-hover`、`.icon-hover`、`.nav-hover`、`.list-item-hover`、`.input-hover`、`.chip-hover`、`.switch-hover`、`.checkbox-hover`、`.modal-hover`、`.tooltip-hover`、`.dropdown-item-hover`、`.table-row-hover`、`.link-hover` |
+| 418-424 行 | 状态发光阴影：`.shadow-glow-success/danger/warning`（深色模式加强） |
+| 426-457 行 | 技能描述富文本标记：`.ba-tag`、`.ba-at-*` / `.ba-hash-*` / `.ba-tips-*` 系列属性关键字配色（cryst/key/vup/poise/speedup/slow/spellburst 等） |
 
 **关键变量（`:root`，7-66 行）**：
 - 色阶：`--default-50…900`、`--primary-50…900`、`--danger-50`
