@@ -169,8 +169,8 @@
 
 ### 游戏进程启动/检测/杀死（不在本文件，位于 `commands/launcher.rs`）
 - 启动：`launcher_start_game` `commands/launcher.rs:291-373` —— 先 `taskkill /F /IM Endfield.exe`（:308-310），sleep 500ms，再 `ShellExecuteW`（`SW_SHOWNORMAL`，工作目录 = 安装目录，:331-338）。
-- 检测运行：`launcher_check_game_running` `commands/launcher.rs:522-531`（`tasklist /FI "IMAGENAME eq Endfield.exe"` 输出匹配）。
-- 杀死：`launcher_kill_game` `commands/launcher.rs:534-570`（`taskkill /T /F /IM` → 失败再按 exe 名 → 再失败 `wmic process where name like '%Endfield%' call terminate`）。
+- 检测运行：`launcher_check_game_running` `commands/launcher.rs:522-531`（异步、隐藏控制台地运行 `tasklist /FI "IMAGENAME eq Endfield.exe"` 并检查输出；前端每 3 秒轮询）。
+- 杀死：`launcher_kill_game` `commands/launcher.rs:534-570`（隐藏控制台运行 `taskkill /T /F /IM` → 失败再按 exe 名 → 再失败 `wmic process where name like '%Endfield%' call terminate`）。
 - 可执行文件存在性：`launcher_check_executable` `commands/launcher.rs:514-519`；进程名/可执行名来自 `models/game.rs:99-106`（均为 `Endfield.exe`）。
 
 ### 磁盘空间（不在本文件，位于 `commands/launcher.rs`）

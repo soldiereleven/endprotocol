@@ -84,8 +84,8 @@
 | `launcher_scan_install_dir` | commands/launcher.rs:450 | `service`、`channel`、`install_path` | `Result<FileScanResult, String>` | `GameLauncherService::scan_install_dir` |
 | `launcher_detect_channel` | commands/launcher.rs:462 | `install_path: String` | `Result<Option<String>, String>` | 纯本地特征文件探测（hgsdk.dll / PCGameSDK.dll / gfsdk.dll 等） |
 | `launcher_check_executable` | commands/launcher.rs:513 | `install_path: String`、`channel: String` | `Result<bool, String>` | `parse_channel` + `GameChannel::executable_name` + `Path::exists` |
-| `launcher_check_game_running` | commands/launcher.rs:521 | `channel: String` | `Result<bool, String>` | `parse_channel`、`tasklist /FI IMAGENAME eq …` |
-| `launcher_kill_game` | commands/launcher.rs:533 | `channel: String` | `Result<bool, String>` | `taskkill /T /F /IM`（两次）→ `wmic process … terminate` 兜底 |
+| `launcher_check_game_running` | commands/launcher.rs:521 | `channel: String` | `Result<bool, String>` | 异步执行隐藏控制台的 `tasklist /FI IMAGENAME eq …`；游戏面板每 3 秒轮询 |
+| `launcher_kill_game` | commands/launcher.rs:533 | `channel: String` | `Result<bool, String>` | 隐藏控制台执行 `taskkill /T /F /IM`（两次）→ `wmic process … terminate` 兜底 |
 | `launcher_switch_channel` | commands/launcher.rs:573 | `service`、`from_channel`、`to_channel`、`install_path`、`app: AppHandle` | `Result<String, String>` | `GameLauncherService::switch_channel` |
 | `get_backend_logs` | commands/logs.rs:4 | 无 | `Vec<LogEntry>` | `utils::logger::get_logger().get_recent_logs()` |
 | `get_tray_user_info` | commands/tray.rs:8 | `config_service: State<Arc<Mutex<ConfigService>>>` | `Result<TrayUserInfo, String>` | `ConfigService::get::<TrayUserInfo>("tray_user_info")` |
@@ -558,7 +558,7 @@
 - 位置：launcher.rs:513（同步）；参数：`install_path: String`、`channel: String`；返回：`Result<bool, String>`；逻辑：`parse_channel` → `Path::exists` 判断渠道对应 exe 是否存在。
 
 ### `launcher_check_game_running`
-- 位置：launcher.rs:521（同步）；参数：`channel: String`；返回：`Result<bool, String>`；逻辑：`tasklist /FI "IMAGENAME eq <process_name>" /NH`，stdout 包含进程名即认为在运行。
+- 位置：launcher.rs:521（异步）；参数：`channel: String`；返回：`Result<bool, String>`；逻辑：隐藏控制台异步执行 `tasklist /FI "IMAGENAME eq <process_name>" /NH`，stdout 包含进程名即认为在运行。前端游戏面板每 3 秒调用，避免同步子进程阻塞 Tauri 主线程。
 
 ### `launcher_kill_game`
 - 位置：launcher.rs:533（async）

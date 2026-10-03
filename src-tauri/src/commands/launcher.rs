@@ -1,3 +1,5 @@
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 use std::sync::Arc;
 use tauri::Emitter;
 use tokio::sync::Mutex;
@@ -305,9 +307,10 @@ pub async fn launcher_start_game(
     }
 
     // Kill existing game processes first
-    let _ = std::process::Command::new("taskkill")
-        .args(["/F", "/IM", exe_name])
-        .output();
+    let mut kill_command = std::process::Command::new("taskkill");
+    #[cfg(target_os = "windows")]
+    kill_command.creation_flags(windows_sys::Win32::System::Threading::CREATE_NO_WINDOW);
+    let _ = kill_command.args(["/F", "/IM", exe_name]).output();
 
     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
@@ -403,7 +406,9 @@ pub async fn launcher_get_disk_space(path: String) -> Result<DiskSpace, String> 
     {
         use std::process::Command;
         let root_str = root.to_str().unwrap_or("C:\\");
-        let output = Command::new("powershell")
+        let mut command = Command::new("powershell");
+        command.creation_flags(windows_sys::Win32::System::Threading::CREATE_NO_WINDOW);
+        let output = command
             .args([
                 "-NoProfile",
                 "-Command",
@@ -519,12 +524,16 @@ pub fn launcher_check_executable(install_path: String, channel: String) -> Resul
 }
 
 #[tauri::command]
-pub fn launcher_check_game_running(channel: String) -> Result<bool, String> {
+pub async fn launcher_check_game_running(channel: String) -> Result<bool, String> {
     let ch = parse_channel(&channel)?;
     let process_name = ch.process_name();
-    let output = std::process::Command::new("tasklist")
+    let mut command = tokio::process::Command::new("tasklist");
+    #[cfg(target_os = "windows")]
+    command.creation_flags(windows_sys::Win32::System::Threading::CREATE_NO_WINDOW);
+    let output = command
         .args(["/FI", &format!("IMAGENAME eq {}", process_name), "/NH"])
         .output()
+        .await
         .map_err(|e| e.to_string())?;
     let stdout = String::from_utf8_lossy(&output.stdout);
     Ok(stdout.contains(process_name))
@@ -537,7 +546,10 @@ pub async fn launcher_kill_game(channel: String) -> Result<bool, String> {
     let exe_name = ch.executable_name();
 
     // 先用 taskkill /T /F /IM 杀进程树（非阻塞）
-    let output = tokio::process::Command::new("taskkill")
+    let mut command = tokio::process::Command::new("taskkill");
+    #[cfg(target_os = "windows")]
+    command.creation_flags(windows_sys::Win32::System::Threading::CREATE_NO_WINDOW);
+    let output = command
         .args(["/T", "/F", "/IM", &process_name])
         .output()
         .await
@@ -545,7 +557,10 @@ pub async fn launcher_kill_game(channel: String) -> Result<bool, String> {
 
     if !output.status.success() {
         // 尝试用可执行文件名杀
-        let output2 = tokio::process::Command::new("taskkill")
+        let mut command = tokio::process::Command::new("taskkill");
+        #[cfg(target_os = "windows")]
+        command.creation_flags(windows_sys::Win32::System::Threading::CREATE_NO_WINDOW);
+        let output2 = command
             .args(["/T", "/F", "/IM", &exe_name])
             .output()
             .await
@@ -553,7 +568,10 @@ pub async fn launcher_kill_game(channel: String) -> Result<bool, String> {
 
         if !output2.status.success() {
             // 最后尝试 wmic 按标题模糊杀
-            let _ = tokio::process::Command::new("wmic")
+            let mut command = tokio::process::Command::new("wmic");
+            #[cfg(target_os = "windows")]
+            command.creation_flags(windows_sys::Win32::System::Threading::CREATE_NO_WINDOW);
+            let _ = command
                 .args([
                     "process",
                     "where",
